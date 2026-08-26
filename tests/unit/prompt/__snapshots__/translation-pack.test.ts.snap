@@ -1,0 +1,108 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TranslationPackBuilder snapshots > includes only source IDs from batch, never prior-chapter dump > source-block 1`] = `
+"## Source
+[C000451:P000001] 李逍遥走进青云门。
+[C000451:P000002] 他看见赵灵儿站在山门前。"
+`;
+
+exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > active-terms 1`] = `
+"## Active Project Terms
+李逍遥 → Lý Tiêu Dao (PERSON) LOCKED
+青云门 → Thanh Vân Môn (SECT)"
+`;
+
+exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > critical-rules 1`] = `
+"## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (unsynced overrides)
+3. LOCKED PROJECT TERM
+4. Current Project Memory in pack
+5. Notebook Knowledge sources
+6. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Balance accuracy and natural Vietnamese readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Keep locked names exact."
+`;
+
+exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > full-prompt 1`] = `
+"## Task
+Translate Chinese → Vietnamese (balanced) for chapter 451.
+Use ONLY active context below. Do not invent terms, characters, or plot.
+Preserve every paragraph ID from Source exactly.
+
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (unsynced overrides)
+3. LOCKED PROJECT TERM
+4. Current Project Memory in pack
+5. Notebook Knowledge sources
+6. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Balance accuracy and natural Vietnamese readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Keep locked names exact.
+
+## Hot Memory
+story: {"summary":"MC arrives at Qingyun.","location":{"place":"青云门"},"openPlots":["Who attacked the mountain?"]}
+char: 李逍遥=Lý Tiêu Dao [protagonist] aliases=逍遥
+rel: 李逍遥→赵灵儿 (friend) calls=灵儿/逍遥哥哥
+mem@450: plot.mc_realm=Foundation Establishment
+
+## Active Project Terms
+李逍遥 → Lý Tiêu Dao (PERSON) LOCKED
+青云门 → Thanh Vân Môn (SECT)
+
+## Source
+[C000451:P000001] 李逍遥走进青云门。
+[C000451:P000002] 他看见赵灵儿站在山门前。
+
+## Output Protocol
+Return EXACTLY these sections in order. No markdown fences inside tags.
+
+<TRANSLATION>
+[C000001:P000001] Vietnamese translation...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+Rules:
+- TRANSLATION: one line per source paragraph; ID must match source exactly.
+- TERM_DELTA: JSON array of discover|update|confirm objects. Use [] only when the batch truly has no new names/terms.
+- MEMORY_DELTA: JSON array of upsert|delete|relationship|story_state objects. Use [] only when nothing new about cast/world/plot.
+- Opening chapters should extract main cast and key terms when they appear.
+- When a named character appears for the first time, emit MEMORY_DELTA upsert with category "character" and object value { "translatedName": "..." } (not a bare string) and/or a relationship entry — empty MEMORY_DELTA while new cast appears is incorrect.
+- When a proper noun / technique / place name is newly translated, emit TERM_DELTA discover — empty TERM_DELTA while such names appear is incorrect.
+- Do not skip paragraph IDs. Do not invent IDs.
+- Locked/active terms MUST be used exactly as given."
+`;
+
+exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > hot-memory 1`] = `
+"## Hot Memory
+story: {"summary":"MC arrives at Qingyun.","location":{"place":"青云门"},"openPlots":["Who attacked the mountain?"]}
+char: 李逍遥=Lý Tiêu Dao [protagonist] aliases=逍遥
+rel: 李逍遥→赵灵儿 (friend) calls=灵儿/逍遥哥哥
+mem@450: plot.mc_realm=Foundation Establishment"
+`;
+
+exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > task-header 1`] = `
+"## Task
+Translate Chinese → Vietnamese (balanced) for chapter 451.
+Use ONLY active context below. Do not invent terms, characters, or plot.
+Preserve every paragraph ID from Source exactly."
+`;

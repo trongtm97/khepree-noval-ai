@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ready Page</title>
+  </head>
+  <body>
+    <h1 data-testid="ready">Automation Ready</h1>
+    <p id="marker">initial</p>
+    <script>
+      const existing = localStorage.getItem('nts-marker');
+      if (existing) {
+        document.getElementById('marker').textContent = existing;
+      } else {
+        localStorage.setItem('nts-marker', 'persisted-value');
+        document.getElementById('marker').textContent = 'persisted-value';
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NovelTrans Studio — Hướng dẫn Google Drive OAuth</title>
+  <style>
+    :root {
+      --bg: #f6f3ee;
+      --ink: #1c1917;
+      --muted: #57534e;
+      --card: #fffdf9;
+      --line: #e7e0d5;
+      --accent: #0f766e;
+      --accent-soft: #ccfbf1;
+      --warn: #9a3412;
+      --warn-bg: #ffedd5;
+      --ok: #166534;
+      --ok-bg: #dcfce7;
+      --code: #1e293b;
+      --code-bg: #0f172a;
+      --code-fg: #e2e8f0;
+      --radius: 12px;
+      --shadow: 0 10px 30px rgba(28, 25, 23, 0.06);
+      --font: "Segoe UI", "Be Vietnam Pro", system-ui, sans-serif;
+      --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #d8f3ef 0, transparent 40%),
+        radial-gradient(circle at top right, #fde68a55 0, transparent 35%),
+        var(--bg);
+      line-height: 1.55;
+    }
+    .wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+    header.hero {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: calc(var(--radius) + 4px);
+      padding: 1.5rem 1.5rem 1.25rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.25rem;
+    }
+    .eyebrow {
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      margin: 0 0 0.4rem;
+    }
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      line-height: 1.2;
+    }
+    .lead { margin: 0; color: var(--muted); }
+    nav.toc {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    nav.toc h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+    }
+    nav.toc ol { margin: 0; padding-left: 1.2rem; }
+    nav.toc a { color: var(--accent); text-decoration: none; }
+    nav.toc a:hover { text-decoration: underline; }
+    section.step {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.35rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow);
+      scroll-margin-top: 1rem;
+    }
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-right: 0.5rem;
+    }
+    h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    h3 { margin: 1rem 0 0.4rem; font-size: 1rem; }
+    p { margin: 0.5rem 0; }
+    ul, ol { margin: 0.4rem 0 0.6rem; padding-left: 1.25rem; }
+    li { margin: 0.25rem 0; }
+    .callout {
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      margin: 0.85rem 0;
+      border: 1px solid transparent;
+    }
+    .callout.warn { background: var(--warn-bg); border-color: #fdba74; color: var(--warn); }
+    .callout.ok { background: var(--ok-bg); border-color: #86efac; color: var(--ok); }
+    .callout.tip { background: var(--accent-soft); border-color: #5eead4; color: #115e59; }
+    .callout strong { display: block; margin-bottom: 0.2rem; }
+    code, .uri {
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+    .uri-box {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      margin: 0.75rem 0;
+    }
+    .uri-box code {
+      flex: 1;
+      word-break: break-all;
+      color: #7dd3fc;
+    }
+    button.copy {
+      border: 0;
+      background: #334155;
+      color: white;
+      border-radius: 8px;
+      padding: 0.45rem 0.75rem;
+      cursor: pointer;
+      font: inherit;
+    }
+    button.copy:hover { background: #475569; }
+    button.copy.done { background: #166534; }
+    a.btn {
+      display: inline-block;
+      margin: 0.35rem 0.35rem 0.35rem 0;
+      padding: 0.55rem 0.9rem;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    a.btn.secondary {
+      background: white;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0;
+      font-size: 0.95rem;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.55rem 0.65rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #faf7f2; }
+    footer {
+      margin-top: 1.5rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .checklist label {
+      display: flex;
+      gap: 0.55rem;
+      align-items: flex-start;
+      margin: 0.35rem 0;
+      cursor: pointer;
+    }
+    .checklist input { margin-top: 0.3rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <p class="eyebrow">NovelTrans Studio</p>
+      <h1>Hướng dẫn cấu hình Google Drive OAuth</h1>
+      <p class="lead">
+        Làm theo từng bước để lấy <strong>Client ID</strong>, lưu trong app, rồi kết nối Drive.
+        Client Secret <strong>không bắt buộc</strong>. Redirect URI phải đúng
+        <code>http://127.0.0.1:18766</code> (không dùng localhost).
+      </p>
+      <p>
+        <a class="btn" href="https://console.cloud.google.com/" target="_blank" rel="noreferrer">Mở Google Cloud Console</a>
+        <a class="btn secondary" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">Mở Credentials</a>
+      </p>
+    </header>
+
+    <nav class="toc" aria-label="Mục lục">
+      <h2>Trình tự</h2>
+      <ol>
+        <li><a href="#step-1">Tạo / chọn project Google Cloud</a></li>
+        <li><a href="#step-2">Bật Google Drive API</a></li>
+        <li><a href="#step-3">Cấu hình OAuth consent screen</a></li>
+        <li><a href="#step-4">Tạo OAuth Client ID kiểu Desktop app</a></li>
+        <li><a href="#step-5">Redirect URI (quan trọng)</a></li>
+        <li><a href="#step-6">Lưu Client ID trong NovelTrans</a></li>
+        <li><a href="#step-7">Kết nối Drive trên tài khoản Google</a></li>
+        <li><a href="#troubleshoot">Khắc phục lỗi thường gặp</a></li>
+      </ol>
+    </nav>
+
+    <section class="step" id="step-1">
+      <h2><span class="step-num">1</span> Tạo / chọn project</h2>
+      <ol>
+        <li>Mở <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer">Google Cloud Console</a>.</li>
+        <li>Góc trên bên trái → chọn project hiện có, hoặc <strong>New Project</strong>.</li>
+        <li>Đặt tên ví dụ <code>NovelTrans Studio</code> → Create.</li>
+      </ol>
+    </section>
+
+    <section class="step" id="step-2">
+      <h2><span class="step-num">2</span> Bật Google Drive API</h2>
+      <ol>
+        <li>Menu <strong>APIs &amp; Services → Library</strong>.</li>
+        <li>Tìm <strong>Google Drive API</strong>.</li>
+        <li>Bấm <strong>Enable</strong>.</li>
+      </ol>
+    </section>
+
+    <section class="step" id="step-3">
+      <h2><span class="step-num">3</span> OAuth consent screen</h2>
+      <ol>
+        <li>Vào <strong>APIs &amp; Services → OAuth consent screen</strong>.</li>
+        <li>User type: chọn <strong>External</strong> → Create.</li>
+        <li>Điền App name (vd. NovelTrans Studio), User support email, Developer contact.</li>
+        <li>Scopes → Add or remove → thêm <code>https://www.googleapis.com/auth/drive.file</code> → Save.</li>
+        <li>Nếu app đang <strong>Testing</strong>: thêm email Google của bạn vào <strong>Test users</strong>.</li>
+      </ol>
+      <div class="callout tip">
+        <strong>Tip</strong>
+        Chỉ cần scope <code>drive.file</code> (file do app tạo/mở). Không cần full Drive.
+      </div>
+    </section>
+
+    <section class="step" id="step-4">
+      <h2><span class="step-num">4</span> Tạo Client ID — chọn Desktop app</h2>
+      <ol>
+        <li>Vào <strong>APIs &amp; Services → Credentials</strong>.</li>
+        <li><strong>Create Credentials → OAuth client ID</strong>.</li>
+        <li>Application type: chọn <strong>Desktop app</strong> (không chọn Web application).</li>
+        <li>Name: vd. <code>NovelTrans Desktop</code> → Create.</li>
+        <li>Copy <strong>Client ID</strong>. Client Secret nếu có thì tuỳ chọn — app không bắt buộc.</li>
+      </ol>
+      <div class="callout warn">
+        <strong>Sai kiểu client = lỗi redirect_uri_mismatch</strong>
+        Nếu lỡ tạo <em>Web application</em>, hoặc tạo lại Desktop app, hoặc thêm đúng redirect URI ở bước 5.
+      </div>
+    </section>
+
+    <section class="step" id="step-5">
+      <h2><span class="step-num">5</span> Redirect URI phải đúng chuỗi này</h2>
+      <p>
+        NovelTrans dùng loopback cố định. Dùng <strong>127.0.0.1</strong>, không dùng <code>localhost</code>.
+        Không thêm path (không <code>/oauth2callback</code>).
+      </p>
+      <div class="uri-box">
+        <code id="redirect-uri">http://127.0.0.1:18766</code>
+        <button type="button" class="copy" data-copy="http://127.0.0.1:18766">Copy</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Loại client</th><th>Việc cần làm</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Desktop app</strong> (khuyến nghị)</td>
+            <td>Google tự chấp nhận loopback. Không cần khai báo URI. Chỉ cần Client ID.</td>
+          </tr>
+          <tr>
+            <td><strong>Web application</strong></td>
+            <td>Credentials → Edit client → Authorized redirect URIs → Add URI → dán đúng chuỗi trên → Save.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout ok">
+        <strong>Đúng</strong>
+        <code>http://127.0.0.1:18766</code>
+      </div>
+      <div class="callout warn">
+        <strong>Sai — sẽ lỗi 400 redirect_uri_mismatch</strong>
+        <ul>
+          <li><code>http://localhost:18766</code></li>
+          <li><code>http://127.0.0.1:18766/oauth2callback</code></li>
+          <li>Port khác (app cố định <code>18766</code>)</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="step" id="step-6">
+      <h2><span class="step-num">6</span> Lưu trong NovelTrans Studio</h2>
+      <ol>
+        <li>Mở app → <strong>Cài đặt → Google Drive</strong>.</li>
+        <li>Dán Client ID → (tuỳ chọn) Client Secret → <strong>Lưu OAuth client</strong>.</li>
+        <li>Thấy badge <strong>Đã cấu hình</strong> và dòng gợi ý Client ID đã lưu (dạng che).</li>
+      </ol>
+      <div class="callout tip">
+        <strong>Client ID “mất” trên form?</strong>
+        Ô nhập để trống là bình thường. App đã lưu mã hóa — nhìn badge / “Đã lưu: xxxx…”. Muốn đổi thì dán Client ID mới rồi Lưu lại.
+      </div>
+    </section>
+
+    <section class="step" id="step-7">
+      <h2><span class="step-num">7</span> Kết nối Drive</h2>
+      <ol>
+        <li>Vào <strong>Tài khoản Google</strong>.</li>
+        <li>Thêm / đăng nhập tài khoản Gemini trong trình duyệt app (nếu chưa).</li>
+        <li>Bấm <strong>Đã kết nối · Google Drive</strong> (Connect Drive).</li>
+        <li>Trình duyệt hệ thống mở Google → đăng nhập → bấm <strong>Tiếp tục</strong> / <strong>Cho phép</strong>.</li>
+        <li>Thấy trang “Drive đã kết nối” → quay lại app. Thẻ tài khoản hiện Drive đã kết nối.</li>
+        <li>Nếu sau <strong>Tiếp tục</strong> trình duyệt báo <em>không kết nối được</em> tới <code>127.0.0.1:18766</code>: copy URL trên thanh địa chỉ (có <code>?code=</code>) → trong app mở mục <strong>Bấm Tiếp tục xong bị đứng…</strong> → dán URL → <strong>Hoàn tất bằng URL</strong>.</li>
+      </ol>
+    </section>
+
+    <section class="step" id="troubleshoot">
+      <h2>Khắc phục lỗi</h2>
+      <h3>Error 400: redirect_uri_mismatch</h3>
+      <ul>
+        <li>Client phải là <strong>Desktop app</strong>, hoặc Web đã thêm đúng <code>http://127.0.0.1:18766</code>.</li>
+        <li>Không dùng localhost / không thêm path.</li>
+        <li>Khởi động lại app sau khi sửa Credentials trên GCP (đôi khi cần vài phút).</li>
+      </ul>
+      <h3>access_denied / app chưa verified</h3>
+      <ul>
+        <li>Consent screen đang Testing → thêm email vào Test users.</li>
+      </ul>
+      <h3>Bấm Tiếp tục trên Google nhưng không hoàn tất</h3>
+      <ul>
+        <li><strong>Nút Tiếp tục không phản hồi:</strong> cuộn xuống hết trang consent; thêm <code>digimonday.group@gmail.com</code> (email đang đăng nhập) vào <strong>Test users</strong> trên GCP nếu app đang Testing; thêm Privacy Policy URL trên OAuth consent screen (Google khuyến nghị, đôi khi chặn bước cuối).</li>
+        <li><strong>Sau Tiếp tục, trình duyệt báo ERR_CONNECTION_REFUSED / không kết nối 127.0.0.1:18766:</strong> bình thường nếu firewall chặn loopback — copy URL có <code>?code=</code> từ thanh địa chỉ → NovelTrans → Tài khoản Google → mục <strong>Hoàn tất bằng URL</strong>.</li>
+        <li><strong>Trang lỗi “Đổi mã thất bại”:</strong> OAuth client kiểu Web thường cần <strong>Client Secret</strong> trong Cài đặt; hoặc chuyển sang Desktop app.</li>
+        <li>Kiểm tra Windows Firewall không chặn NovelTrans lắng nghe cổng <code>18766</code>.</li>
+      </ul>
+      <h3>Port 18766 đang dùng</h3>
+      <ul>
+        <li>Đóng app/tool khác chiếm cổng, rồi Connect Drive lại.</li>
+      </ul>
+      <h3>Checklist nhanh</h3>
+      <div class="checklist">
+        <label><input type="checkbox" /> Drive API đã Enable</label>
+        <label><input type="checkbox" /> Consent External + Test user (nếu Testing)</label>
+        <label><input type="checkbox" /> OAuth client = Desktop app</label>
+        <label><input type="checkbox" /> Redirect đúng <code>http://127.0.0.1:18766</code> (nếu Web)</label>
+        <label><input type="checkbox" /> Client ID đã Lưu trong Cài đặt (badge Đã cấu hình)</label>
+        <label><input type="checkbox" /> Connect Drive → Cho phép trên Google</label>
+      </div>
+    </section>
+
+    <footer>
+      NovelTrans Studio · Hướng dẫn cục bộ (không gửi dữ liệu lên mạng ngoài các liên kết Google Cloud bạn bấm).
+    </footer>
+  </div>
+
+  <script>
+    document.querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const text = btn.getAttribute('data-copy') || '';
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = 'Đã copy';
+          btn.classList.add('done');
+          setTimeout(() => {
+            btn.textContent = 'Copy';
+            btn.classList.remove('done');
+          }, 1600);
+        } catch {
+          btn.textContent = 'Copy thủ công';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

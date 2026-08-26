@@ -1,0 +1,259 @@
+import type { DatabaseManager } from '../db/database-manager';
+import { healIdleWorkers } from '../jobs/heal-workers';
+import { NotebookBootstrapService } from '../notebook/notebook-bootstrap-service';
+import { NOTEBOOK_CHANNEL_READY } from '@shared/constants/notebook';
+import { logger } from '../logging/logger';
+
+export const TRANSLATE_ENSURE_REASONS = [
+  'ok',
+  'no_account',
+  'needs_google_login',
+  'needs_notebook',
+  'no_channel',
+] as const;
+
+export type TranslateEnsureReason = (typeof TRANSLATE_ENSURE_REASONS)[number];
+
+export const TRANSLATE_ENSURE_ACTIONS = [
+  'check_google',
+  'open_notebook',
+  'open_ai_memory',
+] as const;
+
+export type TranslateEnsureAction = (typeof TRANSLATE_ENSURE_ACTIONS)[number];
+
+export interface TranslateEnsureResult {
+  ok: boolean;
+  reason: TranslateEnsureReason;
+  message: string;
+  workerAccountId: string | null;
+  notebookStatus: string | null;
+  usedFallback: boolean;
+  needsAssisted: boolean;
+  actions: TranslateEnsureAction[];
+}
+
+export interface TranslateReadinessDeps {
+  openBrowser?: (
+    accountId: string,
+    target: 'gemini' | 'notebook',
+  ) => Promise<unknown>;
+  testSession?: (accountId: string) => Promise<{ usable: boolean; reason?: string }>;
+  prepareForTranslate?: (
+    projectId: string,
+    options?: { accountId?: string | null },
+  ) => Promise<{
+    ready: boolean;
+    usedFallback: boolean;
+    message: string;
+    notebookStatus: string | null;
+    needsAssisted: boolean;
+  }>;
+}
+
+function upper(value: string | null | undefined): string {
+  return (value ?? '').toUpperCase();
+}
+
+function isUsableHealth(value: string | null | undefined): boolean {
+  const s = upper(value);
+  return s === 'READY' || s === 'BUSY';
+}
+
+function needsLoginHeal(value: string | null | undefined): boolean {
+  const s = upper(value);
+  return s === 'LOGIN_REQUIRED' || s === 'NEEDS_ATTENTION';
+}
+
+/**
+ * Auto-heal Google worker / Notebook before translate.
+ * Only returns ok:false after heal attempts when user action is still required.
+ */
+export class TranslateReadinessService {
+  constructor(
+    private readonly db: DatabaseManager,
+    private readonly deps: TranslateReadinessDeps = {},
+  ) {}
+
+  async ensureForTranslate(
+    projectId: string,
+    preferredAccountId?: string | null,
+  ): Promise<TranslateEnsureResult> {
+    if (!this.db.projects.getById(projectId)) {
+      throw new Error(`Project not found: ${projectId}`);
+    }
+
+    healIdleWorkers(this.db);
+
+    let accountId = this.pickAccountId(preferredAccountId);
+    if (!accountId) {
+      return {
+        ok: false,
+        reason: 'no_account',
+        message:
+          'Chưa có tài khoản Google. Thêm tài khoản và đăng nhập Gemini trước khi dịch.',
+        workerAccountId: null,
+        notebookStatus: null,
+        usedFallback: true,
+        needsAssisted: false,
+        actions: ['check_google'],
+      };
+    }
+
+    const loginNeeded = this.accountNeedsLogin(accountId);
+    if (loginNeeded) {
+      await this.tryOpenBrowser(accountId, 'gemini');
+      const session = await this.tryTestSession(accountId);
+      if (!session.usable && !this.isAccountUsable(accountId)) {
+        return {
+          ok: false,
+          reason: 'needs_google_login',
+          message:
+            session.reason === 'BUSY'
+              ? 'Tài khoản Google đang bận (trình duyệt mở). Đóng xong bấm dịch lại, hoặc kiểm tra đăng nhập.'
+              : 'Cần đăng nhập Google / Gemini. Đã mở trình duyệt — hoàn tất đăng nhập rồi bấm dịch lại.',
+          workerAccountId: accountId,
+          notebookStatus: null,
+          usedFallback: true,
+          needsAssisted: false,
+          actions: ['check_google'],
+        };
+      }
+    }
+
+    // Re-pick in case heal/testSession changed READY set
+    accountId = this.pickAccountId(preferredAccountId) ?? accountId;
+
+    const prepare =
+      this.deps.prepareForTranslate ??
+      ((pid: string, opts?: { accountId?: string | null }) =>
+        new NotebookBootstrapService(this.db).prepareForTranslate(pid, opts));
+
+    const prepared = await prepare(projectId, { accountId });
+    const notebookStatus = prepared.notebookStatus;
+    const webApiReady = this.hasWebApiReady();
+    const notebookReady = NOTEBOOK_CHANNEL_READY.has(
+      (notebookStatus ?? '').toLowerCase(),
+    );
+
+    if (webApiReady || notebookReady) {
+      return {
+        ok: true,
+        reason: 'ok',
+        message: prepared.message,
+        workerAccountId: accountId,
+        notebookStatus,
+        usedFallback: prepared.usedFallback,
+        needsAssisted: prepared.needsAssisted,
+        actions: prepared.needsAssisted
+          ? ['open_notebook', 'open_ai_memory']
+          : [],
+      };
+    }
+
+    // Still no channel — open NotebookLM for user if we have an account
+    if (!prepared.needsAssisted) {
+      await this.tryOpenBrowser(accountId, 'notebook');
+    }
+
+    return {
+      ok: false,
+      reason: 'needs_notebook',
+      message:
+        prepared.message ||
+        'Chưa có kênh dịch (Web API / Notebook). Đã mở NotebookLM — hoàn tất thiết lập rồi bấm dịch lại.',
+      workerAccountId: accountId,
+      notebookStatus,
+      usedFallback: true,
+      needsAssisted: prepared.needsAssisted || true,
+      actions: ['open_notebook', 'open_ai_memory', 'check_google'],
+    };
+  }
+
+  private pickAccountId(preferred?: string | null): string | null {
+    if (preferred && this.db.googleAccounts.getById(preferred)) {
+      return preferred;
+    }
+
+    const workers = this.db.workerStates.listEnabled();
+    const readyWorker = workers.find((w) => upper(w.health) === 'READY');
+    if (readyWorker) return readyWorker.google_account_id;
+
+    const busyWorker = workers.find((w) => upper(w.health) === 'BUSY');
+    if (busyWorker) return busyWorker.google_account_id;
+
+    const attentionWorker = workers.find((w) => needsLoginHeal(w.health));
+    if (attentionWorker) return attentionWorker.google_account_id;
+
+    const accounts = this.db.googleAccounts.list();
+    const readyAcc = accounts.find((a) => isUsableHealth(a.status));
+    if (readyAcc) return readyAcc.id;
+
+    const loginAcc = accounts.find((a) => needsLoginHeal(a.status));
+    if (loginAcc) return loginAcc.id;
+
+    return accounts[0]?.id ?? null;
+  }
+
+  private accountNeedsLogin(accountId: string): boolean {
+    const account = this.db.googleAccounts.getById(accountId);
+    if (account && needsLoginHeal(account.status)) return true;
+    const worker = this.db.workerStates
+      .listEnabled()
+      .find((w) => w.google_account_id === accountId);
+    return worker != null && needsLoginHeal(worker.health);
+  }
+
+  private isAccountUsable(accountId: string): boolean {
+    const account = this.db.googleAccounts.getById(accountId);
+    if (account && isUsableHealth(account.status)) return true;
+    const worker = this.db.workerStates
+      .listEnabled()
+      .find((w) => w.google_account_id === accountId);
+    return worker != null && isUsableHealth(worker.health);
+  }
+
+  private hasWebApiReady(): boolean {
+    const accounts = this.db.aiAccounts.listAll();
+    return accounts.some((a) => upper(a.status) === 'READY');
+  }
+
+  private async tryOpenBrowser(
+    accountId: string,
+    target: 'gemini' | 'notebook',
+  ): Promise<void> {
+    try {
+      if (this.deps.openBrowser) {
+        await this.deps.openBrowser(accountId, target);
+        return;
+      }
+      const { getAccountWorkerService } = await import('./account-worker-singleton');
+      await getAccountWorkerService().openBrowser(accountId, target);
+    } catch (error) {
+      logger.warn('ensureForTranslate openBrowser failed', {
+        accountId,
+        target,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  private async tryTestSession(
+    accountId: string,
+  ): Promise<{ usable: boolean; reason?: string }> {
+    try {
+      if (this.deps.testSession) {
+        return await this.deps.testSession(accountId);
+      }
+      const { getAccountWorkerService } = await import('./account-worker-singleton');
+      const result = await getAccountWorkerService().testSession(accountId);
+      return { usable: result.usable, reason: result.reason };
+    } catch (error) {
+      logger.warn('ensureForTranslate testSession failed', {
+        accountId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return { usable: false, reason: 'TEST_FAILED' };
+    }
+  }
+}

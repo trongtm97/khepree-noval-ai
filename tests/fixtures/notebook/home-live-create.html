@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NotebookLM Fixture — Live Create</title>
+</head>
+<body>
+  <!-- Live Gemini Notebook: Create jumps straight into notebook (no title dialog). -->
+  <main data-testid="notebook-app" data-notebook-app="1">
+    <h1>NotebookLM (live-create fixture)</h1>
+    <button
+      type="button"
+      aria-label="Create new notebook"
+      data-testid="create-notebook"
+      data-action="create-notebook"
+    >
+      Create new
+    </button>
+    <ul data-testid="notebook-list" data-notebook-list="1"></ul>
+  </main>
+  <script>
+    document.querySelector('[data-testid="create-notebook"]').addEventListener('click', () => {
+      location.href =
+        'notebook-open.html?name=' + encodeURIComponent('Untitled notebook');
+    });
+  </script>
+</body>
+</html>

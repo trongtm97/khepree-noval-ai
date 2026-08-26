@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NotebookLM Fixture — Open</title>
+</head>
+<body>
+  <main data-testid="notebook-app" data-notebook-app="1">
+    <h1 data-testid="notebook-title" data-notebook-title-display="1" id="title">Notebook</h1>
+    <input
+      type="text"
+      data-testid="notebook-title-input"
+      data-notebook-title="1"
+      aria-label="Notebook title"
+      id="title-input"
+      style="display:none"
+    />
+    <button type="button" data-testid="add-source" data-action="add-source">Add source</button>
+    <div id="source-picker" style="display:none">
+      <button type="button" data-testid="source-drive" data-source-type="drive">Google Drive</button>
+      <button type="button" data-testid="source-upload" data-source-type="upload">Upload</button>
+      <button type="button" data-testid="source-copied-text" data-source-type="copied-text">
+        Copied text
+      </button>
+      <div id="drive-files"></div>
+      <input
+        type="file"
+        data-testid="source-file-input"
+        data-source-file-input="1"
+        id="source-file-input"
+        multiple
+        accept=".md,text/markdown,text/plain"
+        style="display:none"
+      />
+      <input
+        type="text"
+        data-testid="copied-text-title"
+        data-copied-text-title="1"
+        aria-label="Source title"
+        placeholder="Title"
+        id="copied-text-title"
+        style="display:none;width:100%;margin-bottom:8px"
+      />
+      <textarea
+        data-testid="copied-text-input"
+        data-copied-text="1"
+        aria-label="Pasted text"
+        placeholder="Paste text here"
+        id="copied-text"
+        style="display:none;width:100%;min-height:120px"
+      ></textarea>
+      <button type="button" data-testid="confirm-add-source">Insert</button>
+    </div>
+    <ul data-testid="source-list" data-source-list="1" id="source-list"></ul>
+    <label>
+      Instructions
+      <textarea
+        data-testid="notebook-instructions"
+        data-notebook-instructions="1"
+        id="instructions"
+        placeholder="Instructions"
+      ></textarea>
+    </label>
+    <button type="button" data-testid="save-instructions" data-action="save-instructions">Save</button>
+  </main>
+  <!-- Simulates live CDK modal backdrop that intercepts Add-source clicks -->
+  <div class="cdk-overlay-container" id="cdk-blocker" style="display:none">
+    <div
+      class="cdk-overlay-backdrop cdk-overlay-dark-backdrop cdk-overlay-backdrop-showing"
+      style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.35)"
+    ></div>
+  </div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const name = params.get('name') || 'Untitled';
+    document.getElementById('title').textContent = name;
+    if (params.get('block') === '1') {
+      const blocker = document.getElementById('cdk-blocker');
+      blocker.style.display = 'block';
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') blocker.remove();
+      });
+    }
+
+    const DRIVE_FILES = [
+      '00_BOOK_PROFILE.md',
+      '01_TRANSLATION_RULES.md',
+      '02_PROJECT_TERMS.md',
+      '03_CHARACTERS.md',
+      '04_RELATIONSHIPS.md',
+      '05_STORY_STATE.md',
+    ];
+
+    let pendingSource = null;
+    const sourceList = document.getElementById('source-list');
+    const picker = document.getElementById('source-picker');
+    const driveFiles = document.getElementById('drive-files');
+
+    document.querySelector('[data-testid="notebook-title"]').addEventListener('click', () => {
+      const input = document.getElementById('title-input');
+      input.style.display = 'block';
+      input.value = document.getElementById('title').textContent;
+      input.focus();
+    });
+    document.getElementById('title-input').addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      document.getElementById('title').textContent = e.target.value;
+      e.target.style.display = 'none';
+    });
+
+    function addSourceItem(name) {
+      const exists = sourceList.querySelector('[data-source-name="' + CSS.escape(name) + '"]');
+      if (exists) return;
+      const li = document.createElement('li');
+      li.setAttribute('data-testid', 'source-item');
+      li.setAttribute('data-source-item', '1');
+      li.setAttribute('data-source-name', name);
+      li.textContent = name;
+      sourceList.appendChild(li);
+    }
+
+    document.querySelector('[data-testid="add-source"]').addEventListener('click', () => {
+      picker.style.display = 'block';
+      driveFiles.innerHTML = '';
+      document.getElementById('copied-text').style.display = 'none';
+      document.getElementById('copied-text-title').style.display = 'none';
+      for (const file of DRIVE_FILES) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('data-testid', 'drive-file-' + file);
+        btn.setAttribute('data-drive-file', file);
+        btn.textContent = file;
+        btn.addEventListener('click', () => { pendingSource = file; });
+        driveFiles.appendChild(btn);
+      }
+    });
+
+    document.getElementById('source-file-input').addEventListener('change', (e) => {
+      const files = Array.from(e.target.files || []);
+      for (const file of files) {
+        addSourceItem(file.name);
+      }
+      e.target.value = '';
+      picker.style.display = 'none';
+      pendingSource = null;
+      window.__copiedMode = false;
+    });
+
+    document.querySelector('[data-testid="source-upload"]').addEventListener('click', () => {
+      document.getElementById('source-file-input').click();
+    });
+
+    document.querySelector('[data-testid="source-copied-text"]').addEventListener('click', () => {
+      document.getElementById('copied-text').style.display = 'block';
+      document.getElementById('copied-text-title').style.display = 'block';
+      pendingSource = null;
+      window.__copiedMode = true;
+    });
+
+    document.querySelector('[data-testid="confirm-add-source"]').addEventListener('click', () => {
+      let name = pendingSource;
+      if (window.__copiedMode) {
+        const title = document.getElementById('copied-text-title').value.trim();
+        const raw = document.getElementById('copied-text').value.trim();
+        name = title || raw.split('\n')[0]?.trim() || 'pasted';
+        window.__copiedMode = false;
+        document.getElementById('copied-text').value = '';
+        document.getElementById('copied-text-title').value = '';
+        document.getElementById('copied-text').style.display = 'none';
+        document.getElementById('copied-text-title').style.display = 'none';
+      }
+      if (!name) return;
+      addSourceItem(name);
+      pendingSource = null;
+      picker.style.display = 'none';
+    });
+
+    document.querySelector('[data-testid="save-instructions"]').addEventListener('click', () => {
+      document.getElementById('instructions').dataset.saved = '1';
+    });
+  </script>
+</body>
+</html>

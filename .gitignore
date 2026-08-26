@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Build output
+.vite/
+out/
+dist/
+
+# Electron Forge
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Secrets — NEVER commit
+.env
+.env.*
+credentials.json
+client_secret*.json
+*.pem
+
+# Playwright
+playwright-report/
+test-results/
+.browser-profiles/
+
+# Database (local dev)
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+logs/
+*.log
+
+# Screenshots from automation
+screenshots/
+
+# Temp
+tmp/
+temp/

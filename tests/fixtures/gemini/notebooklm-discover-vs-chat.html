@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>NotebookLM Fixture — Discover Sources vs Chat</title>
+</head>
+<body>
+  <main data-testid="gemini-app" data-gemini-app="1">
+    <!-- Discover Sources (wrong target historically matched by /nhập/) -->
+    <textarea
+      rows="1"
+      disabled
+      readonly
+      required
+      id="mat-input-0"
+      formcontrolname="discoverSourcesQuery"
+      aria-label="Khám phá nguồn dựa trên truy vấn đã nhập"
+      class="query-box-textarea mat-mdc-input-element"
+    ></textarea>
+
+    <section class="chat-panel" data-testid="active-thread" data-active-thread="1">
+      <query-box>
+        <textarea
+          class="query-box-input query-box-textarea"
+          aria-label="Hộp truy vấn"
+          placeholder="Đặt câu hỏi hoặc tạo nội dung"
+          rows="2"
+        ></textarea>
+      </query-box>
+      <button type="button" class="actions-enter-button" aria-label="Gửi" disabled>Gửi</button>
+      <div class="chat-message-pair">
+        <div class="to-user-container">
+          <div class="message-text-content">Fixture assistant reply.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

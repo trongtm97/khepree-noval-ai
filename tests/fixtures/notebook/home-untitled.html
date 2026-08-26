@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NotebookLM Fixture — Untitled reclaim</title>
+</head>
+<body>
+  <main data-testid="notebook-app" data-notebook-app="1">
+    <h1>NotebookLM (untitled reclaim)</h1>
+    <button type="button" data-testid="create-notebook" data-action="create-notebook">
+      + Tạo mới
+    </button>
+    <ul data-testid="notebook-list" data-notebook-list="1" id="notebook-list">
+      <li
+        data-testid="notebook-item"
+        data-notebook-item="1"
+        data-notebook-name="Sổ ghi chú không có tiêu đề"
+        data-notebook-id="nb-untitled-1"
+      >
+        Sổ ghi chú không có tiêu đề
+      </li>
+    </ul>
+  </main>
+  <script>
+    const list = document.getElementById('notebook-list');
+    list.querySelector('[data-notebook-item]').addEventListener('click', () => {
+      location.href =
+        'notebook-open.html?name=' + encodeURIComponent('Sổ ghi chú không có tiêu đề');
+    });
+  </script>
+</body>
+</html>

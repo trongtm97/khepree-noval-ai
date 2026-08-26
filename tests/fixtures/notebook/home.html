@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NotebookLM Fixture — Home</title>
+</head>
+<body>
+  <main data-testid="notebook-app" data-notebook-app="1">
+    <h1>NotebookLM (fixture)</h1>
+    <button type="button" data-testid="create-notebook" data-action="create-notebook">
+      New notebook
+    </button>
+    <ul data-testid="notebook-list" data-notebook-list="1" id="notebook-list">
+      <!-- items injected by create flow via script -->
+    </ul>
+  </main>
+  <script>
+    const list = document.getElementById('notebook-list');
+    const createBtn = document.querySelector('[data-testid="create-notebook"]');
+    createBtn.addEventListener('click', () => {
+      window.__awaitingTitle = true;
+      let input = document.querySelector('[data-testid="notebook-title-input"]');
+      if (!input) {
+        input = document.createElement('input');
+        input.setAttribute('data-testid', 'notebook-title-input');
+        input.setAttribute('data-notebook-title', '1');
+        input.placeholder = 'Notebook name';
+        input.setAttribute('aria-label', 'Notebook title');
+        document.body.appendChild(input);
+        input.focus();
+        input.addEventListener('keydown', (e) => {
+          if (e.key !== 'Enter') return;
+          const name = input.value.trim();
+          if (!name) return;
+          const existing = list.querySelector('[data-notebook-name="' + CSS.escape(name) + '"]');
+          if (existing) {
+            input.remove();
+            return;
+          }
+          const li = document.createElement('li');
+          li.setAttribute('data-testid', 'notebook-item');
+          li.setAttribute('data-notebook-item', '1');
+          li.setAttribute('data-notebook-name', name);
+          li.setAttribute('data-notebook-id', 'nb-' + Date.now());
+          li.textContent = name;
+          li.addEventListener('click', () => {
+            location.href = 'notebook-open.html?name=' + encodeURIComponent(name);
+          });
+          list.appendChild(li);
+          input.remove();
+        });
+      }
+    });
+  </script>
+</body>
+</html>

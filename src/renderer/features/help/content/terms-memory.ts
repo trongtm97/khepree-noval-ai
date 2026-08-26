@@ -1,0 +1,166 @@
+import type { HelpArticle } from '../types';
+
+export const termsMemoryArticles: HelpArticle[] = [
+  {
+    id: 'term-vault',
+    categoryId: 'terms',
+    title: 'Kho thuật ngữ',
+    description: 'Phạm vi, trạng thái và thao tác duyệt thuật ngữ.',
+    keywords: ['thuật ngữ', 'term', 'global', 'vault', 'duyệt', 'accept'],
+    order: 1,
+    relatedIds: ['novel-memory', 'glossary'],
+    blocks: [
+      { type: 'heading', level: 1, text: 'Kho thuật ngữ' },
+      { type: 'heading', level: 2, text: 'Phạm vi' },
+      {
+        type: 'table',
+        headers: ['Phạm vi', 'Hiển thị', 'Mô tả'],
+        rows: [
+          ['GLOBAL', 'Toàn cục', 'Dùng chung toàn hệ thống'],
+          ['GENRE', 'Theo thể loại', 'Áp dụng cho một thể loại'],
+          ['USER', 'Cá nhân', 'Thuật ngữ riêng người dùng'],
+          ['PROJECT', 'Theo dự án', 'Chỉ một truyện'],
+          ['CONTEXT', 'Theo ngữ cảnh', 'Phạm vi hẹp trong ngữ cảnh cụ thể'],
+        ],
+      },
+      { type: 'heading', level: 2, text: 'Trạng thái' },
+      {
+        type: 'list',
+        items: [
+          'Phát hiện / Ứng viên — mới, chưa duyệt',
+          'Đã xác nhận (dự án / thể loại / toàn cục)',
+          'Đã khóa — không tự thay đổi khi dịch',
+          'Đã từ chối — loại khỏi kho',
+        ],
+      },
+      {
+        type: 'paragraph',
+        text: 'Trang Thuật ngữ có Kho, Hàng đợi duyệt và Ứng viên. Thao tác: Chấp nhận, Từ chối, Khóa, Nâng lên toàn cục.',
+      },
+      { type: 'actions', items: [{ label: 'Mở Thuật ngữ', to: '/terms' }] },
+    ],
+  },
+  {
+    id: 'bootstrap-memory',
+    categoryId: 'notebook',
+    title: 'Bộ nhớ AI ban đầu được tạo như thế nào?',
+    description: 'Hai nút khởi tạo: tự chọn vs phân tích cả truyện.',
+    keywords: [
+      'bootstrap',
+      'bộ nhớ AI',
+      'nhân vật ban đầu',
+      'khởi tạo',
+      'seed',
+      'phân tích',
+      'skip',
+      'notebooklm',
+      'full truyện',
+    ],
+    order: 2,
+    relatedIds: ['notebook', 'novel-memory', 'characters'],
+    blocks: [
+      { type: 'heading', level: 1, text: 'Bộ nhớ AI ban đầu được tạo như thế nào?' },
+      {
+        type: 'paragraph',
+        text: 'Trang Bộ nhớ AI có hai nút khởi tạo. Hầu hết chỉ cần nút đầu.',
+      },
+      { type: 'heading', level: 2, text: '1. Khởi tạo (tự chọn) — dùng mặc định' },
+      {
+        type: 'list',
+        items: [
+          'Truyện ngắn (≤20 chương và ≤~80.000 ký tự nguồn): phân tích nhanh trong app (vài chương đầu).',
+          'Truyện dài: app tự đóng gói chương → upload NotebookLM → sinh 8 file 00–07 → lưu SQLite → đồng bộ Drive.',
+          'Bạn không cần chọn mode — app tự quyết định theo kích thước dự án.',
+        ],
+      },
+      { type: 'heading', level: 2, text: '2. Phân tích cả truyện (NotebookLM) — khi cần đầy đủ hơn' },
+      {
+        type: 'list',
+        items: [
+          'Ép luôn dùng NotebookLM với toàn bộ chương đã import (bỏ qua chế độ nhanh).',
+          'Chậm hơn, tốn hơn, nhưng nhân vật/thuật ngữ/cốt truyện đầy đủ hơn từ đầu.',
+          'Dùng khi truyện dài nhưng lần trước chỉ chạy nhanh, hoặc muốn rebuild memory từ full nguồn.',
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'info',
+        title: 'Cần gì trước khi bấm',
+        body: 'Tài khoản Google sẵn sàng. Full NotebookLM cần Notebook đã gắn dự án (hoặc app sẽ thử tạo). Nếu hỏi đăng nhập — hoàn tất trên trình duyệt rồi bấm lại.',
+      },
+      { type: 'heading', level: 2, text: '8 file kiến thức' },
+      {
+        type: 'list',
+        items: [
+          '00_BOOK_PROFILE — thông tin truyện (metadata)',
+          '01_TRANSLATION_RULES — quy tắc dịch (có ngay)',
+          '02_PROJECT_TERMS — thuật ngữ đã biết (có thể rất ít)',
+          '03_CHARACTERS — nhân vật đã xuất hiện (có thể trống)',
+          '04_RELATIONSHIPS — quan hệ (có thể trống — hợp lệ)',
+          '05_STORY_STATE — trạng thái hiện tại (snapshot)',
+          '06_WORLD_KNOWLEDGE — kiến thức thế giới đã biết',
+          '07_RECENT_CONTEXT — bối cảnh gần đây (cửa sổ rolling)',
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'info',
+        title: 'Bình thường nếu còn trống',
+        body: 'Không phải tất cả các file này đều đầy đủ ngay từ đầu. Bạn có thể bỏ qua khởi tạo và vẫn bắt đầu dịch — bộ nhớ sẽ học dần khi dịch.',
+      },
+      { type: 'actions', items: [{ label: 'Mở Bộ nhớ AI', to: '/ai-memory' }] },
+    ],
+  },
+  {
+    id: 'characters',
+    categoryId: 'characters',
+    title: 'Quản lý nhân vật',
+    description: 'Danh sách nhân vật, quan hệ và xung đột.',
+    keywords: ['nhân vật', 'character', 'tên', 'quan hệ', 'xung đột'],
+    order: 1,
+    relatedIds: ['novel-memory', 'term-vault'],
+    blocks: [
+      { type: 'heading', level: 1, text: 'Quản lý nhân vật' },
+      {
+        type: 'paragraph',
+        text: 'Trang Nhân vật hiển thị tên Trung/Việt, vai trò, chương xuất hiện, quan hệ và trạng thái truyện. Nhân vật cập nhật khi dịch hoặc khi bạn thêm thủ công.',
+      },
+      {
+        type: 'callout',
+        variant: 'warning',
+        title: 'Lưu ý',
+        body: 'Đổi tên nhân vật đã dùng trong nhiều chương có thể ảnh hưởng bản dịch cũ. Kiểm tra tab Xung đột trước khi áp dụng thay đổi lớn.',
+      },
+      { type: 'actions', items: [{ label: 'Mở Nhân vật', to: '/characters' }] },
+    ],
+  },
+  {
+    id: 'novel-memory',
+    categoryId: 'characters',
+    title: 'Bộ nhớ truyện',
+    description: 'Novel Memory và mối quan hệ với Notebook.',
+    keywords: ['bộ nhớ', 'memory', 'novel memory', 'plot', 'cảnh giới'],
+    order: 2,
+    relatedIds: ['characters', 'notebook', 'book-profile'],
+    blocks: [
+      { type: 'heading', level: 1, text: 'Bộ nhớ truyện' },
+      {
+        type: 'paragraph',
+        text: 'Novel Memory lưu nhân vật, quan hệ, xưng hô, cảnh giới, địa điểm, vật phẩm, sự kiện và trạng thái cốt truyện — giúp AI nhất quán trong truyện dài.',
+      },
+      {
+        type: 'callout',
+        variant: 'info',
+        title: 'Thông tin',
+        body: 'Database cục bộ là nguồn chính. Notebook/Drive đồng bộ bản tóm tắt cho Gemini đọc thêm.',
+      },
+      {
+        type: 'callout',
+        variant: 'warning',
+        title: 'Tóm tắt vs trạng thái',
+        body: 'Tóm tắt chính thức (official summary) mô tả truyện ban đầu — nằm trong metadata / 00_BOOK_PROFILE.md. Trạng thái cốt truyện (story state) ghi tiến độ khi dịch — 05_STORY_STATE.md. Hai loại không thay thế nhau.',
+      },
+      { type: 'actions', items: [{ label: 'Book Profile', to: '/help/book-profile' }] },
+    ],
+  },
+];
