@@ -97,8 +97,9 @@ describe('AutomationScheduler (Phase 15)', () => {
     }
     for (const dir of ['profile-a', 'profile-b']) {
       try {
-        profileLockManager.forceClearStaleLock(
+        profileLockManager.recoverIfStale(
           browserProfileManager.resolveProfilePath(dir),
+          Date.now() + 10_000_000,
         );
       } catch {
         /* ignore */

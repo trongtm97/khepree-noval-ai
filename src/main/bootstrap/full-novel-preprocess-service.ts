@@ -83,7 +83,12 @@ export class FullNovelPreprocessService {
 
   importResult(
     projectId: string,
-    input: { text?: string; filePath?: string; syncDrive?: boolean },
+    input: {
+      text?: string;
+      filePath?: string;
+      syncDrive?: boolean;
+      temporalProvenance?: boolean;
+    },
   ): {
     foundKeys: string[];
     missingKeys: string[];
@@ -112,6 +117,7 @@ export class FullNovelPreprocessService {
       projectId,
       bootstrapOut,
       throughChapter,
+      { temporalProvenance: input.temporalProvenance === true },
     );
 
     this.mergeStyleRules(projectId, parsed.files['01_TRANSLATION_RULES.md'] ?? '');

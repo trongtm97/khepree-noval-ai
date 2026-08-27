@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { NotebookHealthDto } from '@shared/schemas/notebook';
+import type { NotebookDualHealthDto, NotebookHealthDto } from '@shared/schemas/notebook';
 import { Button } from '../components/ui';
 import { useT } from '../i18n';
 import { HelpContextButton } from '../features/help/HelpContextButton';
@@ -30,6 +30,7 @@ export function AiMemoryPage() {
   const { projectId: paramProjectId = '' } = useParams();
   const storeProjectId = useUiShellStore((s) => s.currentProjectId) ?? '';
   const projectId = paramProjectId || storeProjectId;
+  const [dualHealth, setDualHealth] = useState<NotebookDualHealthDto | null>(null);
   const [health, setHealth] = useState<NotebookHealthDto | null>(null);
   const [bootstrap, setBootstrap] = useState<{
     status: string;
@@ -57,20 +58,24 @@ export function AiMemoryPage() {
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
-    const [healthRes, accounts, boot] = await Promise.all([
-      window.novelTrans.notebook.health({ projectId }),
+    const [dual, accounts, boot] = await Promise.all([
+      window.novelTrans.notebook.health({
+        projectId,
+        dual: true,
+      }) as Promise<NotebookDualHealthDto>,
       window.novelTrans.accounts.list(),
       window.novelTrans.notebook.getBootstrapStatus(projectId),
     ]);
-    setHealth(healthRes);
+    setDualHealth(dual);
+    setHealth(dual.translation);
     setBootstrap(boot);
-    let workerId: string | null = healthRes.accountId;
+    let workerId: string | null = dual.translation.accountId;
     for (const account of accounts.accounts) {
       if (account.status === 'READY' || account.status === 'BUSY') {
         workerId = account.id;
         break;
       }
-      if (workerId === healthRes.accountId) {
+      if (workerId === dual.translation.accountId) {
         workerId = account.id;
       }
     }
@@ -398,6 +403,16 @@ export function AiMemoryPage() {
 
       {health && (
         <section className="panel" style={{ marginTop: '1rem' }}>
+          <h2 style={{ marginTop: 0 }}>
+            {dualHealth?.layout === 'DUAL'
+              ? t('aiMemory.translationNotebook')
+              : t('aiMemory.notebook')}
+          </h2>
+          {dualHealth?.layout === 'DUAL' ? (
+            <p className="muted" style={{ fontSize: '0.9rem' }}>
+              {t('aiMemory.translationNotebookHint')}
+            </p>
+          ) : null}
           <div style={{ display: 'grid', gap: '0.35rem' }}>
             <div>
               <strong>{t('aiMemory.notebook')}:</strong>{' '}
@@ -432,8 +447,69 @@ export function AiMemoryPage() {
               </li>
             ))}
           </ul>
+          {dualHealth?.layout === 'DUAL' && accountId ? (
+            <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <Button
+                disabled={busy}
+                variant="ghost"
+                onClick={() =>
+                  void run(
+                    () =>
+                      window.novelTrans.notebook.provision({
+                        projectId,
+                        accountId,
+                        role: 'TRANSLATION',
+                      }),
+                    t('aiMemory.msgProvisioned'),
+                  )
+                }
+              >
+                {t('aiMemory.provisionTranslation')}
+              </Button>
+            </div>
+          ) : null}
         </section>
       )}
+
+      {dualHealth?.layout === 'DUAL' && dualHealth.research ? (
+        <section className="panel" style={{ marginTop: '1rem' }}>
+          <h2 style={{ marginTop: 0 }}>{t('aiMemory.researchNotebook')}</h2>
+          <p className="muted" style={{ fontSize: '0.9rem' }}>
+            {t('aiMemory.researchNotebookHint')}
+          </p>
+          <div style={{ display: 'grid', gap: '0.35rem' }}>
+            <div>
+              <strong>{t('aiMemory.notebook')}:</strong>{' '}
+              {dualHealth.research.notebookName ?? '—'}
+            </div>
+            <div>
+              <strong>{t('aiMemory.status')}:</strong>{' '}
+              {statusLabel(dualHealth.research.status, t)}
+            </div>
+          </div>
+          {accountId ? (
+            <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <Button
+                disabled={busy}
+                variant="ghost"
+                onClick={() =>
+                  void run(
+                    () =>
+                      window.novelTrans.notebook.provision({
+                        projectId,
+                        accountId,
+                        role: 'RESEARCH',
+                      }),
+                    t('aiMemory.msgResearchProvisioned'),
+                  )
+                }
+              >
+                {t('aiMemory.provisionResearch')}
+              </Button>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="panel" style={{ marginTop: '1rem' }}>
         <button
@@ -500,6 +576,7 @@ export function AiMemoryPage() {
                       window.novelTrans.notebook.provision({
                         projectId,
                         accountId,
+                        role: 'TRANSLATION',
                       }),
                     t('aiMemory.msgProvisioned'),
                   );

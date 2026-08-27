@@ -113,7 +113,7 @@ export function countOverrides(file: SelectorOverrideFile): number {
 }
 
 export function getOverrideForSelector(
-  providerId: AutomationProviderId,
+  providerId: string,
   selectorKey: string,
 ): { strategies: SelectorStrategyOverride[]; mode: SelectorOverrideMode } | null {
   const file = getCachedSelectorOverrides();

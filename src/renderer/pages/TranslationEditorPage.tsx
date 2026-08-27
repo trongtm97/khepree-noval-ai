@@ -353,7 +353,9 @@ export function TranslationEditorPage() {
       if (channel) setTranslatePath(channel);
       const channelSuffix = channel ? ` · ${channel}` : '';
       const longWait = isJobWatchTimedOut(stallPolls, stallHintAfterPolls, lastState);
-      if (p?.chunkTotal && p.chunkTotal > 1 && typeof p.chunkIndex === 'number') {
+      if (p?.phase === 'continuation') {
+        setJobWatchMessage(t('jobs.continuationReceiving'));
+      } else if (p?.chunkTotal && p.chunkTotal > 1 && typeof p.chunkIndex === 'number') {
         const detail = `${t('translation.jobRunningChunk', {
           chunk: String(p.chunkIndex),
           chunks: String(p.chunkTotal),

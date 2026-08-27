@@ -7,7 +7,8 @@ const PATTERNS: Array<{ status: AiResponseStatus; re: RegExp }> = [
   { status: 'LOGIN_REQUIRED', re: /LOGIN_REQUIRED|login required|sign.?in|auth/i },
   { status: 'SESSION_EXPIRED', re: /SESSION_EXPIRED|session.?expir|cookie.?expir|AuthError|401/i },
   { status: 'RATE_LIMIT', re: /RATE_LIMIT|QUOTA_LIMIT|quota|rate.?limit|429|too many/i },
-  { status: 'TIMEOUT', re: /TIMEOUT|timed?\s*out|ETIMEDOUT/i },
+  { status: 'TIMEOUT', re: /TIMEOUT|SEND_NOT_CONFIRMED|RESPONSE_NOT_FOUND|RESPONSE_AMBIGUOUS|OUTPUT_INCOMPLETE|timed?\s*out|ETIMEDOUT/i },
+  { status: 'ERROR', re: /PROMPT_TOO_LARGE|GENERATION_ERROR|too large|truncated/i },
   { status: 'NETWORK_ERROR', re: /NETWORK|ECONNREFUSED|ENOTFOUND|fetch failed|socket/i },
   {
     status: 'SERVICE_UNAVAILABLE',

@@ -16,8 +16,12 @@ Date / tester: ________
 | `npm test` (unit) | | |
 | `npm run test:integration` | | |
 | `npm run test:perf` | | |
+| `npm run test:google-smoke` (opt-in Real Google A–H) | | |
+| `docs/REAL_GOOGLE_TEST_REPORT.md` Overall=PASS | | |
 | `npm run package` | | |
 | `npm run make` (installer) | | |
+
+> Playwright Gemini/NotebookLM is **not** production-ready until Real Google smoke Overall=PASS. Unit tests alone do not unlock that claim.
 
 ## Manual product checklist
 
@@ -56,4 +60,4 @@ Date / tester: ________
 
 Production-ready? **YES / NO**
 
-Only YES if all automated gates PASS and all 18 manual scenarios PASS.
+Only YES if all automated gates PASS, Real Google smoke Overall=PASS (when shipping Playwright path), and all 18 manual scenarios PASS.

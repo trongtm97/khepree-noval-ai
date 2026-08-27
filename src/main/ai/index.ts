@@ -10,3 +10,4 @@ export {
 } from './ai-provider-singleton';
 export { workerProcessManager } from './worker-process-manager';
 export { mapTechnicalErrorToStatus, mapWorkerStatus, userMessageForStatus } from './error-map';
+export { checkProviderForJob } from './provider-preflight';

@@ -177,9 +177,20 @@ const api: NovelTransApi = {
       invokeChannel(IPC_CHANNELS.NOTEBOOK_LIST, { projectId }),
     get: (projectId, accountId) =>
       invokeChannel(IPC_CHANNELS.NOTEBOOK_GET, { projectId, accountId }),
-    provision: (input) => invokeChannel(IPC_CHANNELS.NOTEBOOK_PROVISION, input),
-    resume: (input) => invokeChannel(IPC_CHANNELS.NOTEBOOK_RESUME, input),
-    health: (input) => invokeChannel(IPC_CHANNELS.NOTEBOOK_HEALTH, input),
+    provision: (input: {
+      projectId: string;
+      accountId: string;
+      headless?: boolean;
+      role?: 'SINGLE' | 'RESEARCH' | 'TRANSLATION';
+    }) => invokeChannel(IPC_CHANNELS.NOTEBOOK_PROVISION, input),
+    resume: (input: {
+      projectId: string;
+      accountId: string;
+      headless?: boolean;
+      role?: 'SINGLE' | 'RESEARCH' | 'TRANSLATION';
+    }) => invokeChannel(IPC_CHANNELS.NOTEBOOK_RESUME, input),
+    health: (input: { projectId: string; accountId?: string; dual?: boolean; role?: string }) =>
+      invokeChannel(IPC_CHANNELS.NOTEBOOK_HEALTH, input),
     syncNow: (input) => invokeChannel(IPC_CHANNELS.NOTEBOOK_SYNC_NOW, input),
     rebuild: (projectId) =>
       invokeChannel(IPC_CHANNELS.NOTEBOOK_REBUILD, { projectId }),
@@ -272,6 +283,9 @@ const api: NovelTransApi = {
     export: (input) => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_EXPORT, input ?? {}),
     connectionTest: (input) =>
       invokeChannel(IPC_CHANNELS.DIAGNOSTICS_CONNECTION_TEST, input),
+    aiBrowserProbe: (input) =>
+      invokeChannel(IPC_CHANNELS.DIAGNOSTICS_AI_BROWSER_PROBE, input),
+    googleSmoke: (input) => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_GOOGLE_SMOKE, input),
     getOverrides: () => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_GET_OVERRIDES),
     loadOverrides: (input) =>
       invokeChannel(IPC_CHANNELS.DIAGNOSTICS_LOAD_OVERRIDES, input ?? {}),

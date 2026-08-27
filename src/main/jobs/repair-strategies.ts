@@ -1,8 +1,14 @@
 import type { QaResult, ParsedBatchResult } from '@shared/schemas/output-protocol';
 import type { RepairPromptPlan } from '@shared/schemas/job';
 import type { RepairReason } from '@shared/constants/job';
+import { CONTINUATION_REPAIR_THRESHOLD } from '@shared/constants/job';
 import { buildRepairPack } from './repair-pack-builder';
 import { TERM_DELTA_JSON_SCHEMA, MEMORY_DELTA_JSON_SCHEMA } from '@shared/schemas/term-delta';
+import {
+  buildContinuationPrompt,
+  findLastCompleteParagraphId,
+  nextParagraphAfter,
+} from './continuation';
 
 export interface RepairParagraph {
   paragraphId: string;
@@ -65,6 +71,12 @@ export function classifyRepairReason(
   }
 
   if (qa.missingParagraphIds.length > 0) {
+    if (
+      qa.missingParagraphIds.length > CONTINUATION_REPAIR_THRESHOLD &&
+      parsed.translations.some((t) => t.text.trim())
+    ) {
+      return 'OUTPUT_INCOMPLETE';
+    }
     return 'MISSING_PARAGRAPH';
   }
 
@@ -266,10 +278,44 @@ export const memoryJsonInvalidStrategy: RepairStrategy = {
   },
 };
 
+export const outputIncompleteStrategy: RepairStrategy = {
+  reason: 'OUTPUT_INCOMPLETE',
+  builds(ctx) {
+    return (
+      ctx.qa.missingParagraphIds.length > CONTINUATION_REPAIR_THRESHOLD &&
+      ctx.parsed.translations.some((t) => t.text.trim())
+    );
+  },
+  buildPlan(ctx) {
+    const lastComplete = findLastCompleteParagraphId(
+      ctx.batchParagraphs.map((p) => p.paragraphId),
+      ctx.parsed.translations,
+    );
+    const fromId =
+      nextParagraphAfter(
+        ctx.batchParagraphs.map((p) => p.paragraphId),
+        lastComplete,
+      ) ?? ctx.qa.missingParagraphIds[0]!;
+    const prompt = buildContinuationPrompt({
+      fromParagraphId: fromId,
+      batchParagraphs: ctx.batchParagraphs,
+      remainingParagraphIds: ctx.qa.missingParagraphIds,
+    });
+    return {
+      mode: 'continuation',
+      reason: 'OUTPUT_INCOMPLETE',
+      prompt,
+      targetParagraphIds: [...ctx.qa.missingParagraphIds],
+      retranslate: true,
+    };
+  },
+};
+
 export const REPAIR_STRATEGIES: RepairStrategy[] = [
   memoryJsonInvalidStrategy,
   termViolationStrategy,
   emptyParagraphStrategy,
+  outputIncompleteStrategy,
   missingParagraphStrategy,
   malformedOutputStrategy,
 ];

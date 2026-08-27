@@ -22,6 +22,11 @@ import {
   normalizeParsedTranslations,
   qaErrorsAreOnlyIdNoise,
 } from './normalize-parsed-translations';
+import {
+  assessBatchCompleteness,
+  mergeTranslationsByParagraphId,
+} from './continuation';
+import { buildMergedTranslationProtocol } from './translate-chunking';
 
 export interface RepairSendRequest {
   jobId: string;
@@ -140,6 +145,30 @@ export async function runRepairLoop(
       deps.db.jobs.updateState(input.jobId, 'PARSING');
       let parsed = parser.parse(raw);
       lastParsed = parsed;
+
+      const completeness = assessBatchCompleteness(
+        raw,
+        parsed,
+        input.sourceParagraphIds,
+      );
+      if (completeness.incomplete && parsed.translations.some((t) => t.text.trim())) {
+        const partialAttempt = deps.db.jobs.startAttempt({
+          job_id: input.jobId,
+          attempt_number: nextAttemptNumber(deps.db, input.jobId),
+          reason: 'PARTIAL_RAW',
+          input_ref: inputRef,
+          state: 'RUNNING',
+        });
+        deps.db.jobs.completeAttempt(partialAttempt.id, {
+          state: 'SUCCEEDED',
+          output: truncateOutput(raw),
+          result: JSON.stringify({
+            phase: 'partial_raw',
+            reason: completeness.reason,
+            missingCount: completeness.missingCount,
+          }),
+        });
+      }
 
       deps.db.jobs.updateState(input.jobId, 'QA');
       let qa = runLocalQa({
@@ -281,7 +310,8 @@ export async function runRepairLoop(
         reason === 'EMPTY_PARAGRAPH' ||
         reason === 'MALFORMED_OUTPUT' ||
         reason === 'TERM_VIOLATION' ||
-        reason === 'MEMORY_JSON_INVALID';
+        reason === 'MEMORY_JSON_INVALID' ||
+        reason === 'OUTPUT_INCOMPLETE';
 
       const stopReason = reason ?? 'MANUAL_REVIEW';
       if (!reason || (!autoRepairable && qa.verdict === 'MANUAL_REVIEW')) {
@@ -368,7 +398,7 @@ export async function runRepairLoop(
       });
 
       persistProgress(deps.db, input.jobId, {
-        phase: 'repairing',
+        phase: plan.mode === 'continuation' ? 'continuation' : 'repairing',
         repairRound,
         reason,
         planMode: plan.mode,
@@ -393,6 +423,19 @@ export async function runRepairLoop(
         });
         raw = sent.rawResponse;
         inputRef = sent.inputRef;
+        if (plan.mode === 'continuation' && lastParsed) {
+          const contParsed = parser.parse(sent.rawResponse);
+          const mergedTranslations = mergeTranslationsByParagraphId(
+            lastParsed.translations,
+            contParsed.translations,
+            input.sourceParagraphIds,
+          );
+          raw = buildMergedTranslationProtocol(
+            mergedTranslations,
+            [...lastParsed.termDeltas, ...contParsed.termDeltas],
+            [...lastParsed.memoryDeltas, ...contParsed.memoryDeltas],
+          );
+        }
         if (isGeminiSoftErrorText(raw)) {
           const snippet = geminiSoftErrorSnippet(raw);
           deps.db.jobs.completeAttempt(repairAttempt.id, {

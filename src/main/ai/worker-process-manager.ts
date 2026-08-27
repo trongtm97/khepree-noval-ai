@@ -7,12 +7,16 @@ import { isSupportedPythonVersionOutput, pythonDetectCommands } from './python-d
 import { logger } from '../logging/logger';
 import { pathsService } from '../services/paths-service';
 
+export type WorkerLaunchMode = 'bundled_exe' | 'python_venv' | 'missing';
+
 export interface WorkerInstallStatus {
   ok: boolean;
   message: string;
+  /** Python interpreter OR bundled worker executable path. */
   pythonPath: string | null;
   venvPath: string | null;
   workerScript: string | null;
+  mode: WorkerLaunchMode;
 }
 
 export interface WorkerRuntimeStatus {
@@ -23,10 +27,16 @@ export interface WorkerRuntimeStatus {
   lastError: string | null;
   installed: boolean;
   message: string;
+  mode: WorkerLaunchMode;
 }
 
+export const BUNDLED_WORKER_EXE_NAME = 'NovelTransGeminiWorker.exe';
+
 /**
- * Spawns / monitors the Python Gemini Web API worker on 127.0.0.1.
+ * Spawns / monitors the Gemini Web API worker on 127.0.0.1.
+ *
+ * Production (packaged): prefer standalone Windows exe under resources/workers.
+ * Development: Python 3.11+ + venv under userData.
  */
 export class WorkerProcessManager {
   private child: ChildProcessWithoutNullStreams | null = null;
@@ -60,16 +70,34 @@ export class WorkerProcessManager {
       baseUrl: this.getBaseUrl(),
       lastError: this.lastError,
       installed: install.ok,
+      mode: install.mode,
       message: install.ok
         ? this.isRunning()
           ? 'Gemini Web API worker đang chạy.'
-          : 'Worker đã cài nhưng chưa chạy.'
+          : install.mode === 'bundled_exe'
+            ? 'Worker đóng gói sẵn sàng (chưa chạy).'
+            : 'Worker đã cài nhưng chưa chạy.'
         : install.message,
     };
   }
 
+  /** Prefer production bundled exe when present. */
+  bundledWorkerExePath(): string | null {
+    const candidates = [
+      path.join(process.resourcesPath ?? '', 'workers', BUNDLED_WORKER_EXE_NAME),
+      path.join(process.cwd(), 'resources', 'workers', BUNDLED_WORKER_EXE_NAME),
+      path.join(__dirname, '..', '..', '..', 'resources', 'workers', BUNDLED_WORKER_EXE_NAME),
+    ];
+    for (const candidate of candidates) {
+      if (candidate && fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
   workerRoot(): string {
-    // Dev: repo workers/; packaged: resources/workers/
+    // Dev: repo workers/; packaged source fallback (optional).
     const candidates = [
       path.join(process.cwd(), 'workers', 'gemini_webapi_worker'),
       path.join(__dirname, '..', '..', '..', 'workers', 'gemini_webapi_worker'),
@@ -85,6 +113,18 @@ export class WorkerProcessManager {
 
   venvDir(): string {
     return path.join(pathsService.getPath('data'), 'gemini-webapi-venv');
+  }
+
+  isPackagedRuntime(): boolean {
+    if (process.env.NTS_FORCE_BUNDLED_WORKER === '1') return true;
+    if (process.env.NTS_FORCE_PYTHON_WORKER === '1') return false;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const electron = require('electron') as { app?: { isPackaged?: boolean } };
+      return Boolean(electron.app?.isPackaged);
+    } catch {
+      return Boolean(process.resourcesPath && !process.defaultApp);
+    }
   }
 
   detectPython(): string | null {
@@ -103,6 +143,30 @@ export class WorkerProcessManager {
   }
 
   detectInstall(): WorkerInstallStatus {
+    const bundled = this.bundledWorkerExePath();
+    if (bundled) {
+      return {
+        ok: true,
+        message: 'Gemini Web API worker đóng gói sẵn sàng.',
+        pythonPath: bundled,
+        venvPath: null,
+        workerScript: null,
+        mode: 'bundled_exe',
+      };
+    }
+
+    if (this.isPackagedRuntime()) {
+      return {
+        ok: false,
+        message:
+          'Gemini Web API worker chưa có trong bản cài này. App vẫn chạy được với Gemini Browser (Playwright). Liên hệ bản phát hành có NovelTransGeminiWorker.exe nếu cần Web API.',
+        pythonPath: null,
+        venvPath: null,
+        workerScript: null,
+        mode: 'missing',
+      };
+    }
+
     const workerScript = path.join(this.workerRoot(), 'main.py');
     if (!fs.existsSync(workerScript)) {
       return {
@@ -111,6 +175,7 @@ export class WorkerProcessManager {
         pythonPath: null,
         venvPath: null,
         workerScript: null,
+        mode: 'missing',
       };
     }
 
@@ -122,6 +187,7 @@ export class WorkerProcessManager {
         pythonPath: venvPython,
         venvPath: this.venvDir(),
         workerScript,
+        mode: 'python_venv',
       };
     }
 
@@ -130,10 +196,11 @@ export class WorkerProcessManager {
       return {
         ok: false,
         message:
-          'Chưa cài thành phần Gemini Web API. Cần Python 3.11+ rồi dùng «Cài worker».',
+          'Dev: cần Python 3.11+ rồi «Cài worker». Production dùng worker .exe đóng gói — không cần Python trên máy người dùng.',
         pythonPath: null,
         venvPath: this.venvDir(),
         workerScript,
+        mode: 'missing',
       };
     }
 
@@ -143,6 +210,7 @@ export class WorkerProcessManager {
       pythonPath: systemPython,
       venvPath: this.venvDir(),
       workerScript,
+      mode: 'missing',
     };
   }
 
@@ -154,14 +222,32 @@ export class WorkerProcessManager {
   }
 
   async install(): Promise<WorkerInstallStatus> {
+    const bundled = this.bundledWorkerExePath();
+    if (bundled) {
+      return this.detectInstall();
+    }
+
+    if (this.isPackagedRuntime()) {
+      return {
+        ok: false,
+        message:
+          'Bản cài đặt không kèm Gemini Web API worker. Không cần (và không thể) cài Python trên máy người dùng — dùng Gemini Browser hoặc cài bản có NovelTransGeminiWorker.exe.',
+        pythonPath: null,
+        venvPath: null,
+        workerScript: null,
+        mode: 'missing',
+      };
+    }
+
     const systemPython = this.detectPython();
     if (!systemPython) {
       return {
         ok: false,
-        message: 'Không tìm thấy Python 3.11+. Cài Python rồi thử lại.',
+        message: 'Không tìm thấy Python 3.11+. Cài Python rồi thử lại (chỉ môi trường phát triển).',
         pythonPath: null,
         venvPath: null,
         workerScript: path.join(this.workerRoot(), 'main.py'),
+        mode: 'missing',
       };
     }
 
@@ -177,6 +263,7 @@ export class WorkerProcessManager {
         pythonPath: systemPython,
         venvPath: venv,
         workerScript: path.join(this.workerRoot(), 'main.py'),
+        mode: 'missing',
       };
     }
 
@@ -189,6 +276,7 @@ export class WorkerProcessManager {
         pythonPath: pip,
         venvPath: venv,
         workerScript: path.join(this.workerRoot(), 'main.py'),
+        mode: 'missing',
       };
     }
 
@@ -211,7 +299,7 @@ export class WorkerProcessManager {
     if (this.isRunning()) return;
 
     const install = this.detectInstall();
-    if (!install.ok || !install.pythonPath || !install.workerScript) {
+    if (!install.ok || !install.pythonPath) {
       this.lastError = install.message;
       throw new Error(install.message);
     }
@@ -227,11 +315,29 @@ export class WorkerProcessManager {
       PYTHONUNBUFFERED: '1',
     };
 
+    if (install.mode === 'bundled_exe') {
+      const exe = install.pythonPath;
+      logger.info('Starting bundled Gemini Web API worker', { port: this.port, exe });
+      const child = spawn(exe, [], {
+        cwd: path.dirname(exe),
+        env,
+        windowsHide: true,
+      });
+      this.attachChild(child);
+      await waitForHealth(this.getBaseUrl(), this.secret, 45_000);
+      this.lastError = null;
+      return;
+    }
+
+    if (!install.workerScript) {
+      this.lastError = 'Thiếu worker script.';
+      throw new Error(this.lastError);
+    }
+
     const python = install.pythonPath;
     const args =
       python.includes(' ') && !fs.existsSync(python)
-        ? // `py -3.11` style — not used for venv python.exe
-          []
+        ? []
         : [install.workerScript];
 
     const executable = fs.existsSync(python) ? python : python.split(' ')[0]!;
@@ -239,13 +345,20 @@ export class WorkerProcessManager {
       ? [install.workerScript]
       : [...python.split(' ').slice(1), install.workerScript];
 
-    logger.info('Starting Gemini Web API worker', { port: this.port });
+    logger.info('Starting Gemini Web API worker (Python)', { port: this.port });
 
     const child = spawn(executable, spawnArgs.length ? spawnArgs : args, {
       cwd: this.workerRoot(),
       env,
       windowsHide: true,
     });
+    this.attachChild(child);
+
+    await waitForHealth(this.getBaseUrl(), this.secret, 20_000);
+    this.lastError = null;
+  }
+
+  private attachChild(child: ChildProcessWithoutNullStreams): void {
     this.child = child;
 
     child.stdout.on('data', (buf: Buffer) => {
@@ -263,9 +376,6 @@ export class WorkerProcessManager {
         this.lastError = `Worker dừng (code=${code})`;
       }
     });
-
-    await waitForHealth(this.getBaseUrl(), this.secret, 20_000);
-    this.lastError = null;
   }
 
   async stop(): Promise<void> {

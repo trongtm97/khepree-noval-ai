@@ -52,9 +52,13 @@ function parseTerms(md: string): BootstrapAnalysisOutput['terms'] {
     const preferred = (m[2] ?? '').trim();
     if (!source || !preferred) continue;
     out.push({
-      source,
+      source: (m[1] ?? '').trim(),
       preferred_vi: preferred,
       category: (m[3] ?? 'OTHER').toUpperCase(),
+      first_seen_chapter: parseChapterNum(
+        /ch\.?\s*(\d+)/i.exec(t)?.[1] ?? /chương\s*(\d+)/i.exec(t)?.[1] ?? null,
+      ),
+      future_sensitive: /future|spoiler/i.test(t),
       confidence: 0.7,
     });
   }
@@ -82,10 +86,23 @@ function parseCharacters(md: string): BootstrapAnalysisOutput['characters'] {
       aliases: aliasesRaw
         ? aliasesRaw.split(/[,;/|]/).map((a) => a.trim()).filter(Boolean)
         : [],
+      first_seen_chapter: parseChapterNum(field(/first[_\s-]?seen|chương\s*đầu|xuất\s*hiện/i)),
+      discovered_from_chapter: parseChapterNum(
+        field(/discovered[_\s-]?from|phát\s*hiện/i),
+      ),
+      future_sensitive: /future|spoiler|nhạy\s*cảm\s*tương\s*lai/i.test(section),
       confidence: 0.7,
     });
   }
   return out;
+}
+
+function parseChapterNum(raw: string | null | undefined): number | null {
+  if (raw == null) return null;
+  const m = /(\d+)/.exec(String(raw));
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 function fieldLine(section: string, label: RegExp): string | null {
@@ -109,6 +126,12 @@ function parseRelationships(md: string): BootstrapAnalysisOutput['relationships'
       character_a: m[1]!.trim(),
       character_b: m[2]!.trim(),
       relationship_type: m[3]!.trim().slice(0, 80),
+      valid_from_chapter: parseChapterNum(
+        /from\s*ch\.?\s*(\d+)/i.exec(t)?.[1] ??
+          /từ\s*chương\s*(\d+)/i.exec(t)?.[1] ??
+          null,
+      ),
+      future_sensitive: /future|spoiler/i.test(t),
       confidence: 0.6,
     });
   }

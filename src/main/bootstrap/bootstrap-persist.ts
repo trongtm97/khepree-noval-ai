@@ -1,6 +1,7 @@
 import type { DatabaseManager } from '../db/database-manager';
 import type { BootstrapAnalysisOutput } from '@shared/schemas/bootstrap';
 import { normalizeTermType } from '@shared/constants/term';
+import { utcNow } from '../db/utils/timestamps';
 
 export interface BootstrapPersistResult {
   charactersUpserted: number;
@@ -14,12 +15,15 @@ export interface BootstrapPersistResult {
 /**
  * Persist bootstrap AI output into SQLite (SoT) before knowledge rebuild.
  * Does not overwrite locked characters/terms/story.
+ * When temporalProvenance=true (FULL), writes first_seen / discovered_from /
+ * valid_from / future_sensitive.
  */
 export function persistBootstrapAnalysis(
   db: DatabaseManager,
   projectId: string,
   output: BootstrapAnalysisOutput,
   throughChapter: number | null,
+  options?: { temporalProvenance?: boolean },
 ): BootstrapPersistResult {
   const result: BootstrapPersistResult = {
     charactersUpserted: 0,
@@ -185,5 +189,90 @@ export function persistBootstrapAnalysis(
     result.recentEvents += 1;
   }
 
+  if (options?.temporalProvenance) {
+    applyFullTemporalProvenance(db, projectId, output, throughChapter);
+  }
+
   return result;
+}
+
+function applyFullTemporalProvenance(
+  db: DatabaseManager,
+  projectId: string,
+  output: BootstrapAnalysisOutput,
+  throughChapter: number | null,
+): void {
+  const conn = db.getConnection();
+  const now = utcNow();
+
+  for (const ch of output.characters) {
+    const row = db.characters.getByName(projectId, ch.source_name);
+    if (!row || row.locked === 1) continue;
+    const first = ch.first_seen_chapter ?? row.first_chapter;
+    const discovered = ch.discovered_from_chapter ?? throughChapter;
+    const future =
+      ch.future_sensitive === true ||
+      (first != null && throughChapter != null && first > throughChapter)
+        ? 1
+        : 0;
+    conn
+      .prepare(
+        `UPDATE characters SET
+          first_chapter = COALESCE(?, first_chapter),
+          discovered_from_chapter = COALESCE(?, discovered_from_chapter),
+          future_sensitive = ?,
+          updated_at = ?
+         WHERE id = ?`,
+      )
+      .run(first, discovered, future, now, row.id);
+  }
+
+  for (const rel of output.relationships) {
+    const from = db.characters.getByName(projectId, rel.character_a);
+    const to = db.characters.getByName(projectId, rel.character_b);
+    if (!from || !to) continue;
+    const existing = db.relationships
+      .listByProject(projectId)
+      .find(
+        (r) =>
+          r.from_character_id === from.id &&
+          r.to_character_id === to.id &&
+          r.relationship_type === rel.relationship_type,
+      );
+    if (!existing || existing.locked === 1) continue;
+    const validFrom = rel.valid_from_chapter ?? existing.valid_from_chapter;
+    const future = rel.future_sensitive === true ? 1 : 0;
+    conn
+      .prepare(
+        `UPDATE character_relationships SET
+          valid_from_chapter = COALESCE(?, valid_from_chapter),
+          future_sensitive = ?,
+          updated_at = ?
+         WHERE id = ?`,
+      )
+      .run(validFrom, future, now, existing.id);
+  }
+
+  for (const term of output.terms) {
+    const existing = db.terms.findBySource(term.source, projectId);
+    if (!existing || existing.locked === 1) continue;
+    const first = term.first_seen_chapter ?? existing.first_seen_chapter;
+    const discovered =
+      term.discovered_from_chapter ?? existing.discovered_from_chapter ?? throughChapter;
+    const future =
+      term.future_sensitive === true ||
+      (first != null && throughChapter != null && first > throughChapter)
+        ? 1
+        : 0;
+    conn
+      .prepare(
+        `UPDATE terms SET
+          first_seen_chapter = COALESCE(?, first_seen_chapter),
+          discovered_from_chapter = COALESCE(?, discovered_from_chapter),
+          future_sensitive = ?,
+          updated_at = ?
+         WHERE id = ?`,
+      )
+      .run(first, discovered, future, now, existing.id);
+  }
 }

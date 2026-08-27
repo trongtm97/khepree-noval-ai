@@ -60,6 +60,17 @@ function mockNovelDb(opts: {
     googleAccounts: {
       getById: () => null,
     },
+    aiProviders: {
+      listEnabledOrdered: () => [{ id: 'prov-web', type: 'GEMINI_WEB_API' }],
+    },
+    batchSize: {
+      getProjectStats: () => null,
+      insertDecision: (input: Record<string, unknown>) => ({
+        id: `dec-${created.length + 1}`,
+        ...input,
+      }),
+      linkDecisionToJob: () => undefined,
+    },
     jobs: {
       getById: (id: string) => byId.get(id) ?? null,
       create: (input: {
@@ -170,21 +181,28 @@ describe('JobService.enqueueTranslateNovel', () => {
     });
   }
 
-  it('queues one job per untranslated SOURCE_READY chapter and skips translated', async () => {
+  it('batches up to maxChaptersPerJob untranslated chapters into one job', async () => {
     const { db, created } = seed();
     const service = new JobService(db);
     const result = service.enqueueTranslateNovel({ projectId, skipTranslated: true });
 
-    // prepareProfilesAndKickScheduler is async-void; let microtasks settle
-    await vi.waitFor(() => expect(created.length).toBe(3));
+    await vi.waitFor(() => expect(created.length).toBe(1));
 
-    expect(result.queuedCount).toBe(3);
-    expect(result.jobs.map((j) => j.chapterFrom)).toEqual([2, 3, 4]);
+    expect(result.queuedCount).toBe(1);
+    expect(result.jobs[0]?.chapterFrom).toBe(2);
+    expect(result.jobs[0]?.chapterTo).toBe(4);
     expect(result.skippedCount).toBe(1);
 
-    const ch3 = created.find((j) => j.chapter_from === 3)!;
-    const config = JSON.parse(ch3.config ?? '{}') as { sourceParagraphIds: string[] };
-    expect(config.sourceParagraphIds).toEqual(['[C000003:P000002]']);
+    const config = JSON.parse(created[0]?.config ?? '{}') as {
+      sourceParagraphIds: string[];
+      chapterIds?: string[];
+    };
+    expect(config.sourceParagraphIds).toEqual([
+      '[C000002:P000001]',
+      '[C000003:P000002]',
+      '[C000004:P000001]',
+    ]);
+    expect(config.chapterIds).toEqual(['ch2', 'ch3', 'ch4']);
   });
 
   it('respects chapterFrom/chapterTo range', () => {
@@ -197,15 +215,16 @@ describe('JobService.enqueueTranslateNovel', () => {
       skipTranslated: true,
     });
 
-    expect(result.queuedCount).toBe(2);
-    expect(result.jobs.map((j) => j.chapterFrom)).toEqual([3, 4]);
+    expect(result.queuedCount).toBe(1);
+    expect(result.jobs[0]?.chapterFrom).toBe(3);
+    expect(result.jobs[0]?.chapterTo).toBe(4);
   });
 
-  it('sets priority from sequence so earlier chapters claim first', () => {
+  it('sets priority from first chapter in batch', () => {
     const { db } = seed();
     const service = new JobService(db);
     const result = service.enqueueTranslateNovel({ projectId, skipTranslated: true });
-    expect(result.jobs.map((j) => j.priority)).toEqual([2, 3, 4]);
+    expect(result.jobs.map((j) => j.priority)).toEqual([2]);
   });
 
   it('returns empty when everything already translated in range', () => {
@@ -229,8 +248,9 @@ describe('JobService.enqueueTranslateNovel', () => {
       chapterIds: ['ch2', 'ch4'],
       skipTranslated: true,
     });
-    expect(result.queuedCount).toBe(2);
-    expect(result.jobs.map((j) => j.chapterFrom)).toEqual([2, 4]);
+    expect(result.queuedCount).toBe(1);
+    expect(result.jobs[0]?.chapterFrom).toBe(2);
+    expect(result.jobs[0]?.chapterTo).toBe(4);
   });
 
   it('skips translated chapter even when listed in chapterIds', () => {
@@ -242,7 +262,7 @@ describe('JobService.enqueueTranslateNovel', () => {
       skipTranslated: true,
     });
     expect(result.queuedCount).toBe(1);
-    expect(result.jobs.map((j) => j.chapterFrom)).toEqual([2]);
+    expect(result.jobs[0]?.chapterFrom).toBe(2);
     expect(result.skippedCount).toBe(1);
   });
 });

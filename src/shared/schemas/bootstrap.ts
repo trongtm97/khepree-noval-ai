@@ -7,6 +7,8 @@ export const BootstrapCharacterSchema = z.object({
   gender: z.string().nullable().optional(),
   aliases: z.array(z.string()).optional().default([]),
   first_seen_chapter: z.number().int().positive().nullable().optional(),
+  discovered_from_chapter: z.number().int().positive().nullable().optional(),
+  future_sensitive: z.boolean().optional().default(false),
   confidence: z.number().min(0).max(1).optional(),
 });
 
@@ -17,6 +19,7 @@ export const BootstrapRelationshipSchema = z.object({
   a_calls_b: z.string().nullable().optional(),
   b_calls_a: z.string().nullable().optional(),
   valid_from_chapter: z.number().int().positive().nullable().optional(),
+  future_sensitive: z.boolean().optional().default(false),
   confidence: z.number().min(0).max(1).optional(),
 });
 
@@ -25,6 +28,8 @@ export const BootstrapTermSchema = z.object({
   preferred_vi: z.string().min(1),
   category: z.string().optional(),
   first_seen_chapter: z.number().int().positive().nullable().optional(),
+  discovered_from_chapter: z.number().int().positive().nullable().optional(),
+  future_sensitive: z.boolean().optional().default(false),
   confidence: z.number().min(0).max(1).optional(),
 });
 

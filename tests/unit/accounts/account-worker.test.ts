@@ -13,7 +13,7 @@ import { AuditLogService } from '@main/security/audit-log-service';
 import { SecretStorageService } from '@main/security/secret-storage-service';
 import type { SafeStorageBackend } from '@main/security/safe-storage-backend';
 import { BrowserProfileManager } from '@main/automation/browser-runner/profile-manager';
-import { ProfileLockManager } from '@main/automation/browser-runner/profile-lock';
+import { ProfileLeaseLockManager } from '@main/automation/browser-runner/profile-lock';
 import type {
   BrowserSessionController,
   BrowserSessionHandle,
@@ -63,7 +63,7 @@ describe('AccountWorkerService', () => {
   let db: DatabaseManager;
   let service: AccountWorkerService;
   let profiles: BrowserProfileManager;
-  let locks: ProfileLockManager;
+  let locks: ProfileLeaseLockManager;
 
   beforeEach(() => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-acct-'));
@@ -78,7 +78,7 @@ describe('AccountWorkerService', () => {
 
     db = createDatabaseManager({ dataDir, backupsDir });
     profiles = new BrowserProfileManager();
-    locks = new ProfileLockManager();
+    locks = new ProfileLeaseLockManager();
     service = new AccountWorkerService({
       accounts: db.googleAccounts,
       auditLog: new AuditLogService(db.auditLog, db.appMeta),
@@ -169,7 +169,7 @@ describe('AccountWorkerService', () => {
     expect(locks.isLocked(profilePath)).toBe(true);
     expect(() => {
       locks.acquire(profilePath, 'other-worker');
-    }).toThrow(/already in use/i);
+    }).toThrow(/PROFILE_BUSY|already in use|đang được sử dụng/i);
 
     locks.release(profilePath, account.id);
     expect(locks.isLocked(profilePath)).toBe(false);
@@ -238,7 +238,13 @@ describe('AccountWorkerService', () => {
   it('returns BUSY instead of throwing when profile already locked', async () => {
     const account = await service.addAccount({ label: 'Busy', skipBrowser: true });
     const profilePath = profiles.resolveProfilePath(account.profile_dir_name);
-    locks.acquire(profilePath, 'job:123');
+    locks.acquireLease({
+      profilePath,
+      ownerId: 'job:123',
+      accountId: account.id,
+      operation: 'translation',
+      label: 'Dịch chương 51–53',
+    });
 
     try {
       const result = await service.testSession(account.id);
@@ -246,39 +252,75 @@ describe('AccountWorkerService', () => {
       expect(result.reason).toBe('BUSY');
       expect(result.account.status).toBe('BUSY');
     } finally {
-      locks.forceClearStaleLock(profilePath);
+      locks.releaseLease(profilePath, 'job:123');
     }
   });
 });
 
-describe('ProfileLockManager', () => {
+describe('ProfileLeaseLockManager (account-worker suite)', () => {
   it('prevents double acquire on same userDataDir', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-lock-'));
-    const locks = new ProfileLockManager();
+    const locks = new ProfileLeaseLockManager();
     try {
-      locks.acquire(root, 'a');
+      locks.acquireLease({
+        profilePath: root,
+        ownerId: 'a',
+        accountId: 'a',
+        operation: 'manual_browser',
+      });
       expect(() => {
-        locks.acquire(root, 'b');
-      }).toThrow();
-      locks.release(root, 'a');
-      locks.acquire(root, 'b');
-      locks.release(root, 'b');
+        locks.acquireLease({
+          profilePath: root,
+          ownerId: 'b',
+          accountId: 'b',
+          operation: 'manual_browser',
+        });
+      }).toThrow(/PROFILE_BUSY|đang được sử dụng/i);
+      locks.releaseLease(root, 'a');
+      locks.acquireLease({
+        profilePath: root,
+        ownerId: 'b',
+        accountId: 'b',
+        operation: 'manual_browser',
+      });
+      locks.releaseLease(root, 'b');
     } finally {
-      locks.forceClearStaleLock(root);
+      locks.recoverIfStale(root, Date.now() + 10_000_000);
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it('clears orphan lock file on acquire after restart', () => {
+  it('recovers dead-PID lock file on acquire (simulated crash)', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-orphan-'));
-    const locksA = new ProfileLockManager();
+    const lockPath = path.join(root, '.noveltrans.lock');
     try {
-      locksA.acquire(root, 'old-process');
-      const locksB = new ProfileLockManager();
-      expect(() => locksB.acquire(root, 'new-process')).not.toThrow();
-      locksB.release(root, 'new-process');
+      fs.writeFileSync(
+        lockPath,
+        JSON.stringify({
+          profilePath: root,
+          ownerId: 'old-process',
+          accountId: 'old',
+          operation: 'legacy',
+          pid: 2_147_483_645,
+          processInstanceId: 'dead-instance',
+          acquiredAt: new Date().toISOString(),
+          heartbeatAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+          label: 'stale',
+        }),
+        'utf8',
+      );
+      const locksB = new ProfileLeaseLockManager();
+      expect(() =>
+        locksB.acquireLease({
+          profilePath: root,
+          ownerId: 'new-process',
+          accountId: 'new',
+          operation: 'manual_browser',
+        }),
+      ).not.toThrow();
+      locksB.releaseLease(root, 'new-process');
     } finally {
-      locksA.forceClearStaleLock(root);
       fs.rmSync(root, { recursive: true, force: true });
     }
   });

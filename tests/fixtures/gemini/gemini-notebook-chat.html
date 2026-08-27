@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gemini Notebook Fixture — Chat</title>
+</head>
+<body>
+  <main
+    data-testid="gemini-notebook-app"
+    data-gemini-notebook-app="1"
+    data-surface="gemini-notebook"
+  >
+    <a aria-label="Gemini Notebook home" href="#">Gemini Notebook</a>
+    <div data-testid="notebook-context" data-notebook-context="1">
+      Notebook: [NovelTrans] Gemini Notebook Fixture
+    </div>
+    <section data-testid="active-thread" data-active-thread="1" class="chat-panel">
+      <div data-testid="message-list" data-message-list="1">
+        <div class="chat-message-pair">
+          <div class="to-user-container" data-testid="assistant-response" data-assistant-response="1">
+            <div class="message-text-content">Previous Gemini Notebook reply.</div>
+          </div>
+        </div>
+      </div>
+      <query-box class="chat-input">
+        <textarea
+          data-testid="prompt-input"
+          data-prompt-input="1"
+          aria-label="Query box"
+          placeholder="Ask a question"
+          rows="3"
+        ></textarea>
+      </query-box>
+      <button type="button" data-testid="send-prompt" data-action="send-prompt" disabled>Send</button>
+      <div data-testid="response-list" data-response-list="1"></div>
+    </section>
+  </main>
+  <script>
+    const input = document.querySelector('[data-testid="prompt-input"]');
+    const send = document.querySelector('[data-testid="send-prompt"]');
+    input.addEventListener('input', () => {
+      send.disabled = !input.value.trim();
+    });
+  </script>
+</body>
+</html>

@@ -81,3 +81,17 @@ export { KnowledgeSyncEventRepository } from './knowledge-sync-event-repository'
 export type { KnowledgeSyncEventRow } from './knowledge-sync-event-repository';
 export { NotebookHotDeltaRepository } from './notebook-hot-delta-repository';
 export type { NotebookHotDeltaRow } from './notebook-hot-delta-repository';
+export { FullNovelPreprocessRepository } from './full-novel-preprocess-repository';
+export { BatchSizeRepository } from './batch-size-repository';
+export type {
+  BatchSizeDecisionRow,
+  ProjectBatchStatsRow,
+  InsertBatchSizeDecisionInput,
+} from './batch-size-repository';
+export type {
+  FullNovelPreprocessRunRow,
+  FullNovelPreprocessPartRow,
+  FullNovelPreprocessProgressSnapshot,
+  CreateFullNovelPreprocessRunInput,
+  UpsertPreprocessPartInput,
+} from './full-novel-preprocess-repository';

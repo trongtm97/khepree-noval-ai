@@ -5,6 +5,8 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * Code signing — set via environment only. Never commit cert/password.
@@ -40,16 +42,38 @@ function windowsSignConfig():
 
 const windowsSign = windowsSignConfig();
 
+/** Keep Vite build + production externals (forge Vite ignores node_modules by default). */
+function shouldPackagePath(file: string): boolean {
+  if (!file) return true;
+  if (file === '/package.json') return true;
+  if (file.startsWith('/.vite')) return true;
+
+  const keepPrefixes = [
+    '/node_modules/better-sqlite3',
+    '/node_modules/bindings',
+    '/node_modules/file-uri-to-path',
+    '/node_modules/playwright',
+    '/node_modules/playwright-core',
+  ];
+  return keepPrefixes.some((p) => file === p || file.startsWith(`${p}/`));
+}
+
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: true,
+    // Unpack runner for utilityProcess.fork + native .node modules.
+    asar: {
+      unpack: '**/{*.node,runner-entry.js}',
+    },
+    // Override Vite plugin ignore so externals exist in packaged app.
+    ignore: (file: string) => !shouldPackagePath(file),
     name: 'NovelTrans Studio',
     executableName: 'NovelTransStudio',
     appBundleId: 'com.noveltrans.studio',
     appCopyright: `Copyright © ${new Date().getFullYear()} NovelTrans Studio`,
     // User data lives in %APPDATA%/NovelTrans — never under install dir.
     // Squirrel upgrades must not wipe AppData (DB, profiles, settings).
-    extraResource: ['./resources/guides'],
+    // resources/workers: NovelTransGeminiWorker.exe only (no .venv / secrets / py source).
+    extraResource: ['./resources/guides', './resources/workers'],
     ...(windowsSign
       ? {
           windowsSign: {
@@ -77,6 +101,51 @@ const config: ForgeConfig = {
     }),
     new MakerZIP({}, ['darwin']),
   ],
+  hooks: {
+    /**
+     * Vite plugin packages only `.vite/` — copy production externals so
+     * utilityProcess runner (playwright) + main (better-sqlite3) resolve.
+     */
+    packageAfterCopy: async (_config, buildPath) => {
+      const projectDir = process.cwd();
+      const modules = [
+        'better-sqlite3',
+        'bindings',
+        'file-uri-to-path',
+        'playwright',
+        'playwright-core',
+      ];
+      for (const name of modules) {
+        const src = path.join(projectDir, 'node_modules', name);
+        const dest = path.join(buildPath, 'node_modules', name);
+        if (!fs.existsSync(src)) continue;
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.cpSync(src, dest, { recursive: true });
+      }
+    },
+    /**
+     * Warn when Windows release lacks bundled Gemini worker exe.
+     * Browser provider still works without it.
+     */
+    postPackage: async (_config, packageResult) => {
+      if (process.platform !== 'win32') return;
+      const outputPaths = packageResult?.outputPaths ?? [];
+      let found = false;
+      for (const out of outputPaths) {
+        const workerExe = path.join(out, 'resources', 'workers', 'NovelTransGeminiWorker.exe');
+        if (fs.existsSync(workerExe)) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        console.warn(
+          '[forge] NovelTransGeminiWorker.exe missing under resources/workers — ' +
+            'Web API optional; run npm run build:gemini-worker before make for full self-contained Web API.',
+        );
+      }
+    },
+  },
   plugins: [
     new AutoUnpackNativesPlugin({}),
     new VitePlugin({

@@ -15,6 +15,12 @@ export default defineConfig({
     globals: false,
     environment: 'node',
     include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
-    exclude: ['**/node_modules/**', '**/dist/**', 'tests/perf/**'],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      'tests/perf/**',
+      // Real Google smoke — opt-in via npm run test:google-smoke only
+      'tests/google-smoke/**',
+    ],
   },
 });

@@ -1,6 +1,6 @@
 # NovelTrans Studio — Project State
 
-> Last updated: 2026-08-24
+> Last updated: 2026-08-26
 
 ## Completed
 
@@ -69,26 +69,37 @@
 - [x] Settings → Nhà cung cấp AI; help `ai-providers`
 - [x] `docs/AI_PROVIDER.md`, `docs/GEMINI_WEB_API_PROVIDER.md`
 
-## In Progress
-
-- [ ] Nothing active
-
-## Not Started
-
-### Follow-ups — Bundle Python runtime; Official Gemini API provider; lease renewal during long AI calls
-
 ### Notebook Knowledge Architecture (2026-08-25)
 - [x] Migration **017** — knowledge_files, hot deltas, notebook versions, world_knowledge_json
 - [x] NotebookKnowledgeBuilder 00–07; NotebookSyncService; slim/fat TranslationPack
 - [x] Playwright-in-Notebook preferred; Web API fat-pack fallback; thread rotation
 - [x] Bootstrap seed; Bộ nhớ AI UI; docs/NOTEBOOK_ARCHITECTURE.md
 
+### Playwright Browser Engine (2026-08-26)
+- [x] Playwright **1.62.1** (from `^1.49.1`)
+- [x] `BrowserEngineResolver` — AUTO / EDGE / CHROME / PLAYWRIGHT_CHROMIUM
+- [x] Windows AUTO: Edge → Chrome → bundled Chromium; dedicated NovelTrans profiles only
+- [x] Remove default `--disable-blink-features=AutomationControlled` (opt-in advanced)
+- [x] Headed default for Gemini/Notebook/`BrowserSession`
+- [x] Engine/version in `engine-info.json` + failure diagnostics
+- [x] Baseline audit `docs/PLAYWRIGHT_AUDIT_BEFORE_FIX.md`; breaking notes `docs/PLAYWRIGHT_1_62_BREAKING_CHANGES.md`
+- [x] `docs/AUTOMATION.md` updated
+
+## In Progress
+
+- [ ] Playwright send-path hardening (selectors / confirm-sent / wait strategy) — **not started**; engine layer only
+
+## Not Started
+
+### Follow-ups — Bundle Python runtime; Official Gemini API provider; lease renewal during long AI calls
+
 ## Next Recommended Step
 
 **Do not ship.** See [FINAL_RELEASE_AUDIT.md](./FINAL_RELEASE_AUDIT.md) — verdict **NOT READY**.
 
 Priority order:
-1. Lease renewal during Gemini/repair
-2. Startup crash-attempt + gemini_request recovery
-3. Sanitize auto DB backups; constrain import paths; restore UI
-4. Embedded Python for Web API worker (optional)
+1. Playwright send-path hardening (confirm sent, reduce `waitForTimeout`, correlation extract)
+2. Lease renewal during Gemini/repair
+3. Startup crash-attempt + gemini_request recovery
+4. Sanitize auto DB backups; constrain import paths; restore UI
+5. Embedded Python for Web API worker (optional)

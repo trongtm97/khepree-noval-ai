@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import type { DatabaseManager } from '../db/database-manager';
 import { pathsService } from '../services/paths-service';
 import {
@@ -14,6 +15,7 @@ export interface CorpusPartInfo {
   byteLength: number;
   chapterFrom: number;
   chapterTo: number;
+  contentHash: string;
 }
 
 export interface PackNovelCorpusResult {
@@ -166,6 +168,7 @@ export function packNovelCorpus(
       byteLength: part.byteLength,
       chapterFrom: part.chapterFrom,
       chapterTo: part.chapterTo,
+      contentHash: createHash('sha256').update(part.body, 'utf8').digest('hex'),
     });
     totalWords += part.wordCount;
   }

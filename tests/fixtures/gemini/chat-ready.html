@@ -5,28 +5,14 @@
   <title>Gemini Fixture — Chat Ready</title>
 </head>
 <body>
-  <main data-testid="gemini-app" data-gemini-app="1">
+  <main data-testid="gemini-app" data-gemini-app="1" data-surface="gemini-chat">
     <div data-testid="notebook-context" data-notebook-context="1">
       Notebook: [NovelTrans] Fixture Novel
     </div>
     <button type="button" data-testid="new-chat" data-action="new-chat">New chat</button>
     <ul data-testid="thread-list" data-thread-list="1"></ul>
     <section data-testid="active-thread" data-active-thread="1" style="display:none">
-      <textarea
-        data-testid="prompt-input"
-        data-prompt-input="1"
-        aria-label="Prompt"
-        rows="4"
-        style="width:100%"
-      ></textarea>
-      <button type="button" data-testid="send-prompt" data-action="send-prompt">Send</button>
-      <button type="button" data-testid="stop-generation" data-action="stop-generation" style="display:none">
-        Stop
-      </button>
-      <div data-testid="loading-indicator" data-generating="0" style="display:none">
-        Generating…
-      </div>
-      <div data-testid="response-list" data-response-list="1">
+      <div data-testid="message-list" data-message-list="1">
         <div
           data-testid="assistant-response"
           data-assistant-response="1"
@@ -36,10 +22,28 @@
           Previous conversation output (old correlation).
         </div>
       </div>
+      <textarea
+        data-testid="prompt-input"
+        data-prompt-input="1"
+        aria-label="Prompt"
+        rows="4"
+        style="width:100%"
+      ></textarea>
+      <button type="button" data-testid="send-prompt" data-action="send-prompt" disabled>
+        Send
+      </button>
+      <button type="button" data-testid="stop-generation" data-action="stop-generation" style="display:none">
+        Stop
+      </button>
+      <div data-testid="loading-indicator" data-generating="0" style="display:none">
+        Generating…
+      </div>
+      <div data-testid="response-list" data-response-list="1"></div>
     </section>
   </main>
   <script>
     const params = new URLSearchParams(location.search);
+    const mode = params.get('mode') || 'ok';
     const notebookName = params.get('notebook') || '[NovelTrans] Fixture Novel';
     document.querySelector('[data-testid="notebook-context"]').textContent =
       'Notebook: ' + notebookName;
@@ -50,19 +54,45 @@
     const sendBtn = document.querySelector('[data-testid="send-prompt"]');
     const stopBtn = document.querySelector('[data-testid="stop-generation"]');
     const loading = document.querySelector('[data-testid="loading-indicator"]');
-    const responseList = document.querySelector('[data-testid="response-list"]');
+    const messageList = document.querySelector('[data-testid="message-list"]');
 
     let streamTimer = null;
     let cancelled = false;
+    let sendCount = 0;
+    let sending = false;
 
     function extractCorrelation(text) {
       const m = text.match(/\[NTS-CORR:([0-9a-f-]{36})\]/i);
       return m ? m[1] : null;
     }
 
+    function syncSendEnabled() {
+      if (mode === 'send-disabled') {
+        sendBtn.disabled = true;
+        return;
+      }
+      sendBtn.disabled = !promptInput.value.trim();
+    }
+
+    promptInput.addEventListener('input', syncSendEnabled);
+
+    if (mode === 'truncate') {
+      const proto = HTMLTextAreaElement.prototype;
+      const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+      Object.defineProperty(proto, 'value', {
+        configurable: true,
+        enumerable: desc.enumerable,
+        get: desc.get,
+        set(v) {
+          desc.set.call(this, String(v).slice(0, 40));
+        },
+      });
+    }
+
     newChatBtn.addEventListener('click', () => {
       activeThread.style.display = 'block';
       promptInput.value = '';
+      syncSendEnabled();
     });
 
     stopBtn.addEventListener('click', () => {
@@ -71,50 +101,213 @@
       loading.style.display = 'none';
       loading.setAttribute('data-generating', '0');
       stopBtn.style.display = 'none';
+      sending = false;
     });
 
-    sendBtn.addEventListener('click', () => {
-      const text = promptInput.value;
-      const correlationId = extractCorrelation(text);
-      if (!correlationId) return;
+    // Enter = newline only (does not send) unless mode says otherwise.
+    promptInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) {
+        if (mode === 'enter-sends') {
+          event.preventDefault();
+          sendBtn.click();
+          return;
+        }
+        // Default: allow newline — do not send.
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && mode === 'ctrl-enter-sends') {
+        event.preventDefault();
+        sendBtn.click();
+      }
+    });
 
+    function beginGeneration(text, correlationId) {
       cancelled = false;
-      loading.style.display = 'block';
-      loading.setAttribute('data-generating', '1');
-      stopBtn.style.display = 'inline-block';
+      const hideIndicatorsEarly = mode === 'spinner-early' || mode === 'no-indicator';
+      if (mode !== 'no-indicator') {
+        loading.style.display = 'block';
+        loading.setAttribute('data-generating', '1');
+        stopBtn.style.display = 'inline-block';
+      }
 
-      const bubble = document.createElement('div');
-      bubble.setAttribute('data-testid', 'assistant-response');
-      bubble.setAttribute('data-assistant-response', '1');
-      bubble.setAttribute('data-correlation-id', correlationId);
-      bubble.setAttribute('data-streaming', '1');
-      bubble.textContent = '';
-      responseList.appendChild(bubble);
+      const pair = document.createElement('div');
+      pair.setAttribute('data-testid', 'message-pair');
+      pair.className = 'chat-message-pair';
 
-      const full = [
-        '<TRANSLATION>',
-        '[C000001:P000001] Bản dịch thử nghiệm.',
-        '</TRANSLATION>',
-        '<TERM_DELTA>[]</TERM_DELTA>',
-      ].join('\n');
+      const last = messageList.lastElementChild;
+      if (last && last.getAttribute('data-testid') === 'user-message') {
+        pair.appendChild(last);
+      }
+
+      let liveBubble = document.createElement('div');
+      liveBubble.setAttribute('data-testid', 'assistant-response');
+      liveBubble.setAttribute('data-assistant-response', '1');
+      liveBubble.setAttribute('data-correlation-id', correlationId);
+      liveBubble.setAttribute('data-streaming', mode === 'no-indicator' ? '0' : '1');
+      liveBubble.textContent = '';
+      pair.appendChild(liveBubble);
+      messageList.appendChild(pair);
+
+      if (mode === 'virtualize-old') {
+        messageList.querySelectorAll('[data-testid="assistant-response"]').forEach((el) => {
+          if (el.getAttribute('data-correlation-id') !== correlationId) {
+            el.setAttribute('data-virtualized', '1');
+            el.style.display = 'none';
+            el.removeAttribute('data-testid');
+            el.removeAttribute('data-assistant-response');
+          }
+        });
+      }
+
+      if (mode === 'response-error') {
+        setTimeout(() => {
+          liveBubble.textContent = 'Something went wrong. Please try again.';
+          liveBubble.setAttribute('data-streaming', '0');
+          loading.style.display = 'none';
+          loading.setAttribute('data-generating', '0');
+          stopBtn.style.display = 'none';
+          sending = false;
+        }, 80);
+        return;
+      }
+
+      const full =
+        mode === 'multi-marker'
+          ? [
+              '<TRANSLATION>',
+              `[C000001:P000001] Response for ${correlationId}.`,
+              '</TRANSLATION>',
+              '<TERM_DELTA>[]</TERM_DELTA>',
+            ].join('\n')
+          : mode === 'cutoff'
+            ? [
+                '<TRANSLATION>',
+                '[C000001:P000001] Bản dịch thử nghiệm bị cắt',
+                '[C000001:P00000',
+              ].join('\n')
+            : [
+                '<TRANSLATION>',
+                '[C000001:P000001] Bản dịch thử nghiệm.',
+                '</TRANSLATION>',
+                '<TERM_DELTA>[]</TERM_DELTA>',
+              ].join('\n');
 
       let idx = 0;
-      streamTimer = setInterval(() => {
-        if (cancelled) return;
-        idx += 1;
-        bubble.textContent = full.slice(0, idx);
-        if (idx >= full.length) {
-          clearInterval(streamTimer);
-          bubble.setAttribute('data-streaming', '0');
+      let paused = false;
+      let pauseDone = false;
+      const tickMs = mode === 'stream-pause' ? 20 : 15;
+      const pauseAfter = Math.floor(full.length * 0.35);
+      const endAt = mode === 'cutoff' ? Math.min(full.length, 55) : full.length;
+
+      if (mode === 'spinner-early') {
+        setTimeout(() => {
+          loading.style.display = 'none';
+          loading.setAttribute('data-generating', '0');
+          stopBtn.style.display = 'none';
+          liveBubble.setAttribute('data-streaming', '0');
+        }, 120);
+      }
+
+      function finishStream() {
+        if (streamTimer) clearInterval(streamTimer);
+        streamTimer = null;
+        liveBubble.setAttribute('data-streaming', '0');
+        if (!hideIndicatorsEarly || mode === 'cutoff') {
           loading.style.display = 'none';
           loading.setAttribute('data-generating', '0');
           stopBtn.style.display = 'none';
         }
-      }, 15);
+        sending = false;
+        if (mode === 'rerender') {
+          const html = pair.innerHTML;
+          const parent = pair.parentElement;
+          pair.remove();
+          const rebuilt = document.createElement('div');
+          rebuilt.setAttribute('data-testid', 'message-pair');
+          rebuilt.className = 'chat-message-pair';
+          rebuilt.innerHTML = html;
+          parent.appendChild(rebuilt);
+        }
+      }
+
+      function tick() {
+        if (cancelled) return;
+        if (mode === 'stream-pause' && !pauseDone && idx >= pauseAfter && !paused) {
+          paused = true;
+          if (streamTimer) clearInterval(streamTimer);
+          streamTimer = null;
+          setTimeout(() => {
+            pauseDone = true;
+            paused = false;
+            streamTimer = setInterval(tick, tickMs);
+          }, 2000);
+          return;
+        }
+
+        idx += 1;
+        liveBubble.textContent = full.slice(0, idx);
+
+        if ((mode === 'dom-rerender' || mode === 'rerender-mid') && idx === Math.floor(endAt / 2)) {
+          const next = document.createElement('div');
+          next.setAttribute('data-testid', 'assistant-response');
+          next.setAttribute('data-assistant-response', '1');
+          next.setAttribute('data-correlation-id', correlationId);
+          next.setAttribute('data-streaming', liveBubble.getAttribute('data-streaming') || '1');
+          next.textContent = liveBubble.textContent;
+          liveBubble.replaceWith(next);
+          liveBubble = next;
+        }
+
+        if (idx >= endAt) {
+          finishStream();
+        }
+      }
+
+      streamTimer = setInterval(tick, tickMs);
+    }
+
+    function performSend() {
+      if (mode === 'click-noop') return;
+      if (mode === 'send-disabled') return;
+
+      const text = promptInput.value;
+      const correlationId = extractCorrelation(text);
+      if (!correlationId) return;
+
+      if (mode === 'double-send-guard' && sending) {
+        return;
+      }
+      sendCount += 1;
+      sending = true;
+
+      const publishUser = () => {
+        const userBubble = document.createElement('div');
+        userBubble.setAttribute('data-testid', 'user-message');
+        userBubble.setAttribute('data-user-message', '1');
+        userBubble.textContent = text;
+        messageList.appendChild(userBubble);
+        promptInput.value = '';
+        syncSendEnabled();
+        beginGeneration(text, correlationId);
+      };
+
+      if (mode === 'slow-user') {
+        // Delay user bubble + clear so confirmation polls must wait.
+        setTimeout(publishUser, 1500);
+        return;
+      }
+
+      publishUser();
+    }
+
+    sendBtn.addEventListener('click', () => {
+      performSend();
     });
 
     // Auto-open thread for direct navigation
     activeThread.style.display = 'block';
+    syncSendEnabled();
+
+    window.__fixtureSendCount = () => sendCount;
   </script>
 </body>
 </html>

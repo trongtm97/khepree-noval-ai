@@ -129,6 +129,8 @@ export function jobWatchProgressKey(job: {
     paragraphsTotal?: number;
     providerType?: string;
     packMode?: string;
+    continuationRound?: number;
+    lastCompletedParagraphId?: string | null;
   } | null;
 }): string {
   const p = job.progress;
@@ -141,5 +143,6 @@ export function jobWatchProgressKey(job: {
     p?.paragraphsTotal ?? '',
     p?.providerType ?? '',
     p?.packMode ?? '',
+    p?.continuationRound ?? '',
   ].join('|');
 }

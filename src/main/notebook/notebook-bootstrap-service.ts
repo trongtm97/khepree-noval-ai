@@ -1,6 +1,7 @@
 import type { DatabaseManager } from '../db/database-manager';
 import { loadNotebookSettings, NotebookKnowledgeBuilder } from './knowledge-builder';
 import { getNotebookSyncService } from './notebook-sync-service-singleton';
+import { resolveTranslationNotebook } from './notebook-resolver';
 import { logger } from '../logging/logger';
 
 export interface BootstrapResult {
@@ -306,12 +307,12 @@ export class NotebookBootstrapService {
       : 'Đã chuẩn bị bộ nhớ AI cục bộ. Dịch sẽ dùng fat-pack nếu Notebook chưa sẵn sàng.';
 
     if (accountId) {
-      const mapping = this.db.notebooks.getByProjectAndWorker(projectId, accountId);
+      const mapping = resolveTranslationNotebook(this.db, projectId, accountId);
       notebookStatus = mapping?.status ?? null;
 
       if (mapping && USABLE_NOTEBOOK_STATUSES.has(mapping.status)) {
         usedFallback = false;
-        message = `Bộ nhớ AI sẵn sàng (Notebook: ${mapping.status}).`;
+        message = `Bộ nhớ AI sẵn sàng (Translation Notebook: ${mapping.status}).`;
       } else {
         const workerReady = this.isWorkerReady(accountId);
         if (workerReady) {
@@ -322,7 +323,10 @@ export class NotebookBootstrapService {
                 const { getNotebookService } = await import(
                   '../services/notebook-service-singleton'
                 );
-                return getNotebookService().provision(input);
+                return getNotebookService().provision({
+                  ...input,
+                  role: 'TRANSLATION',
+                });
               });
             const result = await provision({ projectId, accountId });
             notebookStatus = result.mapping.status;

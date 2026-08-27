@@ -24,6 +24,76 @@ export const ConnectionTestKindSchema = z.enum([
 
 export type ConnectionTestKind = z.infer<typeof ConnectionTestKindSchema>;
 
+/** Stepwise AI browser diagnostics (Settings → Chẩn đoán AI). */
+export const AiBrowserProbeKindSchema = z.enum([
+  'browser',
+  'login',
+  'notebook',
+  'composer',
+  'send',
+  'trialTranslate',
+]);
+
+export type AiBrowserProbeKind = z.infer<typeof AiBrowserProbeKindSchema>;
+
+export const AiBrowserProbeRequestSchema = z.object({
+  kind: AiBrowserProbeKindSchema,
+  accountId: z.string().uuid(),
+  projectId: z.string().uuid().optional(),
+});
+
+export const AiBrowserProbeStepSchema = z.object({
+  step: z.string(),
+  ok: z.boolean(),
+  message: z.string().optional(),
+});
+
+export const AiBrowserProbeResponseSchema = z.object({
+  kind: AiBrowserProbeKindSchema,
+  ok: z.boolean(),
+  failedStep: z.string().nullable(),
+  lastOkStep: z.string().nullable(),
+  message: z.string(),
+  durationMs: z.number().nonnegative(),
+  steps: z.array(AiBrowserProbeStepSchema),
+  diagnosticsDir: z.string().nullable().optional(),
+  timeline: z.unknown().nullable().optional(),
+  errorCode: z.string().nullable().optional(),
+});
+
+export type AiBrowserProbeResponse = z.infer<typeof AiBrowserProbeResponseSchema>;
+
+export const GoogleSmokeRunRequestSchema = z.object({
+  accountId: z.string().uuid(),
+  notebookUrl: z.string().url(),
+  smokeProjectLabel: z.string().min(3).default('NOVELTRANS_SMOKE'),
+  headless: z.boolean().optional(),
+  scenarios: z
+    .array(z.enum(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']))
+    .optional(),
+});
+
+export const GoogleSmokeRunResponseSchema = z.object({
+  overall: z.enum(['PASS', 'FAIL', 'NOT_RUN']),
+  startedAt: z.string(),
+  finishedAt: z.string(),
+  reportPath: z.string(),
+  artifactsDir: z.string(),
+  results: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      status: z.enum(['PASS', 'FAIL', 'SKIP']),
+      durationMs: z.number(),
+      message: z.string(),
+      screenshotPath: z.string().nullable(),
+      timelinePath: z.string().nullable(),
+    }),
+  ),
+});
+
+export type GoogleSmokeRunResponse = z.infer<typeof GoogleSmokeRunResponseSchema>;
+
 export const ConnectionTestRequestSchema = z.object({
   kind: ConnectionTestKindSchema,
   accountId: z.string().uuid(),
@@ -55,6 +125,19 @@ export const HealthReportSchema = z.object({
   selectorOverridesValid: z.boolean(),
   logRedactionEnabled: z.literal(true),
   notes: z.array(z.string()),
+  profileLeases: z
+    .array(
+      z.object({
+        accountId: z.string(),
+        ownerId: z.string(),
+        operation: z.string(),
+        label: z.string(),
+        pid: z.number().int(),
+        expiresAt: z.string(),
+        profilePath: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 export type HealthReport = z.infer<typeof HealthReportSchema>;

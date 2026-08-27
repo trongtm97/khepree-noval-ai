@@ -8,6 +8,10 @@ import {
   type AiProviderType,
   type AiResponseStatus,
 } from '@shared/constants/ai-provider';
+import {
+  AI_ROUTING_META_KEYS,
+  type AiRoutingMode,
+} from '@shared/constants/provider-preflight';
 import type { IAIProvider } from './iai-provider';
 import type { AIResponse, SendPromptOptions } from './types';
 import { isGeminiSoftErrorText, geminiSoftErrorSnippet } from '@shared/utils/gemini-soft-error';
@@ -17,6 +21,7 @@ import { newId } from '../db/utils/uuid';
 import type { JobExecuteContext, InitialSendResult } from '../jobs/batch-executor';
 import type { RepairSendRequest, RepairSendResult } from '../jobs/repair-loop';
 import { getTranslationPackService } from '../services/translation-pack-service-singleton';
+import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
 import { parseJobConfig } from '../jobs/batch-executor';
 import type { TranslationPackDto as Pack } from '@shared/schemas/translation-pack';
 import { ResponseParser } from '../jobs/response-parser';
@@ -32,6 +37,20 @@ import {
 import type { TranslationLine } from '@shared/schemas/output-protocol';
 import type { TermDeltaItem } from '@shared/schemas/term-delta';
 import type { MemoryDeltaItem } from '@shared/schemas/memory-delta';
+import {
+  DEFAULT_MAX_CONTINUATION_ATTEMPTS,
+  DEFAULT_MAX_CHAPTERS_PER_JOB,
+} from '@shared/constants/job';
+import {
+  runContinuationLoop,
+  assessBatchCompleteness,
+} from '../jobs/continuation';
+import type { RepairParagraph } from '../jobs/repair-strategies';
+import {
+  checkProviderForJob,
+  filterProvidersByPreflight,
+  type ProviderPreflightReport,
+} from './provider-preflight';
 
 /** Retries when a chunk fails transiently or returns zero translation lines. */
 const CHUNK_SEND_RETRIES = 2;
@@ -139,12 +158,31 @@ export class AiProviderManager {
     }
   }
 
+  getRoutingMode(): AiRoutingMode {
+    const raw = this.db.appMeta.get(AI_ROUTING_META_KEYS.mode);
+    return raw === 'PIN' ? 'PIN' : 'AUTO';
+  }
+
+  setRoutingMode(mode: AiRoutingMode, pinnedProviderId?: string | null): void {
+    this.db.appMeta.set(AI_ROUTING_META_KEYS.mode, mode);
+    if (pinnedProviderId !== undefined) {
+      this.db.appMeta.set(
+        AI_ROUTING_META_KEYS.pinnedProviderId,
+        pinnedProviderId ?? '',
+      );
+    }
+  }
+
+  getPinnedProviderId(): string | null {
+    const fromMeta = this.db.appMeta.get(AI_ROUTING_META_KEYS.pinnedProviderId);
+    if (fromMeta && fromMeta.length > 0) return fromMeta;
+    return this.db.aiProviders.listEnabledOrdered()[0]?.id ?? null;
+  }
+
   /**
    * Ordered enabled providers — **DB priority first** (lower number = tried first).
-   * Soft rules only:
-   * - Playwright needs a usable notebook mapping; if missing, demote Playwright
-   *   so Web API can run instead of hard-failing "Notebook mapping not ready".
-   * Does **not** ignore user priority when Web API has a READY account.
+   * Soft demote when notebook missing (legacy sync path). Prefer
+   * {@link selectProvidersForJob} which runs account-aware preflight.
    */
   selectOrderedProviders(options?: {
     projectId?: string;
@@ -159,7 +197,8 @@ export class AiProviderManager {
 
     const notebookOk = (() => {
       if (!options?.projectId || !options.googleAccountId) return false;
-      const mapping = this.db.notebooks.getByProjectAndWorker(
+      const mapping = resolveTranslationNotebook(
+        this.db,
         options.projectId,
         options.googleAccountId,
       );
@@ -170,7 +209,6 @@ export class AiProviderManager {
     })();
 
     if (!notebookOk) {
-      // Playwright cannot succeed without notebook — keep it as fallback only.
       result.sort((a, b) => {
         const score = (p: IAIProvider): number =>
           p.providerType === 'PLAYWRIGHT_GEMINI' ? 1 : 0;
@@ -181,15 +219,94 @@ export class AiProviderManager {
     return result;
   }
 
+  /**
+   * Account-aware selection: only providers that pass preflight.
+   * PIN → preferred provider only (no auto-switch).
+   * AUTO → READY (else DEGRADED) by priority.
+   */
+  async selectProvidersForJob(options: {
+    projectId: string;
+    googleAccountId: string;
+    jobId?: string | null;
+    notebookRole?: 'TRANSLATION' | 'RESEARCH' | 'SINGLE';
+    pinnedProviderId?: string | null;
+    routingMode?: AiRoutingMode;
+  }): Promise<{ providers: IAIProvider[]; reports: ProviderPreflightReport[] }> {
+    const mode = options.routingMode ?? this.getRoutingMode();
+    const pinnedId =
+      options.pinnedProviderId ??
+      (mode === 'PIN' ? this.getPinnedProviderId() : null);
+
+    let candidates = this.selectOrderedProviders({
+      projectId: options.projectId,
+      googleAccountId: options.googleAccountId,
+    });
+
+    if (mode === 'PIN' && pinnedId) {
+      const pinned = candidates.find((p) => p.providerId === pinnedId);
+      candidates = pinned ? [pinned] : [];
+    }
+
+    const reports: ProviderPreflightReport[] = [];
+    for (const provider of candidates) {
+      const report = await checkProviderForJob(this.db, {
+        accountId: options.googleAccountId,
+        projectId: options.projectId,
+        notebookRole: options.notebookRole ?? 'TRANSLATION',
+        providerId: provider.providerId,
+        provider,
+        jobId: options.jobId ?? null,
+        lightweight: true,
+      });
+      reports.push(report);
+      logger.info('Provider preflight', {
+        providerId: provider.providerId,
+        result: report.result,
+        message: report.message,
+      });
+    }
+
+    const usableReports = filterProvidersByPreflight(reports, mode);
+    const usableIds = new Set(usableReports.map((r) => r.providerId));
+    const providers = candidates.filter((p) => usableIds.has(p.providerId));
+
+    return { providers, reports };
+  }
+
   async sendWithFallback(
     pack: TranslationPackDto,
-    options?: SendPromptOptions,
+    options?: SendPromptOptions & { pinnedProviderId?: string | null },
   ): Promise<AIResponse> {
     await this.initialize();
-    const ordered = this.selectOrderedProviders({
-      projectId: options?.projectId,
-      googleAccountId: options?.googleAccountId ?? undefined,
-    });
+
+    let ordered: IAIProvider[];
+    if (options?.projectId && options.googleAccountId) {
+      const selected = await this.selectProvidersForJob({
+        projectId: options.projectId,
+        googleAccountId: options.googleAccountId,
+        jobId: options.jobId ?? null,
+        pinnedProviderId: options.pinnedProviderId ?? null,
+      });
+      ordered = selected.providers;
+      if (ordered.length === 0) {
+        const detail = selected.reports
+          .map((r) => `${r.providerId}:${r.result}`)
+          .join(', ');
+        return {
+          requestId: options?.requestId ?? newId(),
+          status: 'ERROR',
+          text: '',
+          errorCode: 'NO_READY_PROVIDER',
+          errorMessage: `Không có AI provider READY cho tài khoản này (${detail || 'empty'}).`,
+        };
+      }
+    } else {
+      ordered = this.selectOrderedProviders({
+        projectId: options?.projectId,
+        googleAccountId: options?.googleAccountId ?? undefined,
+      });
+    }
+
     if (ordered.length === 0) {
       return {
         requestId: options?.requestId ?? newId(),
@@ -200,7 +317,7 @@ export class AiProviderManager {
       };
     }
 
-    const fallbackOn = this.isFallbackEnabled();
+    const fallbackOn = this.isFallbackEnabled() && this.getRoutingMode() !== 'PIN';
     const fallbackStatuses = new Set(this.getFallbackStatuses());
     let last: AIResponse | null = null;
 
@@ -208,6 +325,7 @@ export class AiProviderManager {
       const provider = ordered[i]!;
       const row = this.db.aiProviders.getById(provider.providerId);
 
+      // Legacy skip if somehow selected without accounts (preflight should catch).
       if (provider.providerType === 'GEMINI_WEB_API') {
         const readyAccounts = this.db.aiAccounts.listReadyByProvider(provider.providerId);
         if (readyAccounts.length === 0) {
@@ -225,13 +343,17 @@ export class AiProviderManager {
         }
       }
 
+      const packForProvider = this.adaptPackForProvider(pack, provider, options);
+
       logger.info('Đang sử dụng AI provider', {
         provider: provider.providerType,
         providerId: provider.providerId,
         event: 'REQUEST_STARTED',
+        packModeHint:
+          provider.providerType === 'GEMINI_WEB_API' ? 'sqlite-local' : 'notebook',
       });
 
-      const response = await provider.sendPrompt(pack, {
+      const response = await provider.sendPrompt(packForProvider, {
         ...options,
         requestId: options?.requestId ?? newId(),
       });
@@ -339,10 +461,19 @@ export class AiProviderManager {
     const config = parseJobConfig(ctx.job.config);
     const paragraphs = config.batchParagraphs;
     await this.initialize();
-    const ordered = this.selectOrderedProviders({
+    const { providers: ordered } = await this.selectProvidersForJob({
       projectId: ctx.job.project_id,
       googleAccountId: ctx.accountId,
+      jobId: ctx.job.id,
+      notebookRole: 'TRANSLATION',
+      pinnedProviderId:
+        (config as { pinnedProviderId?: string }).pinnedProviderId ?? null,
     });
+    if (ordered.length === 0) {
+      throw new Error(
+        'NO_READY_PROVIDER: Không có AI provider READY cho tài khoản/job này (preflight).',
+      );
+    }
     const batchSize = resolveTranslateBatchParagraphs(ordered[0]?.providerType);
     const playwrightFirst = ordered[0]?.providerType === 'PLAYWRIGHT_GEMINI';
     const chunks = playwrightFirst
@@ -361,10 +492,10 @@ export class AiProviderManager {
       firstProvider: ordered[0]?.providerType ?? null,
     });
 
-    const packMode = this.resolvePackMode(ctx);
+    const packMode = this.resolvePackMode(ctx, ordered[0]?.providerType);
 
     if (chunks.length <= 1) {
-      const pack = this.buildPackForJob(ctx, config.sourceParagraphIds);
+      const pack = this.buildPackForJob(ctx, config.sourceParagraphIds, packMode);
       this.db.jobs.updateState(ctx.job.id, 'SENDING');
       this.writeSendProgress(ctx, {
         phase: 'sending',
@@ -387,6 +518,8 @@ export class AiProviderManager {
         projectId: ctx.job.project_id,
         googleAccountId: ctx.accountId,
         jobId: ctx.job.id,
+        pinnedProviderId:
+          (config as { pinnedProviderId?: string }).pinnedProviderId ?? null,
       });
       if (response.status !== 'SUCCESS') {
         const msg =
@@ -395,6 +528,17 @@ export class AiProviderManager {
           response.status;
         throw new Error(`${response.status}: ${msg}`);
       }
+      const finalized = await this.finalizeChunkWithContinuation(ctx, {
+        raw: response.text,
+        paragraphIds: config.sourceParagraphIds,
+        batchParagraphs: paragraphs,
+        packMode,
+        chunkIndex: 1,
+        chunkTotal: 1,
+        paragraphsDone: 0,
+        paragraphsTotal: totalParas,
+        providerType: response.providerType,
+      });
       this.writeSendProgress(ctx, {
         phase: 'waiting_ai',
         chunkIndex: 1,
@@ -405,7 +549,7 @@ export class AiProviderManager {
         providerType: response.providerType,
       });
       return {
-        rawResponse: response.text,
+        rawResponse: finalized.raw,
         inputRef: `corr:${response.requestId}`,
       };
     }
@@ -459,7 +603,7 @@ export class AiProviderManager {
           providerType: lastProviderType,
         });
 
-        const pack = this.buildPackForJob(ctx, paragraphIds);
+        const pack = this.buildPackForJob(ctx, paragraphIds, packMode);
         this.db.jobs.updateState(ctx.job.id, 'WAITING_AI');
         this.writeSendProgress(ctx, {
           phase: 'waiting_ai',
@@ -476,6 +620,8 @@ export class AiProviderManager {
           googleAccountId: ctx.accountId,
           jobId: ctx.job.id,
           requestId: newId(),
+          pinnedProviderId:
+            (config as { pinnedProviderId?: string }).pinnedProviderId ?? null,
         });
 
         if (response.status !== 'SUCCESS') {
@@ -517,9 +663,21 @@ export class AiProviderManager {
         if (response.providerType) lastProviderType = response.providerType;
         const parsed = parser.parse(response.text);
         if (parsed.translations.length > 0) {
-          chunkLines = parsed.translations;
-          chunkTermDeltas = parsed.termDeltas;
-          chunkMemoryDeltas = parsed.memoryDeltas;
+          const finalized = await this.finalizeChunkWithContinuation(ctx, {
+            raw: response.text,
+            paragraphIds,
+            batchParagraphs: paragraphs,
+            packMode,
+            chunkIndex: sendOrdinal,
+            chunkTotal: progressTotal,
+            paragraphsDone: merged.length,
+            paragraphsTotal: totalParas,
+            providerType: response.providerType,
+          });
+          chunkLines = finalized.translations;
+          chunkTermDeltas = finalized.termDeltas;
+          chunkMemoryDeltas = finalized.memoryDeltas;
+          lastRaw = finalized.raw;
           break;
         }
 
@@ -611,12 +769,21 @@ export class AiProviderManager {
   }
 
   /**
-   * Slim = Notebook cold sources trusted (ready / sync_pending).
-   * Anything else (stale, syncing, assisted, missing) → fat so mid-batch
-   * multi-chapter jobs use live SQLite memory after each PASS.
+   * Web API must never pretend Notebook cold sources exist — always SQLite fat pack.
+   * Playwright Translation Notebook may use slim (notebook knowledge).
    */
-  private resolvePackMode(ctx: JobExecuteContext): 'slim' | 'fat' {
-    const mapping = this.db.notebooks.getByProjectAndWorker(
+  private resolvePackMode(
+    ctx: JobExecuteContext,
+    providerType?: string,
+  ): 'slim' | 'fat' {
+    if (providerType === 'GEMINI_WEB_API') {
+      return 'fat';
+    }
+    if (providerType !== 'PLAYWRIGHT_GEMINI') {
+      return 'fat';
+    }
+    const mapping = resolveTranslationNotebook(
+      this.db,
       ctx.job.project_id,
       ctx.accountId,
     );
@@ -624,6 +791,152 @@ export class AiProviderManager {
       mapping &&
       (mapping.status === 'ready' || mapping.status === 'sync_pending');
     return notebookOk ? 'slim' : 'fat';
+  }
+
+  /**
+   * Ensure pack matches provider context rules when falling back mid-flight.
+   */
+  private adaptPackForProvider(
+    pack: TranslationPackDto,
+    provider: IAIProvider,
+    options?: SendPromptOptions,
+  ): TranslationPackDto {
+    if (provider.providerType !== 'GEMINI_WEB_API') {
+      return pack;
+    }
+    // Web API: rebuild fat from SQLite so we never claim Notebook context.
+    const projectId = options?.projectId ?? pack.projectId;
+    const accountId = options?.googleAccountId ?? undefined;
+    if (!projectId || pack.chapterIds.length === 0) {
+      return pack;
+    }
+    try {
+      return getTranslationPackService().build({
+        projectId,
+        chapterIds: pack.chapterIds,
+        paragraphIds: undefined,
+        googleAccountId: accountId ?? undefined,
+        packMode: 'fat',
+        forceFatPack: true,
+      });
+    } catch (error) {
+      logger.warn('Failed to rebuild fat pack for Web API — using original', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return pack;
+    }
+  }
+
+  private async finalizeChunkWithContinuation(
+    ctx: JobExecuteContext,
+    input: {
+      raw: string;
+      paragraphIds: string[];
+      batchParagraphs: RepairParagraph[];
+      packMode: 'slim' | 'fat';
+      chunkIndex: number;
+      chunkTotal: number;
+      paragraphsDone: number;
+      paragraphsTotal: number;
+      providerType?: string;
+    },
+  ): Promise<{
+    raw: string;
+    translations: TranslationLine[];
+    termDeltas: TermDeltaItem[];
+    memoryDeltas: MemoryDeltaItem[];
+  }> {
+    const parser = new ResponseParser();
+    const initialParsed = parser.parse(input.raw);
+    const completeness = assessBatchCompleteness(
+      input.raw,
+      initialParsed,
+      input.paragraphIds,
+    );
+    if (
+      !completeness.incomplete ||
+      completeness.missingCount === 0 ||
+      !initialParsed.translations.some((t) => t.text.trim())
+    ) {
+      return {
+        raw: input.raw,
+        translations: initialParsed.translations,
+        termDeltas: initialParsed.termDeltas,
+        memoryDeltas: initialParsed.memoryDeltas,
+      };
+    }
+
+    const config = parseJobConfig(ctx.job.config);
+    const chunkParagraphs = input.batchParagraphs.filter((p) =>
+      input.paragraphIds.includes(p.paragraphId),
+    );
+    const result = await runContinuationLoop({
+      batchParagraphs: chunkParagraphs,
+      sourceParagraphIds: input.paragraphIds,
+      initialRaw: input.raw,
+      maxAttempts: config.maxContinuationAttempts ?? DEFAULT_MAX_CONTINUATION_ATTEMPTS,
+      parser,
+      persistPartial: (raw, meta) => this.persistPartialRaw(ctx.job.id, raw, meta),
+      onProgress: (p) =>
+        this.writeSendProgress(ctx, {
+          phase: 'continuation',
+          chunkIndex: input.chunkIndex,
+          chunkTotal: input.chunkTotal,
+          paragraphsDone: input.paragraphsDone,
+          paragraphsTotal: input.paragraphsTotal,
+          packMode: input.packMode,
+          providerType: input.providerType,
+          continuationRound: p.continuationRound,
+          lastCompletedParagraphId: p.lastCompletedParagraphId,
+        }),
+      sendContinuation: async (prompt, requestId) => {
+        const pack = this.buildMinimalPack(ctx.job.project_id, prompt, ctx.job);
+        const response = await this.sendWithFallback(pack, {
+          projectId: ctx.job.project_id,
+          googleAccountId: ctx.accountId,
+          jobId: ctx.job.id,
+          requestId,
+        });
+        return {
+          text: response.text,
+          requestId: response.requestId,
+          status: response.status,
+        };
+      },
+    });
+
+    return {
+      raw: result.rawResponse,
+      translations: result.translations,
+      termDeltas: result.termDeltas,
+      memoryDeltas: result.memoryDeltas,
+    };
+  }
+
+  private persistPartialRaw(
+    jobId: string,
+    raw: string,
+    meta: { round: number; label: string },
+  ): void {
+    const existing = this.db.jobs.listAttempts(jobId);
+    const attemptNumber =
+      existing.length === 0
+        ? 1
+        : Math.max(...existing.map((a) => a.attempt_number)) + 1;
+    const truncated =
+      raw.length <= 50_000 ? raw : `${raw.slice(0, 50_000)}\n...[truncated]`;
+    const attempt = this.db.jobs.startAttempt({
+      job_id: jobId,
+      attempt_number: attemptNumber,
+      reason: 'PARTIAL_RAW',
+      input_ref: null,
+      state: 'RUNNING',
+    });
+    this.db.jobs.completeAttempt(attempt.id, {
+      state: 'SUCCEEDED',
+      output: truncated,
+      result: JSON.stringify({ phase: 'partial_raw', ...meta }),
+    });
   }
 
   private writeSendProgress(
@@ -636,6 +949,8 @@ export class AiProviderManager {
       paragraphsTotal: number;
       packMode?: 'slim' | 'fat';
       providerType?: string;
+      continuationRound?: number;
+      lastCompletedParagraphId?: string | null;
     },
   ): void {
     this.db.jobs.updateProgress(
@@ -715,6 +1030,7 @@ export class AiProviderManager {
   private buildPackForJob(
     ctx: JobExecuteContext,
     paragraphIds?: string[],
+    packMode: 'slim' | 'fat' = 'fat',
   ): Pack {
     const config = parseJobConfig(ctx.job.config);
     let chapterIds = config.chapterIds ?? [];
@@ -749,22 +1065,16 @@ export class AiProviderManager {
       throw new Error('Cannot build TranslationPack: no chapterIds for job');
     }
 
-    const limited = chapterIds.slice(0, 3);
-    const mapping = this.db.notebooks.getByProjectAndWorker(
-      ctx.job.project_id,
-      ctx.accountId,
-    );
-    const notebookOk =
-      mapping &&
-      (mapping.status === 'ready' || mapping.status === 'sync_pending');
+    const limited = chapterIds.slice(0, DEFAULT_MAX_CHAPTERS_PER_JOB);
+    const useFat = packMode === 'fat';
 
     return getTranslationPackService().build({
       projectId: ctx.job.project_id,
       chapterIds: limited,
       paragraphIds: ids.length > 0 ? ids : undefined,
       googleAccountId: ctx.accountId,
-      packMode: notebookOk ? 'slim' : 'fat',
-      forceFatPack: !notebookOk,
+      packMode: useFat ? 'fat' : 'slim',
+      forceFatPack: useFat,
     });
   }
 
@@ -782,7 +1092,7 @@ export class AiProviderManager {
           return n >= job.chapter_from! && n <= job.chapter_to!;
         })
         .map((c) => c.id)
-        .slice(0, 3);
+        .slice(0, DEFAULT_MAX_CHAPTERS_PER_JOB);
     }
     if (chapterIds.length === 0 && chapters[0]) {
       chapterIds = [chapters[0].id];

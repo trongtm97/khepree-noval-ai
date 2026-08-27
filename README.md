@@ -10,6 +10,21 @@ Phases 0–19 complete (scaffold → diagnostics). See [docs/PROJECT_STATE.md](d
 
 This tree includes the **Windows production packaging** pass (Forge installer, first-run wizard, crash handlers, update provider abstraction). Treat as **release candidate** until [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) items are marked PASS.
 
+### Playwright / Gemini browser — not production-ready by default
+
+Do **not** claim the Playwright NotebookLM/Gemini path is production-ready unless [docs/REAL_GOOGLE_TEST_REPORT.md](docs/REAL_GOOGLE_TEST_REPORT.md) shows **Overall = PASS** for scenarios A–H.
+
+```bash
+copy google-smoke.config.example.json google-smoke.config.json
+# profilePath = logged-in NovelTrans browser profile
+# notebookUrl = dedicated SMOKE notebook (never a production novel)
+set NOVELTRANS_GOOGLE_SMOKE=1
+npm run test:google-smoke
+```
+
+Or: Developer Diagnostics → **Run Real Google Smoke**.  
+This suite is **opt-in** and is **not** part of default `npm test` / CI.
+
 ## Documentation
 
 | Doc | Description |
@@ -17,6 +32,7 @@ This tree includes the **Windows production packaging** pass (Forge installer, f
 | [USER_GUIDE.md](docs/USER_GUIDE.md) | End-user workflows |
 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common failures |
 | [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Manual QA before shipping |
+| [REAL_GOOGLE_TEST_REPORT.md](docs/REAL_GOOGLE_TEST_REPORT.md) | Real Google smoke A–H gate |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design |
 | [SECURITY.md](docs/SECURITY.md) | Secrets, IPC, Electron hardening |
@@ -52,6 +68,7 @@ npm run lint
 npm test                  # Unit (+ integration via include; perf excluded)
 npm run test:integration
 npm run test:perf         # 100k terms + 2000×3 chapters (slow)
+npm run test:google-smoke # Real Google A–H (opt-in; set NOVELTRANS_GOOGLE_SMOKE=1)
 npm run package           # Unpackaged build
 npm run make              # Windows Squirrel installer
 ```

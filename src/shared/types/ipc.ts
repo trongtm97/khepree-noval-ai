@@ -73,6 +73,8 @@ import type { TermImportDuplicateStrategy } from '../constants/portability';
 import type { AutomationProviderId } from '../constants/diagnostics';
 import type {
   ConnectionTestResponseSchema,
+  AiBrowserProbeResponseSchema,
+  GoogleSmokeRunResponseSchema,
   ExportDiagnosticsResponseSchema,
   GetHealthReportResponseSchema,
   InteractiveRepairApplyResponseSchema,
@@ -502,7 +504,12 @@ export interface NovelTransApi {
     health: (input: {
       projectId: string;
       accountId?: string;
-    }) => Promise<import('../schemas/notebook').NotebookHealthDto>;
+      role?: 'SINGLE' | 'RESEARCH' | 'TRANSLATION';
+      dual?: boolean;
+    }) => Promise<
+      | import('../schemas/notebook').NotebookHealthDto
+      | import('../schemas/notebook').NotebookDualHealthDto
+    >;
     syncNow: (input: {
       projectId: string;
       accountId?: string;
@@ -859,6 +866,18 @@ export interface NovelTransApi {
       kind: 'gemini' | 'notebook' | 'drive' | 'browserProfile';
       accountId: string;
     }) => Promise<z.infer<typeof ConnectionTestResponseSchema>>;
+    aiBrowserProbe: (input: {
+      kind: 'browser' | 'login' | 'notebook' | 'composer' | 'send' | 'trialTranslate';
+      accountId: string;
+      projectId?: string;
+    }) => Promise<z.infer<typeof AiBrowserProbeResponseSchema>>;
+    googleSmoke: (input: {
+      accountId: string;
+      notebookUrl: string;
+      smokeProjectLabel?: string;
+      headless?: boolean;
+      scenarios?: Array<'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H'>;
+    }) => Promise<z.infer<typeof GoogleSmokeRunResponseSchema>>;
     getOverrides: () => Promise<z.infer<typeof GetSelectorOverridesResponseSchema>>;
     loadOverrides: (input?: {
       filePath?: string;

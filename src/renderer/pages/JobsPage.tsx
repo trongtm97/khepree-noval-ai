@@ -102,7 +102,12 @@ function jobProgress(job: JobDto): number {
   return Math.min(95, Math.max(5, Math.round((workflowStepIndex(job.state) / 6) * 100)));
 }
 
-function jobProgressLabel(job: JobDto, fallback: string): string {
+function jobProgressLabel(job: JobDto, fallback: string, t: (key: string) => string): string {
+  if (job.progress?.phase === 'continuation') {
+    const round = job.progress.continuationRound;
+    const suffix = typeof round === 'number' ? ` (${round})` : '';
+    return t('jobs.continuationReceiving') + suffix;
+  }
   const total = job.progress?.paragraphsTotal;
   const done = job.progress?.paragraphsDone;
   const chunkIndex = job.progress?.chunkIndex;
@@ -348,7 +353,7 @@ export function JobsPage() {
           <div style={{ minWidth: 100 }}>
             <ProgressBar
               value={jobProgress(job)}
-              label={jobProgressLabel(job, statusLabel(job.state))}
+              label={jobProgressLabel(job, statusLabel(job.state), t)}
             />
             {job.progress?.learning?.emptyDeltas ? (
               <div className="muted" style={{ fontSize: '0.8em', marginTop: 2 }}>
@@ -622,7 +627,7 @@ export function JobsPage() {
             ) : null}
             <ProgressBar
               value={jobProgress(selected)}
-              label={jobProgressLabel(selected, statusLabel(selected.state))}
+              label={jobProgressLabel(selected, statusLabel(selected.state), t)}
             />
 
             <SectionHeader title={t('jobs.detail')} />

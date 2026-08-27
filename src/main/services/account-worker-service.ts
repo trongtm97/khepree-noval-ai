@@ -11,7 +11,9 @@ import {
   type BrowserProfileManager,
 } from '../automation/browser-runner/profile-manager';
 import {
+  ProfileBusyError,
   profileLockManager,
+  startLeaseHeartbeat,
   type ProfileLockManager,
 } from '../automation/browser-runner/profile-lock';
 import type {
@@ -43,6 +45,7 @@ export class AccountWorkerService {
   private readonly locks: ProfileLockManager;
   private readonly browser: BrowserSessionController;
   private readonly openSessions = new Map<string, BrowserSessionHandle>();
+  private readonly leaseHeartbeats = new Map<string, () => void>();
 
   constructor(deps: AccountWorkerServiceDeps) {
     this.accounts = deps.accounts;
@@ -222,16 +225,23 @@ export class AccountWorkerService {
     try {
       await this.openBrowserSession(accountId, url);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (/Executable doesn't exist|browserType\.launch|playwright/i.test(message)) {
+      if (error instanceof ProfileBusyError) {
         throw new Error(
-          'Playwright Chromium chưa cài. Chạy: npx playwright install chromium',
+          `PROFILE_BUSY: Profile đang được sử dụng bởi: ${error.lease.label}`,
         );
       }
-      if (/already in use|lock file exists|profile lock/i.test(message)) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/Executable doesn't exist|browserType\.launch|playwright|Chromium|Edge hoặc Google Chrome/i.test(message)) {
+        // Never tell end users to run npx — prefer Edge/Chrome.
+        if (/Edge|Chrome|Chromium|Không tìm thấy/i.test(message)) {
+          throw new Error(message);
+        }
         throw new Error(
-          'Browser profile đang bị khóa. Đóng cửa sổ Chromium cũ hoặc khởi động lại app rồi thử lại.',
+          'Không tìm thấy Microsoft Edge hoặc Google Chrome. Cài Edge hoặc Chrome để dùng Browser provider.',
         );
+      }
+      if (/PROFILE_BUSY|already in use|profile lease|profile lock/i.test(message)) {
+        throw new Error(message);
       }
       throw error;
     }
@@ -277,8 +287,12 @@ export class AccountWorkerService {
         cookies = result.cookies;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (/already in use|lock file exists|profile lock/i.test(message)) {
+      if (
+        error instanceof ProfileBusyError ||
+        /PROFILE_BUSY|already in use|lock file exists|profile (lease|lock)/i.test(
+          error instanceof Error ? error.message : String(error),
+        )
+      ) {
         this.accounts.update(accountId, { status: 'BUSY' });
         return {
           account: this.assertDetail(accountId),
@@ -397,9 +411,8 @@ export class AccountWorkerService {
 
     if (profile) {
       try {
-        this.locks.forceClearStaleLock(
-          this.profiles.resolveProfilePath(profile.profile_dir_name),
-        );
+        const profilePath = this.profiles.resolveProfilePath(profile.profile_dir_name);
+        this.locks.recoverIfStale(profilePath);
         this.profiles.deleteProfileDirectory(profile.profile_dir_name);
       } catch (error) {
         logger.warn('Failed to delete browser profile directory', {
@@ -434,7 +447,22 @@ export class AccountWorkerService {
         }
       }
       this.openSessions.delete(accountId);
-      this.locks.forceClearStaleLock(existing.profilePath);
+      this.stopLeaseHeartbeat(accountId);
+      try {
+        this.locks.releaseLease(existing.profilePath, accountId);
+      } catch {
+        this.locks.recoverIfStale(existing.profilePath);
+      }
+    }
+
+    // Evict persistent translation runtime before opening Accounts browser.
+    try {
+      const { getBrowserRuntimeManager } = await import(
+        '../automation/browser-runner/browser-runtime-manager'
+      );
+      await getBrowserRuntimeManager().evictForExternalLaunch(accountId);
+    } catch {
+      // ignore
     }
 
     const profile = this.accounts.getProfile(accountId);
@@ -443,12 +471,20 @@ export class AccountWorkerService {
     }
 
     const profilePath = this.profiles.resolveProfilePath(profile.profile_dir_name);
-    // Stale lock from crashed Notebook automation blocks Open Browser.
-    if (!this.openSessions.has(accountId) && this.locks.isLocked(profilePath)) {
-      logger.warn('Clearing stale profile lock before openBrowser', { accountId });
-      this.locks.forceClearStaleLock(profilePath);
-    }
-    this.locks.acquire(profilePath, accountId);
+    // Recover only if PID dead / lease expired — never force-clear a live translation lock.
+    this.locks.recoverIfStale(profilePath);
+
+    this.locks.acquireLease({
+      profilePath,
+      ownerId: accountId,
+      accountId,
+      operation: 'manual_browser',
+      label: 'Mở trình duyệt thủ công',
+    });
+    this.leaseHeartbeats.set(
+      accountId,
+      startLeaseHeartbeat(this.locks, { profilePath, ownerId: accountId }),
+    );
 
     try {
       const handle = await this.browser.open({
@@ -458,7 +494,12 @@ export class AccountWorkerService {
         headless: false,
         onClose: () => {
           this.openSessions.delete(accountId);
-          this.locks.release(profilePath, accountId);
+          this.stopLeaseHeartbeat(accountId);
+          try {
+            this.locks.releaseLease(profilePath, accountId);
+          } catch {
+            this.locks.recoverIfStale(profilePath);
+          }
           const account = this.accounts.getById(accountId);
           if (account?.status === 'BUSY') {
             this.accounts.update(accountId, {
@@ -469,8 +510,21 @@ export class AccountWorkerService {
       });
       this.openSessions.set(accountId, handle);
     } catch (error) {
-      this.locks.release(profilePath, accountId);
+      this.stopLeaseHeartbeat(accountId);
+      try {
+        this.locks.releaseLease(profilePath, accountId);
+      } catch {
+        this.locks.recoverIfStale(profilePath);
+      }
       throw error;
+    }
+  }
+
+  private stopLeaseHeartbeat(accountId: string): void {
+    const stop = this.leaseHeartbeats.get(accountId);
+    if (stop) {
+      stop();
+      this.leaseHeartbeats.delete(accountId);
     }
   }
 
@@ -483,7 +537,12 @@ export class AccountWorkerService {
       await handle.close();
     } finally {
       this.openSessions.delete(accountId);
-      this.locks.release(handle.profilePath, accountId);
+      this.stopLeaseHeartbeat(accountId);
+      try {
+        this.locks.releaseLease(handle.profilePath, accountId);
+      } catch {
+        this.locks.recoverIfStale(handle.profilePath);
+      }
     }
   }
 
@@ -498,7 +557,12 @@ export class AccountWorkerService {
     }
     if (existing) {
       this.openSessions.delete(accountId);
-      this.locks.forceClearStaleLock(existing.profilePath);
+      this.stopLeaseHeartbeat(accountId);
+      try {
+        this.locks.releaseLease(existing.profilePath, accountId);
+      } catch {
+        this.locks.recoverIfStale(existing.profilePath);
+      }
     }
 
     await this.openBrowserSession(accountId, startUrl);

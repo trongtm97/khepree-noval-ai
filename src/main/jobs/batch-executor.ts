@@ -9,7 +9,7 @@ import {
   DEFAULT_MAX_REPAIR_ATTEMPTS,
   DEFAULT_QUOTA_COOLDOWN_MS,
 } from '@shared/constants/job';
-import { profileLockManager } from '../automation/browser-runner/profile-lock';
+import { profileLockManager, startLeaseHeartbeat } from '../automation/browser-runner/profile-lock';
 import { logger } from '../logging/logger';
 import { newId } from '../db/utils/uuid';
 
@@ -55,7 +55,17 @@ export class BatchExecutor {
     const leaseMs = this.options.leaseMs ?? DEFAULT_JOB_LEASE_MS;
     const heartbeatMs = this.options.leaseHeartbeatMs ?? DEFAULT_LEASE_HEARTBEAT_MS;
 
-    profileLockManager.acquire(profilePath, ownerId);
+    profileLockManager.acquireLease({
+      profilePath,
+      ownerId,
+      accountId: ctx.accountId,
+      operation: 'translation',
+      label: `Dịch job ${job.id.slice(0, 8)}…`,
+    });
+    const stopProfileHeartbeat = startLeaseHeartbeat(profileLockManager, {
+      profilePath,
+      ownerId,
+    });
     if (job.worker_id) {
       this.db.workerStates.markBusy(job.worker_id, job.id);
     }
@@ -161,10 +171,23 @@ export class BatchExecutor {
       return { finalState: 'NEEDS_ATTENTION' };
     } finally {
       clearInterval(heartbeat);
+      stopProfileHeartbeat();
       try {
-        profileLockManager.release(profilePath, ownerId);
+        profileLockManager.releaseLease(profilePath, ownerId);
+      } catch (error) {
+        logger.warn('Profile lease release failed', {
+          jobId: job.id,
+          message: error instanceof Error ? error.message : String(error),
+        });
+        profileLockManager.recoverIfStale(profilePath);
+      }
+      try {
+        const { getBrowserRuntimeManager } = await import(
+          '../automation/browser-runner/browser-runtime-manager'
+        );
+        getBrowserRuntimeManager().adoptRuntimeLockIfNeeded(ctx.accountId, profilePath);
       } catch {
-        profileLockManager.forceClearStaleLock(profilePath);
+        // Runtime manager optional during early boot / tests without init
       }
       if (job.worker_id) {
         const worker = this.db.workerStates.getById(job.worker_id);
@@ -180,8 +203,10 @@ export interface TranslateJobConfig {
   batchParagraphs: RepairParagraph[];
   sourceParagraphIds: string[];
   maxRepairAttempts?: number;
+  maxContinuationAttempts?: number;
   lockedTerms?: LockedTermForQa[];
   chapterIds?: string[];
+  batchDecisionId?: string | null;
 }
 
 export function parseJobConfig(raw: string | null): TranslateJobConfig {

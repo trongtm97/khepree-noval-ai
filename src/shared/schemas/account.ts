@@ -22,6 +22,17 @@ export const GoogleAccountDtoSchema = z.object({
   assignedProjects: z.array(z.string()),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /** Active process-aware profile lease, if any. */
+  profileLease: z
+    .object({
+      ownerId: z.string(),
+      operation: z.string(),
+      label: z.string(),
+      pid: z.number().int(),
+      expiresAt: z.string(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export type GoogleAccountDto = z.infer<typeof GoogleAccountDtoSchema>;

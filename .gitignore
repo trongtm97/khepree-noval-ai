@@ -46,3 +46,12 @@ screenshots/
 # Temp
 tmp/
 temp/
+
+# Real Google smoke local config + artifacts (never commit secrets / profiles)
+google-smoke.config.json
+tmp/google-smoke-artifacts/
+
+# PyInstaller intermediate build (output exe lives in resources/workers/)
+workers/gemini_webapi_worker/build/
+workers/gemini_webapi_worker/dist/
+

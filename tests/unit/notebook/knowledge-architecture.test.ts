@@ -90,7 +90,7 @@ describe('NotebookKnowledgeBuilder', () => {
     const b = builder.buildAll(projectId);
     expect(Object.keys(a)).toHaveLength(8);
     expect(a['00_BOOK_PROFILE.md']).toContain('Tiên Nghịch');
-    expect(a['01_TRANSLATION_RULES.md']).toContain('Knowledge Priority');
+    expect(a['01_TRANSLATION_RULES.md']).toContain('LOCKED PROJECT TERM');
     expect(a['06_WORLD_KNOWLEDGE.md']).toBeTruthy();
     expect(a['07_RECENT_CONTEXT.md']).toBeTruthy();
     expect(hashKnowledgeContent(a['00_BOOK_PROFILE.md'])).toBe(
@@ -113,7 +113,7 @@ describe('NotebookKnowledgeBuilder', () => {
     expect(after.dirty).toBe(1);
   });
 
-  it('keeps knowledge under size caps even with many terms', () => {
+  it('keeps knowledge under char budget with metadata (many terms)', () => {
     for (let i = 0; i < 400; i += 1) {
       db.terms.create({
         source_simplified: `词${i}`,
@@ -124,7 +124,11 @@ describe('NotebookKnowledgeBuilder', () => {
       });
     }
     const content = new NotebookKnowledgeBuilder(db).buildProjectTerms(projectId);
-    expect(content.length).toBeLessThanOrEqual(KNOWLEDGE_SIZE_CAPS.project_terms);
+    expect(content.length).toBeLessThanOrEqual(KNOWLEDGE_SIZE_CAPS.project_terms + 100);
+    expect(content).toMatch(/Included: \d+ terms/);
+    if (content.includes('Omitted:')) {
+      expect(content).toMatch(/Omitted: \d+ lower-priority terms/);
+    }
   });
 });
 

@@ -19,6 +19,10 @@ import { MIGRATION_016_AI_PROVIDERS } from './016-ai-providers';
 import { MIGRATION_017_NOTEBOOK_KNOWLEDGE } from './017-notebook-knowledge';
 import { MIGRATION_018_BOOTSTRAP_LIFECYCLE } from './018-bootstrap-lifecycle';
 import { MIGRATION_019_PARAGRAPH_TRAILING_NEWLINES } from './019-paragraph-trailing-newlines';
+import { MIGRATION_020_FULL_NOVEL_PREPROCESS } from './020-full-novel-preprocess';
+import { MIGRATION_021_NOTEBOOK_ROLE } from './021-notebook-role';
+import { MIGRATION_022_BATCH_SIZE_DECISIONS } from './022-batch-size-decisions';
+import { MIGRATION_023_GEMINI_REQUEST_LIFECYCLE } from './023-gemini-request-lifecycle';
 
 export const MIGRATIONS: MigrationDefinition[] = [
   {
@@ -115,6 +119,26 @@ export const MIGRATIONS: MigrationDefinition[] = [
     version: 19,
     name: 'paragraph_trailing_newlines',
     sql: MIGRATION_019_PARAGRAPH_TRAILING_NEWLINES,
+  },
+  {
+    version: 20,
+    name: 'full_novel_preprocess',
+    sql: MIGRATION_020_FULL_NOVEL_PREPROCESS,
+  },
+  {
+    version: 21,
+    name: 'notebook_role',
+    sql: MIGRATION_021_NOTEBOOK_ROLE,
+  },
+  {
+    version: 22,
+    name: 'batch_size_decisions',
+    sql: MIGRATION_022_BATCH_SIZE_DECISIONS,
+  },
+  {
+    version: 23,
+    name: 'gemini_request_lifecycle',
+    sql: MIGRATION_023_GEMINI_REQUEST_LIFECYCLE,
   },
 ];
 

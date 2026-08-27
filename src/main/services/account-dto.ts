@@ -2,11 +2,14 @@ import type { GoogleAccountDetail } from '../db/repositories/google-account-repo
 import type { GoogleAccountDto } from '@shared/schemas/account';
 import type { GoogleAccountPlan, GoogleAccountStatus } from '@shared/constants/google-account';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
+import { profileLockManager } from '../automation/browser-runner/profile-lock';
 
 export function toGoogleAccountDto(detail: GoogleAccountDetail): GoogleAccountDto {
   const browserProfilePath = detail.profile_dir_name
     ? browserProfileManager.resolveProfilePath(detail.profile_dir_name)
     : '';
+
+  const lease = browserProfilePath ? profileLockManager.getLease(browserProfilePath) : null;
 
   return {
     id: detail.id,
@@ -26,5 +29,14 @@ export function toGoogleAccountDto(detail: GoogleAccountDetail): GoogleAccountDt
     assignedProjects: detail.assigned_project_titles,
     createdAt: detail.created_at,
     updatedAt: detail.updated_at,
+    profileLease: lease
+      ? {
+          ownerId: lease.ownerId,
+          operation: lease.operation,
+          label: lease.label,
+          pid: lease.pid,
+          expiresAt: lease.expiresAt,
+        }
+      : null,
   };
 }

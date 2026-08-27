@@ -3,6 +3,18 @@
 Localhost FastAPI bridge between NovelTrans Electron main process and
 [`gemini_webapi`](https://github.com/HanaokaYuzu/Gemini-API).
 
+## Production (Windows packaged)
+
+Build a standalone exe on the **build machine** (end users need no Python):
+
+```bash
+npm run build:gemini-worker
+```
+
+Output: `resources/workers/NovelTransGeminiWorker.exe` (copied into the installer via Forge `extraResource`).
+
+See `docs/WINDOWS_RUNTIME_DEPENDENCIES.md`.
+
 ## Run (dev)
 
 ```bash

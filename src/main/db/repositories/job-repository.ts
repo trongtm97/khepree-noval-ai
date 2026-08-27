@@ -463,4 +463,21 @@ export class JobRepository extends BaseRepository {
       .run(now, now, jobId);
     return result.changes;
   }
+
+  /** All RUNNING attempts across jobs — process crash recovery. */
+  markAllRunningAttemptsCrashed(): number {
+    const now = utcNow();
+    const result = this.db
+      .prepare(
+        `UPDATE job_attempts SET
+          state = 'CRASHED',
+          error = COALESCE(error, 'Process interrupted'),
+          result = COALESCE(result, '{"crash":true}'),
+          completed_at = ?,
+          updated_at = ?
+        WHERE state = 'RUNNING' AND completed_at IS NULL`,
+      )
+      .run(now, now);
+    return result.changes;
+  }
 }

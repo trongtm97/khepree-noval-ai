@@ -141,7 +141,34 @@ export class AiProviderService {
     );
   }
 
-  async checkProvider(providerId: string) {
+  async checkProvider(
+    providerId: string,
+    context?: { accountId?: string; projectId?: string },
+  ) {
+    if (context?.accountId && context.projectId) {
+      const { checkProviderForJob } = await import('./provider-preflight');
+      const report = await checkProviderForJob(this.db, {
+        accountId: context.accountId,
+        projectId: context.projectId,
+        providerId,
+        notebookRole: 'TRANSLATION',
+        lightweight: true,
+      });
+      const status =
+        report.result === 'READY' || report.result === 'DEGRADED'
+          ? ('READY' as const)
+          : report.result === 'NEEDS_LOGIN'
+            ? ('LOGIN_REQUIRED' as const)
+            : ('ERROR' as const);
+      this.db.aiProviders.setStatus(providerId, status);
+      return {
+        ok: report.result === 'READY' || report.result === 'DEGRADED',
+        status,
+        message: report.message,
+        preflight: report.result,
+        checks: report.checks,
+      };
+    }
     const provider = this.manager.getProvider(providerId);
     if (!provider) throw new Error('Provider not registered');
     const health = await provider.healthCheck();

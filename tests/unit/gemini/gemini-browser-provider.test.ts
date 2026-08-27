@@ -82,6 +82,7 @@ describe('GeminiBrowserProvider (streaming fixture DOM)', () => {
       eventLogger,
       maxTimeoutMs: 20_000,
       stabilizationWindowMs: 600,
+      noIndicatorStabilizationWindowMs: 600,
     });
     p.attachPage(page);
     return p;

@@ -20,14 +20,22 @@ import {
 import { HelpContextButton } from '../features/help/HelpContextButton';
 
 import { AiProvidersSettingsPanel } from '../components/settings/AiProvidersSettingsPanel';
+import { AiDiagnosticsSettingsPanel } from '../components/settings/AiDiagnosticsSettingsPanel';
 
-type SettingsTab = 'appearance' | 'language' | 'googleAi' | 'aiProviders' | 'advanced';
+type SettingsTab =
+  | 'appearance'
+  | 'language'
+  | 'googleAi'
+  | 'aiProviders'
+  | 'aiDiagnostics'
+  | 'advanced';
 
 const SETTINGS_TABS: SettingsTab[] = [
   'appearance',
   'language',
   'googleAi',
   'aiProviders',
+  'aiDiagnostics',
   'advanced',
 ];
 
@@ -91,6 +99,7 @@ export function SettingsPage() {
           { id: 'language', label: t('settings.language') },
           { id: 'googleAi', label: t('settings.googleAi') },
           { id: 'aiProviders', label: t('settings.aiProviders') },
+          { id: 'aiDiagnostics', label: t('settings.aiDiagnostics') },
           { id: 'advanced', label: t('settings.advanced') },
         ]}
         value={tab}
@@ -269,6 +278,13 @@ export function SettingsPage() {
 
       <TabPanel active={tab === 'aiProviders'}>
         <AiProvidersSettingsPanel
+          onMessage={setMessage}
+          onError={setError}
+        />
+      </TabPanel>
+
+      <TabPanel active={tab === 'aiDiagnostics'}>
+        <AiDiagnosticsSettingsPanel
           onMessage={setMessage}
           onError={setError}
         />

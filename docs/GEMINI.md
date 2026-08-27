@@ -59,6 +59,20 @@ Each send gets UUID. Marker appended to prompt:
 
 Response bubble must carry same `data-correlation-id` (real UI TBD; fixtures implement this).
 
+## Resumable lifecycle (migration **023**)
+
+`gemini_requests.lifecycle` is the source of truth:
+
+`CREATED` → `COMPOSER_FILLED` → `SEND_CLICKED` → `SENT_CONFIRMED` → `GENERATION_STARTED` → `RESPONSE_SEEN` → `RESPONSE_CAPTURED` → `PARSED` → `COMPLETED`
+
+Also: `FAILED`, `UNKNOWN_AFTER_CRASH`.
+
+Persisted: `correlation_id`, `marker`, `thread_ref`, `notebook_id`, account, project, job, `lifecycle_at` timestamps.
+
+**Critical:** after `SENT_CONFIRMED`, recovery **never** auto-resends. Open same notebook/thread, find marker, wait/capture. Resend only when prompt proven absent **and** lifecycle &lt; `SENT_CONFIRMED`.
+
+Startup (`recoverJobsGeminiAndProfilesOnStartup`): `job_attempts` RUNNING→CRASHED, in-flight gemini_requests → abandon (pre-send) or `UNKNOWN_AFTER_CRASH` (post-send), plus profile leases — not only expired scheduler leases.
+
 ## Raw response storage
 
 - Written to `{cache}/automation/{accountId}/gemini/raw-responses/{correlationId}.txt` for recovery.

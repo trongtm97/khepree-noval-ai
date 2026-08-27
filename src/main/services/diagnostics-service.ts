@@ -4,16 +4,23 @@ import { app } from 'electron';
 import type { Page, BrowserContext } from 'playwright';
 import type { AutomationProviderId } from '@shared/constants/diagnostics';
 import type {
+  AiBrowserProbeKind,
+  AiBrowserProbeResponse,
   ConnectionTestKind,
   ConnectionTestResponse,
   HealthReport,
   LocatorSuggestion,
 } from '@shared/schemas/diagnostics';
+import { AutomationError } from '../automation/errors/automation-errors';
+import { startFailTrace } from '../automation/playwright-tracing';
+import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
+import { NOTEBOOKLM_URL } from '@shared/constants/gemini';
+import { newId } from '../db/utils/uuid';
 import type { SelectorOverrideFile } from '@shared/schemas/selector-override';
 import { SelectorOverrideFileSchema } from '@shared/schemas/selector-override';
 import type { DatabaseManager } from '../db/database-manager';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
-import { profileLockManager } from '../automation/browser-runner/profile-lock';
+import { profileLockManager, startLeaseHeartbeat } from '../automation/browser-runner/profile-lock';
 import { GeminiBrowserProvider } from '../automation/providers/google/gemini-browser-provider';
 import { NotebookProvider } from '../automation/providers/google/notebook-provider';
 import { BrowserEventLogger } from '../automation/browser-event-logger';
@@ -53,6 +60,7 @@ interface RepairRuntime {
   ownerId: string;
   profilePath: string;
   suggestion: LocatorSuggestion | null;
+  stopHeartbeat: () => void;
 }
 
 export class DiagnosticsService {
@@ -123,6 +131,15 @@ export class DiagnosticsService {
       selectorOverridesPath: overridesPath,
       selectorOverridesValid: loaded.errors.length === 0,
       logRedactionEnabled: true,
+      profileLeases: profileLockManager.listActiveLeases().map((lease) => ({
+        accountId: lease.accountId,
+        ownerId: lease.ownerId,
+        operation: lease.operation,
+        label: lease.label,
+        pid: lease.pid,
+        expiresAt: lease.expiresAt,
+        profilePath: lease.profilePath,
+      })),
       notes: [
         'Diagnostics export excludes cookies, OAuth tokens, browser profiles, and localStorage secrets.',
         'Selector overrides are locator data only — no remote code execution.',
@@ -146,6 +163,58 @@ export class DiagnosticsService {
     });
     logger.info('Diagnostics export created', { filePath: result.filePath });
     return result;
+  }
+
+  async runGoogleSmoke(input: {
+    accountId: string;
+    notebookUrl: string;
+    smokeProjectLabel?: string;
+    headless?: boolean;
+    scenarios?: Array<'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H'>;
+  }) {
+    const profile = this.getDb().googleAccounts.getProfile(input.accountId);
+    if (!profile) throw new Error('Browser profile missing for account');
+    const profilePath = browserProfileManager.resolveProfilePath(profile.profile_dir_name);
+    const { parseGoogleSmokeConfig, runGoogleSmoke } = await import('../google-smoke');
+    const artifactsDir = path.join(
+      pathsService.getPath('cache'),
+      'automation',
+      input.accountId,
+      'google-smoke',
+    );
+    const reportPath = path.join(process.cwd(), 'docs', 'REAL_GOOGLE_TEST_REPORT.md');
+    const config = parseGoogleSmokeConfig({
+      enabled: true,
+      profilePath,
+      notebookUrl: input.notebookUrl,
+      headless: input.headless ?? false,
+      smokeProjectLabel: input.smokeProjectLabel ?? 'NOVELTRANS_SMOKE',
+      scenarios: input.scenarios,
+      reportMarkdownPath: reportPath,
+      artifactsDir,
+      allowNonSmokeNotebook: false,
+    });
+    logger.info('Real Google smoke starting from Diagnostics UI', {
+      accountId: input.accountId,
+      notebookUrl: input.notebookUrl,
+    });
+    const report = await runGoogleSmoke(config);
+    return {
+      overall: report.overall,
+      startedAt: report.startedAt,
+      finishedAt: report.finishedAt,
+      reportPath,
+      artifactsDir: report.artifactsDir,
+      results: report.results.map((r) => ({
+        id: r.id,
+        name: r.name,
+        status: r.status,
+        durationMs: r.durationMs,
+        message: r.message,
+        screenshotPath: r.screenshotPath,
+        timelinePath: r.timelinePath,
+      })),
+    };
   }
 
   async runConnectionTest(input: {
@@ -181,6 +250,181 @@ export class DiagnosticsService {
         durationMs: Date.now() - started,
       };
     }
+  }
+
+  /**
+   * Settings → Chẩn đoán AI stepwise probes.
+   * Trial translate uses a tiny prompt and never writes Project Memory.
+   */
+  async runAiBrowserProbe(input: {
+    kind: AiBrowserProbeKind;
+    accountId: string;
+    projectId?: string;
+  }): Promise<AiBrowserProbeResponse> {
+    const started = Date.now();
+    const steps: AiBrowserProbeResponse['steps'] = [];
+    let diagnosticsDir: string | null = null;
+    try {
+      const result = await this.withProviderPage(
+        input.accountId,
+        'google-gemini',
+        GEMINI_URL,
+        async (page, diagDir, context) => {
+          diagnosticsDir = diagDir;
+          const eventLogger = new BrowserEventLogger(
+            null,
+            path.join(diagDir, 'events'),
+          );
+          const provider = new GeminiBrowserProvider({
+            diagnosticsDir: diagDir,
+            eventLogger,
+            workerId: input.accountId,
+          });
+          provider.attachPage(page);
+          provider.beginTimeline();
+          const trace = await startFailTrace(context, diagDir, `probe-${input.kind}`);
+          provider.setFailTraceSession(trace);
+
+          const push = (step: string, ok: boolean, message?: string) => {
+            steps.push({ step, ok, message });
+          };
+
+          try {
+            if (input.kind === 'browser') {
+              const health = await provider.healthCheck();
+              push('browser', health.ok, health.message);
+              return this.probeResult(input.kind, health.ok, steps, started, provider, diagDir, health.message);
+            }
+
+            const loggedIn = await provider.detectLogin();
+            push('login', loggedIn, loggedIn ? 'Google session usable' : 'Login required');
+            if (!loggedIn) {
+              return this.probeResult(input.kind, false, steps, started, provider, diagDir, 'NEEDS_LOGIN', 'LOGIN_REQUIRED');
+            }
+            if (input.kind === 'login') {
+              return this.probeResult(input.kind, true, steps, started, provider, diagDir, 'Login OK');
+            }
+
+            const mapping = input.projectId
+              ? resolveTranslationNotebook(this.getDb(), input.projectId, input.accountId)
+              : null;
+            const notebookUrl =
+              mapping?.resource_url?.startsWith('http')
+                ? mapping.resource_url
+                : NOTEBOOKLM_URL;
+            provider.setExpectedNotebookUrl(notebookUrl);
+            await provider.openProjectNotebook(notebookUrl);
+            push('notebook', true, `Opened ${notebookUrl}`);
+            if (input.kind === 'notebook') {
+              return this.probeResult(input.kind, true, steps, started, provider, diagDir, 'Notebook OK');
+            }
+
+            await provider.createOrOpenTranslationThread();
+            const composer = await provider.probeComposerReady();
+            push('composer', composer.ok, composer.ok ? 'Composer usable' : 'Composer not found');
+            if (!composer.ok || input.kind === 'composer') {
+              return this.probeResult(
+                input.kind,
+                composer.ok,
+                steps,
+                started,
+                provider,
+                diagDir,
+                composer.ok ? 'Composer OK' : 'Composer failed',
+              );
+            }
+
+            if (input.kind === 'send' || input.kind === 'trialTranslate') {
+              const trialPrompt =
+                'Reply with exactly one word: OK. Do not change any memory or notebook sources.';
+              const correlationId = newId();
+              await provider.submitPlainPrompt(trialPrompt, correlationId);
+              push('send', true, 'Send confirmed');
+              if (input.kind === 'send') {
+                await provider.cancelGeneration().catch(() => undefined);
+                return this.probeResult(input.kind, true, steps, started, provider, diagDir, 'Send OK (cancelled generation)');
+              }
+              await provider.waitForGenerationStart(20_000);
+              push('generation', true, 'Generation started');
+              await provider.waitForGenerationComplete(correlationId, {
+                maxTimeoutMs: 60_000,
+                stabilizationWindowMs: 2_000,
+              });
+              const raw = await provider.extractLatestResponse(correlationId);
+              push('capture', true, `Captured ${raw.text.length} chars`);
+              // Never touch Project Memory — probe only.
+              return this.probeResult(
+                input.kind,
+                true,
+                steps,
+                started,
+                provider,
+                diagDir,
+                `Trial OK: ${raw.text.slice(0, 120)}`,
+              );
+            }
+
+            return this.probeResult(input.kind, true, steps, started, provider, diagDir, 'OK');
+          } finally {
+            await provider.discardFailTrace().catch(() => undefined);
+            await provider.detach();
+          }
+        },
+      );
+      return result;
+    } catch (error) {
+      const auto = error instanceof AutomationError ? error : null;
+      const failedStep =
+        auto?.diagnostics?.failedStep ??
+        steps.filter((s) => s.ok).at(-1)?.step ??
+        input.kind;
+      if (auto) {
+        steps.push({
+          step: String(failedStep),
+          ok: false,
+          message: auto.message,
+        });
+      }
+      return {
+        kind: input.kind,
+        ok: false,
+        failedStep: failedStep != null ? String(failedStep) : input.kind,
+        lastOkStep: auto?.diagnostics?.lastOkStep
+          ? String(auto.diagnostics.lastOkStep)
+          : steps.filter((s) => s.ok).at(-1)?.step ?? null,
+        message: auto?.message ?? (error instanceof Error ? error.message : String(error)),
+        durationMs: Date.now() - started,
+        steps,
+        diagnosticsDir,
+        timeline: auto?.diagnostics?.timeline ?? null,
+        errorCode: auto?.code ?? 'UNKNOWN_UI',
+      };
+    }
+  }
+
+  private probeResult(
+    kind: AiBrowserProbeKind,
+    ok: boolean,
+    steps: AiBrowserProbeResponse['steps'],
+    started: number,
+    provider: GeminiBrowserProvider,
+    diagnosticsDir: string,
+    message: string,
+    errorCode?: string | null,
+  ): AiBrowserProbeResponse {
+    const snap = provider.getTimeline()?.snapshot() ?? null;
+    return {
+      kind,
+      ok,
+      failedStep: ok ? null : (snap?.failedStep ?? steps.find((s) => !s.ok)?.step ?? kind),
+      lastOkStep: snap?.lastOkStep ?? steps.filter((s) => s.ok).at(-1)?.step ?? null,
+      message,
+      durationMs: Date.now() - started,
+      steps,
+      diagnosticsDir,
+      timeline: snap,
+      errorCode: errorCode ?? null,
+    };
   }
 
   private async testBrowserProfile(
@@ -295,7 +539,7 @@ export class DiagnosticsService {
     accountId: string,
     providerId: AutomationProviderId,
     startUrl: string,
-    fn: (page: Page, diagnosticsDir: string) => Promise<T>,
+    fn: (page: Page, diagnosticsDir: string, context: BrowserContext) => Promise<T>,
   ): Promise<T> {
     const profile = this.getDb().googleAccounts.getProfile(accountId);
     if (!profile) throw new Error('Browser profile missing for account');
@@ -309,19 +553,34 @@ export class DiagnosticsService {
     );
     fs.mkdirSync(diagnosticsDir, { recursive: true });
 
-    profileLockManager.acquire(profilePath, ownerId);
-    const { chromium } = await import('playwright');
-    const context = await chromium.launchPersistentContext(profilePath, {
+    profileLockManager.acquireLease({
+      profilePath,
+      ownerId,
+      accountId,
+      operation: 'diagnostics_repair',
+      label: 'Diagnostics connection probe',
+    });
+    const stopHeartbeat = startLeaseHeartbeat(profileLockManager, {
+      profilePath,
+      ownerId,
+    });
+    const { launchNovelTransPersistentContext } = await import(
+      '../automation/browser-runner/launch-persistent-context'
+    );
+    const { context } = await launchNovelTransPersistentContext({
+      profilePath,
+      // Connection probes may run headless; caller path is diagnostics-only.
       headless: true,
-      args: ['--disable-blink-features=AutomationControlled'],
+      diagnosticsDir,
     });
     try {
       const page = context.pages()[0] ?? (await context.newPage());
       await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-      return await fn(page, diagnosticsDir);
+      return await fn(page, diagnosticsDir, context);
     } finally {
       await context.close().catch(() => undefined);
-      profileLockManager.release(profilePath, ownerId);
+      stopHeartbeat();
+      profileLockManager.releaseLease(profilePath, ownerId);
     }
   }
 
@@ -340,11 +599,29 @@ export class DiagnosticsService {
       input.startUrl ??
       (input.providerId === 'google-notebook' ? NOTEBOOK_URL : GEMINI_URL);
 
-    profileLockManager.acquire(profilePath, ownerId);
-    const { chromium } = await import('playwright');
-    const context = await chromium.launchPersistentContext(profilePath, {
+    profileLockManager.acquireLease({
+      profilePath,
+      ownerId,
+      accountId: input.accountId,
+      operation: 'diagnostics_repair',
+      label: 'Sửa selector (diagnostics)',
+    });
+    const stopHeartbeat = startLeaseHeartbeat(profileLockManager, {
+      profilePath,
+      ownerId,
+    });
+    const { launchNovelTransPersistentContext } = await import(
+      '../automation/browser-runner/launch-persistent-context'
+    );
+    const { context } = await launchNovelTransPersistentContext({
+      profilePath,
       headless: false,
-      args: ['--disable-blink-features=AutomationControlled'],
+      diagnosticsDir: path.join(
+        pathsService.getPath('cache'),
+        'automation',
+        input.accountId,
+        'repair',
+      ),
     });
     const page = context.pages()[0] ?? (await context.newPage());
     await page.goto(startUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
@@ -359,6 +636,7 @@ export class DiagnosticsService {
       ownerId,
       profilePath,
       suggestion: null,
+      stopHeartbeat,
     });
 
     return {
@@ -419,8 +697,13 @@ export class DiagnosticsService {
     const session = this.repairSessions.get(sessionId);
     if (!session) return { ok: true };
     this.repairSessions.delete(sessionId);
+    session.stopHeartbeat();
     await session.context.close().catch(() => undefined);
-    profileLockManager.release(session.profilePath, session.ownerId);
+    try {
+      profileLockManager.releaseLease(session.profilePath, session.ownerId);
+    } catch {
+      profileLockManager.recoverIfStale(session.profilePath);
+    }
     return { ok: true };
   }
 }

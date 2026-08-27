@@ -1,0 +1,12 @@
+{
+  "$schema": "./google-smoke.config.schema.json",
+  "comment": "Copy to google-smoke.config.json (gitignored). NEVER point at a production novel project.",
+  "enabled": true,
+  "profilePath": "C:/Users/YOU/AppData/Roaming/NovelTrans/browser-profiles/ACCOUNT_DIR",
+  "notebookUrl": "https://notebooklm.google.com/notebook/SMOKE_NOTEBOOK_ID",
+  "headless": false,
+  "smokeProjectLabel": "NOVELTRANS_SMOKE",
+  "scenarios": ["A", "B", "C", "D", "E", "F", "G", "H"],
+  "reportMarkdownPath": "docs/REAL_GOOGLE_TEST_REPORT.md",
+  "artifactsDir": "tmp/google-smoke-artifacts"
+}

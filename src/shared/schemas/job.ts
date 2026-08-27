@@ -75,6 +75,8 @@ export const JobDtoSchema = z.object({
       providerType: z.string().optional(),
       /** slim = Notebook cold knowledge; fat = full local memory in prompt. */
       packMode: z.enum(['slim', 'fat']).optional(),
+      continuationRound: z.number().int().nonnegative().optional(),
+      lastCompletedParagraphId: z.string().nullable().optional(),
       learning: z
         .object({
           candidatesCreated: z.number().int().nonnegative().optional(),
@@ -173,6 +175,7 @@ export const JobEnqueueNovelRequestSchema = z.object({
   chapterTo: z.number().int().positive().optional(),
   chapterIds: z.array(z.string().uuid()).optional(),
   skipTranslated: z.boolean().optional(),
+  maxChaptersPerJob: z.number().int().positive().optional(),
   priority: z.number().int().optional(),
   workerMode: WorkerModeSchema.optional(),
   pinnedAccountId: z.string().uuid().nullable().optional(),

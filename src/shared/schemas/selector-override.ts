@@ -25,7 +25,19 @@ export const SelectorStrategyOverrideSchema = z.discriminatedUnion('kind', [
       .max(500)
       .refine((v) => !/[;`<>]|javascript:/i.test(v), {
         message: 'css locator must be a plain selector',
-      }),
+      })
+      .refine(
+        (v) => {
+          const t = v.trim().toLowerCase();
+          return !['h1', 'button', '[contenteditable=true]', '[contenteditable="true"]'].includes(
+            t,
+          );
+        },
+        {
+          message:
+            'css override cannot be a generic sole selector (h1|button|[contenteditable=true])',
+        },
+      ),
   }),
 ]);
 
@@ -38,6 +50,10 @@ export const SelectorKeyOverrideSchema = z.object({
   strategies: z.array(SelectorStrategyOverrideSchema).min(1).max(20),
   mode: SelectorOverrideModeSchema.optional().default('prepend'),
   description: z.string().max(500).optional(),
+  /** Optional surface hint for operators; validated as free string. */
+  surface: z
+    .enum(['GEMINI_CHAT', 'GEMINI_NOTEBOOK', 'NOTEBOOKLM', 'GOOGLE_LOGIN', 'UNKNOWN'])
+    .optional(),
 });
 
 export const ProviderSelectorOverridesSchema = z.object({

@@ -30,6 +30,13 @@ export interface NotebookProviderOptions {
   baseUrl?: string;
 }
 
+export type NotebookSourceUiStatus =
+  | 'UPLOADED'
+  | 'PROCESSING'
+  | 'READY'
+  | 'ERROR'
+  | 'UNKNOWN';
+
 function extractNotebookId(url: string): string | null {
   const match = /\/notebook\/([^/?#]+)/i.exec(url);
   return match?.[1] ?? null;
@@ -587,6 +594,191 @@ export class NotebookProvider implements AutomationProvider {
     return false;
   }
 
+  /**
+   * Per-source UI status for FULL preprocess (UPLOADED|PROCESSING|READY|ERROR).
+   * Matches by basename; unknown names → absent (caller treats as not uploaded).
+   */
+  async inspectSourceStatuses(
+    names: string[],
+  ): Promise<Array<{ name: string; status: NotebookSourceUiStatus; present: boolean }>> {
+    const page = this.requirePage();
+    const unique = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+    if (unique.length === 0) return [];
+
+    const rows = await page.evaluate((wantNames: string[]) => {
+      const isVisible = (el: Element): boolean => {
+        const box = (el as HTMLElement).getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return (
+          box.width > 0 &&
+          box.height > 0 &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden'
+        );
+      };
+
+      const candidates = Array.from(
+        document.querySelectorAll(
+          '[role="listitem"], mat-list-item, .source-item, [data-source-id], article, li',
+        ),
+      ).filter(isVisible);
+
+      const normalize = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+      const out: Array<{ name: string; status: string; present: boolean }> = [];
+
+      for (const want of wantNames) {
+        const wantNorm = normalize(want);
+        const wantStem = wantNorm.replace(/\.[a-z0-9]+$/i, '');
+        let found: Element | null = null;
+        for (const el of candidates) {
+          const text = normalize(el.textContent || '');
+          if (!text) continue;
+          if (text.includes(wantNorm) || text.includes(wantStem)) {
+            found = el;
+            break;
+          }
+        }
+        if (!found) {
+          out.push({ name: want, status: 'UNKNOWN', present: false });
+          continue;
+        }
+        const text = (found.textContent || '').toLowerCase();
+        const hasSpinner =
+          found.querySelector(
+            'mat-spinner, mat-progress-spinner, mat-progress-bar, [role="progressbar"]',
+          ) != null ||
+          /processing|đang xử lý|indexing|đang lập chỉ mục/.test(text);
+        const hasError =
+          found.querySelector('mat-icon[color="warn"], .error, [aria-label*="error" i]') !=
+            null || /error|failed|lỗi|thất bại/.test(text);
+        const hasReady =
+          Array.from(found.querySelectorAll('mat-icon')).some((icon) => {
+            const t = (icon.textContent || '').trim();
+            return ['check', 'done', 'check_circle'].includes(t);
+          }) || /ready|đã sẵn sàng|complete|xong/.test(text);
+
+        let status = 'UPLOADED';
+        if (hasError) status = 'ERROR';
+        else if (hasSpinner) status = 'PROCESSING';
+        else if (hasReady) status = 'READY';
+        else status = 'UPLOADED';
+
+        out.push({ name: want, status, present: true });
+      }
+      return out;
+    }, unique);
+
+    return rows.map((r) => ({
+      name: r.name,
+      present: r.present,
+      status: (r.status as NotebookSourceUiStatus) || 'UNKNOWN',
+    }));
+  }
+
+  /**
+   * Poll until every required source is READY. Hard-fails on ERROR or timeout.
+   * Does NOT soft-continue after a fixed sleep.
+   */
+  async waitForNamedSourcesReady(
+    names: string[],
+    options?: {
+      timeoutMs?: number;
+      pollMs?: number;
+      onProgress?: (snapshot: {
+        ready: number;
+        processing: number;
+        uploaded: number;
+        error: number;
+        total: number;
+        statuses: Array<{ name: string; status: NotebookSourceUiStatus; present: boolean }>;
+      }) => void;
+    },
+  ): Promise<void> {
+    const timeoutMs = options?.timeoutMs ?? 20 * 60 * 1000;
+    const pollMs = options?.pollMs ?? 2_500;
+    const page = this.requirePage();
+    const started = Date.now();
+    const required = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+    if (required.length === 0) return;
+
+    logger.info('wait_named_sources_ready_start', {
+      count: required.length,
+      timeoutMs,
+    });
+
+    while (Date.now() - started < timeoutMs) {
+      const statuses = await this.inspectSourceStatuses(required);
+      const ready = statuses.filter((s) => s.status === 'READY').length;
+      const processing = statuses.filter((s) => s.status === 'PROCESSING').length;
+      const uploaded = statuses.filter((s) => s.status === 'UPLOADED').length;
+      const error = statuses.filter((s) => s.status === 'ERROR');
+      const absent = statuses.filter((s) => !s.present);
+
+      options?.onProgress?.({
+        ready,
+        processing,
+        uploaded,
+        error: error.length,
+        total: required.length,
+        statuses,
+      });
+
+      if (error.length > 0) {
+        throw await this.fail(
+          'UNKNOWN_UI',
+          `Notebook source error: ${error.map((e) => e.name).join(', ')}`,
+          'waitForNamedSourcesReady',
+        );
+      }
+
+      // All present and READY (or present without spinner/error → treat as READY after settle)
+      const allReady =
+        statuses.length === required.length &&
+        statuses.every((s) => s.present && (s.status === 'READY' || s.status === 'UPLOADED'));
+
+      if (allReady && processing === 0) {
+        // Require two consecutive stable READY/UPLOADED-with-no-busy polls
+        const global = await this.getUploadStatus();
+        if (!global.busy) {
+          // Prefer explicit READY; if UI only shows UPLOADED + no spinner, accept.
+          const explicitReady = statuses.every(
+            (s) => s.present && (s.status === 'READY' || s.status === 'UPLOADED'),
+          );
+          if (explicitReady) {
+            // Second poll
+            await page.waitForTimeout(pollMs);
+            const again = await this.inspectSourceStatuses(required);
+            const global2 = await this.getUploadStatus();
+            const stable =
+              !global2.busy &&
+              again.every((s) => s.present && (s.status === 'READY' || s.status === 'UPLOADED')) &&
+              again.every((s) => s.status !== 'ERROR');
+            if (stable) {
+              logger.info('wait_named_sources_ready_done', {
+                ready: again.filter((s) => s.status === 'READY' || s.status === 'UPLOADED')
+                  .length,
+                elapsedMs: Date.now() - started,
+              });
+              return;
+            }
+          }
+        }
+      }
+
+      if (absent.length === required.length) {
+        // Nothing landed yet — keep waiting until timeout
+      }
+
+      await page.waitForTimeout(pollMs);
+    }
+
+    throw await this.fail(
+      'RESPONSE_TIMEOUT',
+      `Notebook sources not READY within ${timeoutMs}ms (${required.join(', ')})`,
+      'waitForNamedSourcesReady',
+    );
+  }
+
   async getUploadStatus(): Promise<{
     busy: boolean;
     checks: number;
@@ -981,7 +1173,7 @@ export class NotebookProvider implements AutomationProvider {
     return /\/notebook\//i.test(url) || /notebook-open\.html/i.test(url);
   }
 
-  private async readSourceNames(): Promise<string[]> {
+  async readSourceNames(): Promise<string[]> {
     const items = this.requireSelectors().sourceItemLocators();
     const count = await items.count();
     const names: string[] = [];

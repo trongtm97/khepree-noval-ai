@@ -234,6 +234,12 @@ export function AccountsPage() {
 
                 {account.notes ? <p className="account-notes">{account.notes}</p> : null}
 
+                {account.profileLease ? (
+                  <p className="account-lease-busy" role="status">
+                    {t('accounts.profileInUseBy', { label: account.profileLease.label })}
+                  </p>
+                ) : null}
+
                 <div className="account-controls btn-row" style={{ flexWrap: 'wrap' }}>
                   <label className="inline-field">
                     {t('aiPanel.plan')}
@@ -271,8 +277,17 @@ export function AccountsPage() {
                     disabled={busy}
                     onClick={() => {
                       void run(account.id, async () => {
-                        await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
-                        setMessage(t('actions.openBrowser'));
+                        try {
+                          await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
+                          setMessage(t('actions.openBrowser'));
+                        } catch (err: unknown) {
+                          const msg = err instanceof Error ? err.message : String(err);
+                          if (/PROFILE_BUSY/i.test(msg)) {
+                            setError(msg.replace(/^PROFILE_BUSY:\s*/i, ''));
+                            return;
+                          }
+                          throw err;
+                        }
                       });
                     }}
                   >

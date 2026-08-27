@@ -16,6 +16,8 @@ export interface CharacterRow {
   status: string;
   first_chapter: number | null;
   last_chapter: number | null;
+  discovered_from_chapter: number | null;
+  future_sensitive: number;
   locked: number;
   created_at: string;
   updated_at: string;

@@ -13,6 +13,13 @@ export function setNotebookDriveSyncFn(
 }
 
 export function getNotebookSyncService(db?: DatabaseManager): NotebookSyncService {
+  if (db && singleton) {
+    // Tests recreate DatabaseManager per case — refresh if handle changed.
+    const held = (singleton as unknown as { db: DatabaseManager }).db;
+    if (held && held !== db) {
+      singleton = null;
+    }
+  }
   singleton ??= new NotebookSyncService(db ?? getDatabase(), driveSyncFn);
   return singleton;
 }

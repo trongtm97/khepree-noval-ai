@@ -4,8 +4,10 @@ import type { JobRow } from '../db/repositories/job-repository';
 import type { WorkerMode } from '@shared/constants/job';
 import { profileLockManager } from '../automation/browser-runner/profile-lock';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
+import { getBrowserRuntimeManager } from '../automation/browser-runner/browser-runtime-manager';
 import { healIdleWorkers } from './heal-workers';
 import { logger } from '../logging/logger';
+import { runtimeLockOwner } from '@shared/constants/browser-runtime';
 
 export interface SelectedWorker {
   worker: WorkerStateRow;
@@ -43,13 +45,26 @@ export class WorkerPool {
       const profile = this.db.googleAccounts.getProfile(w.google_account_id);
       if (!profile) return false;
       const profilePath = browserProfileManager.resolveProfilePath(profile.profile_dir_name);
-      if (profileLockManager.isLocked(profilePath)) {
-        // Account/Notebook browser holds lock with owner=accountId (not job:…).
-        // Stale locks without in-memory owner are cleared on acquire; active
-        // account browsers block claim — caller should close browser first.
-        logger.info('Worker skipped — browser profile locked', {
-          accountId: w.google_account_id,
-        });
+      const lockOwner = profileLockManager.getOwner(profilePath);
+      if (lockOwner) {
+        // Persistent runtime for THIS account is OK — context reused across batches.
+        if (lockOwner === runtimeLockOwner(w.google_account_id)) {
+          // continue
+        } else if (lockOwner.startsWith(`job:`)) {
+          logger.info('Worker skipped — job holds browser profile', {
+            accountId: w.google_account_id,
+          });
+          return false;
+        } else {
+          logger.info('Worker skipped — browser profile locked', {
+            accountId: w.google_account_id,
+            owner: lockOwner,
+          });
+          return false;
+        }
+      }
+      const runtime = getBrowserRuntimeManager().getRuntime(w.google_account_id);
+      if (runtime?.health === 'BUSY' || runtime?.health === 'NEEDS_ATTENTION') {
         return false;
       }
       return true;

@@ -24,6 +24,7 @@ export interface TermRow {
   human_confirm_count: number;
   first_seen_chapter: number | null;
   discovered_from_chapter: number | null;
+  future_sensitive: number;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -251,6 +252,21 @@ export class TermRepository extends BaseRepository {
         `SELECT * FROM terms WHERE ${clauses.join(' AND ')} ORDER BY source_simplified`,
       )
       .all(...params) as TermRow[];
+  }
+
+  /** All project-linked terms — no arbitrary limit (semantic budget ranks downstream). */
+  listAllForProject(projectId: string): TermRow[] {
+    return this.db
+      .prepare(
+        `SELECT DISTINCT t.* FROM terms t
+         WHERE t.deleted_at IS NULL
+           AND (
+             (t.scope = 'PROJECT' AND t.scope_ref = ?)
+             OR t.id IN (SELECT term_id FROM project_terms WHERE project_id = ?)
+           )
+         ORDER BY t.id ASC`,
+      )
+      .all(projectId, projectId) as TermRow[];
   }
 
   search(filters: TermSearchFilters): TermRow[] {

@@ -161,6 +161,7 @@ import {
   NotebookResumeRequestSchema,
   NotebookHealthRequestSchema,
   NotebookHealthDtoSchema,
+  NotebookDualHealthDtoSchema,
   NotebookSyncNowRequestSchema,
   NotebookRebuildRequestSchema,
   NotebookBootstrapRequestSchema,
@@ -244,6 +245,10 @@ import { FullNovelPreprocessAutoService } from '../bootstrap/full-novel-preproce
 import { AiMemoryResetService } from '../bootstrap/ai-memory-reset-service';
 import { getAutoPreprocessProgress } from '../bootstrap/auto-preprocess-progress';
 import {
+  AiBrowserProbeRequestSchema,
+  AiBrowserProbeResponseSchema,
+  GoogleSmokeRunRequestSchema,
+  GoogleSmokeRunResponseSchema,
   ConnectionTestRequestSchema,
   ConnectionTestResponseSchema,
   ExportDiagnosticsRequestSchema,
@@ -1340,6 +1345,7 @@ export function registerIpcHandlers(): void {
       const mapping = getNotebookService().getMapping(
         request.projectId,
         request.accountId,
+        request.role,
       );
       return NotebookGetResponseSchema.parse({ mapping });
     }),
@@ -1364,9 +1370,18 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.NOTEBOOK_HEALTH,
     createIpcHandler(NotebookHealthRequestSchema, (request) => {
+      if (request.dual) {
+        return NotebookDualHealthDtoSchema.parse(
+          getNotebookSyncService().getDualHealth(
+            request.projectId,
+            request.accountId,
+          ),
+        );
+      }
       const health = getNotebookSyncService().getHealth(
         request.projectId,
         request.accountId,
+        request.role ?? 'TRANSLATION',
       );
       return NotebookHealthDtoSchema.parse(health);
     }),
@@ -2009,6 +2024,22 @@ export function registerIpcHandlers(): void {
     createIpcHandler(ConnectionTestRequestSchema, async (request) => {
       const result = await getDiagnosticsService().runConnectionTest(request);
       return ConnectionTestResponseSchema.parse(result);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.DIAGNOSTICS_AI_BROWSER_PROBE,
+    createIpcHandler(AiBrowserProbeRequestSchema, async (request) => {
+      const result = await getDiagnosticsService().runAiBrowserProbe(request);
+      return AiBrowserProbeResponseSchema.parse(result);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.DIAGNOSTICS_GOOGLE_SMOKE,
+    createIpcHandler(GoogleSmokeRunRequestSchema, async (request) => {
+      const result = await getDiagnosticsService().runGoogleSmoke(request);
+      return GoogleSmokeRunResponseSchema.parse(result);
     }),
   );
 

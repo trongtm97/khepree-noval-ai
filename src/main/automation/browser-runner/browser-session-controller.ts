@@ -74,11 +74,13 @@ function looksLikeGoogleLoginPage(url: string, content: string): boolean {
  */
 export class PlaywrightBrowserSessionController implements BrowserSessionController {
   async open(options: OpenBrowserOptions): Promise<BrowserSessionHandle> {
-    const { chromium } = await import('playwright');
-    const context = await chromium.launchPersistentContext(options.profilePath, {
+    const { launchNovelTransPersistentContext } = await import(
+      './launch-persistent-context'
+    );
+    const { context } = await launchNovelTransPersistentContext({
+      profilePath: options.profilePath,
       headless: options.headless ?? false,
-      channel: undefined,
-      args: ['--disable-blink-features=AutomationControlled'],
+      headlessDefault: false,
     });
 
     let closed = false;

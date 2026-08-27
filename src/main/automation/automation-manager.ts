@@ -6,20 +6,21 @@ import {
   defaultDiagnosticsDir,
 } from './in-process-browser-worker';
 import {
-  ChildProcessBrowserWorker,
+  UtilityProcessBrowserWorker,
   resolveDefaultRunnerScriptPath,
 } from './browser-runner/runner-host';
 import { profileLockManager, type ProfileLockManager } from './browser-runner/profile-lock';
 import type { BrowserState } from './types';
 import { newId } from '../db/utils/uuid';
 
-export type WorkerTransport = 'in-process' | 'child-process';
+export type WorkerTransport = 'in-process' | 'child-process' | 'utility-process';
 
 export interface AutomationManagerOptions {
   cacheDir: string;
   transport?: WorkerTransport;
   locks?: ProfileLockManager;
   runnerScriptPath?: string;
+  /** @deprecated Ignored — utilityProcess.fork does not use execPath / RunAsNode. */
   execPath?: string;
 }
 
@@ -40,15 +41,13 @@ export class AutomationManager {
   private readonly transport: WorkerTransport;
   private readonly locks: ProfileLockManager;
   private readonly runnerScriptPath: string;
-  private readonly execPath?: string;
 
   constructor(options: AutomationManagerOptions) {
     this.cacheDir = options.cacheDir;
-    this.transport = options.transport ?? 'child-process';
+    this.transport = options.transport ?? 'utility-process';
     this.locks = options.locks ?? profileLockManager;
     this.runnerScriptPath =
       options.runnerScriptPath ?? resolveDefaultRunnerScriptPath();
-    this.execPath = options.execPath;
   }
 
   listWorkers(): { workerId: string; state: BrowserState; profilePath: string | null }[] {
@@ -69,29 +68,35 @@ export class AutomationManager {
       await existing.dispose();
       this.workers.delete(options.workerId);
       try {
-        this.locks.release(options.profilePath, options.workerId);
+        this.locks.releaseLease(options.profilePath, options.workerId);
       } catch {
-        this.locks.forceClearStaleLock(options.profilePath);
+        this.locks.recoverIfStale(options.profilePath);
       }
     }
 
-    this.locks.acquire(options.profilePath, options.workerId);
+    this.locks.acquireLease({
+      profilePath: options.profilePath,
+      ownerId: options.workerId,
+      accountId: options.workerId,
+      operation: 'manual_browser',
+      label: 'Automation worker',
+    });
 
     const diagnosticsDir = defaultDiagnosticsDir(this.cacheDir, options.workerId);
-    const worker =
-      this.transport === 'in-process'
-        ? new InProcessBrowserWorker({
-            workerId: options.workerId,
-            diagnosticsDir,
-          })
-        : new ChildProcessBrowserWorker({
-            workerId: options.workerId,
-            runnerScriptPath: this.runnerScriptPath,
-            execPath: this.execPath,
-            env: {
-              NOVELTRANS_AUTOMATION_DIAGNOSTICS_DIR: diagnosticsDir,
-            },
-          });
+    const useUtility =
+      this.transport === 'child-process' || this.transport === 'utility-process';
+    const worker = !useUtility
+      ? new InProcessBrowserWorker({
+          workerId: options.workerId,
+          diagnosticsDir,
+        })
+      : new UtilityProcessBrowserWorker({
+          workerId: options.workerId,
+          runnerScriptPath: this.runnerScriptPath,
+          env: {
+            NOVELTRANS_AUTOMATION_DIAGNOSTICS_DIR: diagnosticsDir,
+          },
+        });
 
     this.workers.set(options.workerId, worker);
 
@@ -137,9 +142,9 @@ export class AutomationManager {
       this.workers.delete(workerId);
       if (profilePath) {
         try {
-          this.locks.release(profilePath, workerId);
+          this.locks.releaseLease(profilePath, workerId);
         } catch {
-          this.locks.forceClearStaleLock(profilePath);
+          this.locks.recoverIfStale(profilePath);
         }
       }
     }

@@ -48,8 +48,8 @@ export const aiProviderArticles: HelpArticle[] = [
         type: 'steps',
         steps: [
           {
-            title: 'Cài worker',
-            body: 'Cài đặt → Nhà cung cấp AI → Cài worker (cần Python 3.11+).',
+            title: 'Worker (Web API)',
+            body: 'Bản cài Windows có NovelTransGeminiWorker.exe — không cần Python. Dev: Cài đặt → Nhà cung cấp AI → Cài worker (Python 3.11+).',
           },
           {
             title: 'Thêm tài khoản',

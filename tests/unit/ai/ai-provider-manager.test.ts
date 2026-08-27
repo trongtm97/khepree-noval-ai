@@ -108,6 +108,7 @@ function mockDb(providers: Array<{ id: string; fallback_allowed: number }>) {
     },
     notebooks: {
       getByProjectAndWorker: () => null as { status: string } | null,
+      listByProjectAndWorker: () => [] as { status: string; notebook_role?: string }[],
     },
   } as unknown as ConstructorParameters<typeof AiProviderManager>[0];
 }
@@ -338,7 +339,8 @@ describe('AiProviderManager selection + fallback', () => {
       { id: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, fallback_allowed: 1 },
       { id: AI_PROVIDER_IDS.GEMINI_WEB_API, fallback_allowed: 1 },
     ]);
-    db.notebooks.getByProjectAndWorker = () => ({ status: 'ready' }) as never;
+    db.notebooks.listByProjectAndWorker = () =>
+      [{ status: 'ready', notebook_role: 'TRANSLATION', resource_url: 'https://x' }] as never;
 
     const manager = new AiProviderManager(db);
     manager.register(browser);

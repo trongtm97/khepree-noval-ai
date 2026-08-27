@@ -23,7 +23,7 @@ export const KNOWLEDGE_FILE_NAMES: Record<KnowledgeType, string> = {
   recent_context: '07_RECENT_CONTEXT.md',
 };
 
-/** Soft char caps so Notebook sources stay compact. */
+/** Per-file char budgets — semantic builder adds whole records until near cap. */
 export const KNOWLEDGE_SIZE_CAPS = {
   book_profile: 6_000,
   translation_rules: 4_000,

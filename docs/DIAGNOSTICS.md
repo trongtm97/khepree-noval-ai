@@ -56,6 +56,18 @@ File: `{data}/selector-overrides.json`
 - Test Drive (OAuth configured + account connected — no tokens)
 - Test Browser Profile (`testSession` probe)
 
+## Real Google smoke (opt-in)
+
+Developer Diagnostics → **Run Real Google Smoke**, or:
+
+```bash
+set NOVELTRANS_GOOGLE_SMOKE=1
+npm run test:google-smoke
+```
+
+Requires a logged-in browser profile + dedicated **SMOKE** NotebookLM notebook (never a production novel).  
+Writes [REAL_GOOGLE_TEST_REPORT.md](REAL_GOOGLE_TEST_REPORT.md). Playwright path is **not** production-ready until Overall=PASS.
+
 ## Diagnostics export ZIP
 
 Includes health report, provider status, overrides, recent failure artifacts, redacted logs.

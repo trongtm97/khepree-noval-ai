@@ -17,6 +17,7 @@ export interface RelationshipRow {
   confidence: number | null;
   source: string;
   locked: number;
+  future_sensitive: number;
   created_at: string;
   updated_at: string;
 }

@@ -13,6 +13,14 @@ import {
 import { logger } from '../logging/logger';
 import path from 'node:path';
 import { pathsService } from '../services/paths-service';
+import {
+  getNotebookLayout,
+  listKnowledgeSyncMappings,
+  resolveNotebookForPurpose,
+  resolveResearchNotebook,
+  resolveTranslationNotebook,
+} from './notebook-resolver';
+import type { NotebookLayout } from '@shared/constants/notebook-role';
 
 const TYPE_BY_EVENT: Record<string, KnowledgeType[]> = {
   PROJECT_METADATA_CHANGED: ['book_profile'],
@@ -50,6 +58,25 @@ export interface NotebookHealthDto {
   usableForSlimPack: boolean;
 }
 
+export interface NotebookRoleHealthDto {
+  projectId: string;
+  accountId: string | null;
+  role: string;
+  notebookName: string | null;
+  status: string;
+  lastVerifiedAt: string | null;
+  lastDriveSyncAt: string | null;
+  lastError: string | null;
+  resourceUrl: string | null;
+}
+
+export interface NotebookDualHealthDto {
+  projectId: string;
+  layout: NotebookLayout;
+  translation: NotebookHealthDto;
+  research: NotebookRoleHealthDto | null;
+}
+
 export class NotebookSyncService {
   private readonly builder: NotebookKnowledgeBuilder;
 
@@ -64,10 +91,8 @@ export class NotebookSyncService {
     const types = TYPE_BY_EVENT[event] ?? [...KNOWLEDGE_TYPES];
     this.db.knowledgeFiles.markAllDirty(projectId, types);
     const localVersion = this.db.knowledgeFiles.maxLocalVersion(projectId);
-    for (const mapping of this.db.notebooks.listByProject(projectId)) {
+    for (const mapping of listKnowledgeSyncMappings(this.db, projectId)) {
       this.db.notebooks.bumpLocalKnowledgeVersion(mapping.id, localVersion);
-      // Force fat-pack on next send: ready AND sync_pending still trust Notebook cold
-      // knowledge which may lag until Drive→Notebook verify.
       if (mapping.status === 'ready' || mapping.status === 'sync_pending') {
         this.db.notebooks.setStatus(mapping.id, 'stale');
       }
@@ -117,7 +142,7 @@ export class NotebookSyncService {
       this.db.knowledgeFiles.markDriveSynced(projectId, type);
     }
 
-    for (const mapping of this.db.notebooks.listByProject(projectId)) {
+    for (const mapping of listKnowledgeSyncMappings(this.db, projectId)) {
       this.db.notebooks.markDriveSynced(mapping.id);
     }
 
@@ -135,8 +160,15 @@ export class NotebookSyncService {
     return { updated: true };
   }
 
-  markNotebookVerified(projectId: string, accountId: string): void {
-    const mapping = this.db.notebooks.getByProjectAndWorker(projectId, accountId);
+  markNotebookVerified(
+    projectId: string,
+    accountId: string,
+    role: 'TRANSLATION' | 'SINGLE' = 'TRANSLATION',
+  ): void {
+    const mapping =
+      role === 'SINGLE'
+        ? this.db.notebooks.getByProjectWorkerRole(projectId, accountId, 'SINGLE')
+        : resolveTranslationNotebook(this.db, projectId, accountId);
     if (!mapping) return;
     for (const type of KNOWLEDGE_TYPES) {
       this.db.knowledgeFiles.markVerified(projectId, type);
@@ -166,13 +198,27 @@ export class NotebookSyncService {
     return { shouldSync };
   }
 
-  getHealth(projectId: string, accountId?: string | null): NotebookHealthDto {
+  getHealth(
+    projectId: string,
+    accountId?: string | null,
+    role: 'TRANSLATION' | 'RESEARCH' | 'SINGLE' = 'TRANSLATION',
+  ): NotebookHealthDto {
     const mappings = this.db.notebooks.listByProject(projectId);
-    let mapping = accountId
-      ? mappings.find((m) => m.google_account_id === accountId)
-      : undefined;
+    let mapping =
+      accountId != null
+        ? resolveNotebookForPurpose(
+            this.db,
+            projectId,
+            accountId,
+            role === 'RESEARCH' ? 'research' : 'translation',
+          )
+        : null;
     if (!mapping && mappings.length > 0) {
-      mapping = mappings[0];
+      mapping =
+        mappings.find((m) => m.notebook_role === role) ??
+        mappings.find((m) => m.notebook_role === 'TRANSLATION') ??
+        mappings.find((m) => m.notebook_role === 'SINGLE') ??
+        mappings[0];
     }
 
     const files = KNOWLEDGE_TYPES.map((type) => {
@@ -222,6 +268,54 @@ export class NotebookSyncService {
       dirty: this.db.knowledgeFiles.anyDirty(projectId),
       usableForSlimPack: status === 'ready' || status === 'sync_pending',
     };
+  }
+
+  getDualHealth(projectId: string, accountId?: string | null): NotebookDualHealthDto {
+    const all = this.db.notebooks.listByProject(projectId);
+    const resolvedAccount =
+      accountId ??
+      all.find((m) => m.notebook_role === 'TRANSLATION')?.google_account_id ??
+      all.find((m) => m.notebook_role === 'SINGLE')?.google_account_id ??
+      all.find((m) => m.notebook_role === 'RESEARCH')?.google_account_id ??
+      all[0]?.google_account_id ??
+      null;
+
+    const layout =
+      resolvedAccount != null
+        ? getNotebookLayout(this.db, projectId, resolvedAccount)
+        : 'DUAL';
+
+    const translation = this.getHealth(projectId, resolvedAccount, 'TRANSLATION');
+
+    let research: NotebookRoleHealthDto | null = null;
+    if (layout === 'DUAL' && resolvedAccount) {
+      const researchRow = resolveResearchNotebook(this.db, projectId, resolvedAccount);
+      research = researchRow
+        ? {
+            projectId,
+            accountId: researchRow.google_account_id,
+            role: 'RESEARCH',
+            notebookName: researchRow.notebook_name,
+            status: researchRow.status,
+            lastVerifiedAt: researchRow.last_verified_at,
+            lastDriveSyncAt: researchRow.last_drive_sync_at,
+            lastError: researchRow.last_error,
+            resourceUrl: researchRow.resource_url,
+          }
+        : {
+            projectId,
+            accountId: resolvedAccount,
+            role: 'RESEARCH',
+            notebookName: null,
+            status: 'pending',
+            lastVerifiedAt: null,
+            lastDriveSyncAt: null,
+            lastError: null,
+            resourceUrl: null,
+          };
+    }
+
+    return { projectId, layout, translation, research };
   }
 
   buildActiveHotMemoryText(projectId: string): string {

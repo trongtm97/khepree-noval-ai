@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Page } from 'playwright';
 import type { AutomationFailureDiagnostics } from './protocol';
+import type { AutomationTimelineSnapshot } from './automation-timeline';
 
 const MAX_HTML_SNAPSHOT_BYTES = 64 * 1024;
 const MAX_DOM_FRAGMENT_BYTES = 16 * 1024;
@@ -23,6 +24,28 @@ export interface CaptureDiagnosticsInput {
   tag?: string;
   selectorKey?: string;
   selectorCandidates?: string[];
+  browserEngine?: string | null;
+  browserEnginePreference?: string | null;
+  playwrightVersion?: string | null;
+  browserChannel?: string | null;
+  browserEngineVersion?: string | null;
+  errorCode?: string | null;
+  surface?: string | null;
+  expectedNotebookUrl?: string | null;
+  actualNotebookUrl?: string | null;
+  selectorStrategyWinner?: string | null;
+  composerTextLength?: number | null;
+  composerTextHash?: string | null;
+  conversationCountBefore?: number | null;
+  conversationCountAfter?: number | null;
+  sendEvidence?: unknown;
+  responseEvidence?: unknown;
+  consoleErrors?: string[];
+  pageErrors?: string[];
+  timeline?: AutomationTimelineSnapshot | null;
+  failedStep?: string | null;
+  lastOkStep?: string | null;
+  tracePath?: string | null;
 }
 
 /**
@@ -92,6 +115,18 @@ export async function captureFailureDiagnostics(
     }
   }
 
+  const engineMeta = readEngineInfoFromDir(input.diagnosticsDir);
+  const timeline = input.timeline ?? null;
+  let timelinePath: string | null = null;
+  if (timeline) {
+    timelinePath = path.join(input.diagnosticsDir, `${safeTag}-${stamp}.timeline.json`);
+    try {
+      fs.writeFileSync(timelinePath, `${JSON.stringify(timeline, null, 2)}\n`, 'utf8');
+    } catch {
+      timelinePath = null;
+    }
+  }
+
   return {
     screenshotPath,
     htmlSnapshotPath,
@@ -99,10 +134,58 @@ export async function captureFailureDiagnostics(
     currentUrl,
     pageTitle,
     operationName: input.operationName,
+    errorCode: input.errorCode ?? null,
     selectorKey: input.selectorKey ?? null,
     selectorCandidates: input.selectorCandidates ?? [],
     timestamp,
+    browserEngine: input.browserEngine ?? engineMeta?.engine ?? null,
+    browserEnginePreference:
+      input.browserEnginePreference ?? engineMeta?.preference ?? null,
+    playwrightVersion:
+      input.playwrightVersion ?? engineMeta?.playwrightVersion ?? null,
+    browserChannel: input.browserChannel ?? engineMeta?.channel ?? null,
+    browserEngineVersion: input.browserEngineVersion ?? null,
+    surface: input.surface ?? null,
+    expectedNotebookUrl: input.expectedNotebookUrl ?? null,
+    actualNotebookUrl: input.actualNotebookUrl ?? currentUrl,
+    selectorStrategyWinner: input.selectorStrategyWinner ?? null,
+    composerTextLength: input.composerTextLength ?? null,
+    composerTextHash: input.composerTextHash ?? null,
+    conversationCountBefore: input.conversationCountBefore ?? null,
+    conversationCountAfter: input.conversationCountAfter ?? null,
+    sendEvidence: input.sendEvidence ?? null,
+    responseEvidence: input.responseEvidence ?? null,
+    consoleErrors: (input.consoleErrors ?? []).map(redactDiagnosticText).slice(0, 40),
+    pageErrors: (input.pageErrors ?? []).map(redactDiagnosticText).slice(0, 40),
+    timeline,
+    failedStep: input.failedStep ?? timeline?.failedStep ?? null,
+    lastOkStep: input.lastOkStep ?? timeline?.lastOkStep ?? null,
+    timelinePath,
+    tracePath: input.tracePath ?? null,
   };
+}
+
+function readEngineInfoFromDir(
+  diagnosticsDir: string,
+): {
+  engine?: string;
+  preference?: string;
+  playwrightVersion?: string;
+  channel?: string | null;
+} | null {
+  try {
+    const filePath = path.join(diagnosticsDir, 'engine-info.json');
+    if (!fs.existsSync(filePath)) return null;
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as {
+      engine?: string;
+      preference?: string;
+      playwrightVersion?: string;
+      channel?: string | null;
+    };
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 async function captureDomFragment(page: Page): Promise<string | null> {

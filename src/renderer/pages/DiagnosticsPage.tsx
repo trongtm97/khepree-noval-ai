@@ -3,6 +3,7 @@ import type { GoogleAccountDto } from '@shared/schemas/account';
 import type { AutomationProviderId } from '@shared/constants/diagnostics';
 import type {
   ConnectionTestResponse,
+  GoogleSmokeRunResponse,
   HealthReport,
   LocatorSuggestion,
   ProviderStatus,
@@ -16,6 +17,8 @@ export function DiagnosticsPage() {
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [health, setHealth] = useState<HealthReport | null>(null);
   const [testResult, setTestResult] = useState<ConnectionTestResponse | null>(null);
+  const [smokeNotebookUrl, setSmokeNotebookUrl] = useState('');
+  const [smokeResult, setSmokeResult] = useState<GoogleSmokeRunResponse | null>(null);
   const [overridePath, setOverridePath] = useState('');
   const [overrideCount, setOverrideCount] = useState(0);
   const [providerId, setProviderId] = useState<AutomationProviderId>('google-gemini');
@@ -73,6 +76,33 @@ export function DiagnosticsPage() {
         }),
       );
       await refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runGoogleSmoke = async () => {
+    if (!accountId || !smokeNotebookUrl.trim()) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    setSmokeResult(null);
+    try {
+      const result = await window.novelTrans.diagnostics.googleSmoke({
+        accountId,
+        notebookUrl: smokeNotebookUrl.trim(),
+        smokeProjectLabel: 'NOVELTRANS_SMOKE',
+        headless: false,
+      });
+      setSmokeResult(result);
+      setMessage(
+        t('diagnostics.googleSmokeResult', {
+          overall: result.overall,
+          path: result.reportPath,
+        }),
+      );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -295,6 +325,35 @@ export function DiagnosticsPage() {
       </section>
 
       <section className="panel">
+        <h3>{t('diagnostics.googleSmokeTitle')}</h3>
+        <p className="muted">{t('diagnostics.googleSmokeBody')}</p>
+        <label>
+          {t('diagnostics.googleSmokeNotebookUrl')}
+          <input
+            type="url"
+            value={smokeNotebookUrl}
+            onChange={(e) => setSmokeNotebookUrl(e.target.value)}
+            placeholder="https://notebooklm.google.com/notebook/…"
+            style={{ width: '100%', marginTop: '0.25rem' }}
+            disabled={busy}
+          />
+        </label>
+        <div className="btn-row" style={{ marginTop: '0.5rem' }}>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={busy || !accountId || !smokeNotebookUrl.trim()}
+            onClick={() => void runGoogleSmoke()}
+          >
+            {t('diagnostics.googleSmokeRun')}
+          </button>
+        </div>
+        {smokeResult ? (
+          <pre className="code-block">{JSON.stringify(smokeResult, null, 2)}</pre>
+        ) : null}
+      </section>
+
+      <section className="panel">
         <h3>{t('diagnostics.overrides')}</h3>
         <p>
           {t('diagnostics.overridesHint')}{' '}
@@ -354,6 +413,25 @@ export function DiagnosticsPage() {
         {suggestion ? (
           <pre className="code-block">{JSON.stringify(suggestion, null, 2)}</pre>
         ) : null}
+      </section>
+
+      <section className="panel">
+        <h3>{t('diagnostics.profileLeases')}</h3>
+        {health?.profileLeases && health.profileLeases.length > 0 ? (
+          <ul className="diagnostics-lease-list">
+            {health.profileLeases.map((lease) => (
+              <li key={`${lease.ownerId}-${lease.profilePath}`}>
+                {t('diagnostics.profileLeaseRow', {
+                  label: lease.label,
+                  pid: String(lease.pid),
+                  expiresAt: lease.expiresAt,
+                })}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{t('diagnostics.profileLeasesEmpty')}</p>
+        )}
       </section>
 
       <section className="panel">

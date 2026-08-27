@@ -141,6 +141,8 @@ export const IPC_CHANNELS = {
   DIAGNOSTICS_HEALTH_REPORT: 'diagnostics:healthReport',
   DIAGNOSTICS_EXPORT: 'diagnostics:export',
   DIAGNOSTICS_CONNECTION_TEST: 'diagnostics:connectionTest',
+  DIAGNOSTICS_AI_BROWSER_PROBE: 'diagnostics:aiBrowserProbe',
+  DIAGNOSTICS_GOOGLE_SMOKE: 'diagnostics:googleSmoke',
   DIAGNOSTICS_GET_OVERRIDES: 'diagnostics:getOverrides',
   DIAGNOSTICS_LOAD_OVERRIDES: 'diagnostics:loadOverrides',
   DIAGNOSTICS_SAVE_OVERRIDES: 'diagnostics:saveOverrides',

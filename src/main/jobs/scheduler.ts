@@ -10,6 +10,8 @@ import {
   SCHEDULER_SETTING_KEYS,
 } from '@shared/constants/job';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
+import { recoverJobsGeminiAndProfilesOnStartup } from '../gemini/startup-recovery';
+import { pathsService } from '../services/paths-service';
 import { logger } from '../logging/logger';
 
 export interface SchedulerOptions {
@@ -74,10 +76,18 @@ export class AutomationScheduler {
     if (this.timer) return;
     this.running = true;
     this.shuttingDown = false;
-    // Recover from prior process crash
-    const recovered = this.db.jobs.recoverExpiredLeases();
-    if (recovered > 0) {
-      logger.info('Scheduler recovered expired leases', { recovered });
+    // Recover jobs / gemini_requests / profile leases — not only expired scheduler leases.
+    try {
+      const profilesRoot = pathsService.getPath('browserProfiles');
+      recoverJobsGeminiAndProfilesOnStartup(this.db, { profilesRoot });
+    } catch (error) {
+      logger.warn('Startup job/gemini recovery failed; falling back to lease recover', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      const recovered = this.db.jobs.recoverExpiredLeases();
+      if (recovered > 0) {
+        logger.info('Scheduler recovered expired leases', { recovered });
+      }
     }
     this.db.workerStates.clearExpiredLimits();
     this.timer = setInterval(() => {

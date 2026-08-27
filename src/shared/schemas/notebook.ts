@@ -1,11 +1,13 @@
 import { z } from 'zod';
 import { NOTEBOOK_ASSISTED_STEPS, NOTEBOOK_STATUSES } from '../constants/notebook';
+import { NOTEBOOK_ROLES } from '../constants/notebook-role';
 import { KNOWLEDGE_TYPES } from '../constants/knowledge';
 
 export const NotebookMappingDtoSchema = z.object({
   projectId: z.string().uuid(),
   accountId: z.string(),
   notebookName: z.string(),
+  notebookRole: z.enum(NOTEBOOK_ROLES).optional().default('TRANSLATION'),
   notebookId: z.string().nullable(),
   resourceUrl: z.string().nullable(),
   status: z.string(),
@@ -24,12 +26,14 @@ export const NotebookProvisionRequestSchema = z.object({
   projectId: z.string().uuid(),
   accountId: z.string().uuid(),
   headless: z.boolean().optional(),
+  role: z.enum(NOTEBOOK_ROLES).optional(),
 });
 
 export const NotebookResumeRequestSchema = z.object({
   projectId: z.string().uuid(),
   accountId: z.string().uuid(),
   headless: z.boolean().optional(),
+  role: z.enum(NOTEBOOK_ROLES).optional(),
 });
 
 export const NotebookListRequestSchema = z.object({
@@ -39,6 +43,7 @@ export const NotebookListRequestSchema = z.object({
 export const NotebookGetRequestSchema = z.object({
   projectId: z.string().uuid(),
   accountId: z.string().uuid(),
+  role: z.enum(NOTEBOOK_ROLES).optional(),
 });
 
 export const NotebookProvisionResponseSchema = z.object({
@@ -82,9 +87,32 @@ export const NotebookHealthDtoSchema = z.object({
 
 export type NotebookHealthDto = z.infer<typeof NotebookHealthDtoSchema>;
 
+export const NotebookRoleHealthDtoSchema = z.object({
+  projectId: z.string().uuid(),
+  accountId: z.string().nullable(),
+  role: z.string(),
+  notebookName: z.string().nullable(),
+  status: z.string(),
+  lastVerifiedAt: z.string().nullable(),
+  lastDriveSyncAt: z.string().nullable(),
+  lastError: z.string().nullable(),
+  resourceUrl: z.string().nullable(),
+});
+
+export const NotebookDualHealthDtoSchema = z.object({
+  projectId: z.string().uuid(),
+  layout: z.enum(['SINGLE', 'DUAL']),
+  translation: NotebookHealthDtoSchema,
+  research: NotebookRoleHealthDtoSchema.nullable(),
+});
+
+export type NotebookDualHealthDto = z.infer<typeof NotebookDualHealthDtoSchema>;
+
 export const NotebookHealthRequestSchema = z.object({
   projectId: z.string().uuid(),
   accountId: z.string().uuid().optional(),
+  role: z.enum(NOTEBOOK_ROLES).optional(),
+  dual: z.boolean().optional(),
 });
 
 export const NotebookSyncNowRequestSchema = z.object({

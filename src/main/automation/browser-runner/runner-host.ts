@@ -1,51 +1,60 @@
-import { ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
-import path from 'node:path';
-import readline from 'node:readline';
+import { utilityProcess, type UtilityProcess } from 'electron';
 import type { BrowserWorker } from '../browser-worker';
-import type { AutomationCommand, AutomationResult, RunnerOutboundMessage } from '../protocol';
-import {
-  parseAutomationResult,
-  RunnerOutboundMessageSchema,
+import type {
+  AutomationCommand,
+  AutomationResult,
+  RunnerChildToHostMessage,
+  RunnerHostToChildMessage,
 } from '../protocol';
+import { parseRunnerChildToHostMessage } from '../protocol';
 import type { BrowserState } from '../types';
 import { logger } from '../../logging/logger';
+import { resolveRunnerScriptPath } from './runner-path';
 
-export interface ChildProcessBrowserWorkerOptions {
+export interface UtilityProcessBrowserWorkerOptions {
   workerId: string;
   runnerScriptPath: string;
-  /** Electron binary or node. Prefer ELECTRON_RUN_AS_NODE=1 with process.execPath. */
-  execPath?: string;
   env?: NodeJS.ProcessEnv;
+  /** Per-request timeout (default 120s). */
+  requestTimeoutMs?: number;
+  /** Wait for runner_ready after fork (default 15s). */
+  readyTimeoutMs?: number;
 }
 
 interface PendingRequest {
   resolve: (result: AutomationResult) => void;
   reject: (error: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
 }
 
 /**
- * BrowserWorker backed by a dedicated Node child_process (stdio JSON lines).
+ * BrowserWorker backed by Electron utilityProcess.fork().
+ * Works with RunAsNode=false (no ELECTRON_RUN_AS_NODE).
  */
-export class ChildProcessBrowserWorker implements BrowserWorker {
+export class UtilityProcessBrowserWorker implements BrowserWorker {
   readonly workerId: string;
-  private child: ChildProcessWithoutNullStreams | null = null;
+  private child: UtilityProcess | null = null;
   private state: BrowserState = 'STOPPED';
   private profilePath: string | null = null;
   private readonly pending = new Map<string, PendingRequest>();
   private readonly runnerScriptPath: string;
-  private readonly execPath: string;
   private readonly env: NodeJS.ProcessEnv;
+  private readonly requestTimeoutMs: number;
+  private readonly readyTimeoutMs: number;
   private starting: Promise<void> | null = null;
+  private disposed = false;
 
-  constructor(options: ChildProcessBrowserWorkerOptions) {
+  constructor(options: UtilityProcessBrowserWorkerOptions) {
     this.workerId = options.workerId;
     this.runnerScriptPath = options.runnerScriptPath;
-    this.execPath = options.execPath ?? process.execPath;
     this.env = {
       ...process.env,
       ...options.env,
-      ELECTRON_RUN_AS_NODE: '1',
     };
+    // Never set ELECTRON_RUN_AS_NODE — fuse is false in packaged builds.
+    delete this.env.ELECTRON_RUN_AS_NODE;
+    this.requestTimeoutMs = options.requestTimeoutMs ?? 120_000;
+    this.readyTimeoutMs = options.readyTimeoutMs ?? 15_000;
   }
 
   getState(): BrowserState {
@@ -57,16 +66,33 @@ export class ChildProcessBrowserWorker implements BrowserWorker {
   }
 
   async send(command: AutomationCommand): Promise<AutomationResult> {
+    if (this.disposed) {
+      throw new Error('Browser worker disposed');
+    }
     await this.ensureStarted();
-    if (!this.child?.stdin.writable) {
-      throw new Error('Browser runner child process is not writable');
+    if (!this.child) {
+      throw new Error('Browser runner utility process is not running');
     }
 
+    const requestId = command.id;
     const resultPromise = new Promise<AutomationResult>((resolve, reject) => {
-      this.pending.set(command.id, { resolve, reject });
+      const timer = setTimeout(() => {
+        this.pending.delete(requestId);
+        reject(
+          new Error(
+            `Browser runner timeout after ${this.requestTimeoutMs}ms (${command.type})`,
+          ),
+        );
+      }, this.requestTimeoutMs);
+      this.pending.set(requestId, { resolve, reject, timer });
     });
 
-    this.child.stdin.write(`${JSON.stringify(command)}\n`);
+    const message: RunnerHostToChildMessage = {
+      type: 'request',
+      requestId,
+      command,
+    };
+    this.child.postMessage(message);
     const result = await resultPromise;
     this.state = result.state;
     if (typeof result.data?.profilePath === 'string') {
@@ -76,24 +102,72 @@ export class ChildProcessBrowserWorker implements BrowserWorker {
   }
 
   async dispose(): Promise<void> {
+    this.disposed = true;
     if (this.child) {
       try {
-        await this.send({ id: `close-${Date.now()}`, type: 'CLOSE' });
+        await this.sendCloseBestEffort();
       } catch {
         // ignore
       }
-      this.child.kill();
+      try {
+        this.child.kill();
+      } catch {
+        // ignore
+      }
       this.child = null;
     }
-    for (const [, pending] of this.pending) {
-      pending.reject(new Error('Browser worker disposed'));
-    }
-    this.pending.clear();
+    this.failAll(new Error('Browser worker disposed'));
     this.state = 'STOPPED';
   }
 
+  /** Kill and clear so next send() respawns a fresh utility process. */
+  async restart(): Promise<void> {
+    if (this.child) {
+      try {
+        this.child.kill();
+      } catch {
+        // ignore
+      }
+      this.child = null;
+    }
+    this.failAll(new Error('Browser runner restarted'));
+    this.state = 'STOPPED';
+    this.disposed = false;
+    await this.ensureStarted();
+  }
+
+  private async sendCloseBestEffort(): Promise<void> {
+    if (!this.child) return;
+    const requestId = `close-${Date.now()}`;
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, 2_000);
+      this.pending.set(requestId, {
+        resolve: () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        reject: () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        timer,
+      });
+      try {
+        this.child?.postMessage({
+          type: 'request',
+          requestId,
+          command: { id: requestId, type: 'CLOSE' },
+        } satisfies RunnerHostToChildMessage);
+      } catch {
+        clearTimeout(timer);
+        this.pending.delete(requestId);
+        resolve();
+      }
+    });
+  }
+
   private async ensureStarted(): Promise<void> {
-    if (this.child && !this.child.killed) {
+    if (this.child) {
       return;
     }
     if (this.starting) {
@@ -101,52 +175,7 @@ export class ChildProcessBrowserWorker implements BrowserWorker {
       return;
     }
 
-    this.starting = new Promise<void>((resolve, reject) => {
-      try {
-        this.state = 'STARTING';
-        const child = spawn(this.execPath, [this.runnerScriptPath], {
-          env: this.env,
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-        this.child = child;
-
-        const rl = readline.createInterface({ input: child.stdout });
-        rl.on('line', (line) => {
-          this.handleLine(line);
-        });
-
-        child.stderr.on('data', (chunk: Buffer) => {
-          logger.warn('Browser runner stderr', {
-            workerId: this.workerId,
-            chunk: chunk.toString('utf8').slice(0, 500),
-          });
-        });
-
-        child.on('error', (error) => {
-          this.failAll(error);
-          reject(error);
-        });
-
-        child.on('exit', (code) => {
-          this.child = null;
-          this.state = 'STOPPED';
-          this.failAll(new Error(`Browser runner exited with code ${code}`));
-        });
-
-        // Runner prints a ready event on boot
-        const bootTimer = setTimeout(() => {
-          resolve();
-        }, 200);
-
-        child.stdout.once('data', () => {
-          clearTimeout(bootTimer);
-          resolve();
-        });
-      } catch (error) {
-        reject(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
-
+    this.starting = this.spawnChild();
     try {
       await this.starting;
     } finally {
@@ -154,47 +183,151 @@ export class ChildProcessBrowserWorker implements BrowserWorker {
     }
   }
 
-  private handleLine(line: string): void {
-    let raw: unknown;
-    try {
-      raw = JSON.parse(line) as unknown;
-    } catch {
-      logger.warn('Invalid JSON from browser runner', { line: line.slice(0, 200) });
-      return;
-    }
+  private spawnChild(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      try {
+        this.state = 'STARTING';
+        logger.info('Spawning browser runner utility process', {
+          workerId: this.workerId,
+          runnerScriptPath: this.runnerScriptPath,
+        });
 
-    let message: RunnerOutboundMessage;
-    try {
-      message = RunnerOutboundMessageSchema.parse(raw);
-    } catch {
-      logger.warn('Invalid runner message', { line: line.slice(0, 200) });
-      return;
-    }
+        const child = utilityProcess.fork(this.runnerScriptPath, [], {
+          serviceName: `NovelTransBrowserRunner:${this.workerId}`,
+          env: this.env,
+          stdio: 'pipe',
+        });
+        this.child = child;
 
-    if (message.kind === 'result') {
-      const result = parseAutomationResult(message.result);
-      const pending = this.pending.get(result.id);
-      if (pending) {
-        this.pending.delete(result.id);
-        pending.resolve(result);
+        let settled = false;
+        const readyTimer = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          const err = new Error(
+            `Browser runner ready timeout after ${this.readyTimeoutMs}ms (${this.runnerScriptPath})`,
+          );
+          this.failAll(err);
+          try {
+            child.kill();
+          } catch {
+            // ignore
+          }
+          this.child = null;
+          this.state = 'ERROR';
+          reject(err);
+        }, this.readyTimeoutMs);
+
+        child.on('message', (raw) => {
+          this.handleMessage(raw);
+          if (!settled) {
+            try {
+              const msg = parseRunnerChildToHostMessage(raw);
+              if (msg.type === 'event' && msg.event === 'runner_ready') {
+                settled = true;
+                clearTimeout(readyTimer);
+                this.state = 'READY';
+                resolve();
+              }
+            } catch {
+              // ignore until typed ready
+            }
+          }
+        });
+
+        child.stderr?.on('data', (chunk: Buffer) => {
+          logger.warn('Browser runner stderr', {
+            workerId: this.workerId,
+            chunk: chunk.toString('utf8').slice(0, 500),
+          });
+        });
+
+        child.on('exit', (code) => {
+          const wasCurrent = this.child === child;
+          if (wasCurrent) {
+            this.child = null;
+            this.state = 'STOPPED';
+          }
+          const err = new Error(
+            `Browser runner crashed/exited with code ${code ?? 'null'}`,
+          );
+          this.failAll(err);
+          if (!settled) {
+            settled = true;
+            clearTimeout(readyTimer);
+            reject(err);
+          }
+        });
+      } catch (error) {
+        this.state = 'ERROR';
+        reject(error instanceof Error ? error : new Error(String(error)));
       }
+    });
+  }
+
+  private handleMessage(raw: unknown): void {
+    let message: RunnerChildToHostMessage;
+    try {
+      message = parseRunnerChildToHostMessage(raw);
+    } catch {
+      logger.warn('Invalid runner utilityProcess message', {
+        preview: JSON.stringify(raw).slice(0, 200),
+      });
       return;
     }
 
-    if (message.kind === 'event' && message.event === 'runner_ready') {
+    if (message.type === 'response') {
+      const pending = this.pending.get(message.requestId);
+      if (!pending) return;
+      this.pending.delete(message.requestId);
+      clearTimeout(pending.timer);
+      if (message.error && !message.result) {
+        pending.reject(
+          new Error(
+            message.error.code
+              ? `${message.error.code}: ${message.error.message}`
+              : message.error.message,
+          ),
+        );
+        return;
+      }
+      if (message.result) {
+        pending.resolve(message.result);
+        return;
+      }
+      pending.reject(new Error('Browser runner response missing result'));
+      return;
+    }
+
+    if (message.type === 'event' && message.event === 'runner_ready') {
       this.state = 'READY';
+      return;
+    }
+
+    if (message.type === 'log') {
+      const level = message.level;
+      if (level === 'error') {
+        logger.error('Browser runner log', { message: message.message });
+      } else if (level === 'warn') {
+        logger.warn('Browser runner log', { message: message.message });
+      } else {
+        logger.info('Browser runner log', { message: message.message });
+      }
     }
   }
 
   private failAll(error: Error): void {
     for (const [, pending] of this.pending) {
+      clearTimeout(pending.timer);
       pending.reject(error);
     }
     this.pending.clear();
   }
 }
 
+/** @deprecated Use UtilityProcessBrowserWorker — alias kept for imports. */
+export const ChildProcessBrowserWorker = UtilityProcessBrowserWorker;
+export type ChildProcessBrowserWorkerOptions = UtilityProcessBrowserWorkerOptions;
+
 export function resolveDefaultRunnerScriptPath(): string {
-  // Built next to main.js by Electron Forge Vite plugin from runner-entry.ts
-  return path.join(__dirname, 'runner-entry.js');
+  return resolveRunnerScriptPath(__dirname);
 }

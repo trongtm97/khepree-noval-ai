@@ -36,6 +36,8 @@ import {
   KnowledgeFileRepository,
   KnowledgeSyncEventRepository,
   NotebookHotDeltaRepository,
+  FullNovelPreprocessRepository,
+  BatchSizeRepository,
 } from './repositories';
 
 export interface DatabaseOptions {
@@ -79,6 +81,8 @@ export class DatabaseManager {
   readonly knowledgeFiles: KnowledgeFileRepository;
   readonly knowledgeSyncEvents: KnowledgeSyncEventRepository;
   readonly notebookHotDeltas: NotebookHotDeltaRepository;
+  readonly fullNovelPreprocess: FullNovelPreprocessRepository;
+  readonly batchSize: BatchSizeRepository;
 
   constructor(options: DatabaseOptions) {
     fs.mkdirSync(options.dataDir, { recursive: true });
@@ -134,6 +138,8 @@ export class DatabaseManager {
     this.knowledgeFiles = new KnowledgeFileRepository(this.db);
     this.knowledgeSyncEvents = new KnowledgeSyncEventRepository(this.db);
     this.notebookHotDeltas = new NotebookHotDeltaRepository(this.db);
+    this.fullNovelPreprocess = new FullNovelPreprocessRepository(this.db);
+    this.batchSize = new BatchSizeRepository(this.db);
 
     this.appMeta.set('schema_version', String(getCurrentSchemaVersion(this.db)));
   }

@@ -15,9 +15,15 @@ import type {
 import type { AttentionAction, WorkerMode } from '@shared/constants/job';
 import {
   ATTENTION_ACTIONS,
+  DEFAULT_MAX_CHAPTERS_PER_JOB,
   DEFAULT_MAX_REPAIR_ATTEMPTS,
   DEFAULT_MAX_CONCURRENT_WORKERS,
 } from '@shared/constants/job';
+import {
+  planChapterBatches,
+  historyFromProjectStats,
+  type ChapterBatchInput,
+} from '../jobs/batch-sizer';
 import type { JobAttemptRow, JobRow } from '../db/repositories/job-repository';
 import type { AutomationScheduler } from '../jobs/scheduler';
 import { healIdleWorkers } from '../jobs/heal-workers';
@@ -46,7 +52,10 @@ export interface EnqueueTranslateJobInput {
   sourceParagraphIds: string[];
   batchParagraphs: RepairParagraph[];
   maxRepairAttempts?: number;
+  maxContinuationAttempts?: number;
   lockedTerms?: LockedTermForQa[];
+  chapterIds?: string[];
+  batchDecisionId?: string | null;
 }
 
 export interface EnqueueTranslateNovelInput {
@@ -55,12 +64,15 @@ export interface EnqueueTranslateNovelInput {
   chapterTo?: number;
   /** When set, only these chapter UUIDs (still SOURCE_READY + skip logic). */
   chapterIds?: string[];
+  /** User cap — engine may shrink batch when source is large. Default 3. */
+  maxChaptersPerJob?: number;
   /** Default true — skip chapters with no remaining paragraphs to translate. */
   skipTranslated?: boolean;
   priority?: number;
   workerMode?: WorkerMode;
   pinnedAccountId?: string | null;
   maxRepairAttempts?: number;
+  maxContinuationAttempts?: number;
 }
 
 export class JobService {
@@ -138,6 +150,7 @@ export class JobService {
 
     const jobs: JobDto[] = [];
     let skippedCount = 0;
+    const eligible: ChapterBatchInput[] = [];
 
     // chapterIds that were requested but not SOURCE_READY / missing count as skipped
     if (idFilter) {
@@ -182,19 +195,56 @@ export class JobService {
         continue;
       }
 
-      jobs.push(
-        this.createTranslateJob({
-          projectId: input.projectId,
-          chapterFrom: ref,
-          chapterTo: ref,
-          priority: input.priority ?? chapter.sequence_order,
-          workerMode: input.workerMode,
-          pinnedAccountId: input.pinnedAccountId,
-          sourceParagraphIds: batchParagraphs.map((p) => p.paragraphId),
-          batchParagraphs,
-          maxRepairAttempts: input.maxRepairAttempts,
-        }),
-      );
+      eligible.push({
+        chapterId: chapter.id,
+        chapterRef: ref,
+        batchParagraphs,
+      });
+    }
+
+    const providerType = this.db.aiProviders.listEnabledOrdered()[0]?.type ?? null;
+    const stats = this.db.batchSize.getProjectStats(input.projectId);
+    const history = historyFromProjectStats(stats);
+    const maxChaptersUser = input.maxChaptersPerJob ?? DEFAULT_MAX_CHAPTERS_PER_JOB;
+    const batchPlans = planChapterBatches(eligible, {
+      maxChaptersUser,
+      providerType,
+      history,
+    });
+
+    for (const plan of batchPlans) {
+      const batchParagraphs = plan.chapters.flatMap((c) => c.batchParagraphs);
+      const chapterIds = plan.chapters.map((c) => c.chapterId);
+      const refs = plan.chapters.map((c) => c.chapterRef);
+      const chapterFrom = Math.min(...refs);
+      const chapterTo = Math.max(...refs);
+
+      const decision = this.db.batchSize.insertDecision({
+        project_id: input.projectId,
+        user_max_chapters: plan.userMaxChapters,
+        chosen_chapters: plan.chosenChapterCount,
+        source_characters: plan.sourceCharacters,
+        paragraph_count: plan.paragraphCount,
+        provider_type: providerType,
+        reason: plan.reason,
+      });
+
+      const job = this.createTranslateJob({
+        projectId: input.projectId,
+        chapterFrom,
+        chapterTo,
+        priority: input.priority ?? chapterFrom,
+        workerMode: input.workerMode,
+        pinnedAccountId: input.pinnedAccountId,
+        sourceParagraphIds: batchParagraphs.map((p) => p.paragraphId),
+        batchParagraphs,
+        maxRepairAttempts: input.maxRepairAttempts,
+        maxContinuationAttempts: input.maxContinuationAttempts,
+        chapterIds,
+        batchDecisionId: decision.id,
+      });
+      this.db.batchSize.linkDecisionToJob(decision.id, job.id);
+      jobs.push(job);
     }
 
     if (jobs.length > 0) {
@@ -220,7 +270,10 @@ export class JobService {
       sourceParagraphIds: input.sourceParagraphIds,
       batchParagraphs: input.batchParagraphs,
       maxRepairAttempts: input.maxRepairAttempts ?? DEFAULT_MAX_REPAIR_ATTEMPTS,
+      maxContinuationAttempts: input.maxContinuationAttempts,
       lockedTerms: input.lockedTerms ?? [],
+      chapterIds: input.chapterIds,
+      batchDecisionId: input.batchDecisionId ?? null,
     };
     const job = this.db.jobs.create({
       project_id: input.projectId,

@@ -5,6 +5,10 @@ import { NotebookProvider } from '../automation/providers/google/notebook-provid
 import { AutomationError } from '../automation/errors/automation-errors';
 import { formatNotebookName } from '@shared/constants/notebook';
 import type { NotebookAssistedStep } from '@shared/constants/notebook';
+import {
+  formatNotebookNameForRole,
+  type NotebookRole,
+} from '@shared/constants/notebook-role';
 import { DRIVE_PROJECT_FILES } from '@shared/constants/drive';
 import {
   FILE_KEY_TO_NAME,
@@ -15,7 +19,7 @@ import { NotebookKnowledgeBuilder } from '../notebook/knowledge-builder';
 import type { BrowserSessionController } from '../automation/browser-runner/browser-session-controller';
 import { PlaywrightBrowserSessionController } from '../automation/browser-runner/browser-session-controller';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
-import { profileLockManager } from '../automation/browser-runner/profile-lock';
+import { profileLockManager, startLeaseHeartbeat } from '../automation/browser-runner/profile-lock';
 import { pathsService } from './paths-service';
 import { logger } from '../logging/logger';
 import { getNotebookSyncService } from '../notebook/notebook-sync-service-singleton';
@@ -24,6 +28,7 @@ export interface NotebookMappingDto {
   projectId: string;
   accountId: string;
   notebookName: string;
+  notebookRole: string;
   notebookId: string | null;
   resourceUrl: string | null;
   status: string;
@@ -93,26 +98,40 @@ async function attachKnowledgeSources(
   await provider.addDriveSources(sourceNames);
 }
 
-function loadNotebookInstructions(db: DatabaseManager, projectId: string): string {
+function loadNotebookInstructions(
+  db: DatabaseManager,
+  projectId: string,
+  role: NotebookRole,
+): string {
   const row = db
     .getConnection()
     .prepare(`SELECT style_config FROM project_settings WHERE project_id = ?`)
     .get(projectId) as { style_config: string | null } | undefined;
 
-  const lines: string[] = [
-    'Notebook này là bộ nhớ tri thức dài hạn của một dự án dịch tiểu thuyết Trung → Việt (NovelTrans Studio).',
-    '',
-    'Luôn ưu tiên các nguồn:',
-    'Translation Rules, Project Terms, Characters, Relationships, Story State, World Knowledge, Recent Context.',
-    '',
-    'Không tự phát minh thông tin ngoài sources khi được hỏi về dữ liệu truyện.',
-    'Đối với tên nhân vật và thuật ngữ, ưu tiên bản dịch đã xác nhận / LOCKED trong Project Terms.',
-    'Official Summary trong Book Profile KHÔNG phải trạng thái hiện tại — Story State mới là trạng thái hiện tại.',
-    'HOT MEMORY trong Translation Pack override Notebook nếu xung đột (chưa kịp sync).',
-    'Không tự dịch toàn bộ novel; chỉ dịch khi nhận Translation Pack với Source + Output Protocol.',
-  ];
+  const lines: string[] =
+    role === 'RESEARCH'
+      ? [
+          'Notebook RESEARCH — corpus đầy đủ cho phân tích toàn truyện (NovelTrans Studio).',
+          '',
+          'Chứa các phần NOVEL_PART_* (corpus gốc).',
+          'Dùng cho: terminology discovery, nhân vật, quan hệ, thế giới, cốt truyện.',
+          'KHÔNG dịch trực tiếp tại đây — kết quả import vào SQLite rồi sync sang Translation Notebook.',
+          'Tránh spoiler tương lai khi trả lời — ghi rõ first_seen_chapter khi có thể.',
+        ]
+      : [
+          'Notebook này là bộ nhớ tri thức dài hạn của một dự án dịch tiểu thuyết Trung → Việt (NovelTrans Studio).',
+          '',
+          'Luôn ưu tiên các nguồn:',
+          'Translation Rules, Project Terms, Characters, Relationships, Story State, World Knowledge, Recent Context.',
+          '',
+          'Không tự phát minh thông tin ngoài sources khi được hỏi về dữ liệu truyện.',
+          'Đối với tên nhân vật và thuật ngữ, ưu tiên bản dịch đã xác nhận / LOCKED trong Project Terms.',
+          'Official Summary trong Book Profile KHÔNG phải trạng thái hiện tại — Story State mới là trạng thái hiện tại.',
+          'HOT MEMORY trong Translation Pack override Notebook nếu xung đột (chưa kịp sync).',
+          'Không tự dịch toàn bộ novel; chỉ dịch khi nhận Translation Pack với Source + Output Protocol.',
+        ];
 
-  if (row?.style_config) {
+  if (role !== 'RESEARCH' && row?.style_config) {
     try {
       const parsed = JSON.parse(row.style_config) as {
         notebookInstructions?: string;
@@ -142,8 +161,14 @@ export class NotebookService {
     this.browser = browser ?? new PlaywrightBrowserSessionController();
   }
 
-  getMapping(projectId: string, accountId: string): NotebookMappingDto | null {
-    const row = this.db.notebooks.getByProjectAndWorker(projectId, accountId);
+  getMapping(
+    projectId: string,
+    accountId: string,
+    role?: NotebookRole,
+  ): NotebookMappingDto | null {
+    const row = role
+      ? this.db.notebooks.getByProjectWorkerRole(projectId, accountId, role)
+      : this.db.notebooks.getByProjectAndWorker(projectId, accountId);
     return row ? this.toDto(row) : null;
   }
 
@@ -156,30 +181,39 @@ export class NotebookService {
     accountId: string;
     headless?: boolean;
     baseUrl?: string;
+    role?: NotebookRole;
   }): Promise<ProvisionNotebookResult> {
     const project = this.db.projects.getById(input.projectId);
     if (!project) throw new Error(`Project not found: ${input.projectId}`);
     const account = this.db.googleAccounts.getById(input.accountId);
     if (!account) throw new Error(`Account not found: ${input.accountId}`);
 
-    const notebookName = formatNotebookName(project.title);
-    const instructions = loadNotebookInstructions(this.db, input.projectId);
+    const notebookRole = input.role ?? 'TRANSLATION';
+    const notebookName = formatNotebookNameForRole(project.title, notebookRole);
+    const attachKnowledge = notebookRole !== 'RESEARCH';
+    const instructions = loadNotebookInstructions(this.db, input.projectId, notebookRole);
     const instructionsHash = hashText(instructions);
-    const sourceNames = [...DRIVE_PROJECT_FILES];
-    const knowledgeSources = buildKnowledgeSources(this.db, input.projectId);
+    const sourceNames = attachKnowledge ? [...DRIVE_PROJECT_FILES] : [];
+    const knowledgeSources = attachKnowledge
+      ? buildKnowledgeSources(this.db, input.projectId)
+      : [];
     const sourceFilesDir = path.join(
       pathsService.getPath('cache'),
       'automation',
       input.accountId,
       'notebook-sources',
       input.projectId,
+      notebookRole.toLowerCase(),
     );
-    const knowledgeFilePaths = writeKnowledgeSourceFiles(sourceFilesDir, knowledgeSources);
+    const knowledgeFilePaths = attachKnowledge
+      ? writeKnowledgeSourceFiles(sourceFilesDir, knowledgeSources)
+      : [];
 
     let mapping = this.db.notebooks.upsert({
       project_id: input.projectId,
       google_account_id: input.accountId,
       notebook_name: notebookName,
+      notebook_role: notebookRole,
       status: 'provisioning',
       instructions_hash: instructionsHash,
       last_error: null,
@@ -199,22 +233,39 @@ export class NotebookService {
     await this.freeProfileForNotebook(input.accountId, profilePath);
 
     let lockHeld = true;
-    profileLockManager.acquire(profilePath, input.accountId);
+    profileLockManager.acquireLease({
+      profilePath,
+      ownerId: input.accountId,
+      accountId: input.accountId,
+      operation: 'notebook_setup',
+      label: 'Thiết lập Notebook',
+    });
+    const stopHeartbeat = startLeaseHeartbeat(profileLockManager, {
+      profilePath,
+      ownerId: input.accountId,
+    });
     const releaseLock = (): void => {
       if (!lockHeld) return;
-      profileLockManager.release(profilePath, input.accountId);
+      stopHeartbeat();
+      profileLockManager.releaseLease(profilePath, input.accountId);
       lockHeld = false;
     };
 
-    const { chromium } = await import('playwright');
+    const { launchNovelTransPersistentContext } = await import(
+      '../automation/browser-runner/launch-persistent-context'
+    );
     let context: import('playwright').BrowserContext | null = null;
 
     try {
-      context = await chromium.launchPersistentContext(profilePath, {
-        // Headed: Google NotebookLM often blank / login-wall under headless.
-        headless: input.headless ?? false,
-        args: ['--disable-blink-features=AutomationControlled'],
-      });
+      context = (
+        await launchNovelTransPersistentContext({
+          profilePath,
+          // Headed: Google NotebookLM often blank / login-wall under headless.
+          headless: input.headless,
+          headlessDefault: false,
+          diagnosticsDir,
+        })
+      ).context;
       const page = context.pages()[0] ?? (await context.newPage());
       const provider = new NotebookProvider({
         diagnosticsDir,
@@ -244,33 +295,35 @@ export class NotebookService {
         project_id: input.projectId,
         google_account_id: input.accountId,
         notebook_name: notebookName,
+        notebook_role: notebookRole,
         notebook_id: notebook.id,
         resource_url: notebook.url ?? page.url(),
         status: 'provisioning',
         instructions_hash: instructionsHash,
       });
 
-      try {
-        await attachKnowledgeSources(
-          provider,
-          knowledgeSources,
-          sourceNames,
-          knowledgeFilePaths,
-        );
-      } catch (error) {
-        if (error instanceof AutomationError) {
-          return await handOffAssisted('add_sources', error.message);
+      if (attachKnowledge) {
+        try {
+          await attachKnowledgeSources(
+            provider,
+            knowledgeSources,
+            sourceNames,
+            knowledgeFilePaths,
+          );
+        } catch (error) {
+          if (error instanceof AutomationError) {
+            return await handOffAssisted('add_sources', error.message);
+          }
+          throw error;
         }
-        throw error;
-      }
 
-      const verified = await provider.verifySources(sourceNames);
-      // Live UI may title cards differently than filenames; accept by count after upload.
-      if (!verified.ok && verified.present.length < sourceNames.length) {
-        return await handOffAssisted(
-          'verify',
-          `Missing sources: ${verified.missing.join(', ')}`,
-        );
+        const verified = await provider.verifySources(sourceNames);
+        if (!verified.ok && verified.present.length < sourceNames.length) {
+          return await handOffAssisted(
+            'verify',
+            `Missing sources: ${verified.missing.join(', ')}`,
+          );
+        }
       }
 
       let instructionsApplied = false;
@@ -286,6 +339,7 @@ export class NotebookService {
         project_id: input.projectId,
         google_account_id: input.accountId,
         notebook_name: notebookName,
+        notebook_role: notebookRole,
         notebook_id: mapping.notebook_id,
         resource_url: mapping.resource_url ?? page.url(),
         status: 'ready',
@@ -293,13 +347,18 @@ export class NotebookService {
         assisted_step: null,
         last_error: instructionsApplied
           ? null
-          : 'Sources ready; custom instructions not set (Configure chat → Custom)',
+          : attachKnowledge
+            ? 'Sources ready; custom instructions not set (Configure chat → Custom)'
+            : 'Research notebook ready — corpus upload during FULL preprocess',
         last_verified_at: new Date().toISOString(),
       });
-      getNotebookSyncService(this.db).markNotebookVerified(
-        input.projectId,
-        input.accountId,
-      );
+      if (attachKnowledge) {
+        getNotebookSyncService(this.db).markNotebookVerified(
+          input.projectId,
+          input.accountId,
+          notebookRole === 'SINGLE' ? 'SINGLE' : 'TRANSLATION',
+        );
+      }
       this.releaseAccountBusyForTranslate(input.accountId);
       return {
         mapping: this.toDto(ready),
@@ -330,6 +389,7 @@ export class NotebookService {
         project_id: input.projectId,
         google_account_id: input.accountId,
         notebook_name: notebookName,
+        notebook_role: notebookRole,
         status: 'error',
         last_error: message,
       });
@@ -345,31 +405,41 @@ export class NotebookService {
     accountId: string;
     headless?: boolean;
     baseUrl?: string;
+    role?: NotebookRole;
   }): Promise<ProvisionNotebookResult> {
-    const existing = this.db.notebooks.getByProjectAndWorker(
+    const notebookRole = input.role ?? 'TRANSLATION';
+    const existing = this.db.notebooks.getByProjectWorkerRole(
       input.projectId,
       input.accountId,
+      notebookRole,
     );
     if (!existing) {
-      return this.provision(input);
+      return this.provision({ ...input, role: notebookRole });
     }
 
     const project = this.db.projects.getById(input.projectId);
     if (!project) throw new Error(`Project not found: ${input.projectId}`);
-    const notebookName = existing.notebook_name ?? formatNotebookName(project.title);
-    const sourceNames = [...DRIVE_PROJECT_FILES];
-    const knowledgeSources = buildKnowledgeSources(this.db, input.projectId);
-    const knowledgeFilePaths = writeKnowledgeSourceFiles(
-      path.join(
-        pathsService.getPath('cache'),
-        'automation',
-        input.accountId,
-        'notebook-sources',
-        input.projectId,
-      ),
-      knowledgeSources,
-    );
-    const instructions = loadNotebookInstructions(this.db, input.projectId);
+    const notebookName =
+      existing.notebook_name ?? formatNotebookNameForRole(project.title, notebookRole);
+    const attachKnowledge = notebookRole !== 'RESEARCH';
+    const sourceNames = attachKnowledge ? [...DRIVE_PROJECT_FILES] : [];
+    const knowledgeSources = attachKnowledge
+      ? buildKnowledgeSources(this.db, input.projectId)
+      : [];
+    const knowledgeFilePaths = attachKnowledge
+      ? writeKnowledgeSourceFiles(
+          path.join(
+            pathsService.getPath('cache'),
+            'automation',
+            input.accountId,
+            'notebook-sources',
+            input.projectId,
+            notebookRole.toLowerCase(),
+          ),
+          knowledgeSources,
+        )
+      : [];
+    const instructions = loadNotebookInstructions(this.db, input.projectId, notebookRole);
     const assistedStep =
       (existing.assisted_step as NotebookAssistedStep | null) ?? 'create_notebook';
 
@@ -387,22 +457,39 @@ export class NotebookService {
     await this.freeProfileForNotebook(input.accountId, profilePath);
 
     let lockHeld = true;
-    profileLockManager.acquire(profilePath, input.accountId);
+    profileLockManager.acquireLease({
+      profilePath,
+      ownerId: input.accountId,
+      accountId: input.accountId,
+      operation: 'notebook_setup',
+      label: 'Tiếp tục thiết lập Notebook',
+    });
+    const stopHeartbeat = startLeaseHeartbeat(profileLockManager, {
+      profilePath,
+      ownerId: input.accountId,
+    });
     const releaseLock = (): void => {
       if (!lockHeld) return;
-      profileLockManager.release(profilePath, input.accountId);
+      stopHeartbeat();
+      profileLockManager.releaseLease(profilePath, input.accountId);
       lockHeld = false;
     };
 
-    const { chromium } = await import('playwright');
+    const { launchNovelTransPersistentContext } = await import(
+      '../automation/browser-runner/launch-persistent-context'
+    );
     let context: import('playwright').BrowserContext | null = null;
 
     try {
       // Headed so user can finish login / manual steps if automation stops.
-      context = await chromium.launchPersistentContext(profilePath, {
-        headless: input.headless ?? false,
-        args: ['--disable-blink-features=AutomationControlled'],
-      });
+      context = (
+        await launchNovelTransPersistentContext({
+          profilePath,
+          headless: input.headless,
+          headlessDefault: false,
+          diagnosticsDir,
+        })
+      ).context;
       const page = context.pages()[0] ?? (await context.newPage());
       const provider = new NotebookProvider({
         diagnosticsDir,
@@ -445,29 +532,30 @@ export class NotebookService {
 
       await provider.openNotebook(notebookName);
 
-      try {
-        await attachKnowledgeSources(
-          provider,
-          knowledgeSources,
-          sourceNames,
-          knowledgeFilePaths,
-        );
-      } catch (error) {
-        if (error instanceof AutomationError) {
-          return await handOffAssisted('add_sources', error.message);
+      if (attachKnowledge) {
+        try {
+          await attachKnowledgeSources(
+            provider,
+            knowledgeSources,
+            sourceNames,
+            knowledgeFilePaths,
+          );
+        } catch (error) {
+          if (error instanceof AutomationError) {
+            return await handOffAssisted('add_sources', error.message);
+          }
+          throw error;
         }
-        throw error;
-      }
 
-      const verified = await provider.verifySources(sourceNames);
-      // Live UI may title cards differently than filenames; accept by count after upload.
-      if (!verified.ok && verified.present.length < sourceNames.length) {
-        return await handOffAssisted(
-          'add_sources',
-          `Missing sources: ${verified.missing.join(', ')}. ` +
-            `Present: ${verified.present.join(', ') || '(none)'}. ` +
-            `Upload 00_…05_.md (or Copied text), then Resume`,
-        );
+        const verified = await provider.verifySources(sourceNames);
+        if (!verified.ok && verified.present.length < sourceNames.length) {
+          return await handOffAssisted(
+            'add_sources',
+            `Missing sources: ${verified.missing.join(', ')}. ` +
+              `Present: ${verified.present.join(', ') || '(none)'}. ` +
+              `Upload 00_…05_.md (or Copied text), then Resume`,
+          );
+        }
       }
 
       let instructionsApplied = false;
@@ -483,13 +571,16 @@ export class NotebookService {
         project_id: input.projectId,
         google_account_id: input.accountId,
         notebook_name: notebookName,
+        notebook_role: notebookRole,
         notebook_id: found.id,
         resource_url: page.url(),
         status: 'ready',
         assisted_step: null,
         last_error: instructionsApplied
           ? null
-          : 'Sources ready; custom instructions not set (Configure chat → Custom)',
+          : attachKnowledge
+            ? 'Sources ready; custom instructions not set (Configure chat → Custom)'
+            : 'Research notebook ready',
         last_verified_at: new Date().toISOString(),
         instructions_hash: instructionsApplied ? hashText(instructions) : null,
       });
@@ -528,6 +619,7 @@ export class NotebookService {
         project_id: input.projectId,
         google_account_id: input.accountId,
         notebook_name: notebookName,
+        notebook_role: notebookRole,
         status: 'error',
         last_error: message,
       });
@@ -547,6 +639,17 @@ export class NotebookService {
     profilePath: string,
   ): Promise<void> {
     try {
+      const { getBrowserRuntimeManager } = await import(
+        '../automation/browser-runner/browser-runtime-manager'
+      );
+      await getBrowserRuntimeManager().evictForExternalLaunch(accountId);
+    } catch (error) {
+      logger.warn('Could not evict browser runtime before Notebook', {
+        accountId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    try {
       const { getAccountWorkerService } = await import('./account-worker-singleton');
       await getAccountWorkerService().closeBrowser(accountId);
     } catch (error) {
@@ -555,12 +658,7 @@ export class NotebookService {
         error: error instanceof Error ? error.message : String(error),
       });
     }
-    if (profileLockManager.isLocked(profilePath)) {
-      logger.warn('Force-clearing leftover profile lock before Notebook', {
-        accountId,
-      });
-      profileLockManager.forceClearStaleLock(profilePath);
-    }
+    profileLockManager.recoverIfStale(profilePath);
   }
 
   /**
@@ -651,6 +749,11 @@ export class NotebookService {
 
     const assistedRow =
       row ??
+      this.db.notebooks.getByProjectWorkerRole(
+        input.projectId,
+        input.accountId,
+        'TRANSLATION',
+      ) ??
       this.db.notebooks.getByProjectAndWorker(input.projectId, input.accountId);
     if (!assistedRow) {
       throw new Error('Notebook mapping missing after assisted setup');
@@ -667,6 +770,7 @@ export class NotebookService {
     project_id: string;
     google_account_id: string | null;
     notebook_name: string | null;
+    notebook_role?: string | null;
     notebook_id: string | null;
     resource_url: string | null;
     status: string;
@@ -682,6 +786,7 @@ export class NotebookService {
       projectId: row.project_id,
       accountId: row.google_account_id ?? '',
       notebookName: row.notebook_name ?? '',
+      notebookRole: row.notebook_role ?? 'TRANSLATION',
       notebookId: row.notebook_id,
       resourceUrl: row.resource_url,
       status: row.status,

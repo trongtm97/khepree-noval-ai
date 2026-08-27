@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { DatabaseManager } from '../db/database-manager';
+import type { GeminiRequestRow } from '../db/repositories/gemini-request-repository';
 import { GeminiBrowserProvider } from '../automation/providers/google/gemini-browser-provider';
 import { BrowserEventLogger } from '../automation/browser-event-logger';
 import { AutomationError } from '../automation/errors/automation-errors';
@@ -9,12 +10,22 @@ import type { GeminiSendResponse } from '@shared/schemas/gemini';
 import {
   DEFAULT_GENERATION_MAX_TIMEOUT_MS,
   DEFAULT_STABILIZATION_WINDOW_MS,
+  formatCorrelationMarker,
+  isGeminiLifecycleAtLeast,
+  type GeminiRequestLifecycle,
 } from '@shared/constants/gemini';
-import { newId } from '../db/utils/uuid';
+import {
+  shouldEnableFailTrace,
+  startFailTrace,
+} from '../automation/playwright-tracing';
+import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
 import { profileLockManager } from '../automation/browser-runner/profile-lock';
+import { getBrowserRuntimeManager } from '../automation/browser-runner/browser-runtime-manager';
+import { planGeminiRequestRecovery } from '../gemini/gemini-request-recovery';
 import { pathsService } from './paths-service';
 import { logger } from '../logging/logger';
+import { newId } from '../db/utils/uuid';
 
 function loadRetainRawResponses(db: DatabaseManager, projectId: string): boolean {
   const row = db
@@ -34,6 +45,19 @@ function loadRetainRawResponses(db: DatabaseManager, projectId: string): boolean
 export class GeminiService {
   constructor(private readonly db: DatabaseManager) {}
 
+  /** Active cancel hook for in-flight Playwright generation (per process). */
+  private activeCancel: (() => Promise<void>) | null = null;
+  private activeCorrelationId: string | null = null;
+
+  async cancelActive(correlationId?: string): Promise<boolean> {
+    if (correlationId && this.activeCorrelationId && correlationId !== this.activeCorrelationId) {
+      return false;
+    }
+    if (!this.activeCancel) return false;
+    await this.activeCancel();
+    return true;
+  }
+
   async sendTranslation(input: {
     projectId: string;
     accountId: string;
@@ -48,7 +72,8 @@ export class GeminiService {
     const account = this.db.googleAccounts.getById(input.accountId);
     if (!account) throw new Error(`Account not found: ${input.accountId}`);
 
-    const mapping = this.db.notebooks.getByProjectAndWorker(
+    const mapping = resolveTranslationNotebook(
+      this.db,
       input.projectId,
       input.accountId,
     );
@@ -57,25 +82,37 @@ export class GeminiService {
       (mapping.status !== 'ready' && mapping.status !== 'sync_pending')
     ) {
       throw new Error(
-        'Notebook mapping not ready — provision NotebookLM first for this worker.',
+        'Translation Notebook not ready — provision Translation Notebook for this worker.',
       );
     }
 
-    const correlationId = newId();
-    const requestRow = this.db.geminiRequests.create({
-      correlation_id: correlationId,
-      project_id: input.projectId,
-      google_account_id: input.accountId,
-      pack_hash: input.pack.promptHash,
-      job_id: input.jobId ?? null,
-      status: 'pending',
-    });
+    let requestRow: GeminiRequestRow | null = null;
+    if (input.jobId) {
+      requestRow = this.db.geminiRequests.findOpenByJobAndPack(
+        input.jobId,
+        input.pack.promptHash,
+      );
+    }
+
+    const resuming = Boolean(requestRow);
+    const correlationId = requestRow?.correlation_id ?? newId();
+    if (!requestRow) {
+      requestRow = this.db.geminiRequests.create({
+        correlation_id: correlationId,
+        project_id: input.projectId,
+        google_account_id: input.accountId,
+        pack_hash: input.pack.promptHash,
+        job_id: input.jobId ?? null,
+        notebook_id: mapping.id,
+        marker: formatCorrelationMarker(correlationId),
+        lifecycle: 'CREATED',
+      });
+    }
 
     const profile = this.db.googleAccounts.getProfile(input.accountId);
     if (!profile) throw new Error('Browser profile missing for worker');
     const profilePath = browserProfileManager.resolveProfilePath(profile.profile_dir_name);
 
-    const ownerId = `gemini-send:${correlationId}`;
     const diagnosticsDir = path.join(
       pathsService.getPath('cache'),
       'automation',
@@ -86,8 +123,12 @@ export class GeminiService {
     const eventLogDir = path.join(diagnosticsDir, 'events');
     const eventLogger = new BrowserEventLogger(this.db.automationEvents, eventLogDir);
 
-    // automation_events.worker_id FK → worker_states.id (not google_accounts.id).
     const workerState = this.db.workerStates.getByAccountId(account.id);
+    const requestId = requestRow.id;
+    const persistLifecycle = (lifecycle: GeminiRequestLifecycle) => {
+      this.db.geminiRequests.setLifecycle(requestId, lifecycle);
+    };
+
     const provider = new GeminiBrowserProvider({
       diagnosticsDir,
       eventLogger,
@@ -96,65 +137,210 @@ export class GeminiService {
       maxTimeoutMs: input.maxTimeoutMs ?? DEFAULT_GENERATION_MAX_TIMEOUT_MS,
       stabilizationWindowMs:
         input.stabilizationWindowMs ?? DEFAULT_STABILIZATION_WINDOW_MS,
+      onLifecycle: (lifecycle) => persistLifecycle(lifecycle),
+      expectedNotebookUrl: mapping.resource_url,
     });
+    provider.beginTimeline(correlationId);
 
     const retainRaw = loadRetainRawResponses(this.db, input.projectId);
-    const nestUnderJobLock = profileLockManager.isHeldByJob(profilePath, input.jobId);
+    const runtimeManager = getBrowserRuntimeManager();
+    const nestUnderExternalLock =
+      profileLockManager.isHeldByJob(profilePath, input.jobId) ||
+      profileLockManager.isHeldByRuntime(profilePath, input.accountId);
 
     try {
-      if (!nestUnderJobLock) {
-        profileLockManager.acquire(profilePath, ownerId);
-      }
-      this.db.geminiRequests.markRunning(requestRow.id);
+      return await runtimeManager.runExclusive(
+        {
+          accountId: input.accountId,
+          profilePath,
+          diagnosticsDir,
+          headless: input.headless,
+          jobId: input.jobId,
+          nestUnderExternalLock,
+        },
+        async ({ runtime, prepareNotebook }) => {
+          runtime.setGenerationState('SENDING');
+          const page = await prepareNotebook({
+            projectId: input.projectId,
+            notebookUrl: mapping.resource_url ?? '',
+            openNotebook: async (p, url) => {
+              provider.attachPage(p);
+              await provider.openProjectNotebook(url || mapping.resource_url);
+            },
+            verifyReady: async (p) => {
+              provider.attachPage(p);
+              const ok = await provider.healthCheck();
+              if (!ok.ok) {
+                provider.attachPage(p);
+                await provider.openProjectNotebook(mapping.resource_url);
+              }
+            },
+          });
 
-      const { chromium } = await import('playwright');
-      const context = await chromium.launchPersistentContext(profilePath, {
-        // Headed default: NotebookLM often blank under headless (same as notebook provision / AI CHAT BATCH).
-        headless: input.headless ?? false,
-        args: ['--disable-blink-features=AutomationControlled'],
-      });
-      const page = context.pages()[0] ?? (await context.newPage());
+          provider.attachPage(page);
+          this.db.geminiRequests.setThreadRef(requestId, page.url());
+          this.activeCorrelationId = correlationId;
+          this.activeCancel = async () => {
+            await provider.cancelGeneration();
+          };
 
-      try {
-        provider.attachPage(page);
-        await provider.openProjectNotebook(mapping.resource_url);
+          const { loadNotebookSettings } = await import('../notebook/knowledge-builder');
+          const settings = loadNotebookSettings(this.db, input.projectId);
+          const batches = this.db.notebooks.incrementBatchCounter(mapping.id);
+          const forceNewThread = !resuming && batches >= settings.threadRotateEvery;
+          if (forceNewThread) {
+            this.db.notebooks.resetBatchCounter(mapping.id);
+          }
+          await provider.createOrOpenTranslationThread({ forceNew: forceNewThread });
+          this.db.geminiRequests.setThreadRef(requestId, page.url());
 
-        const { loadNotebookSettings } = await import('../notebook/knowledge-builder');
-        const settings = loadNotebookSettings(this.db, input.projectId);
-        const batches = this.db.notebooks.incrementBatchCounter(mapping.id);
-        const forceNewThread = batches >= settings.threadRotateEvery;
-        if (forceNewThread) {
-          this.db.notebooks.resetBatchCounter(mapping.id);
-        }
-        await provider.createOrOpenTranslationThread({ forceNew: forceNewThread });
-        await provider.submitTranslationPack(input.pack, correlationId);
-        await provider.waitForGenerationStart();
-        await provider.waitForGenerationComplete(correlationId);
-        const raw = await provider.extractLatestResponse(correlationId);
+          const marker =
+            requestRow!.marker ?? formatCorrelationMarker(correlationId);
+          const existingRawPath = requestRow!.raw_response_path;
+          const existingRaw =
+            existingRawPath && fs.existsSync(existingRawPath)
+              ? fs.readFileSync(existingRawPath, 'utf8')
+              : null;
 
-        const rawPath = provider.writeRawResponseFile(correlationId, raw.text, rawDir);
-        this.db.geminiRequests.markCompleted(requestRow.id, rawPath);
+          const shouldRecover =
+            resuming ||
+            isGeminiLifecycleAtLeast(
+              requestRow!.lifecycle as GeminiRequestLifecycle,
+              'SEND_CLICKED',
+            );
 
-        if (!retainRaw) {
-          this.scheduleRawCleanup(rawPath);
-        }
+          if (shouldRecover) {
+            const pageProbe = await provider.probeForRecovery(marker);
+            const plan = planGeminiRequestRecovery(
+              requestRow!.lifecycle as GeminiRequestLifecycle,
+              {
+                ...pageProbe,
+                rawCaptured: Boolean(existingRaw),
+                parsed: requestRow!.lifecycle === 'PARSED',
+              },
+            );
 
-        const { markProviderRunSuccess } = await import('./diagnostics-service');
-        markProviderRunSuccess(this.db, 'google-gemini');
+            logger.info('Gemini request recovery plan', {
+              correlationId,
+              lifecycle: requestRow!.lifecycle,
+              action: plan.action,
+              reason: plan.reason,
+            });
 
-        return {
-          correlationId,
-          status: 'completed',
-          rawResponse: raw.text,
-          rawResponsePath: retainRaw ? rawPath : null,
-          retainedRaw: retainRaw,
-          errorCode: null,
-          errorMessage: null,
-        };
-      } finally {
-        await provider.detach();
-        await context.close().catch(() => undefined);
-      }
+            if (plan.action === 'fail') {
+              throw new AutomationError('UNKNOWN_UI', plan.reason);
+            }
+
+            if (plan.action === 'noop_complete' || plan.action === 'parse_existing') {
+              const text =
+                existingRaw ??
+                (await provider.extractLatestResponse(correlationId)).text;
+              if (!existingRaw) {
+                const rawPath = provider.writeRawResponseFile(correlationId, text, rawDir);
+                this.db.geminiRequests.setLifecycle(requestId, 'RESPONSE_CAPTURED', {
+                  rawResponsePath: rawPath,
+                });
+              }
+              this.db.geminiRequests.setLifecycle(requestId, 'COMPLETED');
+              await provider.detach();
+              return this.successResponse(
+                correlationId,
+                text,
+                retainRaw,
+                retainRaw ? existingRawPath : null,
+              );
+            }
+
+            if (plan.action !== 'resend') {
+              // wait / capture / search_thread — never duplicate send.
+              runtime.setGenerationState('GENERATING');
+              const anchored = await provider.resumeAnchorFromMarker(correlationId, marker);
+              if (!anchored && plan.action === 'search_thread') {
+                throw new AutomationError(
+                  'RESPONSE_NOT_FOUND',
+                  'SENT_CONFIRMED request: correlation marker not found in notebook thread — refusing resend',
+                );
+              }
+              if (
+                !isGeminiLifecycleAtLeast(
+                  requestRow!.lifecycle as GeminiRequestLifecycle,
+                  'SENT_CONFIRMED',
+                )
+              ) {
+                this.db.geminiRequests.setLifecycle(requestId, 'SENT_CONFIRMED');
+              }
+              if (plan.action === 'wait_generation' || !pageProbe.responseComplete) {
+                await provider.waitForGenerationComplete(correlationId);
+              }
+              runtime.setGenerationState('STABILIZING');
+              const raw = await provider.extractLatestResponse(correlationId);
+              runtime.setGenerationState('IDLE');
+              const rawPath = provider.writeRawResponseFile(correlationId, raw.text, rawDir);
+              this.db.geminiRequests.setLifecycle(requestId, 'RESPONSE_CAPTURED', {
+                rawResponsePath: rawPath,
+              });
+              this.db.geminiRequests.setLifecycle(requestId, 'COMPLETED');
+              if (!retainRaw) this.scheduleRawCleanup(rawPath);
+              const { markProviderRunSuccess } = await import('./diagnostics-service');
+              markProviderRunSuccess(this.db, 'google-gemini');
+              await provider.detach();
+              return this.successResponse(
+                correlationId,
+                raw.text,
+                retainRaw,
+                retainRaw ? rawPath : null,
+              );
+            }
+            // plan.action === 'resend' → fall through to submit once
+          }
+
+          const enableTrace = shouldEnableFailTrace({
+            isRetry: shouldRecover || resuming,
+          });
+          if (enableTrace) {
+            const ctx = runtime.getContext();
+            if (ctx) {
+              const session = await startFailTrace(
+                ctx,
+                diagnosticsDir,
+                correlationId.slice(0, 12),
+              );
+              provider.setFailTraceSession(session);
+            }
+          }
+
+          runtime.setGenerationState('GENERATING');
+          await provider.submitTranslationPack(input.pack, correlationId);
+          await provider.waitForGenerationStart();
+          runtime.setGenerationState('STABILIZING');
+          await provider.waitForGenerationComplete(correlationId);
+          const raw = await provider.extractLatestResponse(correlationId);
+          runtime.setGenerationState('IDLE');
+          await provider.discardFailTrace();
+
+          const rawPath = provider.writeRawResponseFile(correlationId, raw.text, rawDir);
+          this.db.geminiRequests.setLifecycle(requestId, 'RESPONSE_CAPTURED', {
+            rawResponsePath: rawPath,
+          });
+          this.db.geminiRequests.setLifecycle(requestId, 'COMPLETED');
+
+          if (!retainRaw) {
+            this.scheduleRawCleanup(rawPath);
+          }
+
+          const { markProviderRunSuccess } = await import('./diagnostics-service');
+          markProviderRunSuccess(this.db, 'google-gemini');
+
+          await provider.detach();
+
+          return this.successResponse(
+            correlationId,
+            raw.text,
+            retainRaw,
+            retainRaw ? rawPath : null,
+          );
+        },
+      );
     } catch (error) {
       const automationError =
         error instanceof AutomationError
@@ -164,23 +350,47 @@ export class GeminiService {
               error instanceof Error ? error.message : String(error),
             );
 
+      if (
+        automationError.code === 'SESSION_EXPIRED' ||
+        automationError.code === 'LOGIN_REQUIRED'
+      ) {
+        if (workerState) {
+          this.db.workerStates.setHealth(workerState.id, 'NEEDS_ATTENTION', {
+            lastError: automationError.message,
+          });
+        }
+      }
+
       let rawPath: string | null = null;
       if (automationError.diagnostics?.htmlSnapshotPath) {
         rawPath = automationError.diagnostics.htmlSnapshotPath;
       }
 
-      this.db.geminiRequests.markFailed(
-        requestRow.id,
-        automationError.code,
-        automationError.message,
-        rawPath,
-      );
+      const lifecycle = (this.db.geminiRequests.getById(requestId)?.lifecycle ??
+        'CREATED') as GeminiRequestLifecycle;
+      if (isGeminiLifecycleAtLeast(lifecycle, 'SENT_CONFIRMED')) {
+        this.db.geminiRequests.markUnknownAfterCrash(requestId);
+      } else {
+        this.db.geminiRequests.markFailed(
+          requestId,
+          automationError.code,
+          automationError.message,
+          rawPath,
+        );
+      }
 
       logger.warn('Gemini send failed', {
         correlationId,
         code: automationError.code,
         message: automationError.message,
+        lifecycle,
+        failedStep: automationError.diagnostics?.failedStep ?? null,
+        lastOkStep: automationError.diagnostics?.lastOkStep ?? null,
+        surface: automationError.diagnostics?.surface ?? null,
       });
+
+      await provider.discardFailTrace().catch(() => undefined);
+      await provider.detach().catch(() => undefined);
 
       return {
         correlationId,
@@ -192,13 +402,28 @@ export class GeminiService {
         errorMessage: automationError.message,
       };
     } finally {
-      if (!nestUnderJobLock) {
-        profileLockManager.release(profilePath, ownerId);
-      }
+      this.activeCancel = null;
+      this.activeCorrelationId = null;
     }
   }
 
-  /** Delete temporary raw file after handoff when user opts out of long-term retention. */
+  private successResponse(
+    correlationId: string,
+    text: string,
+    retainRaw: boolean,
+    rawPath: string | null,
+  ): GeminiSendResponse {
+    return {
+      correlationId,
+      status: 'completed',
+      rawResponse: text,
+      rawResponsePath: retainRaw ? rawPath : null,
+      retainedRaw: retainRaw,
+      errorCode: null,
+      errorMessage: null,
+    };
+  }
+
   private scheduleRawCleanup(rawPath: string): void {
     setTimeout(() => {
       try {

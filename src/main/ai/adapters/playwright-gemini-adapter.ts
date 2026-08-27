@@ -10,16 +10,18 @@ import type {
 } from '../types';
 import { mapTechnicalErrorToStatus, userMessageForStatus } from '../error-map';
 import { newId } from '../../db/utils/uuid';
+import { checkProviderForJob } from '../provider-preflight';
+import { getDatabase } from '../../db/connection';
 
 /**
  * Adapts existing GeminiService / Playwright path to IAIProvider.
- * Does not change browser automation internals.
  */
 export class PlaywrightGeminiAdapter implements IAIProvider {
   readonly providerId = AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI;
   readonly providerType = 'PLAYWRIGHT_GEMINI' as const;
 
-  private readonly active = new Map<string, AbortController>();
+  /** requestId / correlationId → cancel target */
+  private readonly activeIds = new Map<string, string>();
 
   constructor(private readonly geminiService: GeminiService) {}
 
@@ -28,11 +30,12 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
   }
 
   async healthCheck(): Promise<AIProviderHealth> {
-    await Promise.resolve();
+    // Object existence ≠ READY. Require a real account-aware signal when possible.
     return {
-      ok: true,
-      status: 'READY',
-      message: 'Gemini Browser provider available (Playwright)',
+      ok: false,
+      status: 'ERROR',
+      message:
+        'Gọi checkProviderForJob(accountId, projectId) — healthCheck generic không đủ để chọn Playwright.',
     };
   }
 
@@ -56,8 +59,55 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
       };
     }
 
-    const controller = new AbortController();
-    this.active.set(requestId, controller);
+    if (projectId) {
+      const preflight = await checkProviderForJob(getDatabase(), {
+        accountId: googleAccountId,
+        projectId,
+        notebookRole: 'TRANSLATION',
+        providerId: this.providerId,
+        jobId: options?.jobId ?? null,
+        lightweight: true,
+      });
+      if (preflight.result === 'NEEDS_LOGIN') {
+        return {
+          requestId,
+          status: 'LOGIN_REQUIRED',
+          text: '',
+          errorCode: preflight.result,
+          errorMessage: preflight.message,
+          providerType: this.providerType,
+          providerId: this.providerId,
+        };
+      }
+      if (preflight.result === 'QUOTA_LIMIT') {
+        return {
+          requestId,
+          status: 'RATE_LIMIT',
+          text: '',
+          errorCode: preflight.result,
+          errorMessage: preflight.message,
+          providerType: this.providerType,
+          providerId: this.providerId,
+        };
+      }
+      if (
+        preflight.result === 'PROFILE_BUSY' ||
+        preflight.result === 'NOTEBOOK_ERROR' ||
+        preflight.result === 'UNAVAILABLE'
+      ) {
+        return {
+          requestId,
+          status: 'ERROR',
+          text: '',
+          errorCode: preflight.result,
+          errorMessage: preflight.message,
+          providerType: this.providerType,
+          providerId: this.providerId,
+        };
+      }
+    }
+
+    this.activeIds.set(requestId, requestId);
 
     try {
       const sent = await this.geminiService.sendTranslation({
@@ -69,9 +119,13 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
         maxTimeoutMs: options?.maxTimeoutMs,
       });
 
+      const corr = sent.correlationId || requestId;
+      this.activeIds.set(requestId, corr);
+      this.activeIds.set(corr, corr);
+
       if (sent.status === 'completed') {
         return {
-          requestId: sent.correlationId || requestId,
+          requestId: corr,
           status: 'SUCCESS',
           text: sent.rawResponse,
           providerType: this.providerType,
@@ -83,7 +137,7 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
         sent.errorCode ?? sent.errorMessage ?? 'ERROR',
       );
       return {
-        requestId: sent.correlationId || requestId,
+        requestId: corr,
         status,
         text: '',
         errorCode: sent.errorCode ?? status,
@@ -105,14 +159,19 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
         providerId: this.providerId,
       };
     } finally {
-      this.active.delete(requestId);
+      this.activeIds.delete(requestId);
     }
   }
 
+  /**
+   * Real cancel: stop Playwright generation (Stop button / cancelled flag),
+   * not an unused AbortController.
+   */
   async cancelRequest(requestId: string): Promise<void> {
-    this.active.get(requestId)?.abort();
-    this.active.delete(requestId);
-    await Promise.resolve();
+    const correlationId = this.activeIds.get(requestId) ?? requestId;
+    await this.geminiService.cancelActive(correlationId);
+    this.activeIds.delete(requestId);
+    this.activeIds.delete(correlationId);
   }
 
   async getStatus(): Promise<AIProviderStatusSnapshot> {
@@ -120,13 +179,13 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
     return {
       providerId: this.providerId,
       type: this.providerType,
-      ready: true,
-      message: 'Playwright Gemini adapter ready',
+      ready: false,
+      message: 'Cần checkProviderForJob theo account/project — không READY mặc định.',
     };
   }
 
   async close(): Promise<void> {
-    this.active.clear();
-    await Promise.resolve();
+    this.activeIds.clear();
+    await this.geminiService.cancelActive().catch(() => undefined);
   }
 }

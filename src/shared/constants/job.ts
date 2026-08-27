@@ -2,6 +2,15 @@
 
 export const DEFAULT_MAX_REPAIR_ATTEMPTS = 2;
 
+/** User-facing cap on chapters per translation job (engine may shrink further). */
+export const DEFAULT_MAX_CHAPTERS_PER_JOB = 3;
+
+/** Max CONTINUATION rounds when Gemini output is truncated. */
+export const DEFAULT_MAX_CONTINUATION_ATTEMPTS = 3;
+
+/** Missing paragraphs at or below this → per-paragraph repair; above → CONTINUATION. */
+export const CONTINUATION_REPAIR_THRESHOLD = 5;
+
 /**
  * Max source paragraphs per translate job (Web API).
  * Larger batches often make Gemini Web API return soft errors
@@ -17,6 +26,9 @@ export const PLAYWRIGHT_TRANSLATE_BATCH_PARAGRAPHS = 120;
 
 /** Soft cap on source chars per Playwright chunk (pack overhead adds ~10–15k). */
 export const PLAYWRIGHT_MAX_SOURCE_CHARS_PER_CHUNK = 40_000;
+
+/** Web API char budget per chapter batch (smaller than Playwright). */
+export const WEB_API_MAX_SOURCE_CHARS_PER_CHUNK = 8_000;
 
 /** Global max concurrent Chromium profiles / workers. */
 export const DEFAULT_MAX_CONCURRENT_WORKERS = 2;
@@ -39,6 +51,7 @@ export const REPAIR_REASONS = [
   'MALFORMED_OUTPUT',
   'TERM_VIOLATION',
   'MEMORY_JSON_INVALID',
+  'OUTPUT_INCOMPLETE',
 ] as const;
 
 export type RepairReason = (typeof REPAIR_REASONS)[number];
@@ -102,6 +115,7 @@ export const REPAIR_PROMPT_MODES = [
   'malformed_full',
   'term_violation',
   'deltas_only',
+  'continuation',
 ] as const;
 
 export type RepairPromptMode = (typeof REPAIR_PROMPT_MODES)[number];

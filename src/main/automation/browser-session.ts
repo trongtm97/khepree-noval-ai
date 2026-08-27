@@ -6,6 +6,8 @@ import type { AutomationCommand, AutomationResult } from './protocol';
 import { AutomationError, RetryPolicy } from './errors/automation-errors';
 import { captureFailureDiagnostics } from './diagnostics';
 import type { AutomationErrorCode } from './types';
+import { launchNovelTransPersistentContext } from './browser-runner/launch-persistent-context';
+import type { ResolvedBrowserEngine } from './browser-runner/browser-engine-resolver';
 
 export interface BrowserSessionOptions {
   diagnosticsDir: string;
@@ -16,16 +18,18 @@ export interface BrowserSessionOptions {
 /**
  * Core Playwright session using launchPersistentContext(userDataDir).
  * No Gemini / Notebook selectors here.
+ * Headed default (false) — Gemini/Notebook workflows need a visible browser.
  */
 export class BrowserSession {
   private state: BrowserState = 'STOPPED';
   private context: BrowserContext | null = null;
   private page: Page | null = null;
   private profilePath: string | null = null;
-  private headless = true;
+  private headless = false;
   private diagnosticsDir: string;
   private readonly retry: RetryPolicy;
   private readonly defaultNavigationTimeoutMs: number;
+  private lastResolvedEngine: ResolvedBrowserEngine | null = null;
 
   constructor(options: BrowserSessionOptions) {
     this.diagnosticsDir = options.diagnosticsDir;
@@ -79,7 +83,8 @@ export class BrowserSession {
 
     this.state = 'STARTING';
     this.profilePath = path.resolve(command.profilePath);
-    this.headless = command.headless ?? true;
+    // Headed default for Google AI / account workflows (explicit headless:true still allowed).
+    this.headless = command.headless ?? false;
     if (command.diagnosticsDir) {
       this.diagnosticsDir = command.diagnosticsDir;
     }
@@ -88,12 +93,13 @@ export class BrowserSession {
     fs.mkdirSync(this.diagnosticsDir, { recursive: true });
 
     try {
-      const { chromium } = await import('playwright');
-      this.context = await chromium.launchPersistentContext(this.profilePath, {
+      const launched = await launchNovelTransPersistentContext({
+        profilePath: this.profilePath,
         headless: this.headless,
-        // Never use channel:'chrome' — dedicated Chromium + userDataDir only
-        args: ['--disable-blink-features=AutomationControlled'],
+        diagnosticsDir: this.diagnosticsDir,
       });
+      this.context = launched.context;
+      this.lastResolvedEngine = launched.resolved;
       this.page = this.context.pages()[0] ?? (await this.context.newPage());
 
       if (command.startUrl) {
@@ -108,6 +114,11 @@ export class BrowserSession {
         data: {
           profilePath: this.profilePath,
           url: this.page.url(),
+          browserEngine: launched.resolved.engine,
+          browserEnginePreference: launched.resolved.preference,
+          playwrightVersion: launched.resolved.playwrightVersion,
+          browserChannel: launched.resolved.channel ?? null,
+          headless: launched.headless,
         },
       };
     } catch (error) {
@@ -145,6 +156,9 @@ export class BrowserSession {
         profilePath: this.profilePath,
         url: this.page?.url() ?? null,
         hasContext: Boolean(this.context),
+        headless: this.headless,
+        browserEngine: this.lastResolvedEngine?.engine ?? null,
+        playwrightVersion: this.lastResolvedEngine?.playwrightVersion ?? null,
       },
     };
   }
