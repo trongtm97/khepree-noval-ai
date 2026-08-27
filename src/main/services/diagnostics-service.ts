@@ -170,7 +170,7 @@ export class DiagnosticsService {
     notebookUrl: string;
     smokeProjectLabel?: string;
     headless?: boolean;
-    scenarios?: Array<'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H'>;
+    scenarios?: ('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H')[];
   }) {
     const profile = this.getDb().googleAccounts.getProfile(input.accountId);
     if (!profile) throw new Error('Browser profile missing for account');
@@ -222,7 +222,7 @@ export class DiagnosticsService {
     notebookUrl: string;
     smokeProjectLabel?: string;
     headless?: boolean;
-    tests?: Array<'A' | 'B' | 'C' | 'D'>;
+    tests?: ('A' | 'B' | 'C' | 'D')[];
     groundingKnowledgeDriveFileId?: string;
     groundingSyncStateDriveFileId?: string;
   }) {
@@ -425,7 +425,7 @@ export class DiagnosticsService {
               );
             }
 
-            if (input.kind === 'send' || input.kind === 'trialTranslate') {
+            {
               const trialPrompt =
                 'Reply with exactly one word: OK. Do not change any memory or notebook sources.';
               const correlationId = newId();
@@ -471,7 +471,7 @@ export class DiagnosticsService {
         input.kind;
       if (auto) {
         steps.push({
-          step: String(failedStep),
+          step: failedStep,
           ok: false,
           message: auto.message,
         });
@@ -479,10 +479,8 @@ export class DiagnosticsService {
       return {
         kind: input.kind,
         ok: false,
-        failedStep: failedStep != null ? String(failedStep) : input.kind,
-        lastOkStep: auto?.diagnostics?.lastOkStep
-          ? String(auto.diagnostics.lastOkStep)
-          : steps.filter((s) => s.ok).at(-1)?.step ?? null,
+        failedStep: failedStep,
+        lastOkStep: auto?.diagnostics?.lastOkStep ?? (steps.filter((s) => s.ok).at(-1)?.step ?? null),
         message: auto?.message ?? (error instanceof Error ? error.message : String(error)),
         durationMs: Date.now() - started,
         steps,

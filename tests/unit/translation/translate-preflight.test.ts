@@ -85,6 +85,23 @@ describe('evaluateTranslatePreflight', () => {
     });
     expect(result).toEqual({ ok: false, reason: 'no_channel' });
   });
+
+  it('uses resolvedWorkerAccountId over first READY', () => {
+    const result = evaluateTranslatePreflight({
+      ...base,
+      workers: [
+        { health: 'READY', accountId: 'acc-1' },
+        { health: 'READY', accountId: 'acc-2' },
+      ],
+      googleAccounts: [
+        { id: 'acc-1', status: 'READY' },
+        { id: 'acc-2', status: 'READY' },
+      ],
+      resolvedWorkerAccountId: 'acc-2',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.workerAccountId).toBe('acc-2');
+  });
 });
 
 describe('isJobTerminalState', () => {
@@ -118,7 +135,7 @@ describe('job watch helpers', () => {
         state: 'WAITING_AI',
         progress: { phase: 'waiting_ai', chunkIndex: 2, chunkTotal: 4, paragraphsDone: 12 },
       }),
-    ).toBe('WAITING_AI|waiting_ai|2|4|12|||');
+    ).toBe('WAITING_AI|waiting_ai|2|4|12||||');
     expect(
       jobWatchProgressKey({
         state: 'WAITING_AI',
@@ -131,7 +148,7 @@ describe('job watch helpers', () => {
           packMode: 'fat',
         },
       }),
-    ).toBe('WAITING_AI|waiting_ai|2|4|12||GEMINI_WEB_API|fat');
+    ).toBe('WAITING_AI|waiting_ai|2|4|12||GEMINI_WEB_API|fat|');
     expect(
       jobWatchProgressKey({
         state: 'WAITING_AI',

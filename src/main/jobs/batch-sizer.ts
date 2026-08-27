@@ -111,7 +111,7 @@ export function planChapterBatches(
     let paraSum = 0;
 
     while (index < chapters.length && batch.length < maxChaptersUser) {
-      const chapter = chapters[index]!;
+      const chapter = chapters[index];
       const chChars = computeSourceCharacters(chapter.batchParagraphs);
       const chParas = chapter.batchParagraphs.length;
 
@@ -136,7 +136,7 @@ export function planChapterBatches(
     }
 
     if (batch.length === 0) {
-      batch.push(chapters[index]!);
+      batch.push(chapters[index]);
       index += 1;
     }
 

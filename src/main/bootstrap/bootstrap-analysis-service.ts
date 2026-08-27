@@ -16,6 +16,7 @@ import {
 } from './bootstrap-local-prep';
 import { buildBootstrapAnalysisPrompt } from './bootstrap-prompt-builder';
 import { persistBootstrapAnalysis } from './bootstrap-persist';
+import type { KnowledgeSyncEventType } from '@shared/constants/knowledge';
 
 export interface BootstrapAnalysisDeps {
   sendPrompt: (
@@ -51,6 +52,9 @@ function analysisPack(
     chapterNumbers: chapterNumbers.length > 0 ? chapterNumbers : [0],
     style: 'balanced',
     prompt,
+    baseContext: '',
+    operationPrompt: prompt,
+    operationType: 'TRANSLATE',
     sections: {
       taskHeader: 'BOOTSTRAP ANALYSIS — DO NOT TRANSLATE',
       criticalRules: 'DO NOT TRANSLATE THE NOVEL. Analyze only. Return JSON.',
@@ -81,7 +85,7 @@ function analysisPack(
 function emit(
   db: DatabaseManager,
   projectId: string,
-  eventType: string,
+  eventType: KnowledgeSyncEventType,
   message: string,
   metadata?: Record<string, unknown>,
 ): void {

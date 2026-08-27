@@ -390,7 +390,7 @@ export class ProjectRepository extends BaseRepository {
         WHERE id = ?`,
       )
       .run(
-        patch.bootstrap_status ?? existing.bootstrap_status ?? 'NOT_STARTED',
+        patch.bootstrap_status ?? existing.bootstrap_status,
         patch.bootstrap_started_at !== undefined
           ? patch.bootstrap_started_at
           : existing.bootstrap_started_at ?? null,
@@ -400,8 +400,8 @@ export class ProjectRepository extends BaseRepository {
         patch.bootstrap_through_chapter !== undefined
           ? patch.bootstrap_through_chapter
           : existing.bootstrap_through_chapter ?? null,
-        patch.bootstrap_version ?? existing.bootstrap_version ?? 'v1',
-        patch.bootstrap_chapter_count ?? existing.bootstrap_chapter_count ?? 10,
+        patch.bootstrap_version ?? existing.bootstrap_version,
+        patch.bootstrap_chapter_count ?? existing.bootstrap_chapter_count,
         utcNow(),
         id,
       );

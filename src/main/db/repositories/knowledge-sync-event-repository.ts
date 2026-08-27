@@ -16,7 +16,7 @@ export interface KnowledgeSyncEventRow {
 export class KnowledgeSyncEventRepository extends BaseRepository {
   insert(input: {
     projectId: string;
-    eventType: KnowledgeSyncEventType | string;
+    eventType: KnowledgeSyncEventType;
     knowledgeType?: string | null;
     message?: string | null;
     metadata?: Record<string, unknown> | null;

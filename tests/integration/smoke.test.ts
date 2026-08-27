@@ -32,7 +32,7 @@ describe('Integration smoke (release)', () => {
 
   it('setup complete + project insert + manual DB backup preserves file', () => {
     const setup = new SetupService(() => getDatabase());
-    setup.setStep('ready');
+    setup.setStep('createProject');
     setup.complete(true);
     expect(setup.getStatus().completed).toBe(true);
 

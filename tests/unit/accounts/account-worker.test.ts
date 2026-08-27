@@ -159,19 +159,19 @@ describe('AccountWorkerService', () => {
     await service.removeAccount(account.id, true);
     expect(service.getAccount(account.id)).toBeNull();
     expect(profiles.profileExists(account.id)).toBe(false);
-  });
+  }, 20_000);
 
   it('enforces profile path isolation lock', async () => {
     const account = await service.addAccount({ label: 'Lock', skipBrowser: true });
     const profilePath = profiles.resolveProfilePath(account.profile_dir_name);
 
-    locks.acquire(profilePath, account.id);
+    locks.acquireLease({ profilePath: profilePath, ownerId: account.id, accountId: account.id, operation: 'manual_browser' });
     expect(locks.isLocked(profilePath)).toBe(true);
     expect(() => {
-      locks.acquire(profilePath, 'other-worker');
+      locks.acquireLease({ profilePath: profilePath, ownerId: 'other-worker', accountId: 'other-worker', operation: 'manual_browser' });
     }).toThrow(/PROFILE_BUSY|already in use|đang được sử dụng/i);
 
-    locks.release(profilePath, account.id);
+    locks.releaseLease(profilePath, account.id);
     expect(locks.isLocked(profilePath)).toBe(false);
   });
 

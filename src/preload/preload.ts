@@ -67,6 +67,9 @@ const api: NovelTransApi = {
     get: (projectId) => invokeChannel(IPC_CHANNELS.PROJECT_GET, { projectId }),
     delete: (projectId) =>
       invokeChannel(IPC_CHANNELS.PROJECT_DELETE, { projectId }),
+    resolveWorker: (input) =>
+      invokeChannel(IPC_CHANNELS.PROJECT_RESOLVE_WORKER, input),
+    setWorker: (input) => invokeChannel(IPC_CHANNELS.PROJECT_SET_WORKER, input),
   },
   import: {
     selectFile: () => invokeChannel(IPC_CHANNELS.IMPORT_SELECT_FILE),
@@ -304,6 +307,7 @@ const api: NovelTransApi = {
     getStatus: () => invokeChannel(IPC_CHANNELS.SETUP_GET_STATUS),
     setStep: (input) => invokeChannel(IPC_CHANNELS.SETUP_SET_STEP, input),
     skipDrive: (input) => invokeChannel(IPC_CHANNELS.SETUP_SKIP_DRIVE, input),
+    explore: (input) => invokeChannel(IPC_CHANNELS.SETUP_EXPLORE, input),
     complete: (input) => invokeChannel(IPC_CHANNELS.SETUP_COMPLETE, input),
   },
   logs: {

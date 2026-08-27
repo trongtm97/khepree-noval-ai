@@ -60,6 +60,9 @@ function mockDb(opts: {
       listForMatching: () => [],
       listTranslations: () => [],
     },
+    termCandidates: {
+      listPendingForPack: () => [],
+    },
     storyStates: {
       getByProject: () =>
         opts.storyChapter == null
@@ -110,6 +113,8 @@ describe('context selector temporal / future leakage', () => {
           status: 'active',
           first_chapter: 1,
           last_chapter: 10,
+          discovered_from_chapter: 1,
+          future_sensitive: 0,
           locked: 0,
           created_at: '',
           updated_at: '',
@@ -127,6 +132,8 @@ describe('context selector temporal / future leakage', () => {
           status: 'active',
           first_chapter: 8,
           last_chapter: 10,
+          discovered_from_chapter: 8,
+          future_sensitive: 0,
           locked: 0,
           created_at: '',
           updated_at: '',
@@ -148,6 +155,7 @@ describe('context selector temporal / future leakage', () => {
           confidence: 1,
           source: 'ai',
           locked: 0,
+          future_sensitive: 0,
           created_at: '',
           updated_at: '',
         },

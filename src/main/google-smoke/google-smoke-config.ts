@@ -45,7 +45,7 @@ export function isGoogleSmokeEnvEnabled(): boolean {
 
 export function resolveGoogleSmokeConfigPath(): string {
   return (
-    process.env.NOVELTRANS_GOOGLE_SMOKE_CONFIG?.trim() ||
+    process.env.NOVELTRANS_GOOGLE_SMOKE_CONFIG?.trim() ??
     path.resolve(process.cwd(), 'google-smoke.config.json')
   );
 }

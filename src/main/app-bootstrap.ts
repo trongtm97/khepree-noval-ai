@@ -70,7 +70,7 @@ export function startApplication(): void {
 
   void app.whenReady().then(async () => {
     try {
-      await bootApplication();
+      bootApplication();
     } catch (error) {
       try {
         logger.error('Application startup failed', {
@@ -118,7 +118,7 @@ export function startApplication(): void {
   });
 }
 
-async function bootApplication(): Promise<void> {
+function bootApplication(): void {
   const paths = pathsService.initialize();
   logger.initialize(paths.logs);
 
@@ -160,7 +160,7 @@ async function bootApplication(): Promise<void> {
     sendInitial: (ctx) => aiProviders.manager.sendForJob(ctx),
     sendRepair: (req) => aiProviders.manager.sendRepair(req),
   });
-  void aiProviders.initialize().catch((error) => {
+  void aiProviders.initialize().catch((error: unknown) => {
     logger.warn('AI provider initialize deferred failure', {
       message: error instanceof Error ? error.message : String(error),
     });

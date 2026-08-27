@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   MAX_PACK_CHAPTERS,
   MIN_PACK_CHAPTERS,
+  TRANSLATION_PACK_OPERATIONS,
   TRANSLATION_STYLES,
 } from '../constants/translation-pack';
 
@@ -31,12 +32,26 @@ export const TranslationPackSizeSchema = z.object({
 
 export type TranslationPackSize = z.infer<typeof TranslationPackSizeSchema>;
 
+export const TranslationPackOperationSchema = z.enum(TRANSLATION_PACK_OPERATIONS);
+
 export const TranslationPackDtoSchema = z.object({
   projectId: z.string().uuid(),
   chapterIds: z.array(z.string().uuid()).min(MIN_PACK_CHAPTERS).max(MAX_PACK_CHAPTERS),
   chapterNumbers: z.array(z.number().int().nonnegative()),
   style: z.enum(TRANSLATION_STYLES),
+  /** Assembled final prompt sent to providers (= baseContext + operationPrompt). */
   prompt: z.string(),
+  /**
+   * Provider-adaptable context (Notebook framing or FAT local memory).
+   * adaptPackForProvider may replace this — never the operationPrompt.
+   */
+  baseContext: z.string(),
+  /**
+   * Immutable operation body for the request.
+   * REPAIR / CONTINUATION must survive WebAPI FAT rebuild.
+   */
+  operationPrompt: z.string(),
+  operationType: TranslationPackOperationSchema,
   sections: TranslationPackSectionSchema,
   size: TranslationPackSizeSchema,
   promptHash: z.string(),

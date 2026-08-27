@@ -40,7 +40,7 @@ export function listWindowsPythonExecutables(
       continue;
     }
     for (const dir of dirs) {
-      const match = dir.match(/^Python3(\d+)$/i);
+      const match = /^Python3(\d+)$/i.exec(dir);
       if (!match) continue;
       const minor = Number(match[1]);
       if (minor < 11) continue;

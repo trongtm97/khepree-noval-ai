@@ -1,4 +1,5 @@
 import type { PackMode } from '@shared/constants/pack-mode';
+import { splitRepairChannelPrompt } from '../prompt/pack-operation';
 
 /**
  * Channel context inherited from the initial translation send.
@@ -89,64 +90,5 @@ export function wrapRepairPromptWithChannelContext(input: {
   /** WebAPI failover — do not claim Notebook knowledge. */
   webApiFat?: boolean;
 }): string {
-  const lines: string[] = [];
-
-  if (input.webApiFat) {
-    lines.push(
-      '## Repair channel: GEMINI_WEB_API (FAT local SQLite)',
-      'Notebook knowledge is NOT available on this channel.',
-      'Use ONLY the local memory sections below + the repair task.',
-      '',
-    );
-    if (input.fatSections?.criticalRules?.trim()) {
-      lines.push(input.fatSections.criticalRules.trim(), '');
-    }
-    if (input.fatSections?.hotMemoryDelta?.trim()) {
-      lines.push(input.fatSections.hotMemoryDelta.trim(), '');
-    }
-    if (input.fatSections?.activeProjectTerms?.trim()) {
-      lines.push(input.fatSections.activeProjectTerms.trim(), '');
-    }
-  } else {
-    const mode = input.packMode ?? 'slim';
-    lines.push(
-      `## Repair channel: Playwright Translation Notebook (${mode.toUpperCase()})`,
-      'Keep using the SAME Translation Notebook thread/context as the initial send.',
-      'Do NOT open a generic Gemini chat. Do NOT switch to Research Notebook.',
-    );
-    if (input.notebookId) {
-      lines.push(`Notebook id: ${input.notebookId}`);
-    }
-    lines.push('');
-
-    if (mode === 'slim' || mode === 'hybrid') {
-      lines.push(
-        'Notebook cold knowledge remains authoritative for characters/terms/world.',
-        'This message only adds repair targets + locked overrides + hot deltas.',
-        '',
-      );
-    }
-
-    const locked = input.lockedTerms ?? [];
-    if (locked.length > 0) {
-      lines.push('## Locked terms (must keep exact)');
-      for (const t of locked) {
-        lines.push(`- ${t.source} → ${t.preferred}`);
-      }
-      lines.push('');
-    }
-
-    const hot = input.hotMemoryText?.trim();
-    if (hot && hot !== '(none — Notebook cold knowledge is authoritative)') {
-      lines.push(
-        hot.startsWith('##') ? hot : `## Hot Memory\n${hot}`,
-        '',
-      );
-    } else if (mode === 'hybrid' && hot) {
-      lines.push(hot.startsWith('##') ? hot : `## Hot Memory\n${hot}`, '');
-    }
-  }
-
-  lines.push('## Repair / continuation task', input.repairBody.trim());
-  return lines.join('\n');
+  return splitRepairChannelPrompt(input).prompt;
 }

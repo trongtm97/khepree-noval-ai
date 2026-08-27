@@ -60,7 +60,9 @@ export class BatchSizeRepository extends BaseRepository {
         input.reason ?? null,
         now,
       );
-    return this.getDecision(id)!;
+    const decision = this.getDecision(id);
+    if (!decision) throw new Error(`Batch decision not found: ${id}`);
+    return decision;
   }
 
   getDecision(id: string): BatchSizeDecisionRow | null {
@@ -131,7 +133,9 @@ export class BatchSizeRepository extends BaseRepository {
           outputRatio ?? null,
           now,
         );
-      return this.getProjectStats(projectId)!;
+      const stats = this.getProjectStats(projectId);
+    if (!stats) throw new Error(`Project stats missing: ${projectId}`);
+    return stats;
     }
 
     let success = existing.success_count;
@@ -162,6 +166,8 @@ export class BatchSizeRepository extends BaseRepository {
       )
       .run(success, failure, incomplete, avgRatio, now, projectId);
 
-    return this.getProjectStats(projectId)!;
+    const stats = this.getProjectStats(projectId);
+    if (!stats) throw new Error(`Project stats missing: ${projectId}`);
+    return stats;
   }
 }

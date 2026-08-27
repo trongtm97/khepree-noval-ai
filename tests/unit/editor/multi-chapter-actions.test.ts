@@ -82,8 +82,8 @@ describe('TranslationEditorService multi-chapter', () => {
 
     expect(cleared).toEqual([CH1, CH2]);
     expect(enqueue).toHaveBeenCalledTimes(2);
-    expect(enqueue.mock.calls[0]![0].sourceParagraphIds).toEqual(['[C000001:P000001]']);
-    expect(enqueue.mock.calls[1]![0].sourceParagraphIds).toEqual([
+    expect(enqueue.mock.calls[0][0].sourceParagraphIds).toEqual(['[C000001:P000001]']);
+    expect(enqueue.mock.calls[1][0].sourceParagraphIds).toEqual([
       '[C000002:P000001]',
       '[C000002:P000002]',
     ]);

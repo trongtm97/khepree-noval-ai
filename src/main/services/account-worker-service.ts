@@ -14,7 +14,7 @@ import {
   ProfileBusyError,
   profileLockManager,
   startLeaseHeartbeat,
-  type ProfileLockManager,
+  type ProfileLeaseLockManager,
 } from '../automation/browser-runner/profile-lock';
 import type {
   BrowserSessionController,
@@ -33,7 +33,7 @@ export interface AccountWorkerServiceDeps {
   auditLog: AuditLogService;
   secretStorage: SecretStorageService;
   profiles?: BrowserProfileManager;
-  locks?: ProfileLockManager;
+  locks?: ProfileLeaseLockManager;
   browser?: BrowserSessionController;
 }
 
@@ -42,7 +42,7 @@ export class AccountWorkerService {
   private readonly auditLog: AuditLogService;
   private readonly secretStorage: SecretStorageService;
   private readonly profiles: BrowserProfileManager;
-  private readonly locks: ProfileLockManager;
+  private readonly locks: ProfileLeaseLockManager;
   private readonly browser: BrowserSessionController;
   private readonly openSessions = new Map<string, BrowserSessionHandle>();
   private readonly leaseHeartbeats = new Map<string, () => void>();
@@ -141,8 +141,8 @@ export class AccountWorkerService {
 
     this.accounts.touchSessionCheck(accountId);
 
-    const fallbackEmail = fallback?.email?.trim() || undefined;
-    const fallbackLabel = fallback?.label?.trim() || undefined;
+    const fallbackEmail = fallback?.email?.trim() ?? undefined;
+    const fallbackLabel = fallback?.label?.trim() ?? undefined;
 
     // User confirmed login with an email — trust it even if DOM probe is inconclusive.
     if (!probe.usable && fallbackEmail) {

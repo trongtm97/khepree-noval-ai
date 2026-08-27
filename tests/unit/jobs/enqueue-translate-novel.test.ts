@@ -3,20 +3,20 @@ import { JobService } from '@main/services/job-service';
 import type { DatabaseManager } from '@main/db/database-manager';
 import type { JobRow } from '@main/db/repositories/job-repository';
 
-type ChapterSeed = {
+interface ChapterSeed {
   id: string;
   chapter_number: number;
   sequence_order: number;
   source_status: string;
-};
+}
 
-type ParaSeed = {
+interface ParaSeed {
   id: string;
   paragraph_id: string;
   source_text: string;
   translated?: string;
   human_locked?: boolean;
-};
+}
 
 function mockNovelDb(opts: {
   projectId: string;
@@ -186,7 +186,7 @@ describe('JobService.enqueueTranslateNovel', () => {
     const service = new JobService(db);
     const result = service.enqueueTranslateNovel({ projectId, skipTranslated: true });
 
-    await vi.waitFor(() => expect(created.length).toBe(1));
+    await vi.waitFor(() => { expect(created.length).toBe(1); });
 
     expect(result.queuedCount).toBe(1);
     expect(result.jobs[0]?.chapterFrom).toBe(2);

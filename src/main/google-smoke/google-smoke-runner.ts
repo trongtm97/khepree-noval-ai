@@ -77,7 +77,8 @@ export async function runGoogleSmoke(
           session = await openSession(config, artifactsDir);
           return session;
         }
-        return session!;
+        if (!session) throw new Error('Browser session missing');
+        return session;
       });
       results.push(result);
       if (result.status === 'FAIL' && id === 'A') {

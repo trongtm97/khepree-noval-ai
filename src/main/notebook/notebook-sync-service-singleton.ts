@@ -16,7 +16,7 @@ export function getNotebookSyncService(db?: DatabaseManager): NotebookSyncServic
   if (db && singleton) {
     // Tests recreate DatabaseManager per case — refresh if handle changed.
     const held = (singleton as unknown as { db: DatabaseManager }).db;
-    if (held && held !== db) {
+    if (held !== db) {
       singleton = null;
     }
   }

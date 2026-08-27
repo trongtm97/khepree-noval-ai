@@ -65,7 +65,7 @@ describe('NotebookKnowledgeBuilder semantic budget', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 

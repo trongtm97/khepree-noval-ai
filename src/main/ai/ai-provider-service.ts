@@ -66,9 +66,9 @@ export class AiProviderService {
         priority: row.priority,
         enabled: row.enabled === 1,
         fallbackAllowed: row.fallback_allowed === 1,
-        accountEmail: ready?.google_email ?? null,
-        lastUsedAt: ready?.last_used_at ?? null,
-        lastError: ready?.last_error ?? null,
+        accountEmail: ready.google_email ?? null,
+        lastUsedAt: ready.last_used_at ?? null,
+        lastError: ready.last_error ?? null,
         modelCount: models.length,
       };
     });
@@ -115,10 +115,8 @@ export class AiProviderService {
     const index = ordered.findIndex((row) => row.id === providerId);
     if (index < 0) throw new Error('Provider not found');
     const current = ordered[index];
-    if (!current) throw new Error('Provider not found');
     if (index === 0) return current;
     const previous = ordered[index - 1];
-    if (!previous) return current;
     if (current.priority === previous.priority) {
       this.db.aiProviders.setPriority(previous.id, previous.priority + 1);
       return this.db.aiProviders.getById(providerId) ?? current;
@@ -232,8 +230,11 @@ export class AiProviderService {
       .prepare(`UPDATE ai_accounts SET session_location = ? WHERE id = ?`)
       .run(sessionLocation, row.id);
 
-    const updated = this.db.aiAccounts.getById(row.id)!;
-    return this.listAccounts(input.providerId).find((a) => a.id === updated.id)!;
+    const updated = this.db.aiAccounts.getById(row.id);
+    if (!updated) throw new Error('Account not found after create');
+    const listed = this.listAccounts(input.providerId).find((a) => a.id === updated.id);
+    if (!listed) throw new Error('Account missing from list after create');
+    return listed;
   }
 
   async pasteCookies(input: {
@@ -411,7 +412,7 @@ export class AiProviderService {
     );
     const data = (await res.json()) as {
       status: string;
-      models?: Array<{ model_name: string; display_name: string }>;
+      models?: { model_name: string; display_name: string }[];
     };
     if (data.status === 'SUCCESS' && data.models) {
       for (const model of data.models) {

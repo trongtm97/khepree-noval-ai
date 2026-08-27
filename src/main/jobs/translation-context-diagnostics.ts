@@ -8,6 +8,7 @@ import type {
 import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
 import type { PackModeDecision } from '../prompt/pack-mode-resolver';
 import { utcNow } from '../db/utils/timestamps';
+import type { KnowledgeSyncEventType } from '@shared/constants/knowledge';
 
 export function resolveKnowledgeSourceMode(
   db: DatabaseManager,
@@ -93,8 +94,9 @@ export function appendJobTimeline(
   message?: string,
 ): JobTimelineEntry[] {
   const list: JobTimelineEntry[] = Array.isArray(existing)
-    ? (existing as JobTimelineEntry[]).filter(
-        (e) => e && typeof e.event === 'string' && typeof e.at === 'string',
+    ? (existing as { event?: unknown; at?: unknown; message?: string }[]).filter(
+        (e): e is JobTimelineEntry =>
+          typeof e.event === 'string' && typeof e.at === 'string',
       )
     : [];
   list.push({
@@ -145,7 +147,7 @@ export function logJobKnowledgeEvent(
   input: {
     projectId: string;
     jobId: string;
-    eventType: string;
+    eventType: KnowledgeSyncEventType;
     message: string;
     diagnostics?: Partial<TranslationContextDiagnostics>;
   },

@@ -47,7 +47,7 @@ function mergeDenseLines(
   };
 
   for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i]!;
+    const line = lines[i];
     const nextLen = bufLen() + (buf.length > 0 ? 1 : 0) + line.length;
     if (buf.length > 0 && nextLen > hardChars) {
       flush(1);
@@ -86,7 +86,7 @@ export function segmentParagraphs(
   const paragraphs: SegmentedParagraph[] = [];
 
   for (let bi = 0; bi < blocks.length; bi += 1) {
-    const block = blocks[bi]!;
+    const block = blocks[bi];
     const isLastBlock = bi === blocks.length - 1;
     let parts: SegmentedParagraph[];
 
@@ -101,7 +101,7 @@ export function segmentParagraphs(
     }
 
     for (let i = 0; i < parts.length; i += 1) {
-      const part = parts[i]!;
+      const part = parts[i];
       const isLastOverall = isLastBlock && i === parts.length - 1;
       const isLastInBlock = i === parts.length - 1;
       let trailing = part.trailingNewlines;

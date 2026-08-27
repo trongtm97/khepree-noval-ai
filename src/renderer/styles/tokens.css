@@ -72,6 +72,23 @@
   --space-6: 1.5rem;
   --space-8: 2rem;
 
+  /* Semantic spacing aliases */
+  --gap-inline: var(--space-2);
+  --gap-stack: var(--space-3);
+  --gap-section: var(--space-5);
+  --pad-card: var(--space-5);
+  --pad-banner: var(--space-3) var(--space-4);
+
+  /* Control sizes (Windows desktop density) */
+  --btn-height: 2rem; /* 32px */
+  --btn-height-sm: 1.75rem; /* 28px */
+  --input-height: 2rem;
+  --icon-size: 1rem;
+  --icon-btn-size: 2rem;
+  --table-cell-y: 0.55rem;
+  --table-cell-x: 0.75rem;
+  --line-height-body: 1.5;
+
   --density-pad: 1rem;
   --transition-fast: 120ms ease;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
@@ -126,6 +143,13 @@
 [data-density='compact'] {
   --density-pad: 0.75rem;
   --font-body: 0.8125rem;
+  --pad-card: var(--space-4);
+  --btn-height: 1.75rem;
+  --btn-height-sm: 1.5rem;
+  --input-height: 1.75rem;
+  --table-cell-y: 0.4rem;
+  --table-cell-x: 0.55rem;
+  --gap-section: var(--space-4);
 }
 
 @media (prefers-reduced-motion: reduce) {

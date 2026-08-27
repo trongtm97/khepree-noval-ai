@@ -62,25 +62,25 @@ export function extractNotebookTermMap(
   const map = new Map<string, string>();
 
   const termsMd =
-    knowledgeDocs['02_PROJECT_TERMS.md'] ??
-    knowledgeDocs['project_terms'] ??
+    knowledgeDocs['02_PROJECT_TERMS.md'] ||
+    knowledgeDocs.project_terms ||
     '';
   for (const line of termsMd.split(/\r?\n/)) {
     const t = line.trim().replace(/^[-*•]\s*/, '');
     const m = TERM_LINE.exec(t);
     if (!m) continue;
-    const source = (m[1] ?? '').trim();
-    const preferred = (m[2] ?? '').trim();
+    const source = m[1].trim();
+    const preferred = m[2].trim();
     if (source && preferred) map.set(source, preferred);
   }
 
   const charsMd =
-    knowledgeDocs['03_CHARACTERS.md'] ?? knowledgeDocs['characters'] ?? '';
+    knowledgeDocs['03_CHARACTERS.md'] || knowledgeDocs.characters || '';
   const sections = charsMd.split(/\n(?=##\s+)/);
   for (const section of sections) {
     const header = /^##\s+(.+)\s*$/m.exec(section);
     if (!header) continue;
-    const source = header[1]!.trim();
+    const source = header[1].trim();
     const vi =
       /(?:Tên\s*Việt|preferred|translated)\s*:\s*(.+)\s*$/im.exec(section)?.[1]?.trim() ??
       null;
@@ -118,7 +118,8 @@ export function translateUsingNotebookKnowledge(input: {
   const sources = [...map.keys()].sort((a, b) => b.length - a.length);
   let out = input.sourceParagraph;
   for (const source of sources) {
-    const vi = map.get(source)!;
+    const vi = map.get(source);
+    if (vi === undefined) continue;
     out = out.split(source).join(vi);
   }
   return out;

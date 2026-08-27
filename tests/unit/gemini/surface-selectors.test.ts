@@ -18,7 +18,7 @@ describe('Surface-aware selector architecture', () => {
   let context: import('playwright').BrowserContext;
   let page: import('playwright').Page;
   let tempRoot: string;
-  const wins: Array<Record<string, unknown>> = [];
+  const wins: Record<string, unknown>[] = [];
 
   beforeAll(async () => {
     const server = await startFixtureServer(FIXTURE_DIR);

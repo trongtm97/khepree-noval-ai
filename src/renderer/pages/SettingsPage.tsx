@@ -292,7 +292,7 @@ export function SettingsPage() {
 
       <TabPanel active={tab === 'advanced'}>
         <Card as="section" style={{ marginTop: '1rem' }}>
-          <SectionHeader title={t('settings.backup')} />
+          <SectionHeader title={t('settings.developerTools')} />
           <div className="btn-row">
             <Button
               variant="secondary"
@@ -305,10 +305,10 @@ export function SettingsPage() {
             <Button
               variant="secondary"
               onClick={() => {
-                navigate('/export');
+                navigate('/logs');
               }}
             >
-              {t('settings.openExport')}
+              {t('settings.openLogs')}
             </Button>
             <Button
               variant="secondary"
@@ -317,6 +317,20 @@ export function SettingsPage() {
               }}
             >
               {t('settings.openLearning')}
+            </Button>
+          </div>
+        </Card>
+
+        <Card as="section" style={{ marginTop: '1rem' }}>
+          <SectionHeader title={t('settings.backup')} />
+          <div className="btn-row">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                navigate('/export');
+              }}
+            >
+              {t('settings.openExport')}
             </Button>
           </div>
         </Card>

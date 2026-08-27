@@ -224,8 +224,8 @@ describe('Learning Notebook sync lifecycle', () => {
     expect(db.knowledgeFiles.get(projectId, 'characters')?.dirty).toBe(1);
     const row = db.notebooks.listByProject(projectId)[0];
     // markDirty may stale the mapping; Drive failure must not reach sync_pending / verified.
-    expect(row?.status).not.toBe('sync_pending');
-    expect(row?.status).not.toBe('ready');
+    expect(row.status).not.toBe('sync_pending');
+    expect(row.status).not.toBe('ready');
   });
 
   it('success → mapping sync_pending (not ready before verify)', async () => {
@@ -253,7 +253,7 @@ describe('Learning Notebook sync lifecycle', () => {
     const { getNotebookSyncService, setNotebookDriveSyncFn, resetNotebookSyncService } =
       await import('@main/notebook/notebook-sync-service-singleton');
     resetNotebookSyncService();
-    setNotebookDriveSyncFn(async () => undefined);
+    setNotebookDriveSyncFn(() => Promise.resolve());
 
     await runLearningPipeline(db, {
       projectId,
@@ -270,7 +270,7 @@ describe('Learning Notebook sync lifecycle', () => {
     });
 
     const row = db.notebooks.listByProject(projectId)[0];
-    expect(row?.status).toBe('sync_pending');
+    expect(row.status).toBe('sync_pending');
 
     const events = db.knowledgeSyncEvents.listRecent(projectId, 20);
     expect(events.some((e) => e.event_type === 'DRIVE_SYNC_COMPLETED')).toBe(true);

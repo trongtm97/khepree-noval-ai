@@ -3,13 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const listMock = vi.fn();
 const getProfileMock = vi.fn();
 const healthCheckDeps = {
-  profileExists: vi.fn(() => true),
+  profileExists: vi.fn((_path?: string) => true),
   resolveProfilePath: vi.fn((name: string) => `C:/profiles/${name}`),
-  recoverIfStale: vi.fn(),
-  isLocked: vi.fn(() => false),
-  getOwner: vi.fn(() => null as string | null),
+  recoverIfStale: vi.fn((_path?: string) => undefined),
+  isLocked: vi.fn((_path?: string) => false),
+  getOwner: vi.fn((_path?: string) => null as string | null),
   assess: vi.fn(() => ({ browserUsable: true, message: 'ok' })),
-  closeBrowser: vi.fn(async () => ({})),
+  closeBrowser: vi.fn(() => Promise.resolve({})),
 };
 
 vi.mock('@main/db/connection', () => ({
@@ -23,17 +23,16 @@ vi.mock('@main/db/connection', () => ({
 
 vi.mock('@main/automation/browser-runner/profile-manager', () => ({
   browserProfileManager: {
-    profileExists: (...args: unknown[]) => healthCheckDeps.profileExists(...args),
-    resolveProfilePath: (...args: unknown[]) =>
-      healthCheckDeps.resolveProfilePath(...(args as [string])),
+    profileExists: (path: string) => healthCheckDeps.profileExists(path),
+    resolveProfilePath: (name: string) => healthCheckDeps.resolveProfilePath(name),
   },
 }));
 
 vi.mock('@main/automation/browser-runner/profile-lock', () => ({
   profileLockManager: {
-    recoverIfStale: (...args: unknown[]) => healthCheckDeps.recoverIfStale(...args),
-    isLocked: (...args: unknown[]) => healthCheckDeps.isLocked(...args),
-    getOwner: (...args: unknown[]) => healthCheckDeps.getOwner(...args),
+    recoverIfStale: (path: string) => { healthCheckDeps.recoverIfStale(path); },
+    isLocked: (path: string) => healthCheckDeps.isLocked(path),
+    getOwner: (path: string) => healthCheckDeps.getOwner(path),
   },
 }));
 

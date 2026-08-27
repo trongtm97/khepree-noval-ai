@@ -19,6 +19,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests *.config.ts",
     "lint:fix": "eslint src tests *.config.ts --fix",
+    "lint:i18n": "node scripts/check-i18n.mjs",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,html}\" \"tests/**/*.ts\" \"docs/**/*.md\" \"*.{json,md,ts,js}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\" \"tests/**/*.ts\" \"docs/**/*.md\" \"*.{json,md,ts,js}\"",
     "test": "vitest run",

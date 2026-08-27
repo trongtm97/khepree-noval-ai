@@ -106,7 +106,7 @@ const config: ForgeConfig = {
      * Vite plugin packages only `.vite/` — copy production externals so
      * utilityProcess runner (playwright) + main (better-sqlite3) resolve.
      */
-    packageAfterCopy: async (_config, buildPath) => {
+    packageAfterCopy: (_config, buildPath): Promise<void> => {
       const projectDir = process.cwd();
       const modules = [
         'better-sqlite3',
@@ -122,14 +122,15 @@ const config: ForgeConfig = {
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.cpSync(src, dest, { recursive: true });
       }
+      return Promise.resolve();
     },
     /**
      * Warn when Windows release lacks bundled Gemini worker exe.
      * Browser provider still works without it.
      */
-    postPackage: async (_config, packageResult) => {
-      if (process.platform !== 'win32') return;
-      const outputPaths = packageResult?.outputPaths ?? [];
+    postPackage: (_config, packageResult): Promise<void> => {
+      if (process.platform !== 'win32') return Promise.resolve();
+      const outputPaths = packageResult.outputPaths;
       let found = false;
       for (const out of outputPaths) {
         const workerExe = path.join(out, 'resources', 'workers', 'NovelTransGeminiWorker.exe');
@@ -144,6 +145,7 @@ const config: ForgeConfig = {
             'Web API optional; run npm run build:gemini-worker before make for full self-contained Web API.',
         );
       }
+      return Promise.resolve();
     },
   },
   plugins: [

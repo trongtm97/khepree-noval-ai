@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { AiAccountDto, AiProviderDto } from '@shared/schemas/ai-provider';
 import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
 import { useT } from '../../i18n';
+import { statusLabel } from '../../i18n/status';
+import { aiProviderTypeLabel } from '../../i18n/enums';
 import {
   Badge,
   Button,
@@ -9,14 +11,15 @@ import {
   Input,
   SectionHeader,
 } from '../ui';
+import { confirmDangerous } from '../../utils/confirm-dangerous';
 
-type ProviderListState = {
+interface ProviderListState {
   providers: AiProviderDto[];
   fallbackEnabled: boolean;
   workerInstalled: boolean;
   workerRunning: boolean;
   workerMessage: string | null;
-};
+}
 
 export function AiProvidersSettingsPanel({
   onMessage,
@@ -123,30 +126,29 @@ export function AiProvidersSettingsPanel({
           {t('settings.aiFallback')}
         </label>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div className="u-stack">
           {(state?.providers ?? []).map((provider, _index, all) => {
             const ordered = [...all].sort(
               (a, b) => a.priority - b.priority || a.name.localeCompare(b.name),
             );
             const isFirst = ordered[0]?.id === provider.id;
             return (
-            <Card key={provider.id} as="div" style={{ padding: '0.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+            <Card key={provider.id} as="div" className="u-pad-compact">
+              <div className="u-row u-row--between">
                 <div>
                   <strong>{provider.name}</strong>
-                  <div className="muted" style={{ fontSize: '0.85rem' }}>
-                    {provider.type} · {t('settings.aiPriority')}: {provider.priority}
+                  <div className="muted u-text-sm">
+                    {aiProviderTypeLabel(provider.type)} · {t('settings.aiPriority')}:{' '}
+                    {provider.priority}
                     {isFirst && provider.enabled ? ` · ${t('settings.aiRunsFirst')}` : ''}
                   </div>
                   {provider.accountEmail ? (
-                    <div className="muted" style={{ fontSize: '0.85rem' }}>
-                      {provider.accountEmail}
-                    </div>
+                    <div className="muted u-text-sm">{provider.accountEmail}</div>
                   ) : null}
                 </div>
-                <Badge tone={statusTone(provider.status)}>{provider.status}</Badge>
+                <Badge tone={statusTone(provider.status)}>{statusLabel(provider.status)}</Badge>
               </div>
-              <div className="btn-row" style={{ marginTop: '0.5rem', flexWrap: 'wrap' }}>
+              <div className="btn-row u-mt-2">
                 <Button
                   variant="secondary"
                   disabled={busy}
@@ -264,7 +266,7 @@ export function AiProvidersSettingsPanel({
                 >
                   {account.googleEmail ?? account.id.slice(0, 8)}
                   {' · '}
-                  <Badge tone={statusTone(account.status)}>{account.status}</Badge>
+                  <Badge tone={statusTone(account.status)}>{statusLabel(account.status)}</Badge>
                 </button>
                 <div className="btn-row">
                   <Button
@@ -293,7 +295,7 @@ export function AiProvidersSettingsPanel({
                   <Button
                     variant="secondary"
                     onClick={() => {
-                      if (!window.confirm(t('settings.aiDeleteConfirm'))) return;
+                      if (!confirmDangerous(t('settings.aiDeleteConfirm'))) return;
                       void window.novelTrans.aiAccounts
                         .delete({ accountId: account.id })
                         .then(() => refresh());
@@ -360,7 +362,7 @@ export function AiProvidersSettingsPanel({
                   />
                 </label>
                 <Button
-                  variant="primary"
+                  variant={!state?.workerInstalled ? 'secondary' : 'primary'}
                   disabled={busy || !selectedAccountId || !psid}
                   onClick={() => {
                     if (!selectedAccountId) return;

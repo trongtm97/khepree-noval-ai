@@ -15,9 +15,7 @@ describe('gemini_requests lifecycle persistence + startup recovery', () => {
 
   afterEach(() => {
     try {
-      if (db) {
-        db.close?.();
-      }
+      db.close();
       closeDatabase();
     } catch {
       // ignore
@@ -85,10 +83,12 @@ describe('gemini_requests lifecycle persistence + startup recovery', () => {
     db.geminiRequests.setLifecycle(row.id, 'COMPOSER_FILLED');
     db.geminiRequests.setLifecycle(row.id, 'SEND_CLICKED');
     db.geminiRequests.setLifecycle(row.id, 'SENT_CONFIRMED');
-    const after = db.geminiRequests.getById(row.id)!;
+    const after = db.geminiRequests.getById(row.id);
+    if (!after) throw new Error('expected gemini request row');
     expect(after.lifecycle).toBe('SENT_CONFIRMED');
     expect(after.status).toBe('running');
-    const stamps = JSON.parse(after.lifecycle_at!) as Record<string, string>;
+    if (!after.lifecycle_at) throw new Error('expected lifecycle_at');
+    const stamps = JSON.parse(after.lifecycle_at) as Record<string, string>;
     expect(stamps.CREATED).toBeTruthy();
     expect(stamps.SENT_CONFIRMED).toBeTruthy();
   });

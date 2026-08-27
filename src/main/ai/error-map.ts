@@ -3,7 +3,7 @@ import {
   type AiResponseStatus,
 } from '@shared/constants/ai-provider';
 
-const PATTERNS: Array<{ status: AiResponseStatus; re: RegExp }> = [
+const PATTERNS: { status: AiResponseStatus; re: RegExp }[] = [
   { status: 'LOGIN_REQUIRED', re: /LOGIN_REQUIRED|login required|sign.?in|auth/i },
   { status: 'SESSION_EXPIRED', re: /SESSION_EXPIRED|session.?expir|cookie.?expir|AuthError|401/i },
   { status: 'RATE_LIMIT', re: /RATE_LIMIT|QUOTA_LIMIT|quota|rate.?limit|429|too many/i },

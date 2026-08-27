@@ -81,7 +81,7 @@ export async function fastProbeResolve(
   for (let depth = 0; depth < options.strategies.length; depth++) {
     if (Date.now() - started >= budget) break;
 
-    const strategy = options.strategies[depth]!;
+    const strategy = options.strategies[depth];
     const strategyId = describeStrategy(strategy);
     tried.push(strategyId);
 
@@ -92,7 +92,6 @@ export async function fastProbeResolve(
     const remaining = budget - (Date.now() - started);
     const thisProbe = Math.min(probeMs, Math.max(50, remaining));
 
-    const root = options.scope ?? options.page;
     const locator =
       options.scope != null
         ? scopedLocator(options.scope, strategy, options.page)
@@ -200,9 +199,9 @@ export async function isEditableComposerLocator(locator: Locator): Promise<boole
     .evaluate((el) => {
       if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
         if (el.disabled || el.readOnly) return false;
-        const name = (el.getAttribute('formcontrolname') || '').toLowerCase();
+        const name = (el.getAttribute('formcontrolname') ?? '').toLowerCase();
         if (name === 'discoversourcesquery') return false;
-        const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+        const aria = (el.getAttribute('aria-label') ?? '').toLowerCase();
         if (aria.includes('khám phá nguồn') || aria.includes('discover source')) return false;
         return true;
       }

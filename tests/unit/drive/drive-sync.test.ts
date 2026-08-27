@@ -141,6 +141,14 @@ describe('DriveSyncService', () => {
     expect(service.onChapterCompleted(projectId).shouldSync).toBe(true);
   });
 
+  it('batch chapterCount=3 advances counter by 3 (not +1 per job)', () => {
+    service.setSyncSchedule(projectId, 10);
+    const result = service.onChapterCompleted(projectId, 3);
+    expect(result.shouldSync).toBe(false);
+    expect(result.chaptersSinceSync).toBe(3);
+    expect(db.driveSyncState.ensure(projectId).chapters_since_sync).toBe(3);
+  });
+
   it('hashes content deterministically', () => {
     expect(hashContent('abc')).toHaveLength(64);
     expect(hashContent('abc')).toBe(hashContent('abc'));

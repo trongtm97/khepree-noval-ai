@@ -26,7 +26,6 @@ export type { BrowserWorker } from './browser-worker';
 export { InProcessBrowserWorker } from './in-process-browser-worker';
 export {
   UtilityProcessBrowserWorker,
-  ChildProcessBrowserWorker,
   resolveDefaultRunnerScriptPath,
 } from './browser-runner/runner-host';
 export { resolveRunnerScriptPath, buildRunnerPathCandidates } from './browser-runner/runner-path';
@@ -55,7 +54,6 @@ export {
   NotebookSelectorRegistry,
 } from './providers/google/selectors/google-notebook.selectors';
 export {
-  GOOGLE_GEMINI_SELECTORS,
   GEMINI_CHAT_SELECTORS,
   GEMINI_NOTEBOOK_SELECTORS,
   NOTEBOOKLM_SELECTORS,
@@ -92,4 +90,4 @@ export {
   withLeaseHeartbeat,
   isProcessAlive,
 } from './browser-runner/profile-lock';
-export type { ProfileLockManager, AcquireLeaseInput } from './browser-runner/profile-lock';
+export type { AcquireLeaseInput } from './browser-runner/profile-lock';

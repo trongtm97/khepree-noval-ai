@@ -13,7 +13,13 @@ export function initializeDriveSyncService(): DriveSyncService {
     db.googleAccounts,
     new DriveOAuthService(getSecretStorage()),
   );
-  setNotebookDriveSyncFn((projectId) => instance!.syncProject(projectId));
+  setNotebookDriveSyncFn(async (projectId): Promise<unknown> => {
+    const service = instance;
+    if (!service) {
+      throw new Error('DriveSyncService not initialized');
+    }
+    return await service.syncProject(projectId);
+  });
   return instance;
 }
 

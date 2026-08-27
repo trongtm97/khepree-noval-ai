@@ -3,6 +3,7 @@ import { loadNotebookSettings, NotebookKnowledgeBuilder } from './knowledge-buil
 import { getNotebookSyncService } from './notebook-sync-service-singleton';
 import { resolveTranslationNotebook } from './notebook-resolver';
 import { logger } from '../logging/logger';
+import { resolveProjectWorker } from '../services/project-worker-resolver';
 
 export interface BootstrapResult {
   rebuilt: boolean;
@@ -260,7 +261,7 @@ export class NotebookBootstrapService {
       knowledgeFiles.every((f) => !f.content_hash && f.local_version === 0);
 
     if (knowledgeEmpty) {
-      const status = project.bootstrap_status ?? 'NOT_STARTED';
+      const status = project.bootstrap_status;
       // Never force AI bootstrap here — local seed only when not explicitly skipped.
       if (status !== 'SKIPPED') {
         this.bootstrap(projectId, { seed: true });
@@ -276,10 +277,14 @@ export class NotebookBootstrapService {
     }
 
     const driveState = this.db.driveSyncState.getByProject(projectId);
+    // Explicit options.accountId is absolute for this call (setWorker / UI).
+    // Otherwise use canonical ProjectWorkerResolver — never first READY blindly.
     const accountId =
       options?.accountId ??
-      driveState?.google_account_id ??
-      this.pickReadyWorkerAccountId() ??
+      resolveProjectWorker(this.db, {
+        projectId,
+        purpose: 'notebook',
+      }).accountId ??
       null;
 
     let driveSynced = false;
@@ -372,13 +377,6 @@ export class NotebookBootstrapService {
       notebookStatus,
       needsAssisted,
     };
-  }
-
-  private pickReadyWorkerAccountId(): string | null {
-    const ready = this.db.workerStates
-      .listEnabled()
-      .find((w) => w.health.toUpperCase() === 'READY');
-    return ready?.google_account_id ?? null;
   }
 
   private isWorkerReady(accountId: string): boolean {

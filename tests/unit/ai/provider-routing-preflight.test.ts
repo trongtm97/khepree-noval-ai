@@ -28,6 +28,9 @@ function minimalPack(): TranslationPackDto {
     chapterNumbers: [1],
     style: 'balanced',
     prompt: 'hello',
+    baseContext: '',
+    operationPrompt: 'hello',
+    operationType: 'TRANSLATE',
     sections: {
       taskHeader: '',
       criticalRules: '',
@@ -60,25 +63,25 @@ function mockProvider(
   return {
     providerId: id,
     providerType: type,
-    initialize: vi.fn(async () => undefined),
-    healthCheck: vi.fn(async () => ({
+    initialize: vi.fn(() => Promise.resolve()),
+    healthCheck: vi.fn(() => Promise.resolve({
       ok: true,
       status: 'READY' as const,
       message: 'ok',
     })),
     sendPrompt: vi.fn(send),
-    cancelRequest: vi.fn(async () => undefined),
-    getStatus: vi.fn(async () => ({
+    cancelRequest: vi.fn(() => Promise.resolve()),
+    getStatus: vi.fn(() => Promise.resolve({
       providerId: id,
       type,
       ready: true,
       message: 'ok',
     })),
-    close: vi.fn(async () => undefined),
+    close: vi.fn(() => Promise.resolve()),
   };
 }
 
-function mockDb(providers: Array<{ id: string; fallback_allowed: number }>) {
+function mockDb(providers: { id: string; fallback_allowed: number }[]) {
   return {
     aiProviders: {
       listEnabledOrdered: () =>
@@ -102,7 +105,7 @@ function mockDb(providers: Array<{ id: string; fallback_allowed: number }>) {
               status: 'READY',
               priority: 1,
               enabled: 1,
-              fallback_allowed: providers.find((p) => p.id === id)!.fallback_allowed,
+              fallback_allowed: providers.find((p) => p.id === id)?.fallback_allowed,
               created_at: '',
               updated_at: '',
             }
@@ -123,7 +126,6 @@ function mockDb(providers: Array<{ id: string; fallback_allowed: number }>) {
       listReadyByProvider: () => [{ id: 'ai-ready' }],
     },
     notebooks: {
-      getByProjectAndWorker: () => null as { status: string } | null,
       listByProjectAndWorker: () => [] as { status: string; notebook_role?: string }[],
     },
   } as unknown as ConstructorParameters<typeof AiProviderManager>[0];
@@ -174,7 +176,7 @@ describe('AiProviderManager account-aware routing', () => {
   });
 
   it('does not call Playwright send when preflight is NOTEBOOK_ERROR', async () => {
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'SUCCESS',
       text: 'from-web',
@@ -182,28 +184,28 @@ describe('AiProviderManager account-aware routing', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'from-browser',
       }),
     );
 
-    vi.mocked(checkProviderForJob).mockImplementation(async (_db, input) => {
+    vi.mocked(checkProviderForJob).mockImplementation((_db, input) => {
       if (input.providerId === AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI) {
-        return {
+        return Promise.resolve({
           providerId: input.providerId,
           result: 'NOTEBOOK_ERROR',
           message: 'no notebook',
           checks: {},
-        };
+        });
       }
-      return {
+      return Promise.resolve({
         providerId: input.providerId,
         result: 'READY',
         message: 'ok',
         checks: {},
-      };
+      });
     });
 
     const db = mockDb([
@@ -222,12 +224,12 @@ describe('AiProviderManager account-aware routing', () => {
     });
 
     expect(result.text).toBe('from-web');
-    expect(browser.sendPrompt).not.toHaveBeenCalled();
-    expect(web.sendPrompt).toHaveBeenCalledOnce();
+    expect(Reflect.get(browser, "sendPrompt")).not.toHaveBeenCalled();
+    expect(Reflect.get(web, "sendPrompt")).toHaveBeenCalledOnce();
   });
 
   it('PIN mode does not fallback to next provider', async () => {
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'RATE_LIMIT',
       text: '',
@@ -235,7 +237,7 @@ describe('AiProviderManager account-aware routing', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'from-browser',
@@ -274,11 +276,11 @@ describe('AiProviderManager account-aware routing', () => {
     });
 
     expect(result.status).toBe('RATE_LIMIT');
-    expect(browser.sendPrompt).not.toHaveBeenCalled();
+    expect(Reflect.get(browser, "sendPrompt")).not.toHaveBeenCalled();
   });
 
   it('selectProvidersForJob skips Playwright object that fails preflight', async () => {
-    vi.mocked(checkProviderForJob).mockImplementation(async (_db, input) => ({
+    vi.mocked(checkProviderForJob).mockImplementation((_db, input) => Promise.resolve({
       providerId: input.providerId,
       result:
         input.providerId === AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI
@@ -288,7 +290,7 @@ describe('AiProviderManager account-aware routing', () => {
       checks: {},
     }));
 
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'SUCCESS',
       text: 'web',
@@ -296,7 +298,7 @@ describe('AiProviderManager account-aware routing', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'browser',

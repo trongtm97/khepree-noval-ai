@@ -27,6 +27,7 @@ import {
   type VersionProbeCapture,
 } from './notebook-version-probe';
 import { buildActiveHotMemoryText as buildHotMemoryFromSqlite } from './hot-memory-builder';
+import { resolveProjectWorker } from '../services/project-worker-resolver';
 
 function looksLikeStatusMessage(text: string): boolean {
   return /delta after job|memory delta applied|term delta:|recent context after|world fact after/i.test(
@@ -314,17 +315,17 @@ export class NotebookSyncService {
           if (r.status === 'verified') return;
           attempt += 1;
           if (attempt < delays.length) {
-            setTimeout(tick, delays[attempt]!);
+            setTimeout(tick, delays[attempt]);
           }
         })
         .catch(() => {
           attempt += 1;
           if (attempt < delays.length) {
-            setTimeout(tick, delays[attempt]!);
+            setTimeout(tick, delays[attempt]);
           }
         });
     };
-    setTimeout(tick, delays[0]!);
+    setTimeout(tick, delays[0]);
   }
 
   private async createBrowserVersionCapture(
@@ -512,13 +513,12 @@ export class NotebookSyncService {
   }
 
   getDualHealth(projectId: string, accountId?: string | null): NotebookDualHealthDto {
-    const all = this.db.notebooks.listByProject(projectId);
     const resolvedAccount =
       accountId ??
-      all.find((m) => m.notebook_role === 'TRANSLATION')?.google_account_id ??
-      all.find((m) => m.notebook_role === 'SINGLE')?.google_account_id ??
-      all.find((m) => m.notebook_role === 'RESEARCH')?.google_account_id ??
-      all[0]?.google_account_id ??
+      resolveProjectWorker(this.db, {
+        projectId,
+        purpose: 'notebook',
+      }).accountId ??
       null;
 
     const layout =

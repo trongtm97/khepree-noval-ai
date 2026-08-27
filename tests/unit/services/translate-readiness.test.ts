@@ -17,6 +17,13 @@ function mockDb(opts: {
     projects: {
       getById: (id: string) => (id === PROJECT ? { id } : null),
     },
+    jobs: {
+      getById: () => null,
+      listByProject: () => [],
+    },
+    driveSyncState: {
+      getByProject: () => null,
+    },
     workerStates: {
       listAll: () => [
         {
@@ -34,14 +41,16 @@ function mockDb(opts: {
           current_job_id: null,
         },
       ],
+      getById: () => null,
       markReady: vi.fn(),
     },
     googleAccounts: {
       getById: (id: string) =>
         id === ACCOUNT
-          ? { id: ACCOUNT, status: accountStatus }
+          ? { id: ACCOUNT, status: accountStatus, email: 'a@x.com', display_name: 'A', label: 'A' }
           : null,
       list: () => [{ id: ACCOUNT, status: accountStatus }],
+      listDetails: () => [],
     },
     aiAccounts: {
       listAll: () =>
@@ -52,6 +61,7 @@ function mockDb(opts: {
         opts.notebookStatus
           ? { status: opts.notebookStatus }
           : null,
+      listByProject: () => [],
     },
   } as unknown as DatabaseManager;
 }
@@ -60,13 +70,15 @@ describe('TranslateReadinessService.ensureForTranslate', () => {
   it('returns ok when Web API is ready after prepare', async () => {
     const openBrowser = vi.fn();
     const testSession = vi.fn();
-    const prepareForTranslate = vi.fn(async () => ({
-      ready: true,
-      usedFallback: true,
-      message: 'prepared',
-      notebookStatus: null as string | null,
-      needsAssisted: false,
-    }));
+    const prepareForTranslate = vi.fn(() =>
+      Promise.resolve({
+        ready: true,
+        usedFallback: true,
+        message: 'prepared',
+        notebookStatus: null as string | null,
+        needsAssisted: false,
+      }),
+    );
     const service = new TranslateReadinessService(mockDb({ aiReady: true }), {
       openBrowser,
       testSession,
@@ -83,8 +95,10 @@ describe('TranslateReadinessService.ensureForTranslate', () => {
   });
 
   it('opens Gemini and asks user when LOGIN_REQUIRED and session still unusable', async () => {
-    const openBrowser = vi.fn(async () => undefined);
-    const testSession = vi.fn(async () => ({ usable: false, reason: 'LOGIN_REQUIRED' }));
+    const openBrowser = vi.fn(() => Promise.resolve());
+    const testSession = vi.fn(() =>
+      Promise.resolve({ usable: false, reason: 'LOGIN_REQUIRED' }),
+    );
     const prepareForTranslate = vi.fn();
     const service = new TranslateReadinessService(
       mockDb({ accountStatus: 'LOGIN_REQUIRED', workerHealth: 'LOGIN_REQUIRED', aiReady: false }),
@@ -102,19 +116,21 @@ describe('TranslateReadinessService.ensureForTranslate', () => {
   });
 
   it('opens NotebookLM when no channel after prepare', async () => {
-    const openBrowser = vi.fn(async () => undefined);
-    const prepareForTranslate = vi.fn(async () => ({
-      ready: true,
-      usedFallback: true,
-      message: 'Notebook chưa sẵn sàng',
-      notebookStatus: 'pending' as string | null,
-      needsAssisted: false,
-    }));
+    const openBrowser = vi.fn(() => Promise.resolve());
+    const prepareForTranslate = vi.fn(() =>
+      Promise.resolve({
+        ready: true,
+        usedFallback: true,
+        message: 'Notebook chưa sẵn sàng',
+        notebookStatus: 'pending',
+        needsAssisted: false,
+      }),
+    );
     const service = new TranslateReadinessService(
       mockDb({ aiReady: false, notebookStatus: null }),
       {
         openBrowser,
-        testSession: vi.fn(async () => ({ usable: true })),
+        testSession: vi.fn(() => Promise.resolve({ usable: true })),
         prepareForTranslate,
       },
     );
@@ -130,10 +146,17 @@ describe('TranslateReadinessService.ensureForTranslate', () => {
   it('returns no_account when project has no Google accounts', async () => {
     const db = {
       projects: { getById: () => ({ id: PROJECT }) },
-      workerStates: { listAll: () => [], listEnabled: () => [], markReady: vi.fn() },
-      googleAccounts: { getById: () => null, list: () => [] },
+      jobs: { getById: () => null, listByProject: () => [] },
+      driveSyncState: { getByProject: () => null },
+      workerStates: {
+        listAll: () => [],
+        listEnabled: () => [],
+        getById: () => null,
+        markReady: vi.fn(),
+      },
+      googleAccounts: { getById: () => null, list: () => [], listDetails: () => [] },
       aiAccounts: { listAll: () => [] },
-      notebooks: { getByProjectAndWorker: () => null },
+      notebooks: { getByProjectAndWorker: () => null, listByProject: () => [] },
     } as unknown as DatabaseManager;
     const service = new TranslateReadinessService(db, {
       openBrowser: vi.fn(),

@@ -154,7 +154,7 @@ describe('ProfileLeaseLockManager', () => {
       accountId: 'acct-1',
       operation: 'translation',
     });
-    expect(() => locks.releaseLease(profilePath, 'owner-b')).toThrow(/another worker/i);
+    expect(() => { locks.releaseLease(profilePath, 'owner-b'); }).toThrow(/another worker/i);
     locks.releaseLease(profilePath, 'owner-a');
   });
 
@@ -168,7 +168,8 @@ describe('ProfileLeaseLockManager', () => {
       ttlMs: 1_000,
       now: () => now,
     });
-    const before = locks.getLease(profilePath)!;
+    const before = locks.getLease(profilePath);
+    if (!before) throw new Error('expected lease');
     const renewed = locks.renewLease({
       profilePath,
       ownerId: 'owner-a',

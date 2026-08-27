@@ -2,11 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { GEMINI_CHAT_SELECTORS } from '../../../src/main/automation/providers/google/selectors/gemini-chat.selectors';
 import { GEMINI_NOTEBOOK_SELECTORS } from '../../../src/main/automation/providers/google/selectors/gemini-notebook.selectors';
 import { NOTEBOOKLM_SELECTORS } from '../../../src/main/automation/providers/google/selectors/notebooklm.selectors';
-import { GOOGLE_GEMINI_SELECTORS } from '../../../src/main/automation/providers/google/selectors/google-gemini.selectors';
 
 describe('Surface selector catalogs', () => {
-  it('GOOGLE_GEMINI_SELECTORS aliases NOTEBOOKLM for backward compat', () => {
-    expect(GOOGLE_GEMINI_SELECTORS.appShell.key).toBe(NOTEBOOKLM_SELECTORS.appShell.key);
+  it('NOTEBOOKLM appShell key is defined', () => {
+    expect(NOTEBOOKLM_SELECTORS.appShell.key).toBeTruthy();
   });
 
   it('GEMINI_CHAT keeps fixture appShell strategies first', () => {
@@ -29,7 +28,7 @@ describe('Surface selector catalogs', () => {
     expect(strategies.some((s) => s.kind === 'placeholder')).toBe(true);
     const css = strategies.filter((s) => s.kind === 'css').map((s) => s.css);
     expect(css.some((c) => c.includes('discoverSourcesQuery'))).toBe(true);
-    expect(css.some((c) => c === 'form textarea')).toBe(false);
+    expect((css as readonly string[]).includes('form textarea')).toBe(false);
   });
 
   it('NOTEBOOKLM send prefers enabled actions-enter-button', () => {

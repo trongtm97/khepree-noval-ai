@@ -77,7 +77,7 @@ export function termRankKey(term: TermRow): TermRankKey {
   return {
     tier,
     recentUsed,
-    occurrence: term.occurrence_count ?? 0,
+    occurrence: term.occurrence_count,
     typeRank,
     confidence,
     statusRank,
@@ -214,7 +214,7 @@ export function compareRelationshipRank(
   const aFrom = a.valid_from_chapter ?? 0;
   const bFrom = b.valid_from_chapter ?? 0;
   if (aFrom !== bFrom) return bFrom - aFrom;
-  if ((a.locked ?? 0) !== (b.locked ?? 0)) return (b.locked ?? 0) - (a.locked ?? 0);
+  if (a.locked !== b.locked) return b.locked - a.locked;
   return a.id.localeCompare(b.id);
 }
 

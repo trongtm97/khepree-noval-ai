@@ -2,7 +2,6 @@ import type { DatabaseManager } from '../db/database-manager';
 import { classifyCrashLifecycle } from '../gemini/gemini-request-recovery';
 import { profileLockManager } from '../automation/browser-runner/profile-lock';
 import { logger } from '../logging/logger';
-import type { GeminiRequestLifecycle } from '@shared/constants/gemini';
 
 export interface StartupGeminiRecoveryReport {
   crashedAttempts: number;
@@ -28,7 +27,7 @@ export function recoverJobsGeminiAndProfilesOnStartup(
   let geminiAbandonedBeforeSend = 0;
 
   for (const row of db.geminiRequests.listNonTerminal()) {
-    const lifecycle = row.lifecycle as GeminiRequestLifecycle;
+    const lifecycle = row.lifecycle;
     const kind = classifyCrashLifecycle(lifecycle);
     if (kind === 'terminal') continue;
     if (kind === 'unknown_after_sent') {
@@ -68,7 +67,9 @@ export function recoverJobsGeminiAndProfilesOnStartup(
     profileLeasesCleared > 0 ||
     expiredJobLeases > 0
   ) {
-    logger.info('Startup recovery (jobs / gemini_requests / profiles)', report);
+    logger.info('Startup recovery (jobs / gemini_requests / profiles)', {
+      ...report,
+    });
   }
 
   return report;

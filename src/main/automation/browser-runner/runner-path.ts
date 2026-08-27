@@ -16,7 +16,7 @@ export function resolveRunnerScriptPath(dirname = __dirname): string {
     }
   }
   // Last resort: primary path (fork will throw a clear error if missing)
-  return candidates[0]!;
+  return candidates[0];
 }
 
 export function buildRunnerPathCandidates(dirname: string): string[] {

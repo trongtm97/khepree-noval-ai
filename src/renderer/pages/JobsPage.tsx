@@ -4,6 +4,7 @@ import type { JobAttemptDto, JobDto } from '@shared/schemas/job';
 import type { AttentionAction } from '@shared/constants/job';
 import type { ProjectDto } from '@shared/schemas/import';
 import { formatMemoryUsage, formatTranslateChannel } from '@shared/utils/translate-channel';
+import { measureJobProgress } from '@shared/utils/job-progress';
 import {
   formatDiagnosticsAiChannel,
   formatDiagnosticsContextMode,
@@ -97,17 +98,9 @@ function workflowStepIndex(state: string): number {
   }
 }
 
-function jobProgress(job: JobDto): number {
-  if (job.state === 'COMPLETED' || job.state === 'ACCEPTED_WITH_WARNINGS') return 100;
-  if (job.state === 'FAILED' || job.state === 'CANCELLED' || job.state === 'SKIPPED') {
-    return Math.min(95, Math.max(5, workflowStepIndex(job.state) * 14));
-  }
-  const total = job.progress?.paragraphsTotal;
-  const done = job.progress?.paragraphsDone;
-  if (typeof total === 'number' && total > 0 && typeof done === 'number') {
-    return Math.min(95, Math.max(5, Math.round((done / total) * 100)));
-  }
-  return Math.min(95, Math.max(5, Math.round((workflowStepIndex(job.state) / 6) * 100)));
+function jobProgress(job: JobDto): { value: number | null; indeterminate: boolean } {
+  const measure = measureJobProgress(job);
+  return { value: measure.percent, indeterminate: measure.indeterminate };
 }
 
 function jobProgressLabel(job: JobDto, fallback: string, t: (key: string) => string): string {
@@ -116,21 +109,12 @@ function jobProgressLabel(job: JobDto, fallback: string, t: (key: string) => str
     const suffix = typeof round === 'number' ? ` (${round})` : '';
     return t('jobs.continuationReceiving') + suffix;
   }
-  const total = job.progress?.paragraphsTotal;
-  const done = job.progress?.paragraphsDone;
-  const chunkIndex = job.progress?.chunkIndex;
-  const chunkTotal = job.progress?.chunkTotal;
-  const parts: string[] = [];
-  if (typeof chunkTotal === 'number' && chunkTotal > 1 && typeof chunkIndex === 'number') {
-    parts.push(`Lô ${chunkIndex}/${chunkTotal}`);
-  }
-  if (typeof total === 'number' && total > 0 && typeof done === 'number') {
-    parts.push(`${done}/${total}`);
-  }
+  const measure = measureJobProgress(job);
   const channel = formatTranslateChannel({
     providerType: job.progress?.providerType,
     packMode: job.progress?.packMode,
   });
+  const parts = [...measure.labelParts];
   if (channel) parts.push(channel);
   if (parts.length > 0) return `${parts.join(' · ')} · ${fallback}`;
   return fallback;
@@ -357,10 +341,13 @@ export function JobsPage() {
       {
         key: 'progress',
         header: t('jobs.progress'),
-        render: (job: JobDto) => (
+        render: (job: JobDto) => {
+          const progress = jobProgress(job);
+          return (
           <div style={{ minWidth: 100 }}>
             <ProgressBar
-              value={jobProgress(job)}
+              value={progress.value}
+              indeterminate={progress.indeterminate}
               label={jobProgressLabel(job, statusLabel(job.state), t)}
             />
             {job.progress?.learning?.emptyDeltas ? (
@@ -369,7 +356,8 @@ export function JobsPage() {
               </div>
             ) : null}
           </div>
-        ),
+          );
+        },
       },
       {
         key: 'actions',
@@ -615,7 +603,7 @@ export function JobsPage() {
             </p>
             {(() => {
               const diag = readDiagnosticsFromProgress(
-                selected.progress as Record<string, unknown> | null | undefined,
+                selected.progress,
               );
               if (!diag) {
                 return formatTranslateChannel({
@@ -659,14 +647,12 @@ export function JobsPage() {
                   <p className="muted" style={{ margin: '0.15rem 0' }}>
                     {t('jobs.diagContextMode')}: <strong>{mode}</strong>
                   </p>
-                  {diag.knowledgeSourceMode ? (
-                    <p className="muted" style={{ margin: '0.15rem 0' }}>
+                  <p className="muted" style={{ margin: '0.15rem 0' }}>
                       {t('jobs.diagSourceMode')}: {diag.knowledgeSourceMode}
                       {typeof diag.hotDeltaCount === 'number' && diag.hotDeltaCount > 0
                         ? ` · delta ${diag.hotDeltaCount}`
                         : ''}
                     </p>
-                  ) : null}
                   {warning ? (
                     <p
                       className="banner"
@@ -713,7 +699,7 @@ export function JobsPage() {
             })()}
             {selected.progress?.packMode &&
             !readDiagnosticsFromProgress(
-              selected.progress as Record<string, unknown> | null | undefined,
+              selected.progress,
             ) ? (
               <p className="muted">
                 {formatMemoryUsage(selected.progress.packMode)}
@@ -735,7 +721,8 @@ export function JobsPage() {
               </p>
             ) : null}
             <ProgressBar
-              value={jobProgress(selected)}
+              value={jobProgress(selected).value}
+              indeterminate={jobProgress(selected).indeterminate}
               label={jobProgressLabel(selected, statusLabel(selected.state), t)}
             />
 

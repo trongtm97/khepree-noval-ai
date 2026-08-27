@@ -3,8 +3,8 @@ import type { AiBrowserProbeKind } from '@shared/schemas/diagnostics';
 import { useT } from '../../i18n';
 import { Button, Card, SectionHeader, Select } from '../ui';
 
-type AccountOption = { id: string; email: string | null; label: string };
-type ProjectOption = { id: string; title: string };
+interface AccountOption { id: string; email: string | null; label: string }
+interface ProjectOption { id: string; title: string }
 
 const PROBE_BUTTONS: { kind: AiBrowserProbeKind; labelKey: string }[] = [
   { kind: 'browser', labelKey: 'settings.aiDiagBrowser' },
@@ -35,17 +35,17 @@ export function AiDiagnosticsSettingsPanel({
       window.novelTrans.accounts.list(),
       window.novelTrans.projects.list(),
     ]);
-    const accOpts = (accRes.accounts ?? []).map(
+    const accOpts = accRes.accounts.map(
       (a: { id: string; email?: string | null; displayName?: string | null }) => ({
         id: a.id,
         email: a.email ?? null,
-        label: a.email || a.displayName || a.id.slice(0, 8),
+        label: (a.email ?? a.displayName) ?? a.id.slice(0, 8),
       }),
     );
     setAccounts(accOpts);
     if (!accountId && accOpts[0]) setAccountId(accOpts[0].id);
 
-    const projOpts = (projRes.projects ?? []).map((p: { id: string; title: string }) => ({
+    const projOpts = projRes.projects.map((p: { id: string; title: string }) => ({
       id: p.id,
       title: p.title || p.id.slice(0, 8),
     }));
@@ -97,7 +97,7 @@ export function AiDiagnosticsSettingsPanel({
       .catch((err: unknown) => {
         onError(err instanceof Error ? err.message : String(err));
       })
-      .finally(() => setBusy(false));
+      .finally(() => { setBusy(false); });
   };
 
   return (
@@ -110,7 +110,7 @@ export function AiDiagnosticsSettingsPanel({
           {t('settings.aiDiagAccount')}
           <Select
             value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
+            onChange={(e) => { setAccountId(e.target.value); }}
             disabled={busy}
           >
             {accounts.length === 0 ? (
@@ -128,7 +128,7 @@ export function AiDiagnosticsSettingsPanel({
           {t('settings.aiDiagProject')}
           <Select
             value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
+            onChange={(e) => { setProjectId(e.target.value); }}
             disabled={busy}
           >
             <option value="">{t('settings.aiDiagOptionalProject')}</option>
@@ -147,7 +147,7 @@ export function AiDiagnosticsSettingsPanel({
             key={btn.kind}
             variant="secondary"
             disabled={busy || !accountId}
-            onClick={() => runProbe(btn.kind)}
+            onClick={() => { runProbe(btn.kind); }}
           >
             {t(btn.labelKey)}
           </Button>

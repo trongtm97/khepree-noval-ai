@@ -57,13 +57,13 @@ export function splitCorpusParts(
   maxWords = CORPUS_PART_MAX_WORDS,
   maxBytes = CORPUS_PART_MAX_BYTES,
 ): InMemoryCorpusPart[] {
-  type Buf = {
+  interface Buf {
     chunks: string[];
     words: number;
     bytes: number;
     chapterFrom: number;
     chapterTo: number;
-  };
+  }
 
   const parts: InMemoryCorpusPart[] = [];
   let buf: Buf | null = null;
@@ -157,7 +157,7 @@ export function packNovelCorpus(
   const parts: CorpusPartInfo[] = [];
   let totalWords = 0;
   for (let i = 0; i < split.length; i++) {
-    const part = split[i]!;
+    const part = split[i];
     const fileName = `NOVEL_PART_${String(i + 1).padStart(2, '0')}.txt`;
     const filePath = path.join(outputDir, fileName);
     fs.writeFileSync(filePath, part.body, 'utf8');

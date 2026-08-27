@@ -21,6 +21,7 @@ import {
 } from '../components/ui';
 import { useUiShellStore } from '../stores/ui-shell-store';
 import { HelpContextButton } from '../features/help/HelpContextButton';
+import { confirmDangerous } from '../utils/confirm-dangerous';
 
 type SortKey = 'updated' | 'name' | 'progress';
 type ViewMode = 'grid' | 'list';
@@ -67,7 +68,7 @@ export function ProjectsPage() {
 
   const openProject = (project: ProjectDto) => {
     setCurrentProject(project.id, project.title);
-    navigate('/translation');
+    navigate(`/projects/${project.id}`);
   };
 
   const confirmRemove = () => {
@@ -135,7 +136,7 @@ export function ProjectsPage() {
                       );
                       return;
                     }
-                    const ok = window.confirm(
+                    const ok = confirmDangerous(
                       `${preview.manifest.kind} · ${preview.manifest.projectTitle ?? '—'} · schema v${preview.manifest.schemaVersion}\n\nRestore?`,
                     );
                     if (!ok) return;
@@ -224,7 +225,9 @@ export function ProjectsPage() {
 
           <div className={view === 'grid' ? 'project-grid' : 'project-list'}>
             {filtered.map((project) => {
-              const total = project.chapterCount ?? 0;
+              const total = project.sourceChapterCount ?? project.chapterCount ?? 0;
+              const done = project.translatedChapterCount ?? 0;
+              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
               return (
                 <Card key={project.id}>
                   <div className="page-header-row">
@@ -237,20 +240,28 @@ export function ProjectsPage() {
                     <Badge tone="accent">{statusLabel(project.status)}</Badge>
                   </div>
                   <p style={{ margin: '0.75rem 0 0.35rem' }}>
-                    {t('projects.totalChapters', { done: '—', total })}
+                    {t('projects.totalChapters', {
+                      done: String(done),
+                      total: String(total),
+                    })}
                   </p>
-                  <ProgressBar value={0} label={project.title} />
+                  <ProgressBar value={pct} label={project.title} />
                   <p className="muted" style={{ fontSize: 'var(--font-small)', marginTop: '0.5rem' }}>
-                    {t('projects.notebook')}: {t('projects.notebookMissing')}
+                    {t('projects.notebook')}:{' '}
+                    {project.health?.notebook === 'ok'
+                      ? t('projects.notebookConnected')
+                      : project.health?.notebook === 'warn'
+                        ? t('projects.notebookPending')
+                        : t('projects.notebookMissing')}
                   </p>
                   <div className="project-card-actions">
-                    <Button variant="primary" onClick={() => { openProject(project); }}>
+                    <Button variant="secondary" onClick={() => { openProject(project); }}>
                       {t('actions.openProject')}
                     </Button>
                     <Button
                       onClick={() => {
                         setCurrentProject(project.id, project.title);
-                        navigate('/translation');
+                        navigate(`/projects/${project.id}/translate`);
                       }}
                     >
                       {t('actions.continueTranslate')}
@@ -258,6 +269,7 @@ export function ProjectsPage() {
                     <Button
                       variant="ghost"
                       onClick={() => {
+                        setCurrentProject(project.id, project.title);
                         navigate(`/projects/${project.id}/ai-memory`);
                       }}
                     >
@@ -266,7 +278,8 @@ export function ProjectsPage() {
                     <Button
                       variant="ghost"
                       onClick={() => {
-                        navigate(`/projects/${project.id}/info`);
+                        setCurrentProject(project.id, project.title);
+                        navigate(`/projects/${project.id}`);
                       }}
                     >
                       {t('actions.bookInfo')}
@@ -274,7 +287,8 @@ export function ProjectsPage() {
                     <Button
                       variant="ghost"
                       onClick={() => {
-                        navigate(`/projects/${project.id}/source`);
+                        setCurrentProject(project.id, project.title);
+                        navigate(`/projects/${project.id}/chapters`);
                       }}
                     >
                       {t('actions.sourceFolder')}

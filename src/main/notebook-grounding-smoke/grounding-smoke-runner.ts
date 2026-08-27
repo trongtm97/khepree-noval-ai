@@ -103,7 +103,7 @@ export async function runNotebookGroundingSmoke(
   const projectId = `smoke-grounding-${newId().slice(0, 8)}`;
 
   let session: Session | null = null;
-  let state: GroundingState = {
+  const state: GroundingState = {
     knowledgeKey,
     localVersion: 1,
     syncNonce: '',
@@ -300,7 +300,8 @@ async function ensureDriveDocs(
   knowledgeContent: string,
   syncContent: string,
 ): Promise<void> {
-  const drive = state.drive!;
+  const drive = state.drive;
+  if (!drive) throw new Error('Drive client not initialized');
   let folderId: string | undefined;
 
   const ensureFolder = async (): Promise<string> => {
@@ -353,17 +354,16 @@ async function updateDriveDoc(
 }
 
 function seedSmokeLearningRows(state: GroundingState): void {
-  const db = state.db!;
+  const db = state.db;
+  if (!db) throw new Error('Database not initialized');
   let project = db.projects.list().find((p) => p.title.includes('NOVELTRANS_SMOKE_GROUNDING'));
-  if (!project) {
-    project = db.projects.create({
+  project ??= db.projects.create({
       title: 'NOVELTRANS_SMOKE_GROUNDING',
       source_language: 'zh',
       target_language: 'vi',
       author_name: 'Smoke',
       genre: 'test',
     });
-  }
   state.projectId = project.id;
 
   const existing = db.characters

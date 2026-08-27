@@ -238,7 +238,7 @@ export class GeminiBrowserProvider implements AutomationProvider {
       }
     });
     page.on('pageerror', (err) => {
-      this.pageErrors.push(String(err?.message ?? err).slice(0, 500));
+      this.pageErrors.push(err.message.slice(0, 500));
       if (this.pageErrors.length > 40) this.pageErrors.shift();
     });
   }
@@ -303,7 +303,7 @@ export class GeminiBrowserProvider implements AutomationProvider {
 
     const streaming = await registry.isStreamingVisible().catch(() => false);
     const generating = await pageHasGeneratingIndicator(page).catch(() => false);
-    let generationActive = Boolean(streaming) || Boolean(generating);
+    let generationActive = streaming || Boolean(generating);
     let responseComplete = false;
 
     if (resolved.ok) {
@@ -1080,7 +1080,7 @@ export class GeminiBrowserProvider implements AutomationProvider {
     | { ok: false; ambiguous: boolean; reason: string }
   > {
     const anchor = this.activeAnchor;
-    if (!anchor || anchor.correlationId !== correlationId) {
+    if (anchor?.correlationId !== correlationId) {
       return {
         ok: false,
         ambiguous: false,

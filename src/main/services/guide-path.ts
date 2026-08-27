@@ -14,7 +14,7 @@ export function resolveGuidePath(guideId: AppGuideId): string {
   const candidates = [
     path.join(process.cwd(), 'resources', 'guides', fileName),
     path.join(app.getAppPath(), 'resources', 'guides', fileName),
-    path.join(process.resourcesPath ?? '', 'guides', fileName),
+    path.join(process.resourcesPath, 'guides', fileName),
   ];
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {

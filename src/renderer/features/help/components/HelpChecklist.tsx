@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Copy, CheckCircle2, Circle } from 'lucide-react';
-import { t, useLocaleStore, useT } from '../../../i18n';
+import { useT } from '../../../i18n';
 import { Button } from '../../../components/ui';
 import type { HelpArticle } from '../types';
 import { HELP_ARTICLE_MAP } from '../content';
@@ -68,7 +68,7 @@ export function useHelpChecklist(): {
   error: string | null;
   refresh: () => void;
 } {
-  const locale = useLocaleStore((s) => s.locale);
+  const tr = useT();
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,58 +95,58 @@ export function useHelpChecklist(): {
       setItems([
         {
           id: 'app',
-          label: t('help.check.appReady'),
+          label: tr('help.check.appReady'),
           done: true,
         },
         {
           id: 'account',
-          label: t('help.check.hasAccount'),
+          label: tr('help.check.hasAccount'),
           done: hasAccount,
-          actionLabel: t('help.check.actionAccount'),
+          actionLabel: tr('help.check.actionAccount'),
           actionTo: '/accounts',
         },
         {
           id: 'gemini',
-          label: t('help.check.geminiReady'),
+          label: tr('help.check.geminiReady'),
           done: geminiReady,
-          actionLabel: t('help.check.actionAccount'),
+          actionLabel: tr('help.check.actionAccount'),
           actionTo: '/accounts',
         },
         {
           id: 'drive',
-          label: t('help.check.driveConnected'),
+          label: tr('help.check.driveConnected'),
           done: driveConnected,
-          actionLabel: t('help.check.actionDrive'),
+          actionLabel: tr('help.check.actionDrive'),
           actionTo: '/accounts',
         },
         {
           id: 'project',
-          label: t('help.check.hasProject'),
+          label: tr('help.check.hasProject'),
           done: hasProject,
-          actionLabel: t('help.check.actionProject'),
+          actionLabel: tr('help.check.actionProject'),
           actionTo: '/projects',
         },
         {
           id: 'notebook',
-          label: t('help.check.notebookReady'),
+          label: tr('help.check.notebookReady'),
           done: notebookReady,
-          actionLabel: t('help.check.actionNotebook'),
+          actionLabel: tr('help.check.actionNotebook'),
           actionTo: '/translation',
         },
         {
           id: 'firstJob',
-          label: t('help.check.firstTranslation'),
+          label: tr('help.check.firstTranslation'),
           done: hasCompletedJob,
-          actionLabel: t('help.check.actionTranslate'),
+          actionLabel: tr('help.check.actionTranslate'),
           actionTo: '/translation',
         },
       ]);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('help.checklistError'));
+      setError(err instanceof Error ? err.message : tr('help.checklistError'));
     } finally {
       setLoading(false);
     }
-  }, [locale]);
+  }, [tr]);
 
   const refresh = useCallback(() => {
     void loadChecklist();

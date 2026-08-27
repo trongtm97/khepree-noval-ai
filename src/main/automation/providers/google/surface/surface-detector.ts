@@ -38,7 +38,7 @@ export async function detectUiSurface(page: Page): Promise<SurfaceDetectionResul
   })();
 
   if (
-    /accounts\.google\.com/.test(hostPath) ||
+    hostPath.includes('accounts.google.com') ||
     /\/signin|\/ServiceLogin|\/v3\/signin/i.test(hostPath)
   ) {
     return {
@@ -53,12 +53,12 @@ export async function detectUiSurface(page: Page): Promise<SurfaceDetectionResul
   const fixture = await page
     .evaluate(() => {
       const root =
-        document.querySelector('[data-surface]') ||
-        document.querySelector('[data-testid="gemini-app"]') ||
-        document.querySelector('[data-testid="gemini-notebook-app"]') ||
-        document.querySelector('[data-testid="notebooklm-app"]') ||
-        document.querySelector('[data-gemini-app]') ||
-        document.querySelector('[data-gemini-notebook-app]') ||
+        document.querySelector('[data-surface]') ??
+        document.querySelector('[data-testid="gemini-app"]') ??
+        document.querySelector('[data-testid="gemini-notebook-app"]') ??
+        document.querySelector('[data-testid="notebooklm-app"]') ??
+        document.querySelector('[data-gemini-app]') ??
+        document.querySelector('[data-gemini-notebook-app]') ??
         document.querySelector('[data-notebooklm-app]');
       if (!root) return null;
       const surface = root.getAttribute('data-surface');
@@ -98,7 +98,7 @@ export async function detectUiSurface(page: Page): Promise<SurfaceDetectionResul
     };
   }
 
-  if (/gemini\.google\.com/.test(hostPath)) {
+  if (hostPath.includes('gemini.google.com')) {
     const shell = await probeShell(page, [
       'chat-app',
       'bard-sidenav-container',
@@ -123,7 +123,7 @@ export async function detectUiSurface(page: Page): Promise<SurfaceDetectionResul
     };
   }
 
-  if (/notebooklm\.google\.com/.test(hostPath)) {
+  if (hostPath.includes('notebooklm.google.com')) {
     const shell = await probeShell(page, [
       'labs-tailwind-root',
       'chat-panel',
@@ -140,7 +140,7 @@ export async function detectUiSurface(page: Page): Promise<SurfaceDetectionResul
     };
   }
 
-  if (/notebook\.google\.com/.test(hostPath)) {
+  if (hostPath.includes('notebook.google.com')) {
     const geminiNotebook = await page
       .locator("a[aria-label*='Gemini Notebook' i], button[aria-label*='Gemini Notebook' i]")
       .first()
@@ -193,7 +193,7 @@ export async function detectUiSurface(page: Page): Promise<SurfaceDetectionResul
         hits.push('shell:notebooklm');
       }
       if (
-        document.body?.innerText &&
+        document.body.innerText &&
         /sign in|đăng nhập/i.test(document.body.innerText.slice(0, 500)) &&
         document.querySelector('[data-testid="login-required"], input[type="email"]')
       ) {

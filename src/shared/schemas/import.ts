@@ -10,7 +10,24 @@ export const ProjectDtoSchema = z.object({
   status: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /** @deprecated Prefer sourceChapterCount — kept as alias for older UI. */
   chapterCount: z.number().int().nonnegative().optional(),
+  sourceChapterCount: z.number().int().nonnegative().optional(),
+  translatedChapterCount: z.number().int().nonnegative().optional(),
+  reviewedChapterCount: z.number().int().nonnegative().optional(),
+  queuedChapterCount: z.number().int().nonnegative().optional(),
+  errorChapterCount: z.number().int().nonnegative().optional(),
+  /** Next chapter_number to translate (null if none / complete). */
+  nextUntranslatedChapter: z.number().int().positive().nullable().optional(),
+  health: z
+    .object({
+      source: z.enum(['ok', 'warn', 'missing']),
+      google: z.enum(['ok', 'warn', 'missing']),
+      notebook: z.enum(['ok', 'warn', 'missing']),
+      memoryVersion: z.number().int().nonnegative().nullable(),
+      memoryVerified: z.boolean(),
+    })
+    .optional(),
 });
 
 export type ProjectDto = z.infer<typeof ProjectDtoSchema>;

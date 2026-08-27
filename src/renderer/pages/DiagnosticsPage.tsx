@@ -362,7 +362,7 @@ export function DiagnosticsPage() {
           <input
             type="url"
             value={smokeNotebookUrl}
-            onChange={(e) => setSmokeNotebookUrl(e.target.value)}
+            onChange={(e) => { setSmokeNotebookUrl(e.target.value); }}
             placeholder="https://notebooklm.google.com/notebook/…"
             style={{ width: '100%', marginTop: '0.25rem' }}
             disabled={busy}

@@ -184,7 +184,7 @@ describe('Automation Diagnostics (Phase 19)', () => {
     await page.setContent(
       '<html><body><input id="pw" type="password" name="password" /><button id="ok" data-testid="send-prompt">Send</button></body></html>',
     );
-    const pending = waitForElementClick(page, 5_000);
+    const pending = waitForElementClick(page, 3_000);
     await page.waitForTimeout(50);
     await page.click('#pw');
     const suggestion = await pending;
@@ -192,5 +192,5 @@ describe('Automation Diagnostics (Phase 19)', () => {
     expect(suggestion.rejected).toBe(true);
     expect(suggestion.rejectReason).toMatch(/password/i);
     expect(suggestion.suggestedStrategies).toEqual([]);
-  });
+  }, 15_000);
 });

@@ -85,7 +85,7 @@ export function sanitizeResponseSnippet(raw: string, max = 400): string {
   text = text
     .replace(/cookie[s]?\s*[:=]\s*\S+/gi, '[redacted]')
     .replace(/authorization\s*[:=]\s*\S+/gi, '[redacted]')
-    .replace(/bearer\s+[A-Za-z0-9._\-]+/gi, '[redacted]')
+    .replace(/bearer\s+[A-Za-z0-9._-]+/gi, '[redacted]')
     .replace(/ya29\.[A-Za-z0-9_\-.]+/g, '[redacted]')
     .replace(/1\/\/[A-Za-z0-9_\-.]+/g, '[redacted]');
   if (text.length > max) return `${text.slice(0, max)}…`;

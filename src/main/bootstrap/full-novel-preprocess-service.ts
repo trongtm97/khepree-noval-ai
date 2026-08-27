@@ -172,8 +172,9 @@ export class FullNovelPreprocessService {
       .listByProject(projectId)
       .filter((c) => c.source_status === 'SOURCE_READY')
       .sort((a, b) => a.sequence_order - b.sequence_order);
-    const last = chapters[chapters.length - 1];
-    return last ? (last.chapter_number ?? last.sequence_order) : null;
+    const last = chapters.at(-1);
+    if (!last) return null;
+    return last.chapter_number ?? last.sequence_order;
   }
 
   private mergeStyleRules(projectId: string, rulesMd: string): void {

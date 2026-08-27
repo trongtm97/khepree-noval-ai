@@ -55,9 +55,9 @@ export function buildSyncStateManifestContent(manifest: SyncStateManifest): stri
 export function parseSyncStateManifestContent(
   content: string,
 ): SyncStateManifest | null {
-  const projectId = content.match(/NOVELTRANS_PROJECT_ID=(\S+)/)?.[1] ?? null;
-  const versionRaw = content.match(/NOVELTRANS_KNOWLEDGE_VERSION=(\d+)/)?.[1] ?? null;
-  const syncNonce = content.match(/NOVELTRANS_SYNC_NONCE=([A-Fa-f0-9]+)/)?.[1] ?? null;
+  const projectId = (/NOVELTRANS_PROJECT_ID=(\S+)/.exec(content))?.[1] ?? null;
+  const versionRaw = (/NOVELTRANS_KNOWLEDGE_VERSION=(\d+)/.exec(content))?.[1] ?? null;
+  const syncNonce = (/NOVELTRANS_SYNC_NONCE=([A-Fa-f0-9]+)/.exec(content))?.[1] ?? null;
   if (!projectId || !versionRaw || !syncNonce) return null;
   return {
     projectId,
@@ -71,11 +71,11 @@ export function parseVersionProbeResponse(raw: string): {
   version: number | null;
   nonce: string | null;
 } {
-  const versionMatch = raw.match(/NT_VERSION\s*=\s*(\d+)/i);
-  const nonceMatch = raw.match(/NT_NONCE\s*=\s*([A-Fa-f0-9]+)/i);
+  const versionMatch = /NT_VERSION\s*=\s*(\d+)/i.exec(raw);
+  const nonceMatch = /NT_NONCE\s*=\s*([A-Fa-f0-9]+)/i.exec(raw);
   return {
     version: versionMatch ? Number(versionMatch[1]) : null,
-    nonce: nonceMatch ? nonceMatch[1]!.toUpperCase() : null,
+    nonce: nonceMatch ? nonceMatch[1].toUpperCase() : null,
   };
 }
 

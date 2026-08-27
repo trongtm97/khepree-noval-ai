@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import type { ProjectDto } from '@shared/schemas/import';
 import type { AutoBackupConfig } from '@shared/schemas/portability';
 import type { NovelExportFormat } from '@shared/constants/portability';
 import { useT, t as i18nT } from '../i18n';
+import { useUiShellStore } from '../stores/ui-shell-store';
 
 export function PortabilityPage() {
   const t = useT();
+  const { projectId: routeProjectId } = useParams();
+  const storeProjectId = useUiShellStore((s) => s.currentProjectId) ?? '';
   const [projects, setProjects] = useState<ProjectDto[]>([]);
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState(routeProjectId || storeProjectId);
   const [format, setFormat] = useState<NovelExportFormat>('txt');
   const [chapterFrom, setChapterFrom] = useState('');
   const [chapterTo, setChapterTo] = useState('');
@@ -28,6 +32,10 @@ export function PortabilityPage() {
     requiresOverwrite: boolean;
   } | null>(null);
 
+  useEffect(() => {
+    if (routeProjectId) setProjectId(routeProjectId);
+  }, [routeProjectId]);
+
   const refresh = useCallback(async () => {
     const [{ projects: list }, backupCfg, backups] = await Promise.all([
       window.novelTrans.projects.list(),
@@ -35,10 +43,14 @@ export function PortabilityPage() {
       window.novelTrans.portability.listBackups(),
     ]);
     setProjects(list);
-    if (!projectId && list[0]) setProjectId(list[0].id);
+    if (routeProjectId) {
+      setProjectId(routeProjectId);
+    } else if (!projectId && list[0]) {
+      setProjectId(list[0].id);
+    }
     setAutoBackup(backupCfg);
     void backups;
-  }, [projectId]);
+  }, [projectId, routeProjectId]);
 
   useEffect(() => {
     void refresh().catch((err: unknown) => {
@@ -201,14 +213,16 @@ export function PortabilityPage() {
       {message ? <div className="banner">{message}</div> : null}
 
       <div className="toolbar" style={{ gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <label>
-          {t('portability.project')}{' '}
-          <select value={projectId} disabled={busy} onChange={(e) => { setProjectId(e.target.value); }}>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.title}</option>
-            ))}
-          </select>
-        </label>
+        {routeProjectId ? null : (
+          <label>
+            {t('portability.project')}{' '}
+            <select value={projectId} disabled={busy} onChange={(e) => { setProjectId(e.target.value); }}>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.title}</option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       <section className="card" style={{ marginBottom: '1rem' }}>

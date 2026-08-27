@@ -16,12 +16,12 @@ function fakePage(url = 'https://notebook.google.com/n/p1'): Page {
   const page = {
     isClosed: () => false,
     url: () => url,
-    goto: vi.fn(async (next: string) => {
+    goto: vi.fn((next: string) => {
       url = next;
     }),
     on: (event: string, fn: () => void) => {
       if (!listeners.has(event)) listeners.set(event, new Set());
-      listeners.get(event)!.add(fn);
+      listeners.get(event)?.add(fn);
     },
     _crash: () => {
       for (const fn of listeners.get('crash') ?? []) fn();
@@ -35,16 +35,17 @@ function fakeContext(page: Page): BrowserContext {
   let closed = false;
   const context = {
     pages: () => (closed ? [] : [page]),
-    newPage: vi.fn(async () => {
-      const p = fakePage();
-      return p;
-    }),
-    close: vi.fn(async () => {
+    close: vi.fn(() => {
       closed = true;
+      return Promise.resolve();
+    }),
+    newPage: vi.fn(() => {
+      const p = fakePage();
+      return Promise.resolve(p);
     }),
     on: (event: string, fn: () => void) => {
       if (!listeners.has(event)) listeners.set(event, new Set());
-      listeners.get(event)!.add(fn);
+      listeners.get(event)?.add(fn);
     },
     _closeEmit: () => {
       for (const fn of listeners.get('close') ?? []) fn();
@@ -55,7 +56,7 @@ function fakeContext(page: Page): BrowserContext {
 
 describe('BrowserRuntimeManager', () => {
   let tempRoot: string;
-  let events: Array<{ event: string; payload?: Record<string, unknown> }>;
+  let events: { event: string; payload?: Record<string, unknown> }[];
   let launchCalls: number;
   let manager: BrowserRuntimeManager;
   let profileA: string;
@@ -71,11 +72,11 @@ describe('BrowserRuntimeManager', () => {
     events = [];
     launchCalls = 0;
 
-    const launchFn: LaunchContextFn = async () => {
+    const launchFn: LaunchContextFn = () => {
       launchCalls += 1;
       const page = fakePage();
       const context = fakeContext(page);
-      return {
+      return Promise.resolve({
         context,
         resolved: {
           preference: 'AUTO',
@@ -87,7 +88,7 @@ describe('BrowserRuntimeManager', () => {
         headless: true,
         disableAutomationControlled: false,
         loginCompat: false,
-      };
+      });
     };
 
     manager = new BrowserRuntimeManager({
@@ -122,8 +123,8 @@ describe('BrowserRuntimeManager', () => {
           await prepareNotebook({
             projectId: 'project-1',
             notebookUrl: 'https://notebook.google.com/n/p1',
-            openNotebook: async () => undefined,
-            verifyReady: async () => undefined,
+            openNotebook: () => Promise.resolve(),
+            verifyReady: () => Promise.resolve(),
           });
         },
       );
@@ -145,7 +146,7 @@ describe('BrowserRuntimeManager', () => {
         await prepareNotebook({
           projectId: 'p1',
           notebookUrl: 'https://notebook.google.com/n/p1',
-          openNotebook: async () => undefined,
+          openNotebook: () => Promise.resolve(),
         });
       },
     );
@@ -159,7 +160,7 @@ describe('BrowserRuntimeManager', () => {
         await prepareNotebook({
           projectId: 'p1',
           notebookUrl: 'https://notebook.google.com/n/p1',
-          openNotebook: async () => undefined,
+          openNotebook: () => Promise.resolve(),
         });
       },
     );
@@ -182,11 +183,13 @@ describe('BrowserRuntimeManager', () => {
         await prepareNotebook({
           projectId: 'project-1',
           notebookUrl: 'https://notebook.google.com/n/p1',
-          openNotebook: async (_p, url) => {
+          openNotebook: (_p, url) => {
             opens.push(url);
+            return Promise.resolve();
           },
-          verifyReady: async () => {
+          verifyReady: () => {
             verifies.push('p1');
+            return Promise.resolve();
           },
         });
       },
@@ -202,11 +205,13 @@ describe('BrowserRuntimeManager', () => {
         await prepareNotebook({
           projectId: 'project-1',
           notebookUrl: 'https://notebook.google.com/n/p1',
-          openNotebook: async (_p, url) => {
+          openNotebook: (_p, url) => {
             opens.push(url);
+            return Promise.resolve();
           },
-          verifyReady: async () => {
+          verifyReady: () => {
             verifies.push('p1');
+            return Promise.resolve();
           },
         });
       },
@@ -222,11 +227,13 @@ describe('BrowserRuntimeManager', () => {
         await prepareNotebook({
           projectId: 'project-2',
           notebookUrl: 'https://notebook.google.com/n/p2',
-          openNotebook: async (_p, url) => {
+          openNotebook: (_p, url) => {
             opens.push(url);
+            return Promise.resolve();
           },
-          verifyReady: async () => {
+          verifyReady: () => {
             verifies.push('p2');
+            return Promise.resolve();
           },
         });
       },
@@ -252,7 +259,7 @@ describe('BrowserRuntimeManager', () => {
         firstPage = await prepareNotebook({
           projectId: 'project-1',
           notebookUrl: 'https://notebook.google.com/n/p1',
-          openNotebook: async () => undefined,
+          openNotebook: () => Promise.resolve(),
         });
         (firstPage as unknown as { isClosed: () => boolean }).isClosed = () => true;
       },
@@ -268,10 +275,12 @@ describe('BrowserRuntimeManager', () => {
         const page = await prepareNotebook({
           projectId: 'project-1',
           notebookUrl: 'https://notebook.google.com/n/p1',
-          openNotebook: async () => undefined,
+          openNotebook: () => Promise.resolve(),
         });
         expect(page).not.toBe(firstPage);
-        expect(runtime.getContext()?.newPage).toHaveBeenCalled();
+        const ctx = runtime.getContext();
+        if (!ctx) throw new Error('expected runtime context');
+        expect(Reflect.get(ctx, 'newPage')).toHaveBeenCalled();
       },
     );
   });
@@ -296,9 +305,10 @@ describe('BrowserRuntimeManager', () => {
         profilePath: profileA,
         diagnosticsDir: path.join(tempRoot, 'diag-a'),
       },
-      async () => {
+      () => {
         order.push('b-start');
         order.push('b-end');
+        return Promise.resolve();
       },
     );
     await Promise.all([a, b]);
@@ -314,7 +324,7 @@ describe('BrowserRuntimeManager', () => {
           profilePath: profileA,
           diagnosticsDir: path.join(tempRoot, 'diag-a'),
         },
-        async () => {
+        () => {
           throw new AutomationError('SESSION_EXPIRED', 'session gone');
         },
       ),
@@ -334,7 +344,7 @@ describe('BrowserRuntimeManager', () => {
         await prepareNotebook({
           projectId: 'p1',
           notebookUrl: 'https://notebook.google.com/n/p1',
-          openNotebook: async () => undefined,
+          openNotebook: () => Promise.resolve(),
         });
       },
     );
@@ -355,7 +365,7 @@ describe('BrowserRuntimeManager', () => {
         await prepareNotebook({
           projectId: 'p1',
           notebookUrl: 'https://notebook.google.com/n/p1',
-          openNotebook: async () => undefined,
+          openNotebook: () => Promise.resolve(),
         });
       },
     );
@@ -368,7 +378,7 @@ describe('BrowserRuntimeManager', () => {
           profilePath: profileA,
           diagnosticsDir: path.join(tempRoot, 'diag-x'),
         },
-        async () => 'nope',
+        () => Promise.resolve('nope'),
       ),
     ).rejects.toThrow(/already in use/i);
   });

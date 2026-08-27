@@ -248,7 +248,7 @@ export class UtilityProcessBrowserWorker implements BrowserWorker {
             this.state = 'STOPPED';
           }
           const err = new Error(
-            `Browser runner crashed/exited with code ${code ?? 'null'}`,
+            `Browser runner crashed/exited with code ${code}`,
           );
           this.failAll(err);
           if (!settled) {

@@ -29,7 +29,7 @@ export function knowledgeMarkdownToBootstrapOutput(
 export function extractStyleRulesFromMarkdown(md: string): string[] {
   return bulletLines(md)
     .map((l) => l.replace(/^[-*•]\s*/, '').trim())
-    .filter((l) => l.length > 3 && !/^#/.test(l))
+    .filter((l) => l.length > 3 && !l.startsWith("#"))
     .slice(0, 80);
 }
 
@@ -43,18 +43,18 @@ function bulletLines(md: string): string[] {
 function parseTerms(md: string): BootstrapAnalysisOutput['terms'] {
   const out: BootstrapAnalysisOutput['terms'] = [];
   const re =
-    /^[-*•]?\s*(.+?)\s*(?:→|->|=>)\s*(.+?)(?:\s*[（(]\s*([A-Za-z_/]+)\s*[）)])?\s*$/;
+    /^[-*•]?\s*(.+?)\s*(?:→|->|=>)\s*(.+?)(?:\s*[（(]\s*([A-Za-z_/]+)\s*[）)])?(?:\s*(?:ch\.?|chương)\s*\d+)?\s*$/i;
   for (const line of md.split(/\r?\n/)) {
     const t = line.trim().replace(/^[-*•]\s*/, '');
     const m = re.exec(t);
     if (!m) continue;
-    const source = (m[1] ?? '').trim();
-    const preferred = (m[2] ?? '').trim();
+    const source = m[1].trim();
+    const preferred = m[2].trim();
     if (!source || !preferred) continue;
     out.push({
-      source: (m[1] ?? '').trim(),
+      source,
       preferred_vi: preferred,
-      category: (m[3] ?? 'OTHER').toUpperCase(),
+      category: m[3] ? m[3].toUpperCase() : undefined,
       first_seen_chapter: parseChapterNum(
         /ch\.?\s*(\d+)/i.exec(t)?.[1] ?? /chương\s*(\d+)/i.exec(t)?.[1] ?? null,
       ),
@@ -71,7 +71,7 @@ function parseCharacters(md: string): BootstrapAnalysisOutput['characters'] {
   for (const section of sections) {
     const header = /^##\s+(.+)\s*$/m.exec(section);
     if (!header) continue;
-    const source_name = header[1]!.trim();
+    const source_name = header[1].trim();
     if (!source_name || /^nhân vật/i.test(source_name)) continue;
     const field = (label: RegExp): string | null => {
       const m = fieldLine(section, label);
@@ -99,7 +99,7 @@ function parseCharacters(md: string): BootstrapAnalysisOutput['characters'] {
 
 function parseChapterNum(raw: string | null | undefined): number | null {
   if (raw == null) return null;
-  const m = /(\d+)/.exec(String(raw));
+  const m = /(\d+)/.exec(raw);
   if (!m) return null;
   const n = Number(m[1]);
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -117,15 +117,15 @@ function fieldLine(section: string, label: RegExp): string | null {
 function parseRelationships(md: string): BootstrapAnalysisOutput['relationships'] {
   const out: BootstrapAnalysisOutput['relationships'] = [];
   const re =
-    /^[-*•]?\s*(.+?)\s*[—–\-]\s*(.+?)\s*[:：]\s*(.+)$/;
+    /^[-*•]?\s*(.+?)\s*[—–-]\s*(.+?)\s*[:：]\s*(.+)$/;
   for (const line of md.split(/\r?\n/)) {
     const t = line.trim().replace(/^[-*•]\s*/, '');
     const m = re.exec(t);
     if (!m) continue;
     out.push({
-      character_a: m[1]!.trim(),
-      character_b: m[2]!.trim(),
-      relationship_type: m[3]!.trim().slice(0, 80),
+      character_a: m[1].trim(),
+      character_b: m[2].trim(),
+      relationship_type: m[3].trim().slice(0, 80),
       valid_from_chapter: parseChapterNum(
         /from\s*ch\.?\s*(\d+)/i.exec(t)?.[1] ??
           /từ\s*chương\s*(\d+)/i.exec(t)?.[1] ??
@@ -190,5 +190,5 @@ function sectionBullets(md: string, heading: RegExp, fallback: string[]): string
     }
   }
   if (out.length > 0) return out.slice(0, 40);
-  return fallback.filter((b) => heading.test(b) || true).slice(0, 15);
+  return fallback.slice(0, 15);
 }

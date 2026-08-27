@@ -1,6 +1,6 @@
 import {
   SETUP_META_KEYS,
-  SETUP_WIZARD_STEPS,
+  normalizeSetupStep,
   type SetupWizardStep,
 } from '@shared/constants/setup';
 import type { SetupStatus } from '@shared/schemas/setup';
@@ -13,10 +13,9 @@ export class SetupService {
   getStatus(): SetupStatus {
     const db = this.getDb();
     const completed = db.appMeta.get(SETUP_META_KEYS.completed) === '1';
+    const explored = db.appMeta.get(SETUP_META_KEYS.explored) === '1';
     const stepRaw = db.appMeta.get(SETUP_META_KEYS.step);
-    const step = (SETUP_WIZARD_STEPS as readonly string[]).includes(stepRaw ?? '')
-      ? (stepRaw as SetupWizardStep)
-      : 'welcome';
+    const step = normalizeSetupStep(stepRaw);
     const skippedDrive = db.appMeta.get(SETUP_META_KEYS.skippedDrive) === '1';
 
     const accountCount = db.googleAccounts.list().length;
@@ -28,7 +27,8 @@ export class SetupService {
 
     return {
       completed,
-      step: completed ? 'ready' : step,
+      explored,
+      step: completed ? 'createProject' : step,
       skippedDrive,
       storageRoot: pathsService.getPath('root'),
       accountCount,
@@ -51,10 +51,24 @@ export class SetupService {
     return this.getStatus();
   }
 
+  /**
+   * Enter the app without finishing onboarding.
+   * Does NOT set setup.completed — checklist stays honest.
+   */
+  explore(_confirm: true): { ok: true; explored: true; completed: false } {
+    const db = this.getDb();
+    if (db.appMeta.get(SETUP_META_KEYS.completed) === '1') {
+      return { ok: true, explored: true, completed: false };
+    }
+    db.appMeta.set(SETUP_META_KEYS.explored, '1');
+    return { ok: true, explored: true, completed: false };
+  }
+
   complete(_confirm: true): { ok: true; completed: true } {
     const db = this.getDb();
     db.appMeta.set(SETUP_META_KEYS.completed, '1');
-    db.appMeta.set(SETUP_META_KEYS.step, 'ready');
+    db.appMeta.set(SETUP_META_KEYS.step, 'createProject');
+    db.appMeta.set(SETUP_META_KEYS.explored, '0');
     return { ok: true, completed: true };
   }
 
@@ -64,5 +78,6 @@ export class SetupService {
     db.appMeta.delete(SETUP_META_KEYS.completed);
     db.appMeta.set(SETUP_META_KEYS.step, 'welcome');
     db.appMeta.delete(SETUP_META_KEYS.skippedDrive);
+    db.appMeta.delete(SETUP_META_KEYS.explored);
   }
 }

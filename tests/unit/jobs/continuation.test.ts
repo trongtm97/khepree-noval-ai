@@ -81,20 +81,20 @@ describe('continuation', () => {
 
   it('buildContinuationPrompt asks to continue without repeating', () => {
     const prompt = buildContinuationPrompt({
-      fromParagraphId: IDS[3]!,
+      fromParagraphId: IDS[3],
       batchParagraphs,
       remainingParagraphIds: IDS.slice(3),
     });
     expect(prompt).toContain(`Tiếp tục từ ${IDS[3]}`);
     expect(prompt).toContain('Không lặp lại');
-    expect(prompt).toContain(IDS[3]!);
+    expect(prompt).toContain(IDS[3]);
   });
 
   it('mergeTranslationsByParagraphId dedupes duplicate continuation', () => {
-    const base = [{ paragraphId: IDS[0]!, text: 'Một.' }];
+    const base = [{ paragraphId: IDS[0], text: 'Một.' }];
     const extra = [
-      { paragraphId: IDS[0]!, text: 'Một lặp.' },
-      { paragraphId: IDS[1]!, text: 'Hai.' },
+      { paragraphId: IDS[0], text: 'Một lặp.' },
+      { paragraphId: IDS[1], text: 'Hai.' },
     ];
     const merged = mergeTranslationsByParagraphId(base, extra, IDS);
     expect(merged).toHaveLength(2);
@@ -104,13 +104,13 @@ describe('continuation', () => {
 
   it('mergeRepairTranslations lets repair override existing lines', () => {
     const base = [
-      { paragraphId: IDS[0]!, text: '' },
-      { paragraphId: IDS[1]!, text: 'Cũ.' },
-      { paragraphId: IDS[2]!, text: 'Giữ.' },
+      { paragraphId: IDS[0], text: '' },
+      { paragraphId: IDS[1], text: 'Cũ.' },
+      { paragraphId: IDS[2], text: 'Giữ.' },
     ];
     const extra = [
-      { paragraphId: IDS[0]!, text: 'Mới một.' },
-      { paragraphId: IDS[1]!, text: 'Mới hai.' },
+      { paragraphId: IDS[0], text: 'Mới một.' },
+      { paragraphId: IDS[1], text: 'Mới hai.' },
     ];
     const merged = mergeRepairTranslations(base, extra, IDS);
     expect(merged.map((l) => l.text)).toEqual(['Mới một.', 'Mới hai.', 'Giữ.']);
@@ -118,8 +118,8 @@ describe('continuation', () => {
 
   it('dedupeTranslationLines keeps first paragraph id', () => {
     const out = dedupeTranslationLines([
-      { paragraphId: IDS[0]!, text: 'A' },
-      { paragraphId: IDS[0]!, text: 'B' },
+      { paragraphId: IDS[0], text: 'A' },
+      { paragraphId: IDS[0], text: 'B' },
     ]);
     expect(out).toHaveLength(1);
     expect(out[0]?.text).toBe('A');
@@ -136,13 +136,13 @@ describe('continuation', () => {
       initialRaw,
       maxAttempts: 2,
       persistPartial,
-      sendContinuation: async () => {
+      sendContinuation: () => {
         sends += 1;
-        return {
+        return Promise.resolve({
           status: 'SUCCESS',
           requestId: `r${sends}`,
           text: partialProtocol(IDS.length - 1),
-        };
+        });
       },
     });
 
@@ -160,14 +160,14 @@ describe('continuation', () => {
       sourceParagraphIds: IDS,
       initialRaw,
       maxAttempts: 1,
-      sendContinuation: async () => ({
+      sendContinuation: () => Promise.resolve({
         status: 'SUCCESS',
         requestId: 'r1',
         text: [
           '<TRANSLATION>',
           `${restartedId} Lặp đầu.`,
-          `${IDS[2]!} Ba.`,
-          `${IDS[3]!} Bốn.`,
+          `${IDS[2]} Ba.`,
+          `${IDS[3]} Bốn.`,
           '</TRANSLATION>',
           '<TERM_DELTA>[]</TERM_DELTA>',
           '<MEMORY_DELTA>[]</MEMORY_DELTA>',
@@ -188,9 +188,9 @@ describe('continuation', () => {
       sourceParagraphIds: IDS,
       initialRaw,
       maxAttempts: 2,
-      sendContinuation: async () => {
+      sendContinuation: () => {
         sends += 1;
-        return { status: 'SUCCESS', requestId: `r${sends}`, text: cutAfter30Percent() };
+        return Promise.resolve({ status: 'SUCCESS', requestId: `r${sends}`, text: cutAfter30Percent() });
       },
     });
     expect(sends).toBe(2);

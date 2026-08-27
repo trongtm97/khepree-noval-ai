@@ -53,6 +53,14 @@ interface HotStoryFact {
   updatedAt: string;
 }
 
+interface HotMemoryEventFact {
+  category: 'world' | 'location' | 'cultivation';
+  key: string;
+  value: string;
+  firstSeenChapter: number | null;
+  updatedAt: string;
+}
+
 /**
  * Last Notebook knowledge verification watermark.
  * Hot Memory = SQLite facts updated after this instant (approach B).
@@ -239,7 +247,7 @@ function listHotStory(
   const openPlots = compactJsonValue(row.unresolved_plot_points);
   return {
     currentLocation: compactJsonValue(row.location_state),
-    currentGoal: row.summary_text?.trim() || null,
+    currentGoal: row.summary_text?.trim() ?? null,
     openPlot: openPlots,
     cultivation: compactJsonValue(row.cultivation_state),
     currentChapter: row.current_chapter_number,
@@ -247,48 +255,142 @@ function listHotStory(
   };
 }
 
+function temporalMeta(opts: {
+  validFrom?: number | null;
+  firstSeen?: number | null;
+  futureSensitive?: boolean;
+}): string {
+  const parts: string[] = [];
+  if (opts.validFrom != null) parts.push(`valid_from_chapter=${opts.validFrom}`);
+  if (opts.firstSeen != null) parts.push(`first_seen_chapter=${opts.firstSeen}`);
+  if (opts.futureSensitive) parts.push('future_sensitive=true');
+  return parts.length ? `; ${parts.join('; ')}` : '';
+}
+
 function formatTermLine(f: HotTermFact): string {
   const preferred = f.preferred ? ` → ${f.preferred}` : '';
   const locked = f.locked || f.status === 'LOCKED' ? ' [LOCKED]' : '';
-  const chapter =
-    f.firstSeenChapter != null ? `; valid_from=${f.firstSeenChapter}` : '';
-  return `- ${f.source}${preferred}${locked}${chapter}`;
+  return (
+    `- TERM ${f.source}${preferred}${locked}` +
+    temporalMeta({
+      firstSeen: f.firstSeenChapter,
+      validFrom: f.firstSeenChapter,
+      futureSensitive: f.futureSensitive,
+    })
+  );
 }
 
 function formatCharacterLine(f: HotCharacterFact): string {
-  const parts = [`- ${f.source}`];
-  if (f.name) parts[0] += ` → ${f.name}`;
+  const name = f.name ? ` → ${f.name}` : '';
   const meta: string[] = [];
-  if (f.cultivation) meta.push(`cultivation=${f.cultivation}`);
   if (f.role) meta.push(`role=${f.role}`);
-  if (f.firstChapter != null) meta.push(`valid_from=${f.firstChapter}`);
-  if (meta.length) parts.push(`; ${meta.join('; ')}`);
-  return parts.join('');
+  return (
+    `- CHARACTER ${f.source}${name}` +
+    (meta.length ? `; ${meta.join('; ')}` : '') +
+    temporalMeta({
+      firstSeen: f.firstChapter,
+      validFrom: f.firstChapter,
+      futureSensitive: f.futureSensitive,
+    })
+  );
 }
 
 function formatRelationshipLine(f: HotRelationshipFact): string {
-  const parts = [`- ${f.a} ↔ ${f.b} (${f.relation})`];
   const meta: string[] = [];
   if (f.aCallsB) meta.push(`a_calls_b=${f.aCallsB}`);
   if (f.bCallsA) meta.push(`b_calls_a=${f.bCallsA}`);
-  if (f.validFromChapter != null) meta.push(`valid_from=${f.validFromChapter}`);
-  if (meta.length) parts.push(`; ${meta.join('; ')}`);
-  return parts.join('');
+  return (
+    `- RELATIONSHIP ${f.a} ↔ ${f.b} (${f.relation})` +
+    (meta.length ? `; ${meta.join('; ')}` : '') +
+    temporalMeta({
+      validFrom: f.validFromChapter,
+      firstSeen: f.validFromChapter,
+      futureSensitive: f.futureSensitive,
+    })
+  );
 }
 
 function formatStoryLine(f: HotStoryFact): string {
   const meta: string[] = [];
-  if (f.currentLocation) meta.push(`location=${f.currentLocation}`);
-  if (f.cultivation) meta.push(`cultivation=${f.cultivation}`);
   if (f.currentGoal) meta.push(`goal=${f.currentGoal}`);
   if (f.openPlot) meta.push(`open_plot=${f.openPlot}`);
   if (f.currentChapter != null) meta.push(`chapter=${f.currentChapter}`);
   if (meta.length === 0) return '';
-  return `- STORY: ${meta.join('; ')}`;
+  return (
+    `- STORY ${meta.join('; ')}` +
+    temporalMeta({
+      validFrom: f.currentChapter,
+      firstSeen: f.currentChapter,
+    })
+  );
+}
+
+function formatLocationLine(value: string, chapter: number | null): string {
+  return (
+    `- LOCATION ${value}` + temporalMeta({ validFrom: chapter, firstSeen: chapter })
+  );
+}
+
+function formatCultivationLine(value: string, chapter: number | null): string {
+  return (
+    `- CULTIVATION ${value}` + temporalMeta({ validFrom: chapter, firstSeen: chapter })
+  );
+}
+
+function formatWorldEventLine(f: HotMemoryEventFact): string {
+  return (
+    `- WORLD ${f.key}=${f.value}` +
+    temporalMeta({ validFrom: f.firstSeenChapter, firstSeen: f.firstSeenChapter })
+  );
+}
+
+function listHotMemoryEvents(
+  db: DatabaseManager,
+  projectId: string,
+  since: string,
+  categories: HotMemoryEventFact['category'][],
+): HotMemoryEventFact[] {
+  const placeholders = categories.map(() => '?').join(',');
+  const rows = db
+    .getConnection()
+    .prepare(
+      `SELECT category, event_key, event_value, chapter_number, updated_at
+       FROM memory_events
+       WHERE project_id = ?
+         AND updated_at >= ?
+         AND category IN (${placeholders})
+         AND event_value IS NOT NULL
+         AND TRIM(event_value) != ''
+       ORDER BY updated_at DESC
+       LIMIT 40`,
+    )
+    .all(projectId, since, ...categories) as {
+    category: string;
+    event_key: string;
+    event_value: string | null;
+    chapter_number: number | null;
+    updated_at: string;
+  }[];
+
+  const facts: HotMemoryEventFact[] = [];
+  for (const r of rows) {
+    if (!categories.includes(r.category as HotMemoryEventFact['category'])) continue;
+    const value = compactJsonValue(r.event_value) ?? r.event_value?.trim() ?? '';
+    if (!value) continue;
+    facts.push({
+      category: r.category as HotMemoryEventFact['category'],
+      key: r.event_key,
+      value,
+      firstSeenChapter: r.chapter_number,
+      updatedAt: r.updated_at,
+    });
+  }
+  return facts;
 }
 
 /**
  * AI-readable Hot Memory from actual SQLite changes since Notebook verified.
+ * Typed facts only: TERM / CHARACTER / RELATIONSHIP / STORY / WORLD / LOCATION / CULTIVATION.
  * Never status strings like "Character delta after job…".
  */
 export function buildActiveHotMemoryText(
@@ -341,24 +443,64 @@ export function buildActiveHotMemoryText(
     }),
   );
   const story = listHotStory(db, projectId, since);
+  const memoryEvents = listHotMemoryEvents(db, projectId, since, [
+    'world',
+    'location',
+    'cultivation',
+  ]).filter((f) =>
+    isTemporallySafe(anchor, {
+      firstSeen: f.firstSeenChapter,
+      validFrom: f.firstSeenChapter,
+    }),
+  );
 
   const lines: string[] = ['## HOT MEMORY — overrides stale Notebook'];
+  const push = (line: string): boolean => {
+    if (!line || lines.length - 1 >= maxLines) return false;
+    lines.push(line);
+    return true;
+  };
 
   for (const t of terms) {
-    if (lines.length - 1 >= maxLines) break;
-    lines.push(formatTermLine(t));
+    if (!push(formatTermLine(t))) break;
   }
   for (const c of characters) {
-    if (lines.length - 1 >= maxLines) break;
-    lines.push(formatCharacterLine(c));
+    if (!push(formatCharacterLine(c))) break;
+    if (c.cultivation) {
+      if (
+        !push(
+          formatCultivationLine(
+            `${c.source}: ${c.cultivation}`,
+            c.firstChapter,
+          ),
+        )
+      ) {
+        break;
+      }
+    }
   }
   for (const r of relationships) {
-    if (lines.length - 1 >= maxLines) break;
-    lines.push(formatRelationshipLine(r));
+    if (!push(formatRelationshipLine(r))) break;
   }
-  if (story && lines.length - 1 < maxLines) {
-    const storyLine = formatStoryLine(story);
-    if (storyLine) lines.push(storyLine);
+  if (story) {
+    push(formatStoryLine(story));
+    if (story.currentLocation) {
+      push(formatLocationLine(story.currentLocation, story.currentChapter));
+    }
+    if (story.cultivation) {
+      push(formatCultivationLine(story.cultivation, story.currentChapter));
+    }
+  }
+  for (const ev of memoryEvents) {
+    if (ev.category === 'world') {
+      if (!push(formatWorldEventLine(ev))) break;
+    } else if (ev.category === 'location') {
+      if (!push(formatLocationLine(`${ev.key}=${ev.value}`, ev.firstSeenChapter)))
+        break;
+    } else {
+      if (!push(formatCultivationLine(`${ev.key}=${ev.value}`, ev.firstSeenChapter)))
+        break;
+    }
   }
 
   if (lines.length === 1) return '';

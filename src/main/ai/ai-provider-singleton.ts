@@ -15,9 +15,7 @@ export function initializeAiProviderService(): AiProviderService {
 }
 
 export function getAiProviderService(): AiProviderService {
-  if (!instance) {
-    instance = initializeAiProviderService();
-  }
+  instance ??= initializeAiProviderService();
   return instance;
 }
 

@@ -13,9 +13,9 @@ export async function setAngularComposerValue(
         el instanceof HTMLTextAreaElement
           ? window.HTMLTextAreaElement.prototype
           : window.HTMLInputElement.prototype;
-      const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-      if (setter) {
-        setter.call(el, value);
+      const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+      if (desc?.set) {
+        desc.set.call(el, value);
       } else {
         el.value = value;
       }
@@ -55,7 +55,7 @@ export async function readComposerText(locator: Locator): Promise<string> {
       if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
         return el.value;
       }
-      return el.textContent ?? '';
+      return el.textContent;
     })
     .catch(() => '');
 }

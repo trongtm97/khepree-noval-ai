@@ -93,7 +93,7 @@ describe('FULL-novel Notebook grounding E2E', () => {
       project_id: projectId,
       chapter_number: 1,
       sequence_order: 1,
-      title: '第一章 紫洛安试炼',
+      chapter_title: '第一章 紫洛安试炼',
       source_text: novel,
       source_status: 'SOURCE_READY',
     });
@@ -124,7 +124,7 @@ describe('FULL-novel Notebook grounding E2E', () => {
 
   afterEach(() => {
     resetNotebookSyncService();
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
@@ -182,7 +182,7 @@ describe('FULL-novel Notebook grounding E2E', () => {
     );
     const itemTerm = db.terms.findBySource(GROUNDING_PROBE.itemSource, projectId);
     expect(itemTerm).toBeTruthy();
-    expect(itemTerm!.locked).toBe(0);
+    expect(itemTerm?.locked).toBe(0);
 
     // 3) Build Translation Knowledge 00–07 (+ sync_state)
     const builder = new NotebookKnowledgeBuilder(db);
@@ -192,7 +192,7 @@ describe('FULL-novel Notebook grounding E2E', () => {
     expect(docs['03_CHARACTERS.md']).toContain(GROUNDING_PROBE.characterSource);
 
     // 4) Drive LIVE sync (noop upload) → pending version
-    const sync = new NotebookSyncService(db, async () => ({ uploaded: true }));
+    const sync = new NotebookSyncService(db, () => Promise.resolve({ uploaded: true }));
     await sync.syncDrive(projectId);
     const pending = db.driveSyncState.ensure(projectId);
     expect(pending.pending_knowledge_version).toBeGreaterThan(0);
@@ -203,8 +203,10 @@ describe('FULL-novel Notebook grounding E2E', () => {
     const probe = await runKnowledgeVersionProbe(db, {
       projectId,
       accountId,
-      capture: async () =>
-        `NT_VERSION=${pending.pending_knowledge_version}\nNT_NONCE=${pending.pending_sync_nonce}`,
+      capture: () =>
+        Promise.resolve(
+          `NT_VERSION=${pending.pending_knowledge_version}\nNT_NONCE=${pending.pending_sync_nonce}`,
+        ),
     });
     expect(probe.status).toBe('verified');
     expect(probe.reason).toBe('NOTEBOOK_VERSION_VERIFIED');
@@ -317,10 +319,11 @@ describe('FULL-novel Notebook grounding E2E', () => {
       { projectId, chapterNumber: 1 },
     );
     // Ensure preferred translation row updated
-    const term = db.terms.findBySource(GROUNDING_PROBE.itemSource, projectId)!;
+    const term = db.terms.findBySource(GROUNDING_PROBE.itemSource, projectId);
+    if (!term) throw new Error('expected term row');
     db.terms.setTranslations(term.id, GROUNDING_PROBE.itemViUpdated, []);
 
-    const sync = new NotebookSyncService(db, async () => ({ uploaded: true }));
+    const sync = new NotebookSyncService(db, () => Promise.resolve({ uploaded: true }));
     sync.markDirty(projectId, 'TERM_CHANGED');
     const builder = new NotebookKnowledgeBuilder(db);
     let docs = builder.rebuildAndTrack(projectId);
@@ -331,8 +334,10 @@ describe('FULL-novel Notebook grounding E2E', () => {
     const probe = await runKnowledgeVersionProbe(db, {
       projectId,
       accountId,
-      capture: async () =>
-        `NT_VERSION=${pending.pending_knowledge_version}\nNT_NONCE=${pending.pending_sync_nonce}`,
+      capture: () =>
+        Promise.resolve(
+          `NT_VERSION=${pending.pending_knowledge_version}\nNT_NONCE=${pending.pending_sync_nonce}`,
+        ),
     });
     expect(probe.status).toBe('verified');
     expect(pending.pending_knowledge_version).toBeGreaterThan(1);

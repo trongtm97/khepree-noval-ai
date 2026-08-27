@@ -212,7 +212,7 @@ export class GeminiRequestRepository extends BaseRepository {
   ): GeminiRequestRow | null {
     const row = this.getById(id);
     if (!row) return null;
-    if (isTerminalGeminiLifecycle(row.lifecycle as GeminiRequestLifecycle) && lifecycle !== row.lifecycle) {
+    if (isTerminalGeminiLifecycle(row.lifecycle) && lifecycle !== row.lifecycle) {
       // Allow FAILED → nothing; COMPLETED sticky except explicit FAILED not used.
       if (row.lifecycle === 'COMPLETED' || row.lifecycle === 'FAILED') {
         return row;

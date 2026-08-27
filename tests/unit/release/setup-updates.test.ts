@@ -33,18 +33,35 @@ describe('Setup wizard + updates (release)', () => {
   it('tracks setup steps and completes without wiping storage path', () => {
     const service = new SetupService(() => getDatabase());
     expect(service.getStatus().completed).toBe(false);
+    expect(service.getStatus().explored).toBe(false);
     expect(service.getStatus().step).toBe('welcome');
     expect(service.getStatus().storageRoot).toContain('NovelTrans');
 
-    service.setStep('storage');
     service.setStep('googleAccount');
+    service.setStep('testGemini');
     service.setSkipDrive(true);
     expect(service.getStatus().skippedDrive).toBe(true);
 
     const done = service.complete(true);
     expect(done.completed).toBe(true);
     expect(service.getStatus().completed).toBe(true);
+    expect(service.getStatus().explored).toBe(false);
     expect(fs.existsSync(pathsService.getPath('data'))).toBe(true);
+  });
+
+  it('explore enters app without marking setup complete', () => {
+    const service = new SetupService(() => getDatabase());
+    const result = service.explore(true);
+    expect(result.explored).toBe(true);
+    expect(result.completed).toBe(false);
+    expect(service.getStatus().explored).toBe(true);
+    expect(service.getStatus().completed).toBe(false);
+  });
+
+  it('maps legacy setup steps to the new onboarding path', () => {
+    const service = new SetupService(() => getDatabase());
+    getDatabase().appMeta.set('setup.step', 'notebook');
+    expect(service.getStatus().step).toBe('createProject');
   });
 
   it('manual update provider reports unavailable (no fake server)', async () => {

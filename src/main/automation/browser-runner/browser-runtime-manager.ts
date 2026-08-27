@@ -39,10 +39,10 @@ export interface RunExclusiveInput {
   nestUnderExternalLock?: boolean;
 }
 
-export type ExclusiveRuntimeHandle = {
+export interface ExclusiveRuntimeHandle {
   runtime: PlaywrightWorkerRuntime;
   prepareNotebook: (input: PrepareNotebookInput) => Promise<import('playwright').Page>;
-};
+}
 
 type MutexTail = Promise<unknown>;
 
@@ -92,7 +92,7 @@ export class BrowserRuntimeManager {
         void this.sweepIdle();
       }, options.idleSweepMs ?? BROWSER_RUNTIME_IDLE_SWEEP_MS);
       if (typeof this.idleTimer === 'object' && 'unref' in this.idleTimer) {
-        this.idleTimer.unref?.();
+        this.idleTimer.unref();
       }
     }
   }
@@ -284,7 +284,7 @@ export class BrowserRuntimeManager {
       code === 'LOGIN_REQUIRED' ||
       (typeof code === 'string' && /SESSION_EXPIRED|LOGIN_REQUIRED/i.test(code))
     ) {
-      runtime.markNeedsAttention(String(code));
+      runtime.markNeedsAttention(code);
       return;
     }
 

@@ -327,7 +327,7 @@ export const outputIncompleteStrategy: RepairStrategy = {
       nextParagraphAfter(
         ctx.batchParagraphs.map((p) => p.paragraphId),
         lastComplete,
-      ) ?? ctx.qa.missingParagraphIds[0]!;
+      ) ?? ctx.qa.missingParagraphIds[0];
     const prompt = buildContinuationPrompt({
       fromParagraphId: fromId,
       batchParagraphs: ctx.batchParagraphs,

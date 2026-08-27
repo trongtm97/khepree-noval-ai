@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { healIdleWorkers } from '@main/jobs/heal-workers';
 import type { DatabaseManager } from '@main/db/database-manager';
 
-function mockDb(workers: Array<Record<string, unknown>>, jobs: Map<string, { state: string }>) {
+function mockDb(workers: Record<string, unknown>[], jobs: Map<string, { state: string }>) {
   const markReady = vi.fn((id: string) => {
     const w = workers.find((row) => row.id === id);
     if (w) {
@@ -40,7 +40,7 @@ describe('healIdleWorkers', () => {
     ];
     const db = mockDb(workers, new Map());
     expect(healIdleWorkers(db)).toBe(1);
-    expect(workers[0]!.health).toBe('READY');
+    expect(workers[0].health).toBe('READY');
   });
 
   it('heals BUSY when linked job is terminal', () => {
@@ -54,7 +54,7 @@ describe('healIdleWorkers', () => {
     ];
     const db = mockDb(workers, new Map([['j1', { state: 'NEEDS_ATTENTION' }]]));
     expect(healIdleWorkers(db)).toBe(1);
-    expect(workers[0]!.health).toBe('READY');
+    expect(workers[0].health).toBe('READY');
   });
 
   it('does not heal BUSY while job still SENDING', () => {
@@ -68,7 +68,7 @@ describe('healIdleWorkers', () => {
     ];
     const db = mockDb(workers, new Map([['j1', { state: 'SENDING' }]]));
     expect(healIdleWorkers(db)).toBe(0);
-    expect(workers[0]!.health).toBe('BUSY');
+    expect(workers[0].health).toBe('BUSY');
   });
 
   it('heals stale NEEDS_ATTENTION when account READY', () => {
@@ -82,6 +82,6 @@ describe('healIdleWorkers', () => {
     ];
     const db = mockDb(workers, new Map());
     expect(healIdleWorkers(db)).toBe(1);
-    expect(workers[0]!.health).toBe('READY');
+    expect(workers[0].health).toBe('READY');
   });
 });

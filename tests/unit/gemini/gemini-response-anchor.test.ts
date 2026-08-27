@@ -18,6 +18,9 @@ function minimalPack(prompt: string): TranslationPackDto {
     chapterNumbers: [1],
     style: 'balanced',
     prompt,
+    baseContext: '',
+    operationPrompt: '',
+    operationType: 'TRANSLATE',
     sections: {
       taskHeader: 'task',
       criticalRules: 'rules',
@@ -99,11 +102,14 @@ describe('Response anchoring', () => {
     await expect(p.submitPlainPrompt('will fail')).rejects.toMatchObject({
       code: 'SEND_NOT_CONFIRMED',
     });
-    await expect(
-      p.extractLatestResponse('00000000-0000-4000-8000-000000000099'),
-    ).rejects.toMatchObject({
-      code: expect.stringMatching(/RESPONSE_NOT_FOUND/),
-    });
+    let extractErr: unknown;
+    try {
+      await p.extractLatestResponse('00000000-0000-4000-8000-000000000099');
+    } catch (err) {
+      extractErr = err;
+    }
+    expect(extractErr).toBeTruthy();
+    expect(String((extractErr as { code?: unknown }).code)).toMatch(/RESPONSE_NOT_FOUND/);
     const oldText = await page.getByTestId('assistant-response').first().innerText();
     expect(oldText).toContain('Previous conversation');
   }, 25_000);

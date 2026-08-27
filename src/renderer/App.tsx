@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoadingScreen } from './components/LoadingScreen';
+import { ProjectScopedRedirect } from './components/routing/ProjectScopedRedirect';
 import { AppShell } from './layouts/AppShell';
+import { ProjectWorkspace } from './layouts/ProjectWorkspace';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectSourcePage } from './pages/ProjectSourcePage';
@@ -18,6 +20,7 @@ import { LearningPage } from './pages/LearningPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LogsPage } from './pages/LogsPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
+import { SetupWizardPage } from './pages/SetupWizardPage';
 import { HelpPage } from './features/help/HelpPage';
 import {
   applyTheme,
@@ -26,11 +29,13 @@ import {
 } from './stores/theme-store';
 import { useT, t as i18nT } from './i18n';
 import type { GetInfoResponse } from '@shared/schemas/ipc';
+import type { SetupStatus } from '@shared/schemas/setup';
 
 export function App() {
   const t = useT();
   const themeMode = useThemeStore((state) => state.mode);
   const [appInfo, setAppInfo] = useState<GetInfoResponse | null>(null);
+  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,7 +47,7 @@ export function App() {
   }, [themeMode]);
 
   useEffect(() => {
-    let cancelled = false;
+    const alive = { current: true };
 
     void (async () => {
       try {
@@ -50,16 +55,13 @@ export function App() {
           window.novelTrans.getInfo(),
           window.novelTrans.setup.getStatus(),
         ]);
-        // Skip first-run wizard — open app shell immediately; accounts added later.
-        if (!setup.completed) {
-          await window.novelTrans.setup.complete({ confirm: true });
-        }
-        if (!cancelled) {
+        if (alive.current) {
           setAppInfo(info);
+          setSetupStatus(setup);
           setLoadError(null);
         }
       } catch (error: unknown) {
-        if (!cancelled) {
+        if (alive.current) {
           const message =
             error instanceof Error ? error.message : i18nT('app.failedStart');
           setLoadError(message);
@@ -68,9 +70,14 @@ export function App() {
     })();
 
     return () => {
-      cancelled = true;
+      alive.current = false;
     };
   }, []);
+
+  const enterApp = async () => {
+    const setup = await window.novelTrans.setup.getStatus();
+    setSetupStatus(setup);
+  };
 
   if (loadError) {
     return (
@@ -89,8 +96,25 @@ export function App() {
     );
   }
 
-  if (!appInfo) {
+  if (!appInfo || !setupStatus) {
     return <LoadingScreen />;
+  }
+
+  const showOnboarding = !setupStatus.completed && !setupStatus.explored;
+
+  if (showOnboarding) {
+    return (
+      <ErrorBoundary>
+        <SetupWizardPage
+          onComplete={() => {
+            void enterApp();
+          }}
+          onExplore={() => {
+            void enterApp();
+          }}
+        />
+      </ErrorBoundary>
+    );
   }
 
   return (
@@ -100,15 +124,26 @@ export function App() {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/projects/:projectId/info" element={<ProjectInfoPage />} />
-            <Route path="/projects/:projectId/source" element={<ProjectSourcePage />} />
-            <Route path="/projects/:projectId/ai-memory" element={<AiMemoryPage />} />
-            <Route path="/ai-memory" element={<AiMemoryPage />} />
-            <Route path="/translation" element={<TranslationEditorPage />} />
-            <Route path="/editor" element={<Navigate to="/translation" replace />} />
-            <Route path="/export" element={<PortabilityPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/characters" element={<CharactersPage />} />
+
+            <Route path="/projects/:projectId" element={<ProjectWorkspace />}>
+              <Route index element={<ProjectInfoPage />} />
+              <Route path="chapters" element={<ProjectSourcePage />} />
+              <Route path="translate" element={<TranslationEditorPage />} />
+              <Route path="ai-memory" element={<AiMemoryPage />} />
+              <Route path="terms" element={<TermsPage />} />
+              <Route path="characters" element={<CharactersPage />} />
+              <Route path="export" element={<PortabilityPage />} />
+              <Route path="info" element={<Navigate to=".." replace />} />
+              <Route path="source" element={<Navigate to="../chapters" replace />} />
+            </Route>
+
+            <Route path="/translation" element={<ProjectScopedRedirect tab="translate" />} />
+            <Route path="/editor" element={<ProjectScopedRedirect tab="translate" />} />
+            <Route path="/ai-memory" element={<ProjectScopedRedirect tab="ai-memory" />} />
+            <Route path="/terms" element={<ProjectScopedRedirect tab="terms" />} />
+            <Route path="/characters" element={<ProjectScopedRedirect tab="characters" />} />
+            <Route path="/export" element={<ProjectScopedRedirect tab="export" />} />
+
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/jobs" element={<JobsPage />} />
             <Route path="/learning" element={<LearningPage />} />

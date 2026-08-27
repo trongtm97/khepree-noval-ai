@@ -33,15 +33,13 @@ async function seedVerifiedNotebook(
   await runKnowledgeVersionProbe(db, {
     projectId,
     accountId,
-    capture: async () => `NT_VERSION=${version}\nNT_NONCE=${nonce}`,
+    capture: () => Promise.resolve(`NT_VERSION=${version}\nNT_NONCE=${nonce}`),
   });
   // Push watermark into the past so subsequent SQLite facts always count as hot deltas.
   const mapping = db.notebooks.listByProject(projectId)[0];
-  if (mapping) {
-    db.getConnection()
-      .prepare(`UPDATE notebook_resources SET last_verified_at = ? WHERE id = ?`)
-      .run('2020-01-01T00:00:00.000Z', mapping.id);
-  }
+  db.getConnection()
+    .prepare(`UPDATE notebook_resources SET last_verified_at = ? WHERE id = ?`)
+    .run('2020-01-01T00:00:00.000Z', mapping.id);
   for (const type of [
     'book_profile',
     'translation_rules',
@@ -93,7 +91,7 @@ describe('Notebook Hot Memory (structured SQLite deltas)', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
@@ -185,7 +183,8 @@ describe('Notebook Hot Memory (structured SQLite deltas)', () => {
         .run(afterDirty, termRow.id);
     }
 
-    const chapter = db.chapters.getByProjectAndNumber(projectId, 450)!;
+    const chapter = db.chapters.getByProjectAndNumber(projectId, 450);
+    if (!chapter) throw new Error('expected chapter 450');
     const hot = sync.buildActiveHotMemoryText(projectId, { anchorChapter: 450 });
     expect(hot).toContain('王林');
     expect(hot).toContain('Vương Lâm');
@@ -213,7 +212,11 @@ describe('Notebook Hot Memory (structured SQLite deltas)', () => {
     expect(pack.sections.hotMemoryDelta).not.toMatch(/Character delta after/i);
 
     // Name-only verify must NOT clear hot:
-    sync.markNotebookVerified(projectId, accountId);
+    (
+      sync as unknown as {
+        markNotebookVerified: (projectId: string, accountId: string) => void;
+      }
+    ).markNotebookVerified(projectId, accountId);
     expect(sync.buildActiveHotMemoryText(projectId, { anchorChapter: 450 })).toContain('王林');
 
     // CONTENT_CURRENT probe clears hot
@@ -225,7 +228,7 @@ describe('Notebook Hot Memory (structured SQLite deltas)', () => {
     await runKnowledgeVersionProbe(db, {
       projectId,
       accountId,
-      capture: async () => 'NT_VERSION=2\nNT_NONCE=AABB0002',
+      capture: () => Promise.resolve('NT_VERSION=2\nNT_NONCE=AABB0002'),
     });
     expect(db.notebookHotDeltas.listActive(projectId)).toHaveLength(0);
     expect(db.knowledgeFiles.anyDirty(projectId)).toBe(false);

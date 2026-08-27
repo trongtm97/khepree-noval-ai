@@ -41,7 +41,7 @@ describe('consecutive chapter freshness hardening', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 

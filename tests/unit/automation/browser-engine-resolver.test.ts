@@ -23,7 +23,7 @@ import {
 import {
   looksLikeInsecureBrowserInterstitial,
 } from '@main/automation/browser-runner/browser-session-controller';
-import { ProfileLockManager } from '@main/automation/browser-runner/profile-lock';
+import { ProfileLeaseLockManager } from '@main/automation/browser-runner/profile-lock';
 
 describe('BrowserEngineResolver', () => {
   afterEach(() => {
@@ -220,11 +220,11 @@ describe('launchNovelTransPersistentContext + profile lock', () => {
 
     setBrowserEngineConfigOverride({ enginePreference: 'AUTO' });
 
-    const locks = new ProfileLockManager();
-    locks.acquire(profilePath, 'owner-a');
+    const locks = new ProfileLeaseLockManager();
+    locks.acquireLease({ profilePath: profilePath, ownerId: 'owner-a', accountId: 'owner-a', operation: 'manual_browser' });
 
     expect(() => {
-      locks.acquire(profilePath, 'owner-b');
+      locks.acquireLease({ profilePath: profilePath, ownerId: 'owner-b', accountId: 'owner-b', operation: 'manual_browser' });
     }).toThrow(/already in use|PROFILE_BUSY|đang được sử dụng/i);
 
     // Prefer installed Edge/Chrome; Chromium only if actually on disk.
@@ -264,7 +264,7 @@ describe('launchNovelTransPersistentContext + profile lock', () => {
     expect(fs.existsSync(marker)).toBe(true);
     await relaunched.context.close();
 
-    locks.release(profilePath, 'owner-a');
+    locks.releaseLease(profilePath, 'owner-a');
     fs.rmSync(root, { recursive: true, force: true });
   }, 60_000);
 

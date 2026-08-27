@@ -98,7 +98,7 @@ export class DriveOAuthService {
       secretKey: DRIVE_SECRET_KEYS.oauthClient,
       plainText: JSON.stringify({
         clientId: config.clientId.trim(),
-        clientSecret: config.clientSecret?.trim() || undefined,
+        clientSecret: config.clientSecret?.trim() ?? undefined,
       }),
       kind: 'other',
       ownerType: 'app',

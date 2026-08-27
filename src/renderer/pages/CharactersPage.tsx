@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { Users } from 'lucide-react';
 import type { ProjectDto } from '@shared/schemas/import';
 import type {
@@ -17,7 +18,6 @@ import {
   Tabs,
   TabPanel,
   EmptyState,
-  Badge,
   DataTable,
   Select,
   Card,
@@ -27,13 +27,16 @@ import {
 } from '../components/ui';
 import { HelpContextButton } from '../features/help/HelpContextButton';
 import { helpArticleForErrorCode } from '../features/help/content';
+import { useUiShellStore } from '../stores/ui-shell-store';
 
 type Tab = 'characters' | 'relationships' | 'story' | 'conflicts';
 
 export function CharactersPage() {
   const t = useT();
+  const { projectId: routeProjectId } = useParams();
+  const storeProjectId = useUiShellStore((s) => s.currentProjectId) ?? '';
   const [projects, setProjects] = useState<ProjectDto[]>([]);
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState(routeProjectId || storeProjectId);
   const [tab, setTab] = useState<Tab>('characters');
   const [characters, setCharacters] = useState<CharacterDto[]>([]);
   const [relationships, setRelationships] = useState<RelationshipDto[]>([]);
@@ -45,11 +48,19 @@ export function CharactersPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (routeProjectId) setProjectId(routeProjectId);
+  }, [routeProjectId]);
+
+  useEffect(() => {
     void window.novelTrans.projects
       .list()
       .then((result) => {
         setProjects(result.projects);
-        if (result.projects[0]) setProjectId(result.projects[0].id);
+        if (routeProjectId) {
+          setProjectId(routeProjectId);
+          return;
+        }
+        setProjectId((prev) => prev || result.projects[0]?.id || '');
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
@@ -57,7 +68,7 @@ export function CharactersPage() {
       .finally(() => {
         setLoading(false);
       });
-  }, [t]);
+  }, [t, routeProjectId]);
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
@@ -135,7 +146,17 @@ export function CharactersPage() {
     {
       key: 'status',
       header: t('characters.status'),
-      render: (c: CharacterDto) => <Badge>{c.status}</Badge>,
+      render: (c: CharacterDto) => (
+        <span className="nt-badge">
+          <span
+            className={`nt-status-dot nt-status-dot--${
+              c.status === 'active' ? 'ready' : c.status === 'deceased' ? 'paused' : 'waiting'
+            }`}
+            aria-hidden
+          />
+          {characterStatusLabel(c.status)}
+        </span>
+      ),
     },
     {
       key: 'locked',
@@ -258,19 +279,21 @@ export function CharactersPage() {
         actions={
           <>
             <HelpContextButton articleId="characters" />
-            <Select
-              value={projectId}
-              onChange={(event) => {
-                setProjectId(event.target.value);
-              }}
-              aria-label={t('translation.selectProject')}
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.title}
-                </option>
-              ))}
-            </Select>
+            {routeProjectId ? null : (
+              <Select
+                value={projectId}
+                onChange={(event) => {
+                  setProjectId(event.target.value);
+                }}
+                aria-label={t('translation.selectProject')}
+              >
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.title}
+                  </option>
+                ))}
+              </Select>
+            )}
           </>
         }
       />

@@ -29,7 +29,7 @@ export function mapEnsureActions(
         labelKey: 'translation.ctaOpenNotebook',
         accountId,
       });
-    } else if (action === 'open_ai_memory') {
+    } else {
       out.push({
         action,
         labelKey: 'translation.ctaOpenAiMemory',

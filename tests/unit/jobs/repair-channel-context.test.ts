@@ -143,23 +143,23 @@ describe('repair loop inherits channel → same notebook', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
   it('MISSING_PARAGRAPH repair receives same notebook/channel as initial SLIM', async () => {
-    const sendRepair: RepairSender = async (req) => {
+    const sendRepair: RepairSender = (req) => {
       expect(req.channel?.notebookId).toBe('nb-translation-a');
       expect(req.channel?.accountId).toBe(accountId);
       expect(req.channel?.threadRef).toBe('thread-x');
       expect(req.channel?.packMode).toBe('slim');
       expect(req.channel?.providerType).toBe('PLAYWRIGHT_GEMINI');
       expect(req.channel?.knowledgeVersion).toBe(12);
-      return {
+      return Promise.resolve({
         rawResponse: okResponse(),
         inputRef: 'corr:repair-1',
         channel: req.channel ?? undefined,
-      };
+      });
     };
 
     const loop = await runRepairLoop(
@@ -192,7 +192,7 @@ describe('repair loop inherits channel → same notebook', () => {
   });
 
   it('WebAPI failover channel stored as FAT without notebook', async () => {
-    const sendRepair: RepairSender = async (req) => ({
+    const sendRepair: RepairSender = (req) => Promise.resolve({
       rawResponse: okResponse(),
       inputRef: 'corr:webapi',
       channel: {

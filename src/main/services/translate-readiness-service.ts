@@ -3,6 +3,7 @@ import { healIdleWorkers } from '../jobs/heal-workers';
 import { NotebookBootstrapService } from '../notebook/notebook-bootstrap-service';
 import { NOTEBOOK_CHANNEL_READY } from '@shared/constants/notebook';
 import { logger } from '../logging/logger';
+import { resolveProjectWorker } from './project-worker-resolver';
 
 export const TRANSLATE_ENSURE_REASONS = [
   'ok',
@@ -85,7 +86,7 @@ export class TranslateReadinessService {
 
     healIdleWorkers(this.db);
 
-    let accountId = this.pickAccountId(preferredAccountId);
+    let accountId = this.pickAccountId(projectId, preferredAccountId);
     if (!accountId) {
       return {
         ok: false,
@@ -122,7 +123,7 @@ export class TranslateReadinessService {
     }
 
     // Re-pick in case heal/testSession changed READY set
-    accountId = this.pickAccountId(preferredAccountId) ?? accountId;
+    accountId = this.pickAccountId(projectId, preferredAccountId) ?? accountId;
 
     const prepare =
       this.deps.prepareForTranslate ??
@@ -170,29 +171,15 @@ export class TranslateReadinessService {
     };
   }
 
-  private pickAccountId(preferred?: string | null): string | null {
-    if (preferred && this.db.googleAccounts.getById(preferred)) {
-      return preferred;
-    }
-
-    const workers = this.db.workerStates.listEnabled();
-    const readyWorker = workers.find((w) => upper(w.health) === 'READY');
-    if (readyWorker) return readyWorker.google_account_id;
-
-    const busyWorker = workers.find((w) => upper(w.health) === 'BUSY');
-    if (busyWorker) return busyWorker.google_account_id;
-
-    const attentionWorker = workers.find((w) => needsLoginHeal(w.health));
-    if (attentionWorker) return attentionWorker.google_account_id;
-
-    const accounts = this.db.googleAccounts.list();
-    const readyAcc = accounts.find((a) => isUsableHealth(a.status));
-    if (readyAcc) return readyAcc.id;
-
-    const loginAcc = accounts.find((a) => needsLoginHeal(a.status));
-    if (loginAcc) return loginAcc.id;
-
-    return accounts[0]?.id ?? null;
+  private pickAccountId(
+    projectId: string,
+    preferred?: string | null,
+  ): string | null {
+    return resolveProjectWorker(this.db, {
+      projectId,
+      purpose: 'translation',
+      preferredAccountId: preferred,
+    }).accountId;
   }
 
   private accountNeedsLogin(accountId: string): boolean {

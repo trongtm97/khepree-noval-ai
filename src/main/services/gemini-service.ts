@@ -26,6 +26,7 @@ import { planGeminiRequestRecovery } from '../gemini/gemini-request-recovery';
 import { pathsService } from './paths-service';
 import { logger } from '../logging/logger';
 import { newId } from '../db/utils/uuid';
+import { ActiveGenerationRegistry } from './active-generation-registry';
 
 function loadRetainRawResponses(db: DatabaseManager, projectId: string): boolean {
   const row = db
@@ -43,19 +44,33 @@ function loadRetainRawResponses(db: DatabaseManager, projectId: string): boolean
 }
 
 export class GeminiService {
+  /** Concurrent generations — one entry per correlationId (multi-worker safe). */
+  private readonly active = new ActiveGenerationRegistry();
+
   constructor(private readonly db: DatabaseManager) {}
 
-  /** Active cancel hook for in-flight Playwright generation (per process). */
-  private activeCancel: (() => Promise<void>) | null = null;
-  private activeCorrelationId: string | null = null;
+  /** Test / diagnostics: active generation count. */
+  getActiveGenerationCount(): number {
+    return this.active.size();
+  }
 
-  async cancelActive(correlationId?: string): Promise<boolean> {
-    if (correlationId && this.activeCorrelationId && correlationId !== this.activeCorrelationId) {
-      return false;
-    }
-    if (!this.activeCancel) return false;
-    await this.activeCancel();
-    return true;
+  /**
+   * Cancel one in-flight generation by correlationId.
+   * Does not touch other workers' requests.
+   */
+  async cancelActive(correlationId: string): Promise<boolean> {
+    if (!correlationId) return false;
+    return this.active.cancel(correlationId);
+  }
+
+  /** Cancel every active generation (shutdown / adapter close). */
+  async cancelAll(): Promise<void> {
+    await this.active.cancelAll();
+  }
+
+  async close(): Promise<void> {
+    await this.active.cancelAll();
+    this.active.clear();
   }
 
   async sendTranslation(input: {
@@ -66,6 +81,8 @@ export class GeminiService {
     maxTimeoutMs?: number;
     stabilizationWindowMs?: number;
     jobId?: string | null;
+    /** Optional pre-assigned correlation (adapter requestId) for mid-flight cancel. */
+    correlationId?: string | null;
   }): Promise<GeminiSendResponse> {
     const project = this.db.projects.getById(input.projectId);
     if (!project) throw new Error(`Project not found: ${input.projectId}`);
@@ -95,9 +112,9 @@ export class GeminiService {
     }
 
     const resuming = Boolean(requestRow);
-    const correlationId = requestRow?.correlation_id ?? newId();
-    if (!requestRow) {
-      requestRow = this.db.geminiRequests.create({
+    const correlationId =
+      requestRow?.correlation_id ?? input.correlationId ?? newId();
+    requestRow ??= this.db.geminiRequests.create({
         correlation_id: correlationId,
         project_id: input.projectId,
         google_account_id: input.accountId,
@@ -107,7 +124,6 @@ export class GeminiService {
         marker: formatCorrelationMarker(correlationId),
         lifecycle: 'CREATED',
       });
-    }
 
     const profile = this.db.googleAccounts.getProfile(input.accountId);
     if (!profile) throw new Error('Browser profile missing for worker');
@@ -137,7 +153,7 @@ export class GeminiService {
       maxTimeoutMs: input.maxTimeoutMs ?? DEFAULT_GENERATION_MAX_TIMEOUT_MS,
       stabilizationWindowMs:
         input.stabilizationWindowMs ?? DEFAULT_STABILIZATION_WINDOW_MS,
-      onLifecycle: (lifecycle) => persistLifecycle(lifecycle),
+      onLifecycle: (lifecycle) => { persistLifecycle(lifecycle); },
       expectedNotebookUrl: mapping.resource_url,
     });
     provider.beginTimeline(correlationId);
@@ -179,10 +195,14 @@ export class GeminiService {
 
           provider.attachPage(page);
           this.db.geminiRequests.setThreadRef(requestId, page.url());
-          this.activeCorrelationId = correlationId;
-          this.activeCancel = async () => {
-            await provider.cancelGeneration();
-          };
+          this.active.register({
+            correlationId,
+            accountId: input.accountId,
+            startedAt: Date.now(),
+            cancel: async () => {
+              await provider.cancelGeneration();
+            },
+          });
 
           const { loadNotebookSettings } = await import('../notebook/knowledge-builder');
           const settings = loadNotebookSettings(this.db, input.projectId);
@@ -195,8 +215,8 @@ export class GeminiService {
           this.db.geminiRequests.setThreadRef(requestId, page.url());
 
           const marker =
-            requestRow!.marker ?? formatCorrelationMarker(correlationId);
-          const existingRawPath = requestRow!.raw_response_path;
+            requestRow.marker ?? formatCorrelationMarker(correlationId);
+          const existingRawPath = requestRow.raw_response_path;
           const existingRaw =
             existingRawPath && fs.existsSync(existingRawPath)
               ? fs.readFileSync(existingRawPath, 'utf8')
@@ -205,24 +225,24 @@ export class GeminiService {
           const shouldRecover =
             resuming ||
             isGeminiLifecycleAtLeast(
-              requestRow!.lifecycle as GeminiRequestLifecycle,
+              requestRow.lifecycle,
               'SEND_CLICKED',
             );
 
           if (shouldRecover) {
             const pageProbe = await provider.probeForRecovery(marker);
             const plan = planGeminiRequestRecovery(
-              requestRow!.lifecycle as GeminiRequestLifecycle,
+              requestRow.lifecycle,
               {
                 ...pageProbe,
                 rawCaptured: Boolean(existingRaw),
-                parsed: requestRow!.lifecycle === 'PARSED',
+                parsed: requestRow.lifecycle === 'PARSED',
               },
             );
 
             logger.info('Gemini request recovery plan', {
               correlationId,
-              lifecycle: requestRow!.lifecycle,
+              lifecycle: requestRow.lifecycle,
               action: plan.action,
               reason: plan.reason,
             });
@@ -263,7 +283,7 @@ export class GeminiService {
               }
               if (
                 !isGeminiLifecycleAtLeast(
-                  requestRow!.lifecycle as GeminiRequestLifecycle,
+                  requestRow.lifecycle,
                   'SENT_CONFIRMED',
                 )
               ) {
@@ -367,7 +387,7 @@ export class GeminiService {
       }
 
       const lifecycle = (this.db.geminiRequests.getById(requestId)?.lifecycle ??
-        'CREATED') as GeminiRequestLifecycle;
+        'CREATED');
       if (isGeminiLifecycleAtLeast(lifecycle, 'SENT_CONFIRMED')) {
         this.db.geminiRequests.markUnknownAfterCrash(requestId);
       } else {
@@ -402,8 +422,8 @@ export class GeminiService {
         errorMessage: automationError.message,
       };
     } finally {
-      this.activeCancel = null;
-      this.activeCorrelationId = null;
+      // Only this request — never wipe sibling workers' cancel handles.
+      this.active.unregister(correlationId);
     }
   }
 

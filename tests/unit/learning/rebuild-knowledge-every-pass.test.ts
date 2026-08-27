@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const rebuildKnowledge = vi.fn();
 const markDirty = vi.fn();
 const evaluateSyncPolicy = vi.fn(() => ({ shouldSync: false, chaptersSinceSync: 0 }));
-const syncDrive = vi.fn(async () => ({ updated: true }));
+const syncDrive = vi.fn(() => Promise.resolve({ updated: true }));
 
 vi.mock('@main/notebook/notebook-sync-service-singleton', () => ({
   getNotebookSyncService: () => ({
@@ -57,6 +57,24 @@ vi.mock('@main/drive/drive-content-builder', () => ({
   }),
 }));
 
+vi.mock('@main/notebook/knowledge-builder', () => ({
+  NotebookKnowledgeBuilder: class {
+    buildAll() {
+      return {
+        '00_BOOK_PROFILE.md': 'p',
+        '01_TRANSLATION_RULES.md': 'r',
+        '02_PROJECT_TERMS.md': 't',
+        '03_CHARACTERS.md': 'c',
+        '04_RELATIONSHIPS.md': 'rel',
+        '05_STORY_STATE.md': 's',
+        '06_WORLD_KNOWLEDGE.md': 'w',
+        '07_RECENT_CONTEXT.md': 'x',
+        '08_SYNC_STATE.md': 'sync',
+      };
+    }
+  },
+}));
+
 import { runLearningPipeline } from '@main/learning/learning-pipeline';
 import type { DatabaseManager } from '@main/db/database-manager';
 import type { ParsedBatchResult } from '@shared/schemas/output-protocol';
@@ -77,7 +95,21 @@ function emptyParsed(): ParsedBatchResult {
 
 function mockDb(): DatabaseManager {
   return {
-    chapters: { getByProjectAndNumber: () => null },
+    projects: {
+      getById: () => ({
+        id: PROJECT,
+        title: 'Test',
+        source_language: 'zh',
+        target_language: 'vi',
+      }),
+    },
+    chapters: { getByProjectAndNumber: () => null, listByProject: () => [] },
+    characters: { listByProject: () => [], listAliases: () => [] },
+    relationships: { listByProject: () => [] },
+    terms: { listForMatching: () => [], listTranslations: () => [] },
+    termCandidates: { listPendingForPack: () => [] },
+    storyStates: { getByProject: () => null, parseStructured: () => null },
+    memoryEvents: { listByProject: () => [], listRecentChapters: () => [] },
     learningEvents: { create: vi.fn() },
     driveSyncState: {
       ensure: () => ({
@@ -87,6 +119,14 @@ function mockDb(): DatabaseManager {
       }),
       patch: vi.fn(),
     },
+    notebooks: { listByProject: () => [] },
+    knowledgeFiles: {
+      maxLocalVersion: () => 1,
+      listByProject: () => [],
+    },
+    getConnection: () => ({
+      prepare: () => ({ all: () => [], get: () => null, run: () => undefined }),
+    }),
   } as unknown as DatabaseManager;
 }
 

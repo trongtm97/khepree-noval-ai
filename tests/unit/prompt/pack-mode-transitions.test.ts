@@ -97,7 +97,7 @@ describe('resolveTranslationPackMode transitions', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
@@ -231,6 +231,51 @@ describe('resolveTranslationPackMode transitions', () => {
     expect(d.reason).toBe('ready_verified');
     expect(d.notebookId).toBe('nb-pack-1');
     expect(d.sourceGroundingConfirmed).toBe(true);
+  });
+
+  it('actual character update appears in HYBRID pack (not status string)', () => {
+    seedNotebook({ status: 'sync_pending', knowledgeVersion: 2 });
+    db.driveSyncState.patch(projectId, {
+      pendingKnowledgeVersion: 3,
+      pendingSyncNonce: 'NEWNEW01',
+      verifiedKnowledgeVersion: 2,
+      verifiedSyncNonce: 'OLDOLD01',
+      versionProbeStatus: 'mismatch',
+    });
+
+    const mode = resolveTranslationPackMode(db, {
+      projectId,
+      accountId,
+      providerType: 'PLAYWRIGHT_GEMINI',
+    });
+    expect(mode.packMode).toBe('hybrid');
+
+    const hybrid = assemblePackSections({
+      style: 'balanced',
+      chapterNumbers: [10],
+      criticalRules: [],
+      context: {
+        ...FIXED_CONTEXT,
+        activeCharacters: [
+          {
+            ...FIXED_CONTEXT.activeCharacters[0],
+            translatedName: 'Vương Lâm (updated)',
+            firstChapter: 10,
+          },
+        ],
+      },
+      sourceLines: ['[C000010:P000001] 王林突破了。'],
+      packMode: 'hybrid',
+      hotMemoryOverride: [
+        '## HOT MEMORY — overrides stale Notebook',
+        '- CHARACTER 王林 → Vương Lâm (updated); first_seen_chapter=10; valid_from_chapter=10',
+      ].join('\n'),
+    });
+
+    expect(hybrid.prompt).toContain('CHARACTER 王林 → Vương Lâm (updated)');
+    expect(hybrid.prompt).toContain('first_seen_chapter=10');
+    expect(hybrid.prompt).not.toMatch(/Character delta after job/i);
+    expect(mode.packMode).not.toBe('slim');
   });
 });
 

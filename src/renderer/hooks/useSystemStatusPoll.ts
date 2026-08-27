@@ -86,9 +86,7 @@ export function useSystemStatusPoll(intervalMs = 4000): SystemStatus {
             (wh === 'NEEDS_ATTENTION' || wh === '' || !displayHealth)
           ) {
             displayHealth = primaryAccount.status;
-          } else if (!displayHealth) {
-            displayHealth = primaryAccount.status;
-          }
+          } else displayHealth ??= primaryAccount.status;
         }
 
         setStatus({

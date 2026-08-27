@@ -18,6 +18,7 @@ import {
   writeKnowledgeSourceFiles,
 } from '../drive/drive-content-builder';
 import { NotebookKnowledgeBuilder } from '../notebook/knowledge-builder';
+import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
 import { attachKnowledgeSources } from '../notebook/attach-knowledge-sources';
 import type { BrowserSessionController } from '../automation/browser-runner/browser-session-controller';
 import { PlaywrightBrowserSessionController } from '../automation/browser-runner/browser-session-controller';
@@ -189,7 +190,7 @@ export class NotebookService {
   ): NotebookMappingDto | null {
     const row = role
       ? this.db.notebooks.getByProjectWorkerRole(projectId, accountId, role)
-      : this.db.notebooks.getByProjectAndWorker(projectId, accountId);
+      : resolveTranslationNotebook(this.db, projectId, accountId);
     return row ? this.toDto(row) : null;
   }
 
@@ -376,7 +377,7 @@ export class NotebookService {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         logger.warn('Notebook instructions failed after sources verified', { message });
-        await context?.close().catch(() => undefined);
+        await context.close().catch(() => undefined);
         context = null;
         releaseLock();
         const userMessage = attachKnowledge
@@ -640,7 +641,7 @@ export class NotebookService {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         logger.warn('Notebook instructions failed after sources verified', { message });
-        await context?.close().catch(() => undefined);
+        await context.close().catch(() => undefined);
         context = null;
         releaseLock();
         const userMessage = attachKnowledge
@@ -846,7 +847,7 @@ export class NotebookService {
         input.accountId,
         'TRANSLATION',
       ) ??
-      this.db.notebooks.getByProjectAndWorker(input.projectId, input.accountId);
+      resolveTranslationNotebook(this.db, input.projectId, input.accountId);
     if (!assistedRow) {
       throw new Error('Notebook mapping missing after assisted setup');
     }

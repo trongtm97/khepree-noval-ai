@@ -84,7 +84,7 @@ export class WorkerProcessManager {
   /** Prefer production bundled exe when present. */
   bundledWorkerExePath(): string | null {
     const candidates = [
-      path.join(process.resourcesPath ?? '', 'workers', BUNDLED_WORKER_EXE_NAME),
+      path.join(process.resourcesPath, 'workers', BUNDLED_WORKER_EXE_NAME),
       path.join(process.cwd(), 'resources', 'workers', BUNDLED_WORKER_EXE_NAME),
       path.join(__dirname, '..', '..', '..', 'resources', 'workers', BUNDLED_WORKER_EXE_NAME),
     ];
@@ -101,14 +101,14 @@ export class WorkerProcessManager {
     const candidates = [
       path.join(process.cwd(), 'workers', 'gemini_webapi_worker'),
       path.join(__dirname, '..', '..', '..', 'workers', 'gemini_webapi_worker'),
-      path.join(process.resourcesPath ?? '', 'workers', 'gemini_webapi_worker'),
+      path.join(process.resourcesPath, 'workers', 'gemini_webapi_worker'),
     ];
     for (const candidate of candidates) {
       if (fs.existsSync(path.join(candidate, 'main.py'))) {
         return candidate;
       }
     }
-    return candidates[0]!;
+    return candidates[0];
   }
 
   venvDir(): string {
@@ -131,7 +131,7 @@ export class WorkerProcessManager {
     for (const cmd of pythonDetectCommands()) {
       try {
         const parts = fs.existsSync(cmd) ? [cmd] : cmd.split(' ');
-        const result = spawnSyncCapture(parts[0]!, [...parts.slice(1), '--version']);
+        const result = spawnSyncCapture(parts[0], [...parts.slice(1), '--version']);
         if (result.ok && isSupportedPythonVersionOutput(result.stdout + result.stderr)) {
           return cmd;
         }
@@ -319,7 +319,7 @@ export class WorkerProcessManager {
     this.secret = randomBytes(24).toString('hex');
 
     try {
-      await this.spawnWorker(install);
+      this.spawnWorker(install);
       await this.waitUntilHealthyOrExit(
         install.mode === 'bundled_exe' ? 45_000 : 20_000,
       );
@@ -333,7 +333,7 @@ export class WorkerProcessManager {
         await this.reclaimPort('retry-after-health-fail');
         this.intentionalStop = false;
         this.secret = randomBytes(24).toString('hex');
-        await this.spawnWorker(install);
+        this.spawnWorker(install);
         await this.waitUntilHealthyOrExit(
           install.mode === 'bundled_exe' ? 45_000 : 20_000,
         );
@@ -396,7 +396,7 @@ export class WorkerProcessManager {
     }
   }
 
-  private async spawnWorker(install: WorkerInstallStatus): Promise<void> {
+  private spawnWorker(install: WorkerInstallStatus): void {
     if (!install.pythonPath) {
       throw new Error(install.message || 'Worker binary missing');
     }
@@ -432,7 +432,7 @@ export class WorkerProcessManager {
         ? []
         : [install.workerScript];
 
-    const executable = fs.existsSync(python) ? python : python.split(' ')[0]!;
+    const executable = fs.existsSync(python) ? python : python.split(' ')[0];
     const spawnArgs = fs.existsSync(python)
       ? [install.workerScript]
       : [...python.split(' ').slice(1), install.workerScript];
@@ -450,7 +450,7 @@ export class WorkerProcessManager {
   /** Kill leftover listeners on our port (orphans after crash / hot-reload). */
   async reclaimPort(reason: string): Promise<void> {
     const keepPid = this.child?.pid ?? null;
-    const killed = await killOrphanWorkersOnPort(this.port, keepPid);
+    const killed = killOrphanWorkersOnPort(this.port, keepPid);
     if (killed.length > 0) {
       logger.warn('Reclaimed Gemini Web API worker port', {
         port: this.port,
@@ -536,8 +536,8 @@ function spawnSyncCapture(
   });
   return {
     ok: result.status === 0,
-    stdout: result.stdout?.toString() ?? '',
-    stderr: result.stderr?.toString() ?? '',
+    stdout: result.stdout,
+    stderr: result.stderr,
   };
 }
 
@@ -547,7 +547,7 @@ function runCommand(
 ): Promise<{ ok: boolean; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     const parts = command.includes(' ') && !fs.existsSync(command) ? command.split(' ') : [command];
-    const exe = parts[0]!;
+    const exe = parts[0];
     const prefix = parts.slice(1);
     const child = spawn(exe, [...prefix, ...args], {
       windowsHide: true,
@@ -616,7 +616,7 @@ export function parseWindowsNetstatListeningPids(
     const parts = line.split(/\s+/).filter(Boolean);
     // TCP  127.0.0.1:18765  0.0.0.0:0  LISTENING  26232
     if (parts.length < 5) continue;
-    const local = parts[1]!;
+    const local = parts[1];
     const portText = local.includes(']:')
       ? local.slice(local.lastIndexOf(']:') + 2)
       : local.slice(local.lastIndexOf(':') + 1);
@@ -637,7 +637,7 @@ export function parseLsofListeningPids(output: string): number[] {
   return [...pids];
 }
 
-async function listPidsListeningOnPort(port: number): Promise<number[]> {
+function listPidsListeningOnPort(port: number): number[] {
   if (process.platform === 'win32') {
     const result = spawnSyncCapture('netstat', ['-ano', '-p', 'tcp']);
     return parseWindowsNetstatListeningPids(result.stdout + result.stderr, port);
@@ -678,9 +678,9 @@ function killBundledWorkerByImageName(keepPid: number | null): number[] {
   const killed: number[] = [];
   const blob = listed.stdout + listed.stderr;
   for (const raw of blob.split(/\r?\n/)) {
-    const m = raw.match(/"([^"]+)","(\d+)"/);
+    const m = /"([^"]+)","(\d+)"/.exec(raw);
     if (!m) continue;
-    if (m[1]!.toLowerCase() !== BUNDLED_WORKER_EXE_NAME.toLowerCase()) continue;
+    if (m[1].toLowerCase() !== BUNDLED_WORKER_EXE_NAME.toLowerCase()) continue;
     const pid = Number(m[2]);
     if (!Number.isFinite(pid) || pid <= 0) continue;
     if (keepPid != null && pid === keepPid) continue;
@@ -693,13 +693,13 @@ function killBundledWorkerByImageName(keepPid: number | null): number[] {
  * Free Gemini worker port held by orphans (not the currently managed child).
  * Prefer port listeners; on Windows also sweep NovelTransGeminiWorker.exe.
  */
-export async function killOrphanWorkersOnPort(
+export function killOrphanWorkersOnPort(
   port: number,
   keepPid: number | null = null,
-): Promise<number[]> {
+): number[] {
   const killed = new Set<number>();
 
-  for (const pid of await listPidsListeningOnPort(port)) {
+  for (const pid of listPidsListeningOnPort(port)) {
     if (keepPid != null && pid === keepPid) continue;
     if (forceKillPid(pid)) killed.add(pid);
   }

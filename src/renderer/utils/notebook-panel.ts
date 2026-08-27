@@ -20,7 +20,7 @@ export function needsNotebookSync(input: {
   return input.dirty || status === 'sync_pending' || status === 'stale';
 }
 
-const MESSAGE_SNIPPETS: ReadonlyArray<{ match: string; key: string }> = [
+const MESSAGE_SNIPPETS: readonly { match: string; key: string }[] = [
   { match: 'Notebook đã thiết lập và xác minh', key: 'aiPanel.msgProvisioned' },
   { match: 'Notebook provisioned and verified', key: 'aiPanel.msgProvisioned' },
   {

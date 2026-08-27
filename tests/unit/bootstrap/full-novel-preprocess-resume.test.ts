@@ -84,7 +84,8 @@ describe('resume gate per stage', () => {
     'KNOWLEDGE_IMPORTED',
   ] as const)('active run query includes %s', (stage) => {
     // Covered by repo ACTIVE_STAGES — COMPLETED/FAILED excluded from resume.
-    expect(stage !== 'COMPLETED' && stage !== 'FAILED').toBe(true);
+    const terminal = new Set(['COMPLETED', 'FAILED']);
+    expect(terminal.has(stage)).toBe(false);
   });
 });
 
@@ -106,7 +107,7 @@ describe('full-novel preprocess repo resume', () => {
 
   afterEach(() => {
     resetNotebookSyncService();
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
@@ -132,7 +133,8 @@ describe('full-novel preprocess repo resume', () => {
     expect(active?.id).toBe(run.id);
     expect(active?.stage).toBe('SOURCES_INDEXING');
     expect(active?.correlation_id).toBe('11111111-1111-1111-1111-111111111111');
-    const progress = db.fullNovelPreprocess.parseProgress(active!);
+    if (!active) throw new Error('expected active run');
+    const progress = db.fullNovelPreprocess.parseProgress(active);
     expect(progress?.message).toContain('1/2');
   });
 

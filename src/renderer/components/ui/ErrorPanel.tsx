@@ -23,15 +23,20 @@ export function ErrorPanel({
   children,
 }: ErrorPanelProps) {
   const t = useT();
+  const primaryCount = actions?.filter((a) => a.primary).length ?? 0;
   return (
-    <div className={`nt-error-panel nt-error-panel--${tone}`}>
-      <h3 style={{ margin: '0 0 0.35rem', fontSize: 'var(--font-section)' }}>{title}</h3>
-      <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{description}</p>
+    <div className={`nt-error-panel nt-error-panel--${tone}`} role="alert">
+      <h3 className="nt-error-panel__title">{title}</h3>
+      <p className="nt-error-panel__desc">{description}</p>
       {children}
       {(actions && actions.length > 0) || helpArticleId ? (
-        <div className="btn-row" style={{ marginTop: '0.75rem' }}>
-          {actions?.map((a) => (
-            <Button key={a.label} variant={a.primary ? 'primary' : 'secondary'} onClick={a.onClick}>
+        <div className="btn-row nt-error-panel__actions">
+          {actions?.map((a, index) => (
+            <Button
+              key={a.label}
+              variant={a.primary || (primaryCount === 0 && index === 0) ? 'primary' : 'secondary'}
+              onClick={a.onClick}
+            >
               {a.label}
             </Button>
           ))}

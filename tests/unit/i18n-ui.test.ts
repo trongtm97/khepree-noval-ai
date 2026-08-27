@@ -64,6 +64,8 @@ describe('status labels', () => {
     expect(statusTone('FAILED')).toBe('error');
     expect(statusTone('QUEUED')).toBe('waiting');
     expect(statusTone('SENDING')).toBe('running');
+    expect(statusLabel('SYNC_PENDING')).toBe('Đang chờ đồng bộ');
+    expect(statusLabel('TOTALLY_FAKE_ENUM')).toBe('Không xác định');
   });
 });
 

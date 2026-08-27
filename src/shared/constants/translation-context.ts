@@ -72,7 +72,7 @@ export function formatDiagnosticsMemorySurface(
   if (diagnostics.packMode === 'slim' && diagnostics.notebookGroundingVerified) {
     return 'Translation Notebook';
   }
-  if (diagnostics.packMode === 'slim' || diagnostics.packMode === 'hybrid') {
+  if (diagnostics.packMode === 'slim') {
     return 'Translation Notebook';
   }
   return 'SQLite local memory';

@@ -49,12 +49,12 @@ describe('GeminiSelectorRegistry promptInput vs Discover Sources', () => {
         aria: el.getAttribute('aria-label'),
         form: el.getAttribute('formcontrolname'),
         disabled: el instanceof HTMLTextAreaElement ? el.disabled : false,
-        className: el.className,
+        classAttr: el.getAttribute('class'),
       }));
       expect(meta.aria).toBe('Hộp truy vấn');
       expect(meta.form).not.toBe('discoverSourcesQuery');
       expect(meta.disabled).toBe(false);
-      expect(meta.className).toContain('query-box-input');
+      expect(meta.classAttr).toContain('query-box-input');
     },
     20_000,
   );

@@ -78,7 +78,7 @@ export class NotebookRepository extends BaseRepository {
     const rows = this.listByProjectAndWorker(projectId, accountId);
     const single = rows.find((r) => r.notebook_role === 'SINGLE');
     if (single) return single;
-    return rows.find((r) => r.notebook_role === 'TRANSLATION') ?? rows[0] ?? null;
+    return rows.find((r) => r.notebook_role === 'TRANSLATION') ?? rows.at(0) ?? null;
   }
 
   listByProject(projectId: string): NotebookResourceRow[] {

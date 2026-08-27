@@ -9,7 +9,7 @@ import {
   UtilityProcessBrowserWorker,
   resolveDefaultRunnerScriptPath,
 } from './browser-runner/runner-host';
-import { profileLockManager, type ProfileLockManager } from './browser-runner/profile-lock';
+import { profileLockManager, type ProfileLeaseLockManager } from './browser-runner/profile-lock';
 import type { BrowserState } from './types';
 import { newId } from '../db/utils/uuid';
 
@@ -18,7 +18,7 @@ export type WorkerTransport = 'in-process' | 'child-process' | 'utility-process'
 export interface AutomationManagerOptions {
   cacheDir: string;
   transport?: WorkerTransport;
-  locks?: ProfileLockManager;
+  locks?: ProfileLeaseLockManager;
   runnerScriptPath?: string;
   /** @deprecated Ignored — utilityProcess.fork does not use execPath / RunAsNode. */
   execPath?: string;
@@ -39,7 +39,7 @@ export class AutomationManager {
   private readonly workers = new Map<string, BrowserWorker>();
   private readonly cacheDir: string;
   private readonly transport: WorkerTransport;
-  private readonly locks: ProfileLockManager;
+  private readonly locks: ProfileLeaseLockManager;
   private readonly runnerScriptPath: string;
 
   constructor(options: AutomationManagerOptions) {

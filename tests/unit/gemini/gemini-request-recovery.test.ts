@@ -101,7 +101,7 @@ describe('planGeminiRequestRecovery — crash points (no duplicate send)', () =>
 });
 
 describe('classifyCrashLifecycle', () => {
-  const cases: Array<[GeminiRequestLifecycle, string]> = [
+  const cases: [GeminiRequestLifecycle, string][] = [
     ['CREATED', 'abandon_before_send'],
     ['COMPOSER_FILLED', 'abandon_before_send'],
     ['SEND_CLICKED', 'abandon_before_send'],

@@ -81,7 +81,7 @@ describe('NotebookKnowledgeBuilder', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
@@ -107,10 +107,12 @@ describe('NotebookKnowledgeBuilder', () => {
       const row = db.knowledgeFiles.get(projectId, type);
       expect(row?.content_hash).toBeTruthy();
     }
-    const before = db.knowledgeFiles.get(projectId, 'story_state')!;
+    const before = db.knowledgeFiles.get(projectId, 'story_state');
+    if (!before) throw new Error('expected story_state knowledge file');
     db.storyStates.patch(projectId, { summaryText: 'New state' });
     builder.rebuildAndTrack(projectId);
-    const after = db.knowledgeFiles.get(projectId, 'story_state')!;
+    const after = db.knowledgeFiles.get(projectId, 'story_state');
+    if (!after) throw new Error('expected story_state after rebuild');
     expect(after.content_hash).not.toBe(before.content_hash);
     expect(after.dirty).toBe(1);
   });
@@ -159,7 +161,7 @@ describe('NotebookSyncService hot memory', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
@@ -180,7 +182,7 @@ describe('NotebookSyncService hot memory', () => {
     await runKnowledgeVersionProbe(db, {
       projectId,
       accountId,
-      capture: async () => 'NT_VERSION=1\nNT_NONCE=A11CE001',
+      capture: () => Promise.resolve('NT_VERSION=1\nNT_NONCE=A11CE001'),
     });
     db.getConnection()
       .prepare(`UPDATE notebook_resources SET last_verified_at = ? WHERE project_id = ?`)
@@ -221,7 +223,7 @@ describe('NotebookSyncService hot memory', () => {
     await runKnowledgeVersionProbe(db, {
       projectId,
       accountId,
-      capture: async () => 'NT_VERSION=1\nNT_NONCE=A11CE002',
+      capture: () => Promise.resolve('NT_VERSION=1\nNT_NONCE=A11CE002'),
     });
     db.getConnection()
       .prepare(`UPDATE notebook_resources SET last_verified_at = ? WHERE project_id = ?`)
@@ -238,7 +240,8 @@ describe('NotebookSyncService hot memory', () => {
       status: 'LOCKED',
       locked: true,
     });
-    const termRow = db.terms.findBySource('锁词', projectId)!;
+    const termRow = db.terms.findBySource('锁词', projectId);
+    if (!termRow) throw new Error('expected locked term');
     db.terms.linkToProject(projectId, termRow.id, 'LOCKED');
     sync.markDirty(projectId, 'TERM_CHANGED');
     const afterDirty = new Date(Date.now() + 10).toISOString();
@@ -248,7 +251,11 @@ describe('NotebookSyncService hot memory', () => {
     expect(sync.buildActiveHotMemoryText(projectId)).toContain('锁词');
 
     // Name-only path must not clear
-    sync.markNotebookVerified(projectId, accountId);
+    (
+      sync as unknown as {
+        markNotebookVerified: (projectId: string, accountId: string) => void;
+      }
+    ).markNotebookVerified(projectId, accountId);
     expect(sync.buildActiveHotMemoryText(projectId)).toContain('锁词');
 
     db.driveSyncState.patch(projectId, {
@@ -259,7 +266,7 @@ describe('NotebookSyncService hot memory', () => {
     await runKnowledgeVersionProbe(db, {
       projectId,
       accountId,
-      capture: async () => 'NT_VERSION=2\nNT_NONCE=A11CE003',
+      capture: () => Promise.resolve('NT_VERSION=2\nNT_NONCE=A11CE003'),
     });
     expect(db.notebookHotDeltas.listActive(projectId)).toHaveLength(0);
     expect(db.knowledgeFiles.anyDirty(projectId)).toBe(false);
@@ -363,14 +370,16 @@ describe('NotebookBootstrapService', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
   it('seeds story state from metadata and early chapters', () => {
     const result = new NotebookBootstrapService(db).bootstrap(projectId, { seed: true });
     expect(result.seeded).toBe(true);
-    const story = db.storyStates.parseStructured(db.storyStates.getByProject(projectId)!);
+    const storyRow = db.storyStates.getByProject(projectId);
+    if (!storyRow) throw new Error('expected story state');
+    const story = db.storyStates.parseStructured(storyRow);
     expect(story.summaryText).toContain('Nhân vật chính');
     expect(story.worldKnowledge).toBeTruthy();
     expect(db.knowledgeFiles.get(projectId, 'book_profile')?.content_hash).toBeTruthy();

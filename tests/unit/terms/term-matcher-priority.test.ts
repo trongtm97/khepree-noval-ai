@@ -28,6 +28,7 @@ function makeTerm(partial: Partial<TermRow> & Pick<TermRow, 'source_simplified' 
     human_confirm_count: partial.human_confirm_count ?? 0,
     first_seen_chapter: partial.first_seen_chapter ?? null,
     discovered_from_chapter: partial.discovered_from_chapter ?? null,
+    future_sensitive: partial.future_sensitive ?? 0,
     created_at: partial.created_at ?? new Date().toISOString(),
     updated_at: partial.updated_at ?? new Date().toISOString(),
     deleted_at: partial.deleted_at ?? null,

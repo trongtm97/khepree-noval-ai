@@ -26,7 +26,7 @@ export function formatNotebookNameForRole(novelName: string, role: NotebookRole)
 }
 
 export function inferNotebookLayout(
-  roles: Iterable<NotebookRole | string>,
+  roles: Iterable<NotebookRole>,
 ): NotebookLayout {
   for (const r of roles) {
     if (r === 'SINGLE') return 'SINGLE';

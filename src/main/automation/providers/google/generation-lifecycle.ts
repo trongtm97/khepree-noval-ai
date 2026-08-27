@@ -115,9 +115,9 @@ export function detectOutputIncomplete(text: string): boolean {
 
   // Truncated JSON inside TERM_DELTA / MEMORY_DELTA bodies.
   for (const m of t.matchAll(/<(TERM_DELTA|MEMORY_DELTA)>\s*([\s\S]*?)(?:<\/\1>|$)/gi)) {
-    const body = (m[2] ?? '').trim();
-    if (!body || !/^[\[{]/.test(body)) continue;
-    const opens = (body.match(/[\[{]/g) ?? []).length;
+    const body = m[2].trim();
+    if (!body || !/^[[{]/.test(body)) continue;
+    const opens = (body.match(/[[{]/g) ?? []).length;
     const closes = (body.match(/[\]}]/g) ?? []).length;
     if (opens > closes) return true;
     if (/[,:]\s*$/.test(body) || /"[^"]*$/.test(body)) return true;
@@ -245,12 +245,10 @@ export async function runTargetGenerationLifecycle(
   }
 
   if (sawNonEmpty && detectOutputIncomplete(lastText)) {
-    return {
-      text: lastText,
-      phase: 'RESPONSE_STABILIZING',
-      usedNoIndicatorWindow,
-      incomplete: true,
-    };
+    throw new AutomationError(
+      'OUTPUT_INCOMPLETE',
+      `Target response incomplete after ${options.maxTimeoutMs}ms (lastPhase=${phase})`,
+    );
   }
 
   throw new AutomationError(
@@ -291,7 +289,7 @@ export async function pageHasGeneratingIndicator(page: Page): Promise<boolean | 
         '[data-testid="loading-indicator"][data-generating="1"], [data-generating="1"], [aria-busy="true"]',
       );
       if (loading) {
-        const style = window.getComputedStyle(loading as Element);
+        const style = window.getComputedStyle(loading);
         if (style.display !== 'none' && style.visibility !== 'hidden') return true;
       }
       const streaming = document.querySelector('[data-streaming="1"]');

@@ -48,6 +48,13 @@ import {
   ProjectIdRequestSchema,
   ProjectListResponseSchema,
 } from '@shared/schemas/import';
+import {
+  ProjectWorkerResolveRequestSchema,
+  ProjectWorkerResolutionDtoSchema,
+  ProjectWorkerSetRequestSchema,
+  ProjectWorkerSetResponseSchema,
+} from '@shared/schemas/project-worker';
+import { ProjectWorkerResolver } from '../services/project-worker-resolver';
 import { APP_NAME } from '@shared/constants/app';
 import { createIpcHandler, createIpcHandlerNoArg } from './validate';
 import { pathsService } from '../services/paths-service';
@@ -57,7 +64,7 @@ import { getSecretStorage, getAuditLog } from '../security';
 import { getAccountWorkerService } from '../services/account-worker-singleton';
 import { toGoogleAccountDto } from '../services/account-dto';
 import { getDatabase } from '../db/connection';
-import { toProjectDto } from '../services/project-dto';
+import { toProjectDto, toProjectDtoFromDb } from '../services/project-dto';
 import { getImportService } from '../import/import-service-singleton';
 import {
   getSourceFolderService,
@@ -282,6 +289,8 @@ import {
   CheckForUpdatesResponseSchema,
   SetupCompleteRequestSchema,
   SetupCompleteResponseSchema,
+  SetupExploreRequestSchema,
+  SetupExploreResponseSchema,
   SetupSetStepRequestSchema,
   SetupSkipDriveRequestSchema,
   SetupStatusSchema,
@@ -622,8 +631,7 @@ export function registerIpcHandlers(): void {
     createIpcHandlerNoArg(() => {
       const db = getDatabase();
       const projects = db.projects.list().map((row) => {
-        const chapterCount = db.chapters.listByProject(row.id).length;
-        return ProjectDtoSchema.parse(toProjectDto(row, chapterCount));
+        return ProjectDtoSchema.parse(toProjectDtoFromDb(db, row));
       });
       return ProjectListResponseSchema.parse({ projects });
     }, ProjectListResponseSchema),
@@ -646,13 +654,13 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.PROJECT_GET,
     createIpcHandler(ProjectIdRequestSchema, (request) => {
-      const row = getDatabase().projects.getById(request.projectId);
+      const db = getDatabase();
+      const row = db.projects.getById(request.projectId);
       if (!row || row.deleted_at) {
         throw new Error(`Project not found: ${request.projectId}`);
       }
-      const chapterCount = getDatabase().chapters.listByProject(row.id).length;
       return ProjectCreateResponseSchema.parse({
-        project: ProjectDtoSchema.parse(toProjectDto(row, chapterCount)),
+        project: ProjectDtoSchema.parse(toProjectDtoFromDb(db, row)),
       });
     }),
   );
@@ -692,6 +700,31 @@ export function registerIpcHandlers(): void {
 
       getAuditLog().projectDeleted(request.projectId, row.title);
       return ProjectDeleteResponseSchema.parse({ ok: true });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_RESOLVE_WORKER,
+    createIpcHandler(ProjectWorkerResolveRequestSchema, (request) => {
+      const resolution = new ProjectWorkerResolver(getDatabase()).resolve({
+        projectId: request.projectId,
+        purpose: request.purpose,
+        preferredAccountId: request.preferredAccountId,
+        jobId: request.jobId,
+      });
+      return ProjectWorkerResolutionDtoSchema.parse(resolution);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_SET_WORKER,
+    createIpcHandler(ProjectWorkerSetRequestSchema, async (request) => {
+      const result = await new ProjectWorkerResolver(getDatabase()).setWorker({
+        projectId: request.projectId,
+        accountId: request.accountId,
+        ensureNotebook: request.ensureNotebook,
+      });
+      return ProjectWorkerSetResponseSchema.parse(result);
     }),
   );
 
@@ -1476,10 +1509,10 @@ export function registerIpcHandlers(): void {
       const project = db.projects.getById(request.projectId);
       if (!project) throw new Error(`Project not found: ${request.projectId}`);
       return NotebookBootstrapStatusResponseSchema.parse({
-        status: project.bootstrap_status ?? 'NOT_STARTED',
+        status: project.bootstrap_status,
         throughChapter: project.bootstrap_through_chapter ?? null,
-        version: project.bootstrap_version ?? 'v1',
-        chapterCount: project.bootstrap_chapter_count ?? 10,
+        version: project.bootstrap_version,
+        chapterCount: project.bootstrap_chapter_count,
         startedAt: project.bootstrap_started_at ?? null,
         completedAt: project.bootstrap_completed_at ?? null,
         characterCount: db.characters.listByProject(request.projectId).length,
@@ -2162,6 +2195,13 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.SETUP_EXPLORE,
+    createIpcHandler(SetupExploreRequestSchema, (request) => {
+      return SetupExploreResponseSchema.parse(getSetupService().explore(request.confirm));
+    }),
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.SETUP_COMPLETE,
     createIpcHandler(SetupCompleteRequestSchema, (request) => {
       return SetupCompleteResponseSchema.parse(getSetupService().complete(request.confirm));
@@ -2351,6 +2391,9 @@ function buildMinimalRepairPack(projectId: string, prompt: string): TranslationP
     chapterNumbers: [1],
     style: 'balanced',
     prompt,
+    baseContext: '',
+    operationPrompt: prompt,
+    operationType: 'REPAIR',
     sections: {
       taskHeader: 'Repair',
       criticalRules: '',

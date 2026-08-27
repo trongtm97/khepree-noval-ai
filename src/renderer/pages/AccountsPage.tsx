@@ -66,7 +66,7 @@ export function AccountsPage() {
           : typeof err === 'string'
             ? err
             : err && typeof err === 'object' && 'message' in err
-              ? String((err as { message: unknown }).message)
+              ? String((err).message)
               : t('errors.UNKNOWN.title');
       setError(raw || t('errors.UNKNOWN.title'));
     } finally {
@@ -391,7 +391,7 @@ export function AccountsPage() {
                   ) : (
                     <Button
                       size="sm"
-                      variant="primary"
+                      variant="secondary"
                       disabled={busy}
                       onClick={() => {
                         void run(account.id, async () => {
@@ -428,17 +428,16 @@ export function AccountsPage() {
                         </label>
                         <Button
                           size="sm"
-                          disabled={busy || !(driveAuthDraft[account.id]?.trim().length ?? 0)}
+                          disabled={busy || !(driveAuthDraft[account.id] ?? '').trim()}
                           onClick={() => {
-                            const payload = driveAuthDraft[account.id]?.trim() ?? '';
+                            const payload = (driveAuthDraft[account.id] ?? '').trim();
                             void run(account.id, async () => {
                               await window.novelTrans.accounts.connectDriveWithAuth(
                                 account.id,
                                 payload,
                               );
                               setDriveAuthDraft((prev) => {
-                                const next = { ...prev };
-                                delete next[account.id];
+                                const { [account.id]: _removed, ...next } = prev;
                                 return next;
                               });
                               setMessage(t('accounts.driveOAuthFallbackSuccess'));

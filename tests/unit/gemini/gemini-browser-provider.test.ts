@@ -18,6 +18,9 @@ function minimalPack(prompt: string): TranslationPackDto {
     chapterNumbers: [1],
     style: 'balanced',
     prompt,
+    baseContext: '',
+    operationPrompt: '',
+    operationType: 'TRANSLATE',
     sections: {
       taskHeader: 'task',
       criticalRules: 'rules',

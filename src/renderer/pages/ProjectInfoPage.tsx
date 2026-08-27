@@ -99,7 +99,7 @@ export function ProjectInfoPage() {
         <h1>{t('bookMetadata.pageTitle')}</h1>
         <div className="btn-row">
           <HelpContextButton articleId="project-info" />
-          <Button onClick={() => { navigate(`/projects/${projectId}/source`); }}>
+          <Button onClick={() => { navigate(`/projects/${projectId}/chapters`); }}>
             {t('bookMetadata.viewSource')}
           </Button>
           {!editing ? (

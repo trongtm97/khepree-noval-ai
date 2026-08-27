@@ -1,13 +1,65 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderKanban, BookOpen, Clock, Bot, BookMarked } from 'lucide-react';
+import { Check, AlertTriangle, Circle } from 'lucide-react';
 import type { JobDto } from '@shared/schemas/job';
 import type { ProjectDto } from '@shared/schemas/import';
+import {
+  isJobActive,
+  isJobAttention,
+  isJobCompleted,
+  measureJobProgress,
+} from '@shared/utils/job-progress';
 import { useT } from '../i18n';
 import { statusLabel } from '../i18n/status';
-import { PageHeader, Card, ProgressBar, Skeleton, EmptyState, SectionHeader } from '../components/ui';
+import {
+  PageHeader,
+  Card,
+  ProgressBar,
+  Skeleton,
+  EmptyState,
+  SectionHeader,
+  Button,
+} from '../components/ui';
 import { HelpContextButton } from '../features/help/HelpContextButton';
 import { useUiShellStore } from '../stores/ui-shell-store';
+import { OnboardingChecklistPanel } from '../hooks/useOnboardingChecklist';
+
+function formatCount(n: number): string {
+  return n.toLocaleString('vi-VN');
+}
+
+function HealthMark({
+  ok,
+  warn,
+  label,
+}: {
+  ok: boolean;
+  warn?: boolean;
+  label: string;
+}) {
+  if (ok) {
+    return (
+      <span className="cc-health-item cc-health-item--ok">
+        <Check size={14} aria-hidden />
+        {label}
+      </span>
+    );
+  }
+  if (warn) {
+    return (
+      <span className="cc-health-item cc-health-item--warn">
+        <AlertTriangle size={14} aria-hidden />
+        {label}
+      </span>
+    );
+  }
+  return (
+    <span className="cc-health-item cc-health-item--missing">
+      <Circle size={14} aria-hidden />
+      {label}
+    </span>
+  );
+}
 
 export function DashboardPage() {
   const t = useT();
@@ -15,9 +67,6 @@ export function DashboardPage() {
   const setCurrentProject = useUiShellStore((s) => s.setCurrentProject);
   const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [jobs, setJobs] = useState<JobDto[]>([]);
-  const [workersReady, setWorkersReady] = useState(0);
-  const [workersTotal, setWorkersTotal] = useState(0);
-  const [termsCount, setTermsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,21 +74,13 @@ export function DashboardPage() {
     const cancelled = { current: false };
     void (async () => {
       try {
-        const [projectRes, jobRes, workerRes, termRes] = await Promise.all([
+        const [projectRes, jobRes] = await Promise.all([
           window.novelTrans.projects.list(),
           window.novelTrans.jobs.list(undefined),
-          window.novelTrans.jobs.workers(),
-          window.novelTrans.terms.search({}),
         ]);
         if (cancelled.current) return;
         setProjects(projectRes.projects);
         setJobs(jobRes.jobs);
-        const ready = workerRes.workers.filter(
-          (w: { health: string }) => w.health === 'READY',
-        ).length;
-        setWorkersReady(ready);
-        setWorkersTotal(workerRes.workers.length);
-        setTermsCount(termRes.terms.length);
       } catch (err: unknown) {
         if (!cancelled.current) {
           setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
@@ -53,16 +94,45 @@ export function DashboardPage() {
     };
   }, [t]);
 
-  const stats = useMemo(() => {
-    const active = projects.filter((p) => p.status !== 'archived').length;
-    const chapters = projects.reduce((sum, p) => sum + (p.chapterCount ?? 0), 0);
-    const running = jobs.filter((j) =>
-      ['RUNNING', 'QUEUED', 'WAITING', 'PAUSED'].includes(j.state),
-    );
-    return { active, chapters, pending: running.length, running };
-  }, [projects, jobs]);
+  const focusProjects = useMemo(() => {
+    return [...projects]
+      .filter((p) => p.status !== 'archived')
+      .sort((a, b) => {
+        const aLeft =
+          (a.sourceChapterCount ?? 0) - (a.translatedChapterCount ?? 0);
+        const bLeft =
+          (b.sourceChapterCount ?? 0) - (b.translatedChapterCount ?? 0);
+        if (aLeft !== bLeft) return bLeft - aLeft;
+        return b.updatedAt.localeCompare(a.updatedAt);
+      })
+      .slice(0, 5);
+  }, [projects]);
+
+  const running = useMemo(
+    () => jobs.filter((j) => isJobActive(j.state)).slice(0, 8),
+    [jobs],
+  );
+  const attention = useMemo(
+    () => jobs.filter((j) => isJobAttention(j.state)).slice(0, 8),
+    [jobs],
+  );
+  const recentDone = useMemo(() => {
+    return jobs
+      .filter((j) => isJobCompleted(j.state))
+      .sort((a, b) => {
+        const aAt = a.completedAt ?? a.updatedAt;
+        const bAt = b.completedAt ?? b.updatedAt;
+        return bAt.localeCompare(aAt);
+      })
+      .slice(0, 6);
+  }, [jobs]);
 
   const projectTitle = (id: string) => projects.find((p) => p.id === id)?.title ?? id;
+
+  const openTranslate = (project: ProjectDto) => {
+    setCurrentProject(project.id, project.title);
+    navigate(`/projects/${project.id}/translate`);
+  };
 
   if (loading) {
     return (
@@ -72,9 +142,9 @@ export function DashboardPage() {
           description={t('dashboard.subtitle')}
           actions={<HelpContextButton articleId="quick-start" />}
         />
-        <div className="card-grid">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} height={88} />
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} height={96} />
           ))}
         </div>
       </div>
@@ -86,101 +156,204 @@ export function DashboardPage() {
   }
 
   return (
-    <div>
+    <div className="command-center">
       <PageHeader
         title={t('dashboard.title')}
         description={t('dashboard.subtitle')}
         actions={<HelpContextButton articleId="quick-start" />}
       />
 
-      <section className="card-grid" style={{ marginBottom: '1.5rem' }}>
-        <Stat icon={<FolderKanban size={18} />} label={t('dashboard.activeProjects')} value={stats.active} />
-        <Stat icon={<BookOpen size={18} />} label={t('dashboard.chaptersTranslated')} value={stats.chapters} />
-        <Stat icon={<Clock size={18} />} label={t('dashboard.chaptersPending')} value={stats.pending} />
-        <Stat
-          icon={<Bot size={18} />}
-          label={t('dashboard.workersReady')}
-          value={`${workersReady}/${workersTotal}`}
-        />
-        <Stat icon={<BookMarked size={18} />} label={t('dashboard.termsConfirmed')} value={termsCount} />
-      </section>
+      <OnboardingChecklistPanel />
 
-      <SectionHeader title={t('dashboard.runningJobs')} />
-      {stats.running.length === 0 ? (
-        <EmptyState title={t('dashboard.noJobs')} />
+      <SectionHeader title={t('dashboard.nextUp')} />
+      {focusProjects.length === 0 ? (
+        <EmptyState
+          title={t('dashboard.noProjects')}
+          description={t('dashboard.noProjectsHint')}
+          actionLabel={t('actions.createProject')}
+          onAction={() => {
+            navigate('/projects');
+          }}
+        />
       ) : (
-        <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1.5rem' }}>
-          {stats.running.slice(0, 5).map((job) => {
-            const progress =
-              job.chapterFrom != null && job.chapterTo != null
-                ? Math.min(99, Math.max(5, job.attemptCount * 20))
-                : 10;
+        <div className="cc-next-list">
+          {focusProjects.map((project) => {
+            const source = project.sourceChapterCount ?? project.chapterCount ?? 0;
+            const done = project.translatedChapterCount ?? 0;
+            const next = project.nextUntranslatedChapter;
+            const health = project.health;
+            const memoryLabel =
+              health?.memoryVersion != null
+                ? t('dashboard.healthMemoryVer', {
+                    version: String(health.memoryVersion),
+                    mark: health.memoryVerified ? ' ✓' : '',
+                  })
+                : t('dashboard.healthMemory');
+
             return (
-              <Card key={job.id}>
-                <div className="page-header-row">
+              <Card key={project.id} className="cc-next-card">
+                <div className="cc-next-main">
                   <div>
-                    <strong>{projectTitle(job.projectId)}</strong>
-                    <p className="muted" style={{ margin: '0.15rem 0' }}>
-                      {job.chapterFrom != null && job.chapterTo != null
-                        ? `${job.chapterFrom}–${job.chapterTo}`
-                        : '—'}{' '}
-                      · {statusLabel(job.state)}
+                    <h3 className="cc-next-title">{project.title}</h3>
+                    <p className="cc-next-progress">
+                      {t('dashboard.translatedOfTotal', {
+                        done: formatCount(done),
+                        total: formatCount(source),
+                      })}
                     </p>
                   </div>
-                  <span>{t('dashboard.percent', { value: progress })}</span>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      openTranslate(project);
+                    }}
+                  >
+                    {next != null
+                      ? t('dashboard.continueFromChapter', {
+                          chapter: String(next),
+                        })
+                      : done >= source && source > 0
+                        ? t('dashboard.openProject')
+                        : t('actions.continueTranslate')}
+                  </Button>
                 </div>
-                <ProgressBar value={progress} label={statusLabel(job.state)} />
+                <div className="cc-health-row" aria-label={t('dashboard.projectHealth')}>
+                  <HealthMark
+                    ok={health?.source === 'ok'}
+                    warn={health?.source === 'warn'}
+                    label={t('dashboard.healthSource')}
+                  />
+                  <HealthMark
+                    ok={health?.google === 'ok'}
+                    warn={health?.google === 'warn'}
+                    label={t('dashboard.healthGoogle')}
+                  />
+                  <HealthMark
+                    ok={health?.notebook === 'ok'}
+                    warn={health?.notebook === 'warn'}
+                    label={t('dashboard.healthNotebook')}
+                  />
+                  <HealthMark
+                    ok={Boolean(health?.memoryVerified)}
+                    warn={health?.memoryVersion != null && !health.memoryVerified}
+                    label={memoryLabel}
+                  />
+                </div>
               </Card>
             );
           })}
         </div>
       )}
 
-      <SectionHeader title={t('dashboard.recentActivity')} />
-      {jobs.length === 0 ? (
-        <EmptyState title={t('dashboard.noActivity')} />
+      <SectionHeader title={t('dashboard.runningJobs')} />
+      {running.length === 0 ? (
+        <EmptyState title={t('dashboard.noJobs')} />
       ) : (
-        <ul style={{ margin: 0, paddingLeft: '1.1rem', color: 'var(--text-secondary)' }}>
-          {jobs.slice(0, 8).map((job) => (
-            <li key={job.id} style={{ marginBottom: '0.4rem' }}>
+        <div className="cc-job-list">
+          {running.map((job) => {
+            const measure = measureJobProgress(job);
+            const range =
+              job.chapterFrom != null && job.chapterTo != null
+                ? `${job.chapterFrom}–${job.chapterTo}`
+                : '—';
+            const friendlyParts = measure.labelParts.filter(
+              (part) => part.includes('/') && !part.includes('_'),
+            );
+            const detail =
+              friendlyParts.length > 0
+                ? `${friendlyParts.join(' · ')} · ${statusLabel(job.state)}`
+                : statusLabel(job.state);
+            return (
+              <Card key={job.id}>
+                <div className="page-header-row">
+                  <div>
+                    <strong>{projectTitle(job.projectId)}</strong>
+                    <p className="muted" style={{ margin: '0.15rem 0' }}>
+                      {range} · {detail}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setCurrentProject(job.projectId, projectTitle(job.projectId));
+                      navigate('/jobs');
+                    }}
+                  >
+                    {t('actions.viewDetails')}
+                  </Button>
+                </div>
+                <ProgressBar
+                  value={measure.percent}
+                  indeterminate={measure.indeterminate}
+                  label={detail}
+                />
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <SectionHeader title={t('dashboard.actionRequired')} />
+      {attention.length === 0 ? (
+        <EmptyState title={t('dashboard.noActionRequired')} />
+      ) : (
+        <div className="cc-job-list">
+          {attention.map((job) => (
+            <Card key={job.id}>
+              <div className="page-header-row">
+                <div>
+                  <strong>{projectTitle(job.projectId)}</strong>
+                  <p className="muted" style={{ margin: '0.15rem 0' }}>
+                    {statusLabel(job.state)}
+                    {job.chapterFrom != null
+                      ? ` · ${job.chapterFrom}–${job.chapterTo ?? job.chapterFrom}`
+                      : ''}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setCurrentProject(job.projectId, projectTitle(job.projectId));
+                    navigate('/jobs');
+                  }}
+                >
+                  {t('actions.handle')}
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <SectionHeader title={t('dashboard.recentCompletion')} />
+      {recentDone.length === 0 ? (
+        <EmptyState title={t('dashboard.noRecentCompletion')} />
+      ) : (
+        <ul className="cc-recent-list">
+          {recentDone.map((job) => (
+            <li key={job.id}>
               <button
                 type="button"
                 className="nt-btn nt-btn--ghost nt-btn--sm"
                 style={{ padding: 0, height: 'auto' }}
                 onClick={() => {
                   setCurrentProject(job.projectId, projectTitle(job.projectId));
-                  navigate('/jobs');
+                  navigate(`/projects/${job.projectId}/translate`);
                 }}
               >
-                {projectTitle(job.projectId)} · {statusLabel(job.state)}
+                {projectTitle(job.projectId)}
                 {job.chapterFrom != null
                   ? ` · ${job.chapterFrom}–${job.chapterTo ?? job.chapterFrom}`
                   : ''}
+                {' · '}
+                {statusLabel(job.state)}
               </button>
             </li>
           ))}
         </ul>
       )}
-    </div>
-  );
-}
-
-function Stat({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="stat-card">
-      <p className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {icon}
-        {label}
-      </p>
-      <p className="stat-value">{value}</p>
     </div>
   );
 }

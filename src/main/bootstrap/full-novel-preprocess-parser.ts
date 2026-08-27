@@ -20,8 +20,8 @@ export function parseFullNovelPreprocessResponse(text: string): {
   const found = new Set<KnowledgeFileKey>();
 
   for (const match of text.matchAll(FENCE_RE)) {
-    const rawName = (match[1] ?? '').trim().replace(/^["']|["']$/g, '');
-    const body = (match[2] ?? '').trim();
+    const rawName = match[1].trim().replace(/^["']|["']$/g, '');
+    const body = match[2].trim();
     const key = normalizeFileKey(rawName);
     if (!key || !body) continue;
     files[key] = body;

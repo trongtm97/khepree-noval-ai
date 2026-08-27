@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { DatabaseManager } from '../db/database-manager';
+import type { FullNovelPreprocessRunRow } from '../db/repositories/full-novel-preprocess-repository';
 import {
   FULL_PREPROCESS_SOURCE_INDEX_TIMEOUT_MS,
   FULL_PREPROCESS_SOURCE_POLL_MS,
@@ -28,6 +29,7 @@ import { getNotebookSyncService } from '../notebook/notebook-sync-service-single
 import type { AutoPreprocessResult } from './auto-preprocess-progress';
 import type { AutoPreprocessStep } from '@shared/constants/notebooklm-preprocess-auto';
 import type { FullNovelPreprocessProgressSnapshot } from '../db/repositories/full-novel-preprocess-repository';
+import { resolveProjectWorker } from '../services/project-worker-resolver';
 import { findUserMessageWithMarker } from '../automation/providers/google/response-anchor';
 import {
   getNotebookLayout,
@@ -123,7 +125,7 @@ export class FullNovelPreprocessOrchestrator {
       });
     } else {
       repo.setStage(run.id, run.stage, { google_account_id: accountId });
-      run = repo.getRunById(run.id)!;
+      run = repo.getRunById(run.id) ?? run;
       push(run.stage, `Tiếp tục từ stage ${run.stage}`, repo.parseProgress(run));
     }
 
@@ -146,7 +148,7 @@ export class FullNovelPreprocessOrchestrator {
         const packed = preprocess.packCorpus(projectId);
         const total = packed.parts.length;
         for (let i = 0; i < packed.parts.length; i++) {
-          const p = packed.parts[i]!;
+          const p = packed.parts[i];
           repo.upsertPart({
             run_id: run.id,
             part_index: i,
@@ -168,7 +170,7 @@ export class FullNovelPreprocessOrchestrator {
             message: `Đóng gói ${i + 1}/${total}`,
           };
           repo.setStage(run.id, 'PACKING', { output_dir: packed.outputDir, progress: snap });
-          push('PACKING', snap.message!, snap);
+          push('PACKING', snap.message ?? '', snap);
         }
         const snap: FullNovelPreprocessProgressSnapshot = {
           packingDone: total,
@@ -209,7 +211,8 @@ export class FullNovelPreprocessOrchestrator {
         push('SOURCES_UPLOADING', 'Notebook sẵn sàng — bắt đầu tải nguồn…');
       }
 
-      const project = this.db.projects.getById(projectId)!;
+      const project = this.db.projects.getById(projectId);
+      if (!project) throw new Error(`Project not found: ${projectId}`);
       const parts = repo.listParts(run.id);
       if (parts.length === 0) {
         throw new Error('Preprocess run has no corpus parts — re-run packing');
@@ -239,7 +242,7 @@ export class FullNovelPreprocessOrchestrator {
           },
         });
 
-        run = repo.getRunById(run.id)!;
+        run = repo.getRunById(run.id) ?? run;
         if (!run.raw_response_path || !fs.existsSync(run.raw_response_path)) {
           // Persist raw before parse (also done inside browser stages)
           const rawPath = this.persistRaw(projectId, run.correlation_id ?? newId(), rawText);
@@ -305,7 +308,8 @@ export class FullNovelPreprocessOrchestrator {
     ) => void,
   ): Promise<AutoPreprocessResult> {
     const repo = this.db.fullNovelPreprocess;
-    let run = repo.getRunById(runId)!;
+    let run = repo.getRunById(runId);
+    if (!run) throw new Error(`Preprocess run not found: ${runId}`);
     const rawPath = run.raw_response_path;
     if (!rawPath || !fs.existsSync(rawPath)) {
       throw new Error('Raw response missing — cannot parse; re-run analysis');
@@ -394,7 +398,9 @@ export class FullNovelPreprocessOrchestrator {
     ) => void;
   }): Promise<string> {
     const repo = this.db.fullNovelPreprocess;
-    let run = repo.getRunById(input.runId)!;
+    const initialRun = repo.getRunById(input.runId);
+    if (!initialRun) throw new Error(`Preprocess run not found: ${input.runId}`);
+    let run: FullNovelPreprocessRunRow = initialRun;
     const mapping = resolveResearchNotebook(
       this.db,
       input.projectId,
@@ -465,7 +471,7 @@ export class FullNovelPreprocessOrchestrator {
         async ({ runtime, prepareNotebook }) => {
           const page = await prepareNotebook({
             projectId: input.projectId,
-            notebookUrl: mapping.resource_url,
+            notebookUrl: mapping.resource_url ?? '',
             openNotebook: async (p, url) => {
               const notebook = new NotebookProvider({ diagnosticsDir });
               notebook.attachPage(p);
@@ -572,7 +578,7 @@ export class FullNovelPreprocessOrchestrator {
               message: `Đã tải ${snapBase().sourcesUploaded}/${parts.length}`,
             };
             run = repo.setStage(input.runId, 'SOURCES_UPLOADED', { progress: snap });
-            input.onProgress('SOURCES_UPLOADED', snap.message!, snap);
+            input.onProgress('SOURCES_UPLOADED', snap.message, snap);
           }
 
           // ——— Indexing ———
@@ -623,7 +629,7 @@ export class FullNovelPreprocessOrchestrator {
                   message: `Notebook xử lý ${s.ready}/${s.total}`,
                 };
                 repo.setStage(input.runId, 'SOURCES_INDEXING', { progress: snap });
-                input.onProgress('SOURCES_INDEXING', snap.message!, snap);
+                input.onProgress('SOURCES_INDEXING', snap.message, snap);
               },
             });
 
@@ -650,7 +656,7 @@ export class FullNovelPreprocessOrchestrator {
               message: `Nguồn sẵn sàng ${parts.length}/${parts.length}`,
             };
             run = repo.setStage(input.runId, 'SOURCES_READY', { progress: snap });
-            input.onProgress('SOURCES_READY', snap.message!, snap);
+            input.onProgress('SOURCES_READY', snap.message, snap);
           }
 
           // Only send analysis when sources READY
@@ -707,13 +713,13 @@ export class FullNovelPreprocessOrchestrator {
             await gemini.waitForGenerationStart();
           }
           runtime.setGenerationState('STABILIZING');
-          await gemini.waitForGenerationComplete(correlationId!, {
+          await gemini.waitForGenerationComplete(correlationId, {
             maxTimeoutMs: PREPROCESS_GENERATION_MAX_TIMEOUT_MS,
           });
-          const raw = await gemini.extractLatestResponse(correlationId!);
+          const raw = await gemini.extractLatestResponse(correlationId);
           runtime.setGenerationState('IDLE');
 
-          const rawPath = this.persistRaw(input.projectId, correlationId!, raw.text);
+          const rawPath = this.persistRaw(input.projectId, correlationId, raw.text);
           run = repo.setStage(input.runId, 'RESPONSE_CAPTURED', {
             correlation_id: correlationId,
             raw_response_path: rawPath,
@@ -813,31 +819,12 @@ export class FullNovelPreprocessOrchestrator {
     projectId: string,
     preferred?: string | null,
   ): string | null {
-    if (preferred) return preferred;
-    const mappings = this.db.notebooks.listByProject(projectId);
-    const mapped = mappings.find(
-      (m) =>
-        m.status === 'ready' ||
-        m.status === 'sync_pending' ||
-        m.status === 'stale' ||
-        m.status === 'assisted_setup',
-    );
-    if (mapped) return mapped.google_account_id;
-
-    const accounts = this.db.googleAccounts.listDetails();
-    for (const a of accounts) {
-      const health = this.db.workerStates.getByAccountId(a.id)?.health;
-      const h = (health ?? '').toUpperCase();
-      if (h === 'READY' || h === 'BUSY' || !health) {
-        if (a.assigned_project_ids?.includes(projectId)) return a.id;
-      }
-    }
-    for (const a of accounts) {
-      const health = this.db.workerStates.getByAccountId(a.id)?.health;
-      const h = (health ?? '').toUpperCase();
-      if (h === 'READY' || h === 'BUSY') return a.id;
-    }
-    return accounts[0]?.id ?? null;
+    // Explicit caller override (UI / auto preprocess options).
+    if (preferred && this.db.googleAccounts.getById(preferred)) return preferred;
+    return resolveProjectWorker(this.db, {
+      projectId,
+      purpose: 'preprocess',
+    }).accountId;
   }
 
   private isAssistedError(err: unknown): boolean {

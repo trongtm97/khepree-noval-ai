@@ -4,17 +4,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: var(--gap-inline);
+  min-height: var(--btn-height);
   border-radius: var(--radius-md);
-  padding: 0.45rem 0.9rem;
+  padding: 0 var(--space-3);
   font-family: inherit;
   font-size: var(--font-body);
   font-weight: 500;
+  line-height: 1.2;
   cursor: pointer;
   border: 1px solid transparent;
   transition: background var(--transition-fast), border-color var(--transition-fast),
     opacity var(--transition-fast);
   white-space: nowrap;
+}
+
+.nt-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .nt-btn:disabled {
@@ -63,7 +70,8 @@
 }
 
 .nt-btn--sm {
-  padding: 0.3rem 0.65rem;
+  min-height: var(--btn-height-sm);
+  padding: 0 var(--space-2);
   font-size: var(--font-small);
 }
 
@@ -71,14 +79,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--icon-btn-size);
+  height: var(--icon-btn-size);
   border-radius: var(--radius-md);
   border: none;
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.nt-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .nt-icon-btn:hover {
@@ -95,21 +108,31 @@
 .nt-select,
 .nt-textarea {
   width: 100%;
+  min-height: var(--input-height);
   border: 1px solid var(--border);
   background: var(--bg-secondary);
   color: var(--text-primary);
   border-radius: var(--radius-md);
-  padding: 0.45rem 0.65rem;
+  padding: 0 var(--space-3);
   font-family: inherit;
   font-size: var(--font-body);
+  line-height: var(--line-height-body);
+}
+
+.nt-textarea {
+  min-height: calc(var(--input-height) * 3);
+  padding: var(--space-2) var(--space-3);
 }
 
 .nt-input:focus,
 .nt-select:focus,
-.nt-textarea:focus {
+.nt-textarea:focus,
+.nt-input:focus-visible,
+.nt-select:focus-visible,
+.nt-textarea:focus-visible {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-muted);
+  box-shadow: var(--focus-ring);
 }
 
 .nt-search {
@@ -205,7 +228,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: var(--space-5);
+  padding: var(--pad-card);
 }
 
 .nt-empty {
@@ -251,6 +274,21 @@
   background: var(--accent);
   border-radius: 999px;
   transition: width 200ms ease;
+}
+
+.nt-progress--indeterminate .nt-progress__bar {
+  width: 40%;
+  transition: none;
+  animation: nt-progress-indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes nt-progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(280%);
+  }
 }
 
 .nt-skeleton {
@@ -401,7 +439,7 @@
   top: 0;
   background: var(--bg-tertiary);
   text-align: left;
-  padding: 0.55rem 0.75rem;
+  padding: var(--table-cell-y) var(--table-cell-x);
   font-weight: 600;
   font-size: var(--font-small);
   color: var(--text-muted);
@@ -410,7 +448,7 @@
 }
 
 .nt-table td {
-  padding: 0.55rem 0.75rem;
+  padding: var(--table-cell-y) var(--table-cell-x);
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
 }
@@ -550,6 +588,20 @@
   background: var(--bg-secondary);
 }
 
+.nt-error-panel__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-section);
+}
+
+.nt-error-panel__desc {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.nt-error-panel__actions {
+  margin-top: var(--space-3);
+}
+
 .nt-error-panel--error {
   border-color: color-mix(in srgb, var(--error) 40%, var(--border));
   background: var(--error-bg);
@@ -636,9 +688,17 @@
   border-top: 1px solid var(--border);
 }
 
+.translation-workspace--collapsed {
+  grid-template-columns: 220px 1fr;
+}
+
 @media (max-width: 1366px) {
   .translation-workspace {
     grid-template-columns: 180px 1fr 240px;
+  }
+
+  .translation-workspace--collapsed {
+    grid-template-columns: 180px 1fr;
   }
 }
 
@@ -786,4 +846,147 @@
 
 .page {
   max-width: 100%;
+}
+
+.command-center {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cc-next-list,
+.cc-job-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.cc-next-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cc-next-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cc-next-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.cc-next-progress {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-body);
+}
+
+.cc-health-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.85rem;
+}
+
+.cc-health-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--font-small);
+  color: var(--text-muted);
+}
+
+.cc-health-item--ok {
+  color: var(--success, #2f9e44);
+}
+
+.cc-health-item--warn {
+  color: var(--warning, #f08c00);
+}
+
+.cc-health-item--missing {
+  color: var(--text-muted);
+}
+
+.cc-recent-list {
+  margin: 0 0 1.5rem;
+  padding-left: 1.1rem;
+  color: var(--text-secondary);
+}
+
+.cc-recent-list li {
+  margin-bottom: 0.4rem;
+}
+
+/* —— Layout / spacing utilities (prefer over inline styles) —— */
+.u-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-stack);
+}
+
+.u-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-inline);
+}
+
+.u-row--between {
+  justify-content: space-between;
+}
+
+.u-mt-1 { margin-top: var(--space-1); }
+.u-mt-2 { margin-top: var(--space-2); }
+.u-mt-3 { margin-top: var(--space-3); }
+.u-mt-4 { margin-top: var(--space-4); }
+.u-mb-0 { margin-bottom: 0; }
+.u-mb-2 { margin-bottom: var(--space-2); }
+.u-m-0 { margin: 0; }
+
+.u-mono {
+  font-family: var(--font-mono);
+  font-size: var(--font-small);
+  word-break: break-word;
+}
+
+.u-text-sm {
+  font-size: var(--font-small);
+}
+
+.u-pad-compact {
+  padding: var(--space-3);
+}
+
+
+.u-flex-1 {
+  flex: 1;
+  min-width: 0;
+}
+
+.u-reset-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.u-ghost-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.u-ghost-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
 }

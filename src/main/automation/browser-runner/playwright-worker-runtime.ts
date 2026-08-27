@@ -271,7 +271,7 @@ export class PlaywrightWorkerRuntime {
     this.context = null;
     this.page = null;
     if (ctx) {
-      await ctx.close().catch(() => undefined);
+      await Promise.resolve(ctx.close()).catch(() => undefined);
     }
   }
 

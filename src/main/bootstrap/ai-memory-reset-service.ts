@@ -57,7 +57,7 @@ export class AiMemoryResetService {
           .prepare(
             `SELECT id FROM terms WHERE scope = 'PROJECT' AND scope_ref = ? AND deleted_at IS NULL`,
           )
-          .all(projectId) as Array<{ id: string }>
+          .all(projectId) as { id: string }[]
       ).map((r) => r.id);
 
       let projectScopedTermsDeleted = 0;

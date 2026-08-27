@@ -157,7 +157,7 @@ export class NotebookKnowledgeBuilder {
       pushField('title_cn', `Tên gốc:\n${project.title_cn.trim()}`);
     }
     const titleVi = project.title_vi ?? project.title;
-    if (titleVi?.trim()) pushField('title_vi', `Tên Việt:\n${titleVi.trim()}`);
+    if (titleVi.trim()) pushField('title_vi', `Tên Việt:\n${titleVi.trim()}`);
     const author = project.author_name ?? project.author_name_cn;
     if (author?.trim()) pushField('author', `Tác giả:\n${author.trim()}`);
     if (project.genre?.trim()) pushField('genre', `Thể loại:\n${project.genre.trim()}`);
@@ -218,11 +218,11 @@ export class NotebookKnowledgeBuilder {
 
     const records: KnowledgeRecord[] = [];
     for (let i = 0; i < style.criticalRules.length; i += 1) {
-      const rule = style.criticalRules[i]!;
+      const rule = style.criticalRules[i];
       records.push({ id: `critical-${i}`, text: `- [CRITICAL] ${rule}` });
     }
     for (let i = 0; i < style.rules.length; i += 1) {
-      const rule = style.rules[i]!;
+      const rule = style.rules[i];
       records.push({ id: `rule-${i}`, text: `- ${rule}` });
     }
 
@@ -459,7 +459,18 @@ export class NotebookKnowledgeBuilder {
   buildSyncState(projectId: string): string {
     const state = this.db.driveSyncState.ensure(projectId);
     const version = Math.max(1, state.pending_knowledge_version || 0);
-    const nonce = state.pending_sync_nonce || generateSyncNonce();
+    let nonce = state.pending_sync_nonce;
+    // Persist generated nonce so Drive hash stays stable across syncOwnedFiles calls.
+    if (!nonce || state.pending_knowledge_version <= 0) {
+      nonce = nonce ?? generateSyncNonce();
+      this.db.driveSyncState.patch(projectId, {
+        pendingKnowledgeVersion: version,
+        pendingSyncNonce: nonce,
+        ...(state.version_probe_status === 'verified'
+          ? {}
+          : { versionProbeStatus: 'pending' as const }),
+      });
+    }
     return buildSyncStateManifestContent({
       projectId,
       knowledgeVersion: version,

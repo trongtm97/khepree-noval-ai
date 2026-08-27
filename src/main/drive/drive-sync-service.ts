@@ -118,9 +118,18 @@ export class DriveSyncService {
     });
   }
 
-  onChapterCompleted(projectId: string): { shouldSync: boolean } {
+  /**
+   * Advance chapters_since_sync by real completed chapter count.
+   * Batch 101–103 → pass chapterCount=3 (not +1 per job).
+   * Prefer NotebookSyncService.evaluateSyncPolicy from LearningPipeline.
+   */
+  onChapterCompleted(
+    projectId: string,
+    chapterCount = 1,
+  ): { shouldSync: boolean; chaptersSinceSync: number } {
     const state = this.db.driveSyncState.ensure(projectId);
-    const nextCount = state.chapters_since_sync + 1;
+    const delta = Math.max(0, Math.floor(chapterCount));
+    const nextCount = state.chapters_since_sync + delta;
     const shouldSync =
       state.critical_change_pending === 1 ||
       nextCount >= state.sync_every_n_chapters;
@@ -131,7 +140,10 @@ export class DriveSyncService {
       syncStatus: shouldSync ? 'pending' : (state.sync_status as DriveSyncStatus),
     });
 
-    return { shouldSync };
+    return {
+      shouldSync,
+      chaptersSinceSync: shouldSync ? 0 : nextCount,
+    };
   }
 
   getStatus(projectId: string): DriveSyncStatusDto {
@@ -393,7 +405,11 @@ export class DriveSyncService {
           continue;
         }
 
-        const liveFileId = fileId;
+        if (!fileId) {
+          errors.push(`${key}: missing Drive file id after Google Doc check`);
+          continue;
+        }
+        const liveFileId: string = fileId;
 
         // Hash match after mime probe — skip update.
         if (!force && row?.local_hash === localHash) {

@@ -324,7 +324,7 @@ export class JobService {
     if (!before) throw new Error(`Job not found: ${jobId}`);
 
     const row = this.db.jobs.requeueFailed(jobId);
-    if (!row || row.state !== 'QUEUED') {
+    if (row?.state !== 'QUEUED') {
       throw new Error(
         `Job cannot be retried (state=${before.state}; need FAILED/NEEDS_ATTENTION/CANCELLED/SKIPPED)`,
       );
@@ -344,13 +344,13 @@ export class JobService {
     action: 'cancel' | 'delete' | 'retry';
     affected: number;
     skipped: number;
-    failed: Array<{ jobId: string; error: string }>;
+    failed: { jobId: string; error: string }[];
     message: string;
   } {
     const unique = [...new Set(jobIds)];
     let affected = 0;
     let skipped = 0;
-    const failed: Array<{ jobId: string; error: string }> = [];
+    const failed: { jobId: string; error: string }[] = [];
 
     const terminal = new Set([
       'COMPLETED',
@@ -754,8 +754,8 @@ export class JobService {
         ? progress.knowledgeSourceMode
         : undefined;
     const timeline = Array.isArray(progress.timeline)
-      ? (progress.timeline as Array<{ at: string; event: string; message?: string }>)
-          .filter((e) => e && typeof e.at === 'string' && typeof e.event === 'string')
+      ? (progress.timeline as { at?: unknown; event?: unknown; message?: string }[])
+          .filter((e): e is { at: string; event: string } => typeof e.at === 'string' && typeof e.event === 'string')
           .slice(-40)
       : undefined;
     const accountIdProgress =

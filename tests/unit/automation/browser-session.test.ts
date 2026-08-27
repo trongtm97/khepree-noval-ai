@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { AutomationManager } from '@main/automation/automation-manager';
-import { ProfileLockManager } from '@main/automation/browser-runner/profile-lock';
+import { ProfileLeaseLockManager } from '@main/automation/browser-runner/profile-lock';
 import { newId } from '@main/db/utils/uuid';
 import { startFixtureServer } from './fixture-server';
 
@@ -17,7 +17,7 @@ describe('Browser automation core (mock HTML)', () => {
   let closeServer: () => Promise<void>;
   let tempRoot: string;
   let manager: AutomationManager;
-  let locks: ProfileLockManager;
+  let locks: ProfileLeaseLockManager;
 
   beforeAll(async () => {
     const server = await startFixtureServer(FIXTURE_DIR);
@@ -31,7 +31,7 @@ describe('Browser automation core (mock HTML)', () => {
 
   beforeEach(() => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nts-auto-'));
-    locks = new ProfileLockManager();
+    locks = new ProfileLeaseLockManager();
     manager = new AutomationManager({
       cacheDir: path.join(tempRoot, 'cache'),
       transport: 'in-process',
@@ -41,7 +41,17 @@ describe('Browser automation core (mock HTML)', () => {
 
   afterEach(async () => {
     await manager.disposeAll();
-    fs.rmSync(tempRoot, { recursive: true, force: true });
+    // Windows Chromium may briefly hold profile DB files after close.
+    for (let i = 0; i < 8; i++) {
+      try {
+        fs.rmSync(tempRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+        break;
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code !== 'EBUSY' && code !== 'EPERM') throw err;
+        await new Promise((r) => setTimeout(r, 100 * (i + 1)));
+      }
+    }
   });
 
   it('runs OPEN / NAVIGATE / GET_STATUS / SCREENSHOT / CLOSE commands', async () => {
@@ -195,6 +205,6 @@ describe('Browser automation core (mock HTML)', () => {
         profilePath,
         headless: true,
       }),
-    ).rejects.toThrow(/already in use|lock/i);
+    ).rejects.toThrow(/PROFILE_BUSY|already in use|lock|đang được sử dụng/i);
   });
 });

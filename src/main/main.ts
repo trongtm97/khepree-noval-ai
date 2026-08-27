@@ -80,5 +80,5 @@ if (smokeRequested) {
     }
   });
 } else {
-  void import('./app-bootstrap').then((m) => m.startApplication());
+  void import('./app-bootstrap').then((m) => { m.startApplication(); });
 }

@@ -18,8 +18,7 @@ describe('google-smoke config guards', () => {
   });
 
   it('requires SMOKE or TEST in label', () => {
-    expect(() =>
-      assertNotProductionProject({
+    expect(() => { assertNotProductionProject({
         enabled: true,
         profilePath: 'C:/tmp/profile',
         notebookUrl: 'https://notebooklm.google.com/notebook/prod-novel',
@@ -29,7 +28,7 @@ describe('google-smoke config guards', () => {
         reportMarkdownPath: 'docs/REAL_GOOGLE_TEST_REPORT.md',
         artifactsDir: 'tmp/x',
         allowNonSmokeNotebook: false,
-      }),
+      }); },
     ).toThrow(/SMOKE or TEST/);
   });
 

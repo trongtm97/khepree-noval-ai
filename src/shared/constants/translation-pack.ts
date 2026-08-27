@@ -10,6 +10,18 @@ export const TRANSLATION_STYLES = [
 
 export type TranslationStyle = (typeof TRANSLATION_STYLES)[number];
 
+/**
+ * Pack operation — provider adaptation may swap CONTEXT only.
+ * Never rewrite operationPrompt for REPAIR / CONTINUATION.
+ */
+export const TRANSLATION_PACK_OPERATIONS = [
+  'TRANSLATE',
+  'REPAIR',
+  'CONTINUATION',
+] as const;
+
+export type TranslationPackOperation = (typeof TRANSLATION_PACK_OPERATIONS)[number];
+
 /** Batch size: 1–5 chapters. */
 export const MIN_PACK_CHAPTERS = 1;
 export const MAX_PACK_CHAPTERS = 5;

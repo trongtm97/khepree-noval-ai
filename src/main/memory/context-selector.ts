@@ -87,6 +87,7 @@ function candidateAsMatchTerm(candidate: TermCandidateRow): TermRow {
     human_confirm_count: 0,
     first_seen_chapter: candidate.first_seen_chapter,
     discovered_from_chapter: candidate.discovered_from_chapter,
+    future_sensitive: 0,
     created_at: candidate.created_at || now,
     updated_at: now,
     deleted_at: null,

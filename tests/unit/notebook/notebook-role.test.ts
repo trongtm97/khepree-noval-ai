@@ -48,7 +48,7 @@ describe('notebook role resolver', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
@@ -88,8 +88,9 @@ describe('notebook role resolver', () => {
     });
 
     expect(getNotebookLayout(db, projectId, accountId)).toBe('DUAL');
-    const research = resolveResearchNotebook(db, projectId, accountId)!;
-    const translation = resolveTranslationNotebook(db, projectId, accountId)!;
+    const research = resolveResearchNotebook(db, projectId, accountId);
+    const translation = resolveTranslationNotebook(db, projectId, accountId);
+    if (!research || !translation) throw new Error('expected dual notebooks');
     expect(research.notebook_role).toBe('RESEARCH');
     expect(translation.notebook_role).toBe('TRANSLATION');
     expect(research.resource_url).not.toBe(translation.resource_url);
@@ -136,7 +137,7 @@ describe('notebook role resolver', () => {
 
     const syncTargets = listKnowledgeSyncMappings(db, projectId);
     expect(syncTargets).toHaveLength(1);
-    expect(syncTargets[0]!.notebook_role).toBe('TRANSLATION');
+    expect(syncTargets[0].notebook_role).toBe('TRANSLATION');
   });
 
   it('worker can hold both roles as separate rows', () => {

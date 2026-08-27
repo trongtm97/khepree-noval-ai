@@ -363,12 +363,31 @@ export function buildTranslationPack(
     return sum + rows.filter((r) => paragraphIdFilter.has(r.paragraph_id)).length;
   }, 0);
 
+  const baseContext = [
+    sections.criticalRules,
+    sections.hotMemoryDelta,
+    sections.activeProjectTerms,
+  ]
+    .filter((s) => s.trim())
+    .join('\n\n');
+  const operationPrompt = [
+    sections.taskHeader,
+    sections.sourceParagraphs,
+    '## Output Protocol',
+    sections.outputProtocol,
+  ]
+    .filter((s) => s.trim())
+    .join('\n\n');
+
   return {
     projectId: input.projectId,
     chapterIds: chapters.map((chapter) => chapter.id),
     chapterNumbers,
     style: input.style,
     prompt,
+    baseContext,
+    operationPrompt,
+    operationType: 'TRANSLATE' as const,
     sections,
     size: {
       sourceChars,
@@ -443,6 +462,13 @@ export function countHotDeltaLines(hotMemoryText: string | null | undefined): nu
     .filter(
       (l) =>
         l.startsWith('- ') ||
+        l.startsWith('- TERM') ||
+        l.startsWith('- CHARACTER') ||
+        l.startsWith('- RELATIONSHIP') ||
+        l.startsWith('- STORY') ||
+        l.startsWith('- WORLD') ||
+        l.startsWith('- LOCATION') ||
+        l.startsWith('- CULTIVATION') ||
         l.startsWith('story:') ||
         l.startsWith('char:') ||
         l.startsWith('rel:') ||

@@ -36,8 +36,8 @@ function formatProviderChannel(type?: string | null): string | null {
 }
 
 function formatPackMode(mode?: string | null): string | null {
-  if (mode === 'slim') return 'slim';
-  if (mode === 'hybrid') return 'hybrid';
-  if (mode === 'fat') return 'fat-pack';
+  if (mode === 'slim') return 'bộ nhớ Notebook';
+  if (mode === 'hybrid') return 'bộ nhớ bổ sung khi dịch';
+  if (mode === 'fat') return 'bộ nhớ đầy đủ';
   return null;
 }

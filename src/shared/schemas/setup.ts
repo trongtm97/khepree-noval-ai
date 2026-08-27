@@ -5,6 +5,8 @@ export const SetupWizardStepSchema = z.enum(SETUP_WIZARD_STEPS);
 
 export const SetupStatusSchema = z.object({
   completed: z.boolean(),
+  /** True when user skipped wizard to explore — not the same as completed. */
+  explored: z.boolean(),
   step: SetupWizardStepSchema,
   skippedDrive: z.boolean(),
   storageRoot: z.string(),
@@ -30,6 +32,16 @@ export const SetupCompleteResponseSchema = z.object({
 
 export const SetupSkipDriveRequestSchema = z.object({
   skip: z.boolean(),
+});
+
+export const SetupExploreRequestSchema = z.object({
+  confirm: z.literal(true),
+});
+
+export const SetupExploreResponseSchema = z.object({
+  ok: z.literal(true),
+  explored: z.literal(true),
+  completed: z.literal(false),
 });
 
 export const CheckForUpdatesResponseSchema = z.object({

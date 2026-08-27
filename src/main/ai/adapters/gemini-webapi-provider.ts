@@ -160,7 +160,7 @@ export class GeminiWebApiProvider implements IAIProvider {
 
     const model =
       options?.model ??
-      this.db.aiModels.listEnabledByProvider(this.providerId)[0]?.model_name ??
+      this.db.aiModels.listEnabledByProvider(this.providerId).at(0)?.model_name ??
       null;
 
     // Worker process loses in-memory sessions on restart while DB stays READY.
@@ -382,11 +382,12 @@ export class GeminiWebApiProvider implements IAIProvider {
     const status = workerProcessManager.getStatus();
     return fetch(`${status.baseUrl}${pathname}`, {
       ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-NTS-Secret': status.secret,
-        ...(init?.headers ?? {}),
-      },
+      headers: (() => {
+        const headers = new Headers(init?.headers);
+        headers.set('Content-Type', 'application/json');
+        headers.set('X-NTS-Secret', status.secret);
+        return headers;
+      })(),
     });
   }
 }

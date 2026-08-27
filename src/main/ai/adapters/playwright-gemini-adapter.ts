@@ -20,7 +20,7 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
   readonly providerId = AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI;
   readonly providerType = 'PLAYWRIGHT_GEMINI' as const;
 
-  /** requestId / correlationId → cancel target */
+  /** requestId → correlationId (set before send so mid-flight cancel works). */
   private readonly activeIds = new Map<string, string>();
 
   constructor(private readonly geminiService: GeminiService) {}
@@ -32,7 +32,7 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
   async healthCheck(): Promise<AIProviderHealth> {
     const db = getDatabase();
     const accounts = db.googleAccounts.list().filter((a) => {
-      const s = (a.status ?? '').toUpperCase();
+      const s = a.status.toUpperCase();
       return s !== 'DISABLED';
     });
     if (accounts.length === 0) {
@@ -44,12 +44,12 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
     }
 
     const usable = accounts.find((a) => {
-      const s = (a.status ?? '').toUpperCase();
+      const s = a.status.toUpperCase();
       return s === 'READY' || s === 'BUSY';
     });
     if (!usable) {
       const login = accounts.find((a) => {
-        const s = (a.status ?? '').toUpperCase();
+        const s = a.status.toUpperCase();
         return s === 'LOGIN_REQUIRED' || s === 'NEEDS_ATTENTION';
       });
       return {
@@ -58,7 +58,7 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
         message: login
           ? 'Google session cần đăng nhập lại trước khi dùng Gemini Browser.'
           : 'Không có tài khoản Google sẵn sàng cho Gemini Browser.',
-        accountEmail: (login ?? accounts[0])?.email ?? null,
+        accountEmail: (login ?? accounts[0]).email ?? null,
       };
     }
 
@@ -162,7 +162,7 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
         projectId,
         notebookRole: 'TRANSLATION',
         providerId: this.providerId,
-        jobId: options?.jobId ?? null,
+        jobId: options.jobId ?? null,
         lightweight: true,
       });
       if (preflight.result === 'NEEDS_LOGIN') {
@@ -204,21 +204,25 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
       }
     }
 
-    this.activeIds.set(requestId, requestId);
+    // Same id for request + correlation so cancelRequest mid-flight hits GeminiService.
+    const correlationId = requestId;
+    this.activeIds.set(requestId, correlationId);
 
     try {
       const sent = await this.geminiService.sendTranslation({
         projectId,
         accountId: googleAccountId,
         pack,
-        jobId: options?.jobId ?? null,
-        headless: options?.headless,
-        maxTimeoutMs: options?.maxTimeoutMs,
+        jobId: options.jobId ?? null,
+        headless: options.headless,
+        maxTimeoutMs: options.maxTimeoutMs,
+        correlationId,
       });
 
-      const corr = sent.correlationId || requestId;
-      this.activeIds.set(requestId, corr);
-      this.activeIds.set(corr, corr);
+      const corr = sent.correlationId || correlationId;
+      if (corr !== correlationId) {
+        this.activeIds.set(requestId, corr);
+      }
 
       if (sent.status === 'completed') {
         return {
@@ -239,7 +243,7 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
         text: '',
         errorCode: sent.errorCode ?? status,
         errorMessage:
-          sent.errorMessage || userMessageForStatus(status) || 'Yêu cầu AI thất bại.',
+          (sent.errorMessage ?? userMessageForStatus(status)) || 'Yêu cầu AI thất bại.',
         providerType: this.providerType,
         providerId: this.providerId,
       };
@@ -268,7 +272,6 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
     const correlationId = this.activeIds.get(requestId) ?? requestId;
     await this.geminiService.cancelActive(correlationId);
     this.activeIds.delete(requestId);
-    this.activeIds.delete(correlationId);
   }
 
   async getStatus(): Promise<AIProviderStatusSnapshot> {
@@ -283,6 +286,6 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
 
   async close(): Promise<void> {
     this.activeIds.clear();
-    await this.geminiService.cancelActive().catch(() => undefined);
+    await this.geminiService.close().catch(() => undefined);
   }
 }

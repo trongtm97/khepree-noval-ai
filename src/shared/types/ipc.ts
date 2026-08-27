@@ -92,6 +92,7 @@ import type {
 import type {
   CheckForUpdatesResponseSchema,
   SetupCompleteResponseSchema,
+  SetupExploreResponseSchema,
   SetupStatusSchema,
 } from '../schemas/setup';
 import type { SetupWizardStep } from '../constants/setup';
@@ -118,6 +119,7 @@ export interface NovelTransApi {
     getStatus: () => Promise<z.infer<typeof SetupStatusSchema>>;
     setStep: (input: { step: SetupWizardStep }) => Promise<z.infer<typeof SetupStatusSchema>>;
     skipDrive: (input: { skip: boolean }) => Promise<z.infer<typeof SetupStatusSchema>>;
+    explore: (input: { confirm: true }) => Promise<z.infer<typeof SetupExploreResponseSchema>>;
     complete: (input: { confirm: true }) => Promise<z.infer<typeof SetupCompleteResponseSchema>>;
   };
   logs: {
@@ -178,6 +180,23 @@ export interface NovelTransApi {
     }) => Promise<{ project: ProjectDto }>;
     get: (projectId: string) => Promise<{ project: ProjectDto }>;
     delete: (projectId: string) => Promise<{ ok: true }>;
+    resolveWorker: (input: {
+      projectId: string;
+      purpose?:
+        | 'translation'
+        | 'notebook'
+        | 'research'
+        | 'drive_sync'
+        | 'preprocess'
+        | 'diagnostics';
+      preferredAccountId?: string | null;
+      jobId?: string | null;
+    }) => Promise<import('../schemas/project-worker').ProjectWorkerResolutionDto>;
+    setWorker: (input: {
+      projectId: string;
+      accountId: string;
+      ensureNotebook?: boolean;
+    }) => Promise<import('../schemas/project-worker').ProjectWorkerSetResponse>;
   };
   import: {
     selectFile: () => Promise<{ canceled: boolean; filePath: string | null }>;
@@ -488,6 +507,7 @@ export interface NovelTransApi {
       projectId: string;
       accountId: string;
       headless?: boolean;
+      role?: 'SINGLE' | 'RESEARCH' | 'TRANSLATION';
     }) => Promise<{
       mapping: NotebookMappingDto;
       assisted: boolean;
@@ -497,6 +517,7 @@ export interface NovelTransApi {
       projectId: string;
       accountId: string;
       headless?: boolean;
+      role?: 'SINGLE' | 'RESEARCH' | 'TRANSLATION';
     }) => Promise<{
       mapping: NotebookMappingDto;
       assisted: boolean;
@@ -540,16 +561,7 @@ export interface NovelTransApi {
     ensureForTranslate: (input: {
       projectId: string;
       accountId?: string | null;
-    }) => Promise<{
-      ok: boolean;
-      reason: string;
-      message: string;
-      workerAccountId: string | null;
-      notebookStatus: string | null;
-      usedFallback: boolean;
-      needsAssisted: boolean;
-      actions: Array<'check_google' | 'open_notebook' | 'open_ai_memory'>;
-    }>;
+    }) => Promise<import('../schemas/translate-readiness').TranslateEnsureReadyResponse>;
     runBootstrapAnalysis: (input: {
       projectId: string;
       mode?: 'SAFE' | 'BALANCED' | 'DEEP';
@@ -595,14 +607,14 @@ export interface NovelTransApi {
       outputDir?: string;
     }) => Promise<{
       outputDir: string;
-      parts: Array<{
+      parts: {
         fileName: string;
         filePath: string;
         wordCount: number;
         byteLength: number;
         chapterFrom: number;
         chapterTo: number;
-      }>;
+      }[];
       totalWords: number;
       totalChapters: number;
       underSinglePartLimit: boolean;
@@ -734,7 +746,7 @@ export interface NovelTransApi {
       action: 'cancel' | 'delete' | 'retry';
       affected: number;
       skipped: number;
-      failed: Array<{ jobId: string; error: string }>;
+      failed: { jobId: string; error: string }[];
       message: string;
     }>;
     move: (
@@ -877,14 +889,14 @@ export interface NovelTransApi {
       notebookUrl: string;
       smokeProjectLabel?: string;
       headless?: boolean;
-      scenarios?: Array<'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H'>;
+      scenarios?: ('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H')[];
     }) => Promise<z.infer<typeof GoogleSmokeRunResponseSchema>>;
     notebookGroundingSmoke: (input: {
       accountId: string;
       notebookUrl: string;
       smokeProjectLabel?: string;
       headless?: boolean;
-      tests?: Array<'A' | 'B' | 'C' | 'D'>;
+      tests?: ('A' | 'B' | 'C' | 'D')[];
       groundingKnowledgeDriveFileId?: string;
       groundingSyncStateDriveFileId?: string;
     }) => Promise<z.infer<typeof NotebookGroundingSmokeRunResponseSchema>>;

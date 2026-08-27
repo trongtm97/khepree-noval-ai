@@ -72,8 +72,14 @@ export const ROUTE_HELP_ARTICLE: Record<string, string> = {
 
 export function helpArticleForRoute(pathname: string): string {
   if (ROUTE_HELP_ARTICLE[pathname]) return ROUTE_HELP_ARTICLE[pathname];
+  if (/^\/projects\/[^/]+\/?$/.test(pathname)) return 'project-info';
   if (/^\/projects\/[^/]+\/info\/?$/.test(pathname)) return 'project-info';
-  if (/^\/projects\/[^/]+\/source\/?$/.test(pathname)) return 'source-file-types';
+  if (/^\/projects\/[^/]+\/(source|chapters)\/?$/.test(pathname)) return 'source-file-types';
+  if (/^\/projects\/[^/]+\/translate\/?$/.test(pathname)) return 'start-translate';
+  if (/^\/projects\/[^/]+\/ai-memory\/?$/.test(pathname)) return 'novel-memory';
+  if (/^\/projects\/[^/]+\/terms\/?$/.test(pathname)) return 'term-vault';
+  if (/^\/projects\/[^/]+\/characters\/?$/.test(pathname)) return 'characters';
+  if (/^\/projects\/[^/]+\/export\/?$/.test(pathname)) return 'export-novel';
   if (pathname.startsWith('/help/')) {
     const id = pathname.slice('/help/'.length).split('/')[0];
     return HELP_ARTICLE_MAP.has(id) ? id : getDefaultArticleId();

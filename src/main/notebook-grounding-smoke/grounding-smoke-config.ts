@@ -49,8 +49,8 @@ export function isNotebookGroundingSmokeEnvEnabled(): boolean {
 
 export function resolveNotebookGroundingSmokeConfigPath(): string {
   return (
-    process.env.NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE_CONFIG?.trim() ||
-    process.env.NOVELTRANS_GOOGLE_SMOKE_CONFIG?.trim() ||
+    (process.env.NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE_CONFIG?.trim() ??
+    process.env.NOVELTRANS_GOOGLE_SMOKE_CONFIG?.trim()) ??
     path.resolve(process.cwd(), 'google-smoke.config.json')
   );
 }

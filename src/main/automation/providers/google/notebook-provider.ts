@@ -601,7 +601,7 @@ export class NotebookProvider implements AutomationProvider {
    */
   async inspectSourceStatuses(
     names: string[],
-  ): Promise<Array<{ name: string; status: NotebookSourceUiStatus; present: boolean }>> {
+  ): Promise<{ name: string; status: NotebookSourceUiStatus; present: boolean }[]> {
     const page = this.requirePage();
     const unique = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
     if (unique.length === 0) return [];
@@ -625,7 +625,7 @@ export class NotebookProvider implements AutomationProvider {
       ).filter(isVisible);
 
       const normalize = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
-      const out: Array<{ name: string; status: string; present: boolean }> = [];
+      const out: { name: string; status: string; present: boolean }[] = [];
 
       for (const want of wantNames) {
         const wantNorm = normalize(want);
@@ -672,7 +672,7 @@ export class NotebookProvider implements AutomationProvider {
     return rows.map((r) => ({
       name: r.name,
       present: r.present,
-      status: (r.status as NotebookSourceUiStatus) || 'UNKNOWN',
+      status: r.status as NotebookSourceUiStatus,
     }));
   }
 
@@ -691,7 +691,7 @@ export class NotebookProvider implements AutomationProvider {
         uploaded: number;
         error: number;
         total: number;
-        statuses: Array<{ name: string; status: NotebookSourceUiStatus; present: boolean }>;
+        statuses: { name: string; status: NotebookSourceUiStatus; present: boolean }[];
       }) => void;
     },
   ): Promise<void> {
@@ -809,9 +809,12 @@ export class NotebookProvider implements AutomationProvider {
         const text = (el.textContent || '').trim();
         return isVisible(el) && ['check', 'done', 'check_circle'].includes(text);
       }).length;
-      const body = document.body?.innerText ?? '';
-      const match = body.match(/(\d+)\s*(nguồn|sources?)/i);
-      const sourceCount = match ? parseInt(match[1]!, 10) : 0;
+      const body = document.body.innerText;
+      const match = /(\d+)\s*(nguồn|sources?)/i.exec(body);
+      const listCount = document.querySelectorAll(
+        '[data-testid="source-item"], [data-source-item="1"], [data-source-list] > li, [data-source-list] > *',
+      ).length;
+      const sourceCount = match ? Math.max(parseInt(match[1], 10), listCount) : listCount;
       return { spinners, checks, sourceCount, busy: spinners > 0 };
     });
   }
@@ -891,7 +894,7 @@ export class NotebookProvider implements AutomationProvider {
    * (avoids brittle Drive picker iframe). Content from local DB builder.
    */
   async addTextSources(
-    sources: Array<{ name: string; content: string }>,
+    sources: { name: string; content: string }[],
   ): Promise<{ added: string[]; skipped: string[] }> {
     const registry = this.requireSelectors();
     const page = this.requirePage();
@@ -1259,12 +1262,12 @@ export class NotebookProvider implements AutomationProvider {
       const value = (await input.inputValue().catch(() => '')).trim();
       if (value) return value;
     }
-    const title = await page.getByTestId('notebook-title').first();
+    const title =  page.getByTestId('notebook-title').first();
     if ((await title.count()) > 0) {
       const text = (await title.innerText().catch(() => '')).trim();
       if (text) return text;
     }
-    const display = await page.locator('[data-notebook-title-display]').first();
+    const display =  page.locator('[data-notebook-title-display]').first();
     if ((await display.count()) > 0) {
       const text = (await display.innerText().catch(() => '')).trim();
       if (text) return text;
@@ -1316,7 +1319,7 @@ export class NotebookProvider implements AutomationProvider {
   }
 
   private async fail(
-    code: 'SELECTOR_NOT_FOUND' | 'UNKNOWN_UI' | 'LOGIN_REQUIRED',
+    code: 'SELECTOR_NOT_FOUND' | 'UNKNOWN_UI' | 'LOGIN_REQUIRED' | 'RESPONSE_TIMEOUT',
     message: string,
     operation: string,
   ): Promise<AutomationError> {

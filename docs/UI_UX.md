@@ -2,6 +2,8 @@
 
 > Modern Windows desktop productivity UI. Dark-first. Vietnamese default.
 
+Final renderer audit (checklist + debt): [`docs/UX_UI_FINAL_AUDIT.md`](./UX_UI_FINAL_AUDIT.md).
+
 ## Design philosophy
 
 - Clarity over decoration

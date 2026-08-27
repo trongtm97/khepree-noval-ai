@@ -13,6 +13,9 @@ function minimalPack(): TranslationPackDto {
     chapterNumbers: [1],
     style: 'balanced',
     prompt: 'hello',
+    baseContext: '',
+    operationPrompt: 'hello',
+    operationType: 'TRANSLATE',
     sections: {
       taskHeader: '',
       criticalRules: '',
@@ -45,25 +48,25 @@ function mockProvider(
   return {
     providerId: id,
     providerType: type,
-    initialize: vi.fn(async () => undefined),
-    healthCheck: vi.fn(async () => ({
+    initialize: vi.fn(() => Promise.resolve()),
+    healthCheck: vi.fn(() => Promise.resolve({
       ok: true,
       status: 'READY' as const,
       message: 'ok',
     })),
     sendPrompt: vi.fn(send),
-    cancelRequest: vi.fn(async () => undefined),
-    getStatus: vi.fn(async () => ({
+    cancelRequest: vi.fn(() => Promise.resolve()),
+    getStatus: vi.fn(() => Promise.resolve({
       providerId: id,
       type,
       ready: true,
       message: 'ok',
     })),
-    close: vi.fn(async () => undefined),
+    close: vi.fn(() => Promise.resolve()),
   };
 }
 
-function mockDb(providers: Array<{ id: string; fallback_allowed: number }>) {
+function mockDb(providers: { id: string; fallback_allowed: number }[]) {
   return {
     aiProviders: {
       listEnabledOrdered: () =>
@@ -87,7 +90,7 @@ function mockDb(providers: Array<{ id: string; fallback_allowed: number }>) {
               status: 'READY',
               priority: 1,
               enabled: 1,
-              fallback_allowed: providers.find((p) => p.id === id)!.fallback_allowed,
+              fallback_allowed: providers.find((p) => p.id === id)?.fallback_allowed,
               created_at: '',
               updated_at: '',
             }
@@ -107,7 +110,6 @@ function mockDb(providers: Array<{ id: string; fallback_allowed: number }>) {
       listReadyByProvider: () => [{ id: 'ai-ready' }],
     },
     notebooks: {
-      getByProjectAndWorker: () => null as { status: string } | null,
       listByProjectAndWorker: () => [] as { status: string; notebook_role?: string }[],
     },
   } as unknown as ConstructorParameters<typeof AiProviderManager>[0];
@@ -119,7 +121,7 @@ describe('AiProviderManager selection + fallback', () => {
   });
 
   it('uses first successful provider without calling next', async () => {
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'SUCCESS',
       text: 'from-web',
@@ -127,7 +129,7 @@ describe('AiProviderManager selection + fallback', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'from-browser',
@@ -145,12 +147,12 @@ describe('AiProviderManager selection + fallback', () => {
 
     const result = await manager.sendWithFallback(minimalPack());
     expect(result.text).toBe('from-web');
-    expect(web.sendPrompt).toHaveBeenCalledOnce();
-    expect(browser.sendPrompt).not.toHaveBeenCalled();
+    expect(Reflect.get(web, "sendPrompt")).toHaveBeenCalledOnce();
+    expect(Reflect.get(browser, "sendPrompt")).not.toHaveBeenCalled();
   });
 
   it('falls back on RATE_LIMIT when enabled', async () => {
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'RATE_LIMIT',
       text: '',
@@ -159,7 +161,7 @@ describe('AiProviderManager selection + fallback', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'from-browser',
@@ -177,12 +179,12 @@ describe('AiProviderManager selection + fallback', () => {
 
     const result = await manager.sendWithFallback(minimalPack());
     expect(result.text).toBe('from-browser');
-    expect(web.sendPrompt).toHaveBeenCalledOnce();
-    expect(browser.sendPrompt).toHaveBeenCalledOnce();
+    expect(Reflect.get(web, "sendPrompt")).toHaveBeenCalledOnce();
+    expect(Reflect.get(browser, "sendPrompt")).toHaveBeenCalledOnce();
   });
 
   it('does not fallback when provider locks fallback_allowed=0', async () => {
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'RATE_LIMIT',
       text: '',
@@ -190,7 +192,7 @@ describe('AiProviderManager selection + fallback', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'from-browser',
@@ -208,11 +210,11 @@ describe('AiProviderManager selection + fallback', () => {
 
     const result = await manager.sendWithFallback(minimalPack());
     expect(result.status).toBe('RATE_LIMIT');
-    expect(browser.sendPrompt).not.toHaveBeenCalled();
+    expect(Reflect.get(browser, "sendPrompt")).not.toHaveBeenCalled();
   });
 
   it('skips Web API when no READY account and uses the next provider', async () => {
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'SUCCESS',
       text: 'from-web',
@@ -220,7 +222,7 @@ describe('AiProviderManager selection + fallback', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'from-browser',
@@ -242,12 +244,12 @@ describe('AiProviderManager selection + fallback', () => {
 
     const result = await manager.sendWithFallback(minimalPack());
     expect(result.text).toBe('from-browser');
-    expect(web.sendPrompt).not.toHaveBeenCalled();
-    expect(browser.sendPrompt).toHaveBeenCalledOnce();
+    expect(Reflect.get(web, "sendPrompt")).not.toHaveBeenCalled();
+    expect(Reflect.get(browser, "sendPrompt")).toHaveBeenCalledOnce();
   });
 
   it('falls back when SUCCESS text is a Gemini soft error', async () => {
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'SUCCESS',
       text: 'Sorry, something went wrong. Please try your request again.',
@@ -255,7 +257,7 @@ describe('AiProviderManager selection + fallback', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'from-browser',
@@ -273,11 +275,11 @@ describe('AiProviderManager selection + fallback', () => {
 
     const result = await manager.sendWithFallback(minimalPack());
     expect(result.text).toBe('from-browser');
-    expect(browser.sendPrompt).toHaveBeenCalledOnce();
+    expect(Reflect.get(browser, "sendPrompt")).toHaveBeenCalledOnce();
   });
 
   it('falls back on SESSION_EXPIRED even when app_meta omits auth statuses', async () => {
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'SESSION_EXPIRED',
       text: '',
@@ -286,7 +288,7 @@ describe('AiProviderManager selection + fallback', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'from-browser',
@@ -294,10 +296,10 @@ describe('AiProviderManager selection + fallback', () => {
     );
 
     const narrowMetaDb = {
-      ...mockDb([
+      ...(mockDb([
         { id: AI_PROVIDER_IDS.GEMINI_WEB_API, fallback_allowed: 1 },
         { id: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, fallback_allowed: 1 },
-      ]),
+      ]) as unknown as Record<string, unknown>),
       appMeta: {
         get: (key: string) => {
           if (key === 'ai.fallback.enabled') return '1';
@@ -316,11 +318,11 @@ describe('AiProviderManager selection + fallback', () => {
 
     const result = await manager.sendWithFallback(minimalPack());
     expect(result.text).toBe('from-browser');
-    expect(browser.sendPrompt).toHaveBeenCalledOnce();
+    expect(Reflect.get(browser, "sendPrompt")).toHaveBeenCalledOnce();
   });
 
   it('respects DB order when Playwright is listed before Web API and notebook is ready', () => {
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'SUCCESS',
       text: 'web',
@@ -328,7 +330,7 @@ describe('AiProviderManager selection + fallback', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'browser',
@@ -357,7 +359,7 @@ describe('AiProviderManager selection + fallback', () => {
   });
 
   it('demotes Playwright when notebook is not ready even if DB lists it first', () => {
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'SUCCESS',
       text: 'web',
@@ -365,7 +367,7 @@ describe('AiProviderManager selection + fallback', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'browser',
@@ -376,7 +378,7 @@ describe('AiProviderManager selection + fallback', () => {
       { id: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, fallback_allowed: 1 },
       { id: AI_PROVIDER_IDS.GEMINI_WEB_API, fallback_allowed: 1 },
     ]);
-    db.notebooks.getByProjectAndWorker = () => null;
+    db.notebooks.listByProjectAndWorker = () => [];
 
     const manager = new AiProviderManager(db);
     manager.register(browser);
@@ -393,7 +395,7 @@ describe('AiProviderManager selection + fallback', () => {
   });
 
   it('keeps DB order (Web API first) when notebook ready and Web API listed first', () => {
-    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', async () => ({
+    const web = mockProvider(AI_PROVIDER_IDS.GEMINI_WEB_API, 'GEMINI_WEB_API', () => Promise.resolve({
       requestId: '1',
       status: 'SUCCESS',
       text: 'web',
@@ -401,7 +403,7 @@ describe('AiProviderManager selection + fallback', () => {
     const browser = mockProvider(
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       'PLAYWRIGHT_GEMINI',
-      async () => ({
+      () => Promise.resolve({
         requestId: '2',
         status: 'SUCCESS',
         text: 'browser',
@@ -413,7 +415,8 @@ describe('AiProviderManager selection + fallback', () => {
       { id: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, fallback_allowed: 1 },
     ]);
     db.aiAccounts.listReadyByProvider = () => [];
-    db.notebooks.getByProjectAndWorker = () => ({ status: 'ready' }) as never;
+    db.notebooks.listByProjectAndWorker = () =>
+      [{ status: 'ready', notebook_role: 'TRANSLATION' }] as never;
 
     const manager = new AiProviderManager(db);
     manager.register(web);

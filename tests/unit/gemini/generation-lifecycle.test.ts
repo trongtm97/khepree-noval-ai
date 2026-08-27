@@ -90,9 +90,9 @@ describe('runTargetGenerationLifecycle', () => {
         noIndicatorStabilizationWindowMs: 250,
         pollIntervalMs: 40,
         initialPhase: 'RESPONSE_CREATED',
-        resolveTarget: async () => ({}) as Locator,
-        readTargetText: async () => text,
-        readGeneratingIndicator: async () => indicator,
+        resolveTarget: () => Promise.resolve({} as unknown as Locator),
+        readTargetText: () => Promise.resolve(text),
+        readGeneratingIndicator: () => Promise.resolve(indicator),
         onPhase: (p) => phases.push(p),
       });
       expect(result.text).toContain('</TRANSLATION>');
@@ -112,10 +112,12 @@ describe('runTargetGenerationLifecycle', () => {
         noIndicatorStabilizationWindowMs: 150,
         pollIntervalMs: 30,
         initialPhase: 'RESPONSE_CREATED',
-        resolveTarget: async () => ({}) as Locator,
-        readTargetText: async () =>
-          '<TRANSLATION>\n[C000001:P000001] cut\n[C000001:P00000',
-        readGeneratingIndicator: async () => false,
+        resolveTarget: () => Promise.resolve({} as unknown as Locator),
+        readTargetText: () =>
+          Promise.resolve(
+            '<TRANSLATION>\n[C000001:P000001] cut\n[C000001:P00000',
+          ),
+        readGeneratingIndicator: () => Promise.resolve(false),
       }),
     ).rejects.toMatchObject({ code: 'OUTPUT_INCOMPLETE' });
   }, 4_000);
@@ -127,15 +129,15 @@ describe('runTargetGenerationLifecycle', () => {
         stabilizationWindowMs: 100,
         pollIntervalMs: 30,
         initialPhase: 'RESPONSE_CREATED',
-        resolveTarget: async () => ({}) as Locator,
-        readTargetText: async () => 'Something went wrong. Please retry.',
-        readGeneratingIndicator: async () => false,
+        resolveTarget: () => Promise.resolve({} as unknown as Locator),
+        readTargetText: () => Promise.resolve('Something went wrong. Please retry.'),
+        readGeneratingIndicator: () => Promise.resolve(false),
       }),
     ).rejects.toMatchObject({ code: 'GENERATION_ERROR' });
   }, 5_000);
 
   it('uses longer quiet window when indicator is null', async () => {
-    let text =
+    const text =
       '<TRANSLATION>\n[C000001:P000001] ok\n</TRANSLATION>\n<TERM_DELTA>[]</TERM_DELTA>';
     const t0 = Date.now();
     await runTargetGenerationLifecycle({
@@ -144,9 +146,9 @@ describe('runTargetGenerationLifecycle', () => {
       noIndicatorStabilizationWindowMs: 400,
       pollIntervalMs: 40,
       initialPhase: 'RESPONSE_CREATED',
-      resolveTarget: async () => ({}) as Locator,
-      readTargetText: async () => text,
-      readGeneratingIndicator: async () => null,
+      resolveTarget: () => Promise.resolve({} as unknown as Locator),
+      readTargetText: () => Promise.resolve(text),
+      readGeneratingIndicator: () => Promise.resolve(null),
     });
     expect(Date.now() - t0).toBeGreaterThanOrEqual(350);
   }, 6_000);

@@ -27,7 +27,7 @@ describe('prepareForTranslate', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     closeDatabase();
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
@@ -35,8 +35,8 @@ describe('prepareForTranslate', () => {
   it('bootstraps when knowledge empty', async () => {
     expect(db.knowledgeFiles.listByProject(projectId)).toHaveLength(0);
     const service = new NotebookBootstrapService(db);
-    const syncDrive = vi.fn(async () => undefined);
-    const provision = vi.fn(async () => ({
+    const syncDrive = vi.fn(() => Promise.resolve());
+    const provision = vi.fn(() => Promise.resolve({
       assisted: false,
       mapping: { status: 'ready' },
       message: 'ok',
@@ -63,10 +63,11 @@ describe('prepareForTranslate', () => {
     });
     const worker = db.workerStates.getByAccountId(account.id);
     expect(worker).toBeTruthy();
-    db.workerStates.setHealth(worker!.id, 'READY');
+    if (!worker) throw new Error('expected worker state');
+    db.workerStates.setHealth(worker.id, 'READY');
 
     const service = new NotebookBootstrapService(db);
-    const provision = vi.fn(async () => ({
+    const provision = vi.fn(() => Promise.resolve({
       assisted: true,
       mapping: { status: 'needs_assisted' },
       message: 'Need browser',
@@ -76,7 +77,7 @@ describe('prepareForTranslate', () => {
       projectId,
       { accountId: account.id },
       {
-        syncDrive: async () => undefined,
+        syncDrive: () => Promise.resolve(),
         provision,
       },
     );

@@ -20,6 +20,9 @@ function minimalPack(prompt: string): TranslationPackDto {
     chapterNumbers: [1],
     style: 'balanced',
     prompt,
+    baseContext: '',
+    operationPrompt: '',
+    operationType: 'TRANSLATE',
     sections: {
       taskHeader: 'task',
       criticalRules: 'rules',
@@ -151,9 +154,16 @@ describe('GeminiBrowserProvider send handshake', () => {
   it('send disabled throws without waiting for generation', async () => {
     await page.goto(`${baseUrl}/chat-ready.html?mode=send-disabled`);
     const p = provider({ sendButtonWaitMs: 1_500 });
-    await expect(p.submitPlainPrompt('Cannot send')).rejects.toMatchObject({
-      code: expect.stringMatching(/SEND_DISABLED|UNKNOWN_UI|SELECTOR_NOT_FOUND/),
-    });
+    let sendErr: unknown;
+    try {
+      await p.submitPlainPrompt('Cannot send');
+    } catch (err) {
+      sendErr = err;
+    }
+    expect(sendErr).toBeTruthy();
+    expect(String((sendErr as { code?: unknown }).code)).toMatch(
+      /SEND_DISABLED|UNKNOWN_UI|SELECTOR_NOT_FOUND/,
+    );
     expect(eventTypes()).not.toContain('SEND_CONFIRMED');
     expect(eventTypes()).not.toContain('generation_started');
   }, 20_000);

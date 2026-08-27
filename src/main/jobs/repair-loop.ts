@@ -33,7 +33,6 @@ import {
   readRepairChannelFromProgress,
   type RepairChannelContext,
 } from './repair-channel-context';
-import type { PackMode } from '@shared/constants/pack-mode';
 
 export interface RepairSendRequest {
   jobId: string;
@@ -256,6 +255,11 @@ export async function runRepairLoop(
             parsed,
             chapterFrom: jobRow?.chapter_from ?? null,
             chapterTo: jobRow?.chapter_to ?? null,
+            // Real chapter span (101–103 → 3), never +1 per job.
+            chaptersCompleted:
+              jobRow?.chapter_from != null && jobRow.chapter_to != null
+                ? Math.max(0, jobRow.chapter_to - jobRow.chapter_from + 1)
+                : null,
             sourceContextByParagraph,
           });
           const emptyDeltas =
@@ -306,7 +310,9 @@ export async function runRepairLoop(
           if (jobAfterLearning?.progress) {
             try {
               const prog = JSON.parse(jobAfterLearning.progress) as Record<string, unknown>;
-              const timeline = Array.isArray(prog.timeline) ? [...prog.timeline] : [];
+              const timeline: Record<string, unknown>[] = Array.isArray(prog.timeline)
+                ? [...(prog.timeline as Record<string, unknown>[])]
+                : [];
               timeline.push({
                 at: new Date().toISOString(),
                 event: 'LEARNING_APPLIED',
@@ -474,7 +480,7 @@ export async function runRepairLoop(
         raw = sent.rawResponse;
         inputRef = sent.inputRef;
         const usedChannel = sent.channel ?? inherited;
-        if (lastParsed && shouldMergePartialRepair(plan, input.batchParagraphs.length)) {
+        if (shouldMergePartialRepair(plan, input.batchParagraphs.length)) {
           const repairParsed = parser.parse(sent.rawResponse);
           const mergedTranslations = mergeRepairTranslations(
             lastParsed.translations,
@@ -494,7 +500,7 @@ export async function runRepairLoop(
             termDeltas,
             memoryDeltas,
           );
-        } else if (plan.mode === 'continuation' && lastParsed) {
+        } else if (plan.mode === 'continuation') {
           const contParsed = parser.parse(sent.rawResponse);
           const mergedTranslations = mergeTranslationsByParagraphId(
             lastParsed.translations,
@@ -610,13 +616,7 @@ export function shouldMergePartialRepair(
   ) {
     return false;
   }
-  return (
-    plan.mode === 'translation_empty' ||
-    plan.mode === 'translation_corrupt' ||
-    plan.mode === 'translation_missing' ||
-    plan.mode === 'term_violation' ||
-    plan.mode === 'malformed_full'
-  );
+  return true;
 }
 
 /** Mark RUNNING attempts without completed_at as CRASHED (process died mid-attempt). */
@@ -702,7 +702,7 @@ function toAttemptDto(row: {
 }): JobAttemptDto {
   const packMode =
     row.pack_mode === 'slim' || row.pack_mode === 'hybrid' || row.pack_mode === 'fat'
-      ? (row.pack_mode as PackMode)
+      ? (row.pack_mode)
       : null;
   return {
     id: row.id,

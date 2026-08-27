@@ -12,7 +12,7 @@ describe('BrowserDependencyHealth', () => {
       ProgramFiles: 'C:\\PF',
       'ProgramFiles(x86)': 'C:\\PF86',
     };
-    const edgePath = windowsEdgeCandidates(env)[0]!;
+    const edgePath = windowsEdgeCandidates(env)[0];
     const health = assessBrowserDependencyHealth('AUTO', {
       platform: 'win32',
       env,
@@ -68,7 +68,7 @@ describe('BrowserDependencyHealth', () => {
       'ProgramFiles(x86)': 'C:\\PF86',
       LOCALAPPDATA: 'C:\\Local',
     };
-    const chromePath = windowsChromeCandidates(env)[0]!;
+    const chromePath = windowsChromeCandidates(env)[0];
     const chromiumPath = 'C:\\browsers\\chromium.exe';
     const health = assessBrowserDependencyHealth('AUTO', {
       platform: 'win32',

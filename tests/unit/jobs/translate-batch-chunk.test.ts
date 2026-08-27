@@ -67,8 +67,8 @@ describe('translate batch chunking', () => {
     const paras = Array.from({ length: 5 }, (_, i) => ({ id: i + 1 }));
     const halves = splitParagraphChunkInHalf(paras);
     expect(halves).not.toBeNull();
-    expect(halves![0]).toHaveLength(3);
-    expect(halves![1]).toHaveLength(2);
+    expect(halves?.[0]).toHaveLength(3);
+    expect(halves?.[1]).toHaveLength(2);
     expect(splitParagraphChunkInHalf([{ id: 1 }])).toBeNull();
   });
 

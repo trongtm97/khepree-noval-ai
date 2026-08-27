@@ -53,7 +53,7 @@ export function extractEmailFromText(text: string): string | null {
 }
 
 export function pickGeminiCookies(
-  cookies: ReadonlyArray<{ name: string; value: string }>,
+  cookies: readonly { name: string; value: string }[],
 ): GeminiSessionCookies {
   const secure1psid =
     cookies.find((cookie) => cookie.name === '__Secure-1PSID')?.value ?? '';

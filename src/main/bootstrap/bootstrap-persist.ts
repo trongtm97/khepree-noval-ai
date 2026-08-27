@@ -211,7 +211,7 @@ function applyFullTemporalProvenance(
     const first = ch.first_seen_chapter ?? row.first_chapter;
     const discovered = ch.discovered_from_chapter ?? throughChapter;
     const future =
-      ch.future_sensitive === true ||
+      ch.future_sensitive ||
       (first != null && throughChapter != null && first > throughChapter)
         ? 1
         : 0;
@@ -241,7 +241,7 @@ function applyFullTemporalProvenance(
       );
     if (!existing || existing.locked === 1) continue;
     const validFrom = rel.valid_from_chapter ?? existing.valid_from_chapter;
-    const future = rel.future_sensitive === true ? 1 : 0;
+    const future = rel.future_sensitive ? 1 : 0;
     conn
       .prepare(
         `UPDATE character_relationships SET
@@ -260,7 +260,7 @@ function applyFullTemporalProvenance(
     const discovered =
       term.discovered_from_chapter ?? existing.discovered_from_chapter ?? throughChapter;
     const future =
-      term.future_sensitive === true ||
+      term.future_sensitive ||
       (first != null && throughChapter != null && first > throughChapter)
         ? 1
         : 0;

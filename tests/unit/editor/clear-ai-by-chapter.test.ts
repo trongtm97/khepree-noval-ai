@@ -50,7 +50,7 @@ describe('clearAiByChapter', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     closeDatabase();
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });

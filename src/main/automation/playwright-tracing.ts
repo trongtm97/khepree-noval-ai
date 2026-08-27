@@ -24,7 +24,7 @@ export async function startFailTrace(
     tag,
   };
   try {
-    if (typeof context.tracing?.start !== 'function') {
+    if (typeof context.tracing.start !== 'function') {
       return session;
     }
     fs.mkdirSync(diagnosticsDir, { recursive: true });
@@ -50,7 +50,7 @@ export async function stopFailTrace(
 ): Promise<string | null> {
   if (!session?.enabled || !context) return null;
   try {
-    if (typeof context.tracing?.stop !== 'function') return null;
+    if (typeof context.tracing.stop !== 'function') return null;
     if (!save) {
       await context.tracing.stop().catch(() => undefined);
       return null;

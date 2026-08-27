@@ -96,7 +96,7 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
@@ -129,7 +129,7 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
     const result = await runKnowledgeVersionProbe(db, {
       projectId,
       accountId,
-      capture: async () => 'NT_VERSION=47\nNT_NONCE=8F7A2C19',
+      capture: () => Promise.resolve('NT_VERSION=47\nNT_NONCE=8F7A2C19'),
     });
     expect(result.status).toBe('verified');
     expect(db.notebookHotDeltas.listActive(projectId)).toHaveLength(0);
@@ -161,7 +161,7 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
     const result = await runKnowledgeVersionProbe(db, {
       projectId,
       accountId,
-      capture: async () => 'NT_VERSION=47\nNT_NONCE=8F7A2C19',
+      capture: () => Promise.resolve('NT_VERSION=47\nNT_NONCE=8F7A2C19'),
     });
     expect(result.status).toBe('mismatch');
     expect(db.driveSyncState.ensure(projectId).version_probe_status).toBe('mismatch');
@@ -178,7 +178,11 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
     const sync = new NotebookSyncService(db);
     sync.markDirty(projectId, 'TERM_CHANGED', '天逆珠 → Thiên Nghịch Châu [LOCKED]');
     const before = db.notebookHotDeltas.listActive(projectId).length;
-    sync.markNotebookVerified(projectId, accountId);
+    (
+      sync as unknown as {
+        markNotebookVerified: (projectId: string, accountId: string) => void;
+      }
+    ).markNotebookVerified(projectId, accountId);
     expect(db.notebookHotDeltas.listActive(projectId)).toHaveLength(before);
   });
 });

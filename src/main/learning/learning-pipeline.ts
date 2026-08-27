@@ -3,7 +3,8 @@ import type { DatabaseManager } from '../db/database-manager';
 import { applyMemoryDelta, type MemoryDeltaApplyResult } from '../memory/memory-delta-processor';
 import { applyTermDelta, type TermDeltaApplyResult } from './term-delta-processor';
 import { compactProjectMemory, type CompactMemoryResult } from './memory-compactor';
-import { buildProjectDriveDocuments } from '../drive/drive-content-builder';
+import { NotebookKnowledgeBuilder } from '../notebook/knowledge-builder';
+import type { ProjectKnowledgeDocuments } from '../notebook/knowledge-builder';
 import { logger } from '../logging/logger';
 
 export interface LearningPipelineInput {
@@ -23,7 +24,7 @@ export interface LearningPipelineInput {
     projectId: string,
     input: { chapterCount: number; critical?: boolean },
   ) => { shouldSync: boolean };
-  /** Test inject: NotebookSyncService.syncDrive only — never DriveSyncService. */
+  /** Test inject: NotebookSyncService.syncDrive only — never call Drive API client here. */
   syncDrive?: (projectId: string) => Promise<unknown>;
 }
 
@@ -35,7 +36,7 @@ export interface LearningPipelineResult {
   driveSyncTriggered: boolean;
   chapterCount: number;
   critical: boolean;
-  documents?: ReturnType<typeof buildProjectDriveDocuments>;
+  documents?: ProjectKnowledgeDocuments;
 }
 
 /**
@@ -215,10 +216,10 @@ export async function runLearningPipeline(
 
   let consolidated = false;
   let driveSyncTriggered = false;
-  let documents: ReturnType<typeof buildProjectDriveDocuments> | undefined;
+  let documents: ProjectKnowledgeDocuments | undefined;
 
   if (shouldSync || critical) {
-    documents = buildProjectDriveDocuments(db, input.projectId);
+    documents = new NotebookKnowledgeBuilder(db).buildAll(input.projectId);
     consolidated = true;
     db.learningEvents.create({
       project_id: input.projectId,
@@ -230,8 +231,8 @@ export async function runLearningPipeline(
           characters: documents['03_CHARACTERS.md'].length,
           relationships: documents['04_RELATIONSHIPS.md'].length,
           story: documents['05_STORY_STATE.md'].length,
-          world: documents['06_WORLD_KNOWLEDGE.md']?.length ?? 0,
-          recent: documents['07_RECENT_CONTEXT.md']?.length ?? 0,
+          world: documents['06_WORLD_KNOWLEDGE.md'].length,
+          recent: documents['07_RECENT_CONTEXT.md'].length,
         },
         shouldSync,
         critical,

@@ -6,10 +6,10 @@ import {
 import path from 'node:path';
 import os from 'node:os';
 
-type ParentPort = {
+interface ParentPort {
   postMessage: (message: unknown) => void;
   on: (event: 'message', listener: (event: { data: unknown }) => void) => void;
-};
+}
 
 /**
  * Utility-process entry for browser automation.

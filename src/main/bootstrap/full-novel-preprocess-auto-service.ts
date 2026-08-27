@@ -9,6 +9,7 @@ import {
 } from './auto-preprocess-progress';
 import { getNotebookSyncService } from '../notebook/notebook-sync-service-singleton';
 import { FullNovelPreprocessOrchestrator } from './full-novel-preprocess-orchestrator';
+import { resolveProjectWorker } from '../services/project-worker-resolver';
 
 export type { AutoPreprocessResult };
 
@@ -151,30 +152,10 @@ export class FullNovelPreprocessAutoService {
     projectId: string,
     preferred?: string | null,
   ): string | null {
-    if (preferred) return preferred;
-    const mappings = this.db.notebooks.listByProject(projectId);
-    const mapped = mappings.find(
-      (m) =>
-        m.status === 'ready' ||
-        m.status === 'sync_pending' ||
-        m.status === 'stale' ||
-        m.status === 'assisted_setup',
-    );
-    if (mapped) return mapped.google_account_id;
-
-    const accounts = this.db.googleAccounts.listDetails();
-    for (const a of accounts) {
-      const health = this.db.workerStates.getByAccountId(a.id)?.health;
-      const h = (health ?? '').toUpperCase();
-      if (h === 'READY' || h === 'BUSY' || !health) {
-        if (a.assigned_project_ids?.includes(projectId)) return a.id;
-      }
-    }
-    for (const a of accounts) {
-      const health = this.db.workerStates.getByAccountId(a.id)?.health;
-      const h = (health ?? '').toUpperCase();
-      if (h === 'READY' || h === 'BUSY') return a.id;
-    }
-    return accounts[0]?.id ?? null;
+    if (preferred && this.db.googleAccounts.getById(preferred)) return preferred;
+    return resolveProjectWorker(this.db, {
+      projectId,
+      purpose: 'preprocess',
+    }).accountId;
   }
 }

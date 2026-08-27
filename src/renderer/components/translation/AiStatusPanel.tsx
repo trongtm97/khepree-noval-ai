@@ -20,6 +20,8 @@ interface AiStatusPanelProps {
   translatePath?: string | null;
 }
 
+interface AccountOption { id: string; email: string | null; status: string; plan: string | null }
+
 export function AiStatusPanel({
   projectId,
   projectName,
@@ -34,6 +36,7 @@ export function AiStatusPanel({
   const [plan, setPlan] = useState<string | null>(null);
   const [health, setHealth] = useState<string>('READY');
   const [accountId, setAccountId] = useState<string | null>(null);
+  const [accountOptions, setAccountOptions] = useState<AccountOption[]>([]);
   const [notebookStatus, setNotebookStatus] = useState<string | null>(null);
   const [notebookBusy, setNotebookBusy] = useState(false);
   const [notebookMessage, setNotebookMessage] = useState<string | null>(null);
@@ -47,45 +50,97 @@ export function AiStatusPanel({
       window.novelTrans.notebook.get(pid, aid),
       window.novelTrans.notebook.health({ projectId: pid, accountId: aid }),
     ]);
-    setNotebookStatus(nb.mapping?.status ?? healthRes.status);
-    setLocalVersion(healthRes.localVersion);
-    setNotebookVersion(healthRes.notebookVersion);
-    setKnowledgeDirty(healthRes.dirty);
-    setInstructionsReady(healthRes.instructionsReady);
+    const single =
+      'translation' in healthRes ? healthRes.translation : healthRes;
+    setNotebookStatus(nb.mapping?.status ?? single.status);
+    setLocalVersion(single.localVersion);
+    setNotebookVersion(single.notebookVersion);
+    setKnowledgeDirty(single.dirty);
+    setInstructionsReady(single.instructionsReady);
   }, []);
+
+  const refresh = useCallback(async () => {
+    const [accounts, workers] = await Promise.all([
+      window.novelTrans.accounts.list(),
+      window.novelTrans.jobs.workers(),
+    ]);
+    const options = accounts.accounts.map((a) => ({
+      id: a.id,
+      email: a.email,
+      status: a.status,
+      plan: a.plan,
+    }));
+    setAccountOptions(options);
+
+    let resolvedAccountId: string | null = null;
+    let resolvedEmail: string | null = null;
+    if (projectId) {
+      const resolved = await window.novelTrans.projects.resolveWorker({
+        projectId,
+        purpose: 'translation',
+      });
+      resolvedAccountId = resolved.accountId;
+      resolvedEmail = resolved.email;
+    }
+
+    const account =
+      (resolvedAccountId
+        ? options.find((a) => a.id === resolvedAccountId)
+        : undefined) ?? null;
+    const worker = workers.workers.find(
+      (w) => w.accountId === (account?.id ?? resolvedAccountId),
+    ) as { accountId: string; health: string } | undefined;
+
+    setEmail(account?.email ?? resolvedEmail);
+    setPlan(account?.plan ?? null);
+    setHealth(worker?.health ?? account?.status ?? 'DISCONNECTED');
+    setAccountId(account?.id ?? resolvedAccountId);
+
+    const healthAccountId = account?.id ?? resolvedAccountId;
+    if (projectId && healthAccountId) {
+      await refreshNotebookHealth(projectId, healthAccountId);
+    } else {
+      setNotebookStatus(null);
+      setKnowledgeDirty(false);
+      setInstructionsReady(true);
+    }
+  }, [projectId, refreshNotebookHealth]);
 
   useEffect(() => {
     const cancelled = { current: false };
     void (async () => {
       try {
-        const [workers, accounts] = await Promise.all([
-          window.novelTrans.jobs.workers(),
-          window.novelTrans.accounts.list(),
-        ]);
-        if (cancelled.current) return;
-        const worker = workers.workers[0] as { accountId: string; health: string } | undefined;
-        const account = worker
-          ? accounts.accounts.find((a) => a.id === worker.accountId)
-          : accounts.accounts[0];
-        setEmail(account?.email ?? null);
-        setPlan(account?.plan ?? null);
-        setHealth(worker?.health ?? account?.status ?? 'DISCONNECTED');
-        setAccountId(account?.id ?? null);
-        if (projectId && account?.id) {
-          await refreshNotebookHealth(projectId, account.id);
-        } else {
-          setNotebookStatus(null);
-          setKnowledgeDirty(false);
-          setInstructionsReady(true);
-        }
+        await refresh();
       } catch {
         // ignore
       }
+      if (cancelled.current) return;
     })();
     return () => {
       cancelled.current = true;
     };
-  }, [projectId, refreshNotebookHealth]);
+  }, [refresh]);
+
+  const changeWorker = async (nextAccountId: string) => {
+    if (!projectId || nextAccountId === accountId) return;
+    setNotebookBusy(true);
+    setNotebookMessage(null);
+    try {
+      const result = await window.novelTrans.projects.setWorker({
+        projectId,
+        accountId: nextAccountId,
+        ensureNotebook: true,
+      });
+      setNotebookStatus(result.notebookStatus);
+      setNotebookMessage(mapNotebookServiceMessage(result.message, t));
+      await refresh();
+      onNotebookChange?.();
+    } catch (err: unknown) {
+      setNotebookMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setNotebookBusy(false);
+    }
+  };
 
   const tone = statusTone(health);
   const needsLogin = health === 'LOGIN_REQUIRED' || health === 'NEEDS_ATTENTION';
@@ -187,8 +242,28 @@ export function AiStatusPanel({
       </p>
       <dl className="info-list" style={{ fontSize: 'var(--font-small)' }}>
         <div>
-          <dt>{t('aiPanel.account')}</dt>
-          <dd>{email ?? '—'}</dd>
+          <dt>{t('aiPanel.translationAccount')}</dt>
+          <dd>
+            {projectId && accountOptions.length > 1 ? (
+              <select
+                value={accountId ?? ''}
+                disabled={notebookBusy}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (next) void changeWorker(next);
+                }}
+                style={{ maxWidth: '100%' }}
+              >
+                {accountOptions.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.email ?? a.id}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              (email ?? '—')
+            )}
+          </dd>
         </div>
         <div>
           <dt>{t('aiPanel.plan')}</dt>

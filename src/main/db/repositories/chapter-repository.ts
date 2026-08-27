@@ -302,4 +302,100 @@ export class ChapterRepository extends BaseRepository {
       )
       .all(query, limit) as { chapter_id: string; rank: number }[];
   }
+
+  /**
+   * Per-project chapter progress for Command Center / project cards.
+   * translated = every paragraph has non-empty translated_text.
+   * reviewed = every paragraph status is 'reviewed'.
+   */
+  getProjectChapterStats(projectId: string): {
+    sourceChapterCount: number;
+    translatedChapterCount: number;
+    reviewedChapterCount: number;
+    errorChapterCount: number;
+    nextUntranslatedChapter: number | null;
+  } {
+    const sourceRow = this.db
+      .prepare(`SELECT COUNT(*) AS c FROM chapters WHERE project_id = ?`)
+      .get(projectId) as { c: number };
+    const sourceChapterCount = sourceRow.c;
+
+    const errorRow = this.db
+      .prepare(
+        `SELECT COUNT(*) AS c FROM chapters
+         WHERE project_id = ? AND source_status = 'SOURCE_ERROR'`,
+      )
+      .get(projectId) as { c: number };
+
+    const translatedRow = this.db
+      .prepare(
+        `SELECT COUNT(*) AS c FROM chapters c
+         WHERE c.project_id = ?
+           AND EXISTS (
+             SELECT 1 FROM chapter_paragraphs p WHERE p.chapter_id = c.id
+           )
+           AND NOT EXISTS (
+             SELECT 1
+             FROM chapter_paragraphs p
+             LEFT JOIN translations t ON t.paragraph_id = p.id
+             WHERE p.chapter_id = c.id
+               AND (
+                 t.id IS NULL
+                 OR TRIM(COALESCE(t.translated_text, '')) = ''
+               )
+           )`,
+      )
+      .get(projectId) as { c: number };
+
+    const reviewedRow = this.db
+      .prepare(
+        `SELECT COUNT(*) AS c FROM chapters c
+         WHERE c.project_id = ?
+           AND EXISTS (
+             SELECT 1 FROM chapter_paragraphs p WHERE p.chapter_id = c.id
+           )
+           AND NOT EXISTS (
+             SELECT 1
+             FROM chapter_paragraphs p
+             LEFT JOIN translations t ON t.paragraph_id = p.id
+             WHERE p.chapter_id = c.id
+               AND (t.id IS NULL OR t.status IS NULL OR t.status <> 'reviewed')
+           )`,
+      )
+      .get(projectId) as { c: number };
+
+    const nextRow = this.db
+      .prepare(
+        `SELECT c.chapter_number AS n
+         FROM chapters c
+         WHERE c.project_id = ?
+           AND c.chapter_number IS NOT NULL
+           AND (
+             NOT EXISTS (
+               SELECT 1 FROM chapter_paragraphs p WHERE p.chapter_id = c.id
+             )
+             OR EXISTS (
+               SELECT 1
+               FROM chapter_paragraphs p
+               LEFT JOIN translations t ON t.paragraph_id = p.id
+               WHERE p.chapter_id = c.id
+                 AND (
+                   t.id IS NULL
+                   OR TRIM(COALESCE(t.translated_text, '')) = ''
+                 )
+             )
+           )
+         ORDER BY c.sequence_order ASC
+         LIMIT 1`,
+      )
+      .get(projectId) as { n: number } | undefined;
+
+    return {
+      sourceChapterCount,
+      translatedChapterCount: translatedRow.c,
+      reviewedChapterCount: reviewedRow.c,
+      errorChapterCount: errorRow.c,
+      nextUntranslatedChapter: nextRow?.n ?? null,
+    };
+  }
 }

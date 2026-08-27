@@ -113,7 +113,7 @@ export function resolveTranslationPackMode(
       packMode: 'fat',
       notebookId: anyTranslation.notebook_id ?? anyTranslation.id,
       localKnowledgeVersion,
-      notebookVerifiedVersion: anyTranslation.knowledge_version ?? 0,
+      notebookVerifiedVersion: anyTranslation.knowledge_version,
       sourceGroundingConfirmed: false,
       reason: 'account_missing',
     };

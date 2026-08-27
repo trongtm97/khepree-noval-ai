@@ -122,10 +122,15 @@ async function checkWebApi(
   }
 
   const ready =
-    db.aiAccounts.listReadyByProvider(AI_PROVIDER_IDS.GEMINI_WEB_API).find((a) => {
-      if (!input.accountId) return true;
-      return !a.google_account_id || a.google_account_id === input.accountId;
-    }) ?? db.aiAccounts.listReadyByProvider(AI_PROVIDER_IDS.GEMINI_WEB_API)[0];
+    (() => {
+      const readyList = db.aiAccounts.listReadyByProvider(AI_PROVIDER_IDS.GEMINI_WEB_API);
+      return (
+        readyList.find((a) => {
+          if (!input.accountId) return true;
+          return !a.google_account_id || a.google_account_id === input.accountId;
+        }) ?? readyList.at(0)
+      );
+    })();
 
   checks.aiAccountReady = Boolean(ready);
   if (!ready) {
@@ -171,7 +176,7 @@ async function checkPlaywright(
     };
   }
 
-  const status = (account.status ?? '').toUpperCase();
+  const status = account.status.toUpperCase();
   if (status === 'LOGIN_REQUIRED' || status === 'NEEDS_ATTENTION') {
     checks.googleSession = false;
     return {
@@ -300,8 +305,17 @@ async function checkPlaywright(
   }
 
   if (!lightweight) {
+    const notebookUrl = mapping?.resource_url;
+    if (!notebookUrl) {
+      return {
+        providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+        result: 'NOTEBOOK_ERROR',
+        message: 'Notebook URL missing for deep preflight probe.',
+        checks,
+      };
+    }
     try {
-      const deep = await deepPlaywrightProbe(input, mapping!.resource_url!);
+      const deep = await deepPlaywrightProbe(input, notebookUrl);
       Object.assign(checks, deep.checks);
       if (deep.result !== 'READY') {
         return {
@@ -365,7 +379,7 @@ async function deepPlaywrightProbe(
       '../automation/browser-runner/browser-runtime-manager'
     );
     const mgr = getBrowserRuntimeManager();
-    const existing = mgr.getRuntime?.(input.accountId);
+    const existing = mgr.getRuntime(input.accountId);
     if (!existing) {
       return {
         result: 'READY',

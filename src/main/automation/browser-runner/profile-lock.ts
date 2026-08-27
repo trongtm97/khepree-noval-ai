@@ -53,11 +53,11 @@ export interface RenewLeaseInput {
   now?: () => number;
 }
 
-type HeldLease = {
+interface HeldLease {
   ownerId: string;
   lockPath: string;
   lease: ProfileLeaseMeta;
-};
+}
 
 function lockFilePath(profilePath: string): string {
   return path.join(path.resolve(profilePath), PROFILE_LEASE_FILENAME);
@@ -88,7 +88,7 @@ function readLeaseFile(lockPath: string): ProfileLeaseMeta | null {
       profilePath: typeof raw.profilePath === 'string' ? raw.profilePath : '',
       ownerId: raw.ownerId,
       accountId: typeof raw.accountId === 'string' ? raw.accountId : 'unknown',
-      operation: (raw.operation as ProfileLeaseOperation) || 'legacy',
+      operation: typeof raw.operation === 'string' ? raw.operation : 'legacy',
       pid: raw.pid,
       processInstanceId:
         typeof raw.processInstanceId === 'string' ? raw.processInstanceId : 'unknown',
@@ -99,7 +99,9 @@ function readLeaseFile(lockPath: string): ProfileLeaseMeta | null {
       label:
         typeof raw.label === 'string' && raw.label.trim()
           ? raw.label
-          : defaultLeaseLabel((raw.operation as ProfileLeaseOperation) || 'legacy'),
+          : defaultLeaseLabel(
+              typeof raw.operation === 'string' ? raw.operation : 'legacy',
+            ),
     };
   } catch {
     return null;
@@ -188,7 +190,7 @@ export class ProfileLeaseLockManager {
       acquiredAt: new Date(now).toISOString(),
       heartbeatAt: new Date(now).toISOString(),
       expiresAt: new Date(now + ttl).toISOString(),
-      label: input.label?.trim() || defaultLeaseLabel(input.operation),
+      label: input.label?.trim() ?? defaultLeaseLabel(input.operation),
     };
 
     if (!writeLeaseExclusive(lockPath, lease)) {
@@ -345,7 +347,7 @@ export class ProfileLeaseLockManager {
   isHeldByJob(profilePath: string, jobId: string | null | undefined): boolean {
     if (!jobId) return false;
     const owner = this.getOwner(profilePath);
-    return owner != null && owner.startsWith(`job:${jobId}:`);
+    return owner?.startsWith(`job:${jobId}:`) ?? false;
   }
 
   isHeldByRuntime(profilePath: string, accountId: string): boolean {
@@ -399,9 +401,9 @@ export function startLeaseHeartbeat(
     }
   }, intervalMs);
   if (typeof timer === 'object' && 'unref' in timer) {
-    timer.unref?.();
+    timer.unref();
   }
-  return () => clearInterval(timer);
+  return () => { clearInterval(timer); };
 }
 
 export async function withLeaseHeartbeat<T>(

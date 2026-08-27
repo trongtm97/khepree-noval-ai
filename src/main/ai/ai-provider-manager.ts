@@ -51,9 +51,15 @@ import type { RepairParagraph } from '../jobs/repair-strategies';
 import {
   channelSnapshotForAttempt,
   readRepairChannelFromProgress,
-  wrapRepairPromptWithChannelContext,
   type RepairChannelContext,
 } from '../jobs/repair-channel-context';
+import {
+  extractOperationPrompt,
+  isRepairOrContinuationOp,
+  splitRepairChannelPrompt,
+  assemblePackPrompt,
+} from '../prompt/pack-operation';
+import type { TranslationPackOperation } from '@shared/constants/translation-pack';
 import { getNotebookSyncService } from '../notebook/notebook-sync-service-singleton';
 import {
   buildTranslationContextDiagnostics,
@@ -154,16 +160,15 @@ export class AiProviderManager {
     }
     // Narrow app_meta overrides must not drop auth / hard-fail fallbacks —
     // otherwise SESSION_EXPIRED or Playwright ERROR never reaches Web API.
-    return [
-      ...new Set([
-        ...parsed,
-        ...AUTH_FALLBACK_STATUSES,
-        'ERROR' as AiResponseStatus,
-        'SERVICE_UNAVAILABLE' as AiResponseStatus,
-        'NETWORK_ERROR' as AiResponseStatus,
-        'TIMEOUT' as AiResponseStatus,
-      ]),
+    const merged: AiResponseStatus[] = [
+      ...parsed,
+      ...AUTH_FALLBACK_STATUSES,
+      'ERROR',
+      'SERVICE_UNAVAILABLE',
+      'NETWORK_ERROR',
+      'TIMEOUT',
     ];
+    return [...new Set(merged)];
   }
 
   setFallbackConfig(enabled: boolean, statuses?: AiResponseStatus[]): void {
@@ -310,7 +315,7 @@ export class AiProviderManager {
           .map((r) => `${r.providerId}:${r.result}`)
           .join(', ');
         return {
-          requestId: options?.requestId ?? newId(),
+          requestId: options.requestId ?? newId(),
           status: 'ERROR',
           text: '',
           errorCode: 'NO_READY_PROVIDER',
@@ -339,7 +344,7 @@ export class AiProviderManager {
     let last: AIResponse | null = null;
 
     for (let i = 0; i < ordered.length; i += 1) {
-      const provider = ordered[i]!;
+      const provider = ordered[i];
       const row = this.db.aiProviders.getById(provider.providerId);
 
       // Legacy skip if somehow selected without accounts (preflight should catch).
@@ -509,7 +514,7 @@ export class AiProviderManager {
       firstProvider: ordered[0]?.providerType ?? null,
     });
 
-    const firstProviderType = ordered[0]?.providerType;
+    const firstProviderType = ordered.at(0)?.providerType;
     const packMode = this.resolvePackMode(ctx, firstProviderType);
 
     if (chunks.length <= 1) {
@@ -553,9 +558,7 @@ export class AiProviderManager {
       });
       if (response.status !== 'SUCCESS') {
         const msg =
-          response.errorMessage ??
-          userMessageForStatus(response.status) ??
-          response.status;
+          response.errorMessage ?? userMessageForStatus(response.status);
         throw new Error(`${response.status}: ${msg}`);
       }
       mergeJobProgressDiagnostics(this.db, ctx.job.id, {
@@ -624,7 +627,8 @@ export class AiProviderManager {
     let progressTotal = Math.max(1, chunks.length);
 
     while (queue.length > 0) {
-      const chunk = queue.shift()!;
+      const chunk = queue.shift();
+      if (!chunk) break;
       sendOrdinal += 1;
       const paragraphIds = chunk.map((p) => p.paragraphId);
       this.writeSendProgress(ctx, {
@@ -702,9 +706,7 @@ export class AiProviderManager {
         if (response.status !== 'SUCCESS') {
           lastFailStatus = response.status;
           lastFailMsg =
-            response.errorMessage ??
-            userMessageForStatus(response.status) ??
-            response.status;
+            response.errorMessage ?? userMessageForStatus(response.status);
           lastErrorCode = response.errorCode ?? null;
           const transient = TRANSIENT_CHUNK_STATUSES.has(response.status);
           logger.warn('Chunk send failed', {
@@ -774,7 +776,7 @@ export class AiProviderManager {
         const canSplit =
           chunk.length > 1 &&
           (lastFailStatus == null ||
-            TRANSIENT_CHUNK_STATUSES.has(lastFailStatus as AiResponseStatus) ||
+            TRANSIENT_CHUNK_STATUSES.has(lastFailStatus) ||
             lastErrorCode === 'GEMINI_SOFT_ERROR');
         const halves = canSplit ? splitParagraphChunkInHalf(chunk) : null;
         if (halves) {
@@ -860,7 +862,7 @@ export class AiProviderManager {
 
   /**
    * Ensure pack matches provider context rules when falling back mid-flight.
-   * Repair/continuation: preserve repair prompt and prepend FAT SQLite memory.
+   * REPAIR / CONTINUATION: swap baseContext only — never rewrite operationPrompt.
    */
   private adaptPackForProvider(
     pack: TranslationPackDto,
@@ -875,6 +877,11 @@ export class AiProviderManager {
     if (!projectId || pack.chapterIds.length === 0) {
       return pack;
     }
+
+    const preserveOp =
+      options?.preserveRepairPrompt === true ||
+      isRepairOrContinuationOp(pack.operationType);
+
     try {
       const fat = getTranslationPackService().build({
         projectId,
@@ -885,24 +892,53 @@ export class AiProviderManager {
         packMode: 'fat',
         forceFatPack: true,
       });
-      if (options?.preserveRepairPrompt) {
-        const prompt = wrapRepairPromptWithChannelContext({
-          repairBody: pack.prompt,
-          packMode: 'fat',
-          webApiFat: true,
-          fatSections: {
-            criticalRules: fat.sections.criticalRules,
-            hotMemoryDelta: fat.sections.hotMemoryDelta,
-            activeProjectTerms: fat.sections.activeProjectTerms,
-          },
-        });
-        return {
-          ...fat,
-          prompt,
-          promptHash: `repair-fat:${pack.promptHash}`,
-        };
+
+      if (!preserveOp) {
+        // Normal TRANSLATE fallback — full FAT rebuild is correct.
+        return fat;
       }
-      return fat;
+
+      // Keep operationPrompt byte-stable; only rebuild FAT baseContext.
+      const preservedOp =
+        pack.operationPrompt.trim() || extractOperationPrompt(pack);
+      const operationType: TranslationPackOperation =
+        pack.operationType === 'CONTINUATION' ? 'CONTINUATION' : 'REPAIR';
+      const repairBody = preservedOp
+        .replace(/^## (?:Repair \/ continuation|Continuation) task\s*/i, '')
+        .trim();
+      const split = splitRepairChannelPrompt({
+        repairBody,
+        operationType,
+        packMode: 'fat',
+        webApiFat: true,
+        fatSections: {
+          criticalRules: fat.sections.criticalRules,
+          hotMemoryDelta: fat.sections.hotMemoryDelta,
+          activeProjectTerms: fat.sections.activeProjectTerms,
+        },
+      });
+      // Prefer original operationPrompt when already structured.
+      const operationPrompt =
+        pack.operationPrompt.trim() || split.operationPrompt;
+      const prompt = assemblePackPrompt({
+        baseContext: split.baseContext,
+        operationPrompt,
+      });
+
+      return {
+        ...fat,
+        baseContext: split.baseContext,
+        operationPrompt,
+        operationType,
+        prompt,
+        promptHash: `repair-fat:${pack.promptHash}`,
+        sections: {
+          ...fat.sections,
+          taskHeader: formatSafeTaskHeader(operationType),
+          sourceParagraphs: '',
+          outputProtocol: '',
+        },
+      };
     } catch (error) {
       logger.warn('Failed to rebuild fat pack for Web API — using original', {
         message: error instanceof Error ? error.message : String(error),
@@ -964,9 +1000,8 @@ export class AiProviderManager {
       initialRaw: input.raw,
       maxAttempts: config.maxContinuationAttempts ?? DEFAULT_MAX_CONTINUATION_ATTEMPTS,
       parser,
-      persistPartial: (raw, meta) => this.persistPartialRaw(ctx.job.id, raw, meta),
-      onProgress: (p) =>
-        this.writeSendProgress(ctx, {
+      persistPartial: (raw, meta) => { this.persistPartialRaw(ctx.job.id, raw, meta); },
+      onProgress: (p) => { this.writeSendProgress(ctx, {
           phase: 'continuation',
           chunkIndex: input.chunkIndex,
           chunkTotal: input.chunkTotal,
@@ -977,7 +1012,7 @@ export class AiProviderManager {
           notebookId: channel.notebookId,
           continuationRound: p.continuationRound,
           lastCompletedParagraphId: p.lastCompletedParagraphId,
-        }),
+        }); },
       sendContinuation: async (prompt, requestId) => {
         try {
           const sent = await this.sendRepairOrContinuation({
@@ -989,6 +1024,7 @@ export class AiProviderManager {
             requestId,
             lockedTerms: config.lockedTerms,
             targetParagraphIds: input.paragraphIds,
+            operationType: 'CONTINUATION',
           });
           return {
             text: sent.rawResponse,
@@ -1119,8 +1155,8 @@ export class AiProviderManager {
         JSON.stringify({
           ...base,
           ...rest,
-          accountId: ctx.accountId,
           ...diagnostics,
+          accountId: ctx.accountId,
           notebookVerifiedVersion: diagnostics.notebookKnowledgeVersion,
         }),
       );
@@ -1249,7 +1285,7 @@ export class AiProviderManager {
     );
     const config = parseJobConfig(job.config);
     const targetIds =
-      request.plan?.targetParagraphIds?.length
+      request.plan?.targetParagraphIds.length
         ? request.plan.targetParagraphIds
         : config.sourceParagraphIds;
 
@@ -1261,6 +1297,7 @@ export class AiProviderManager {
       channel,
       lockedTerms: config.lockedTerms,
       targetParagraphIds: targetIds,
+      operationType: 'REPAIR',
     });
   }
 
@@ -1277,9 +1314,11 @@ export class AiProviderManager {
     requestId?: string;
     lockedTerms?: { source: string; preferred: string; paragraphIds?: string[] }[];
     targetParagraphIds?: string[];
+    operationType?: TranslationPackOperation;
   }): Promise<RepairSendResult> {
     const preferredType = input.channel.providerType ?? 'PLAYWRIGHT_GEMINI';
     const preferPlaywright = preferredType === 'PLAYWRIGHT_GEMINI';
+    const operationType = input.operationType ?? 'REPAIR';
 
     const locked = (input.lockedTerms ?? []).map((t) => ({
       source: t.source,
@@ -1296,6 +1335,7 @@ export class AiProviderManager {
       hotMemoryText: hotMemory,
       webApiFat: false,
       targetParagraphIds: input.targetParagraphIds,
+      operationType,
     });
 
     if (preferPlaywright) {
@@ -1369,6 +1409,7 @@ export class AiProviderManager {
       logger.info('Repair failover Playwright → WebAPI FAT', {
         jobId: input.jobId,
         status: playwrightResponse.status,
+        operationType,
       });
     }
 
@@ -1382,6 +1423,7 @@ export class AiProviderManager {
       hotMemoryText: hotMemory,
       webApiFat: true,
       targetParagraphIds: input.targetParagraphIds,
+      operationType,
     });
     const webResponse = await this.sendWithFallback(fatPack, {
       projectId: input.projectId,
@@ -1425,7 +1467,7 @@ export class AiProviderManager {
         ? resolveTranslationNotebook(
             this.db,
             job?.project_id ?? '',
-            accountId ?? fromProgress.accountId!,
+            accountId ?? fromProgress.accountId ?? '',
           )
         : null;
 
@@ -1488,7 +1530,7 @@ export class AiProviderManager {
 
   private buildHotMemoryForRepair(
     projectId: string,
-    accountId: string | null,
+    _accountId: string | null,
   ): string {
     try {
       const sync = getNotebookSyncService(this.db);
@@ -1507,9 +1549,11 @@ export class AiProviderManager {
     hotMemoryText: string;
     webApiFat: boolean;
     targetParagraphIds?: string[];
+    operationType?: TranslationPackOperation;
   }): TranslationPackDto {
     const job = this.db.jobs.getById(input.jobId);
     const chapterIds = this.resolveJobChapterIds(input.projectId, job);
+    const operationType = input.operationType ?? 'REPAIR';
     let fatSections: {
       criticalRules?: string;
       hotMemoryDelta?: string;
@@ -1539,8 +1583,9 @@ export class AiProviderManager {
       }
     }
 
-    const prompt = wrapRepairPromptWithChannelContext({
+    const split = splitRepairChannelPrompt({
       repairBody: input.repairBody,
+      operationType,
       packMode: input.webApiFat ? 'fat' : input.channel.packMode,
       lockedTerms: input.lockedTerms,
       hotMemoryText: input.webApiFat ? null : input.hotMemoryText,
@@ -1551,19 +1596,25 @@ export class AiProviderManager {
 
     const base =
       chapterIds.length > 0
-        ? this.buildMinimalPack(input.projectId, prompt, job ?? { chapter_from: null, chapter_to: null })
+        ? this.buildMinimalPack(
+            input.projectId,
+            split,
+            operationType,
+            job ?? { chapter_from: null, chapter_to: null },
+          )
         : null;
 
-    if (base) {
-      return { ...base, prompt, promptHash: `repair:${base.promptHash}` };
-    }
+    if (base) return base;
 
     return {
       projectId: input.projectId,
       chapterIds: chapterIds.length ? chapterIds : [newId()],
       chapterNumbers: [],
       style: 'balanced',
-      prompt,
+      prompt: split.prompt,
+      baseContext: split.baseContext,
+      operationPrompt: split.operationPrompt,
+      operationType,
       sections: {
         taskHeader: '',
         criticalRules: '',
@@ -1573,10 +1624,10 @@ export class AiProviderManager {
         outputProtocol: '',
       },
       size: {
-        sourceChars: prompt.length,
-        contextChars: 0,
-        totalChars: prompt.length,
-        estimatedTokens: Math.ceil(prompt.length / 4),
+        sourceChars: split.operationPrompt.length,
+        contextChars: split.baseContext.length,
+        totalChars: split.prompt.length,
+        estimatedTokens: Math.ceil(split.prompt.length / 4),
         activeTermCount: 0,
         activeCharacterCount: 0,
         relationshipCount: 0,
@@ -1593,21 +1644,18 @@ export class AiProviderManager {
     job: { chapter_from: number | null; chapter_to: number | null } | null | undefined,
   ): string[] {
     const chapters = this.db.chapters.listByProject(projectId);
-    if (job?.chapter_from != null && job?.chapter_to != null) {
+    const chapterFrom = job?.chapter_from;
+    const chapterTo = job?.chapter_to;
+    if (chapterFrom != null && chapterTo != null) {
       return chapters
         .filter((c) => {
           const n = c.chapter_number ?? c.sequence_order;
-          return n >= job.chapter_from! && n <= job.chapter_to!;
+          return n >= chapterFrom && n <= chapterTo;
         })
         .map((c) => c.id)
         .slice(0, DEFAULT_MAX_CHAPTERS_PER_JOB);
     }
     return chapters[0] ? [chapters[0].id] : [];
-  }
-
-  private resolveAccountFromProgress(jobId: string): string | null {
-    const job = this.db.jobs.getById(jobId);
-    return readRepairChannelFromProgress(job?.progress).accountId;
   }
 
   private buildPackForJob(
@@ -1641,7 +1689,7 @@ export class AiProviderManager {
           : config.batchParagraphs.map((p) => p.paragraphId);
 
     if (chapterIds.length === 0 && ids.length > 0) {
-      const para = this.db.paragraphs.getById(ids[0]!);
+      const para = this.db.paragraphs.getById(ids[0]);
       if (para) chapterIds = [para.chapter_id];
     }
 
@@ -1664,16 +1712,19 @@ export class AiProviderManager {
 
   private buildMinimalPack(
     projectId: string,
-    prompt: string,
+    split: { baseContext: string; operationPrompt: string; prompt: string },
+    operationType: TranslationPackOperation,
     job: { chapter_from: number | null; chapter_to: number | null },
   ): TranslationPackDto {
     const chapters = this.db.chapters.listByProject(projectId);
     let chapterIds: string[] = [];
-    if (job.chapter_from != null && job.chapter_to != null) {
+    const chapterFrom = job.chapter_from;
+    const chapterTo = job.chapter_to;
+    if (chapterFrom != null && chapterTo != null) {
       chapterIds = chapters
         .filter((c) => {
           const n = c.chapter_number ?? c.sequence_order;
-          return n >= job.chapter_from! && n <= job.chapter_to!;
+          return n >= chapterFrom && n <= chapterTo;
         })
         .map((c) => c.id)
         .slice(0, DEFAULT_MAX_CHAPTERS_PER_JOB);
@@ -1682,26 +1733,19 @@ export class AiProviderManager {
       chapterIds = [chapters[0].id];
     }
 
-    if (chapterIds.length > 0) {
-      try {
-        const pack = getTranslationPackService().build({
-          projectId,
-          chapterIds,
-        });
-        return { ...pack, prompt };
-      } catch {
-        // fall through to synthetic
-      }
-    }
-
+    // Do NOT call TranslationPackService.build() here — that yields a TRANSLATE
+    // FAT pack whose sections/prompt would mask REPAIR/CONTINUATION.
     return {
       projectId,
       chapterIds: chapterIds.length ? chapterIds : [newId()],
       chapterNumbers: [],
       style: 'balanced',
-      prompt,
+      prompt: split.prompt,
+      baseContext: split.baseContext,
+      operationPrompt: split.operationPrompt,
+      operationType,
       sections: {
-        taskHeader: '',
+        taskHeader: formatSafeTaskHeader(operationType),
         criticalRules: '',
         hotMemoryDelta: '',
         activeProjectTerms: '',
@@ -1709,20 +1753,24 @@ export class AiProviderManager {
         outputProtocol: '',
       },
       size: {
-        sourceChars: prompt.length,
-        contextChars: 0,
-        totalChars: prompt.length,
-        estimatedTokens: Math.ceil(prompt.length / 4),
+        sourceChars: split.operationPrompt.length,
+        contextChars: split.baseContext.length,
+        totalChars: split.prompt.length,
+        estimatedTokens: Math.ceil(split.prompt.length / 4),
         activeTermCount: 0,
         activeCharacterCount: 0,
         relationshipCount: 0,
         recentMemoryCount: 0,
         paragraphCount: 0,
-        chapterCount: 1,
+        chapterCount: Math.max(1, chapterIds.length),
       },
-      promptHash: newId().slice(0, 16),
+      promptHash: `repair:${newId().slice(0, 12)}`,
     };
   }
+}
+
+function formatSafeTaskHeader(operationType: TranslationPackOperation): string {
+  return operationType === 'CONTINUATION' ? 'Continuation' : 'Repair';
 }
 
 export function providerTypeLabel(type: AiProviderType): string {

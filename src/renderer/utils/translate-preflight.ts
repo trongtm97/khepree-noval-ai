@@ -15,6 +15,8 @@ export interface TranslatePreflightInput {
   googleAccounts: { id: string; status: string; workerEnabled?: boolean }[];
   aiAccounts: { status: string }[];
   notebookStatus: string | null;
+  /** Canonical project worker from ProjectWorkerResolver — never first READY. */
+  resolvedWorkerAccountId?: string | null;
 }
 
 export type TranslatePreflightResult =
@@ -60,11 +62,13 @@ export function evaluateTranslatePreflight(
     return { ok: false, reason: 'no_worker' };
   }
 
+  const resolved = input.resolvedWorkerAccountId ?? null;
   const workerAccountId =
+    resolved ??
     usableWorkers.find((w) => isReady(w.health))?.accountId ??
-    usableWorkers[0]?.accountId ??
+    usableWorkers.at(0)?.accountId ??
     usableGoogle.find((a) => isReady(a.status))?.id ??
-    usableGoogle[0]?.id ??
+    usableGoogle.at(0)?.id ??
     null;
 
   const webApiReady = input.aiAccounts.some((a) => isReady(a.status));

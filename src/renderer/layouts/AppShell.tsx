@@ -5,10 +5,7 @@ import {
   LayoutDashboard,
   FolderKanban,
   Languages,
-  BookMarked,
-  Users,
   ListTodo,
-  ScrollText,
   Settings,
   PanelLeftClose,
   PanelLeft,
@@ -16,8 +13,6 @@ import {
   HelpCircle,
   BookOpen,
   CircleUser,
-  Brain,
-  Archive,
 } from 'lucide-react';
 import type { GetInfoResponse } from '@shared/schemas/ipc';
 import { useT } from '../i18n';
@@ -29,23 +24,27 @@ import { ToastViewport } from '../components/shell/ToastViewport';
 import { useSystemStatusPoll } from '../hooks/useSystemStatusPoll';
 import { useStartupAiReadiness } from '../hooks/useStartupAiReadiness';
 import { useSourceFolderEvents } from '../hooks/useSourceFolderEvents';
+import {
+  isProjectTranslatePath,
+  isProjectWorkspacePath,
+  projectTabKeyFromPath,
+} from './ProjectWorkspace';
 
 interface AppShellProps {
   children: ReactNode;
   appInfo: GetInfoResponse;
 }
 
-const MAIN_NAV = [
+const PRIMARY_NAV = [
   { to: '/', key: 'nav.dashboard', icon: LayoutDashboard, end: true },
   { to: '/projects', key: 'nav.projects', icon: FolderKanban },
-  { to: '/ai-memory', key: 'nav.aiMemory', icon: Brain },
   { to: '/translation', key: 'nav.translation', icon: Languages },
-  { to: '/terms', key: 'nav.terms', icon: BookMarked },
-  { to: '/characters', key: 'nav.characters', icon: Users },
-  { to: '/accounts', key: 'nav.accounts', icon: CircleUser },
   { to: '/jobs', key: 'nav.jobs', icon: ListTodo },
-  { to: '/export', key: 'nav.export', icon: Archive },
-  { to: '/logs', key: 'nav.logs', icon: ScrollText },
+] as const;
+
+const SECONDARY_NAV = [
+  { to: '/accounts', key: 'nav.accounts', icon: CircleUser },
+  { to: '/settings', key: 'nav.settings', icon: Settings },
   { to: '/help', key: 'nav.help', icon: BookOpen },
 ] as const;
 
@@ -54,17 +53,17 @@ const ROUTE_TITLE: Record<string, string> = {
   '/projects': 'nav.projects',
   '/translation': 'nav.translation',
   '/editor': 'nav.translation',
-  '/ai-memory': 'nav.aiMemory',
-  '/terms': 'nav.terms',
-  '/characters': 'nav.characters',
   '/accounts': 'nav.accounts',
   '/jobs': 'nav.jobs',
   '/logs': 'nav.logs',
   '/help': 'nav.help',
   '/settings': 'nav.settings',
-  '/export': 'nav.export',
   '/learning': 'nav.learning',
   '/diagnostics': 'nav.diagnostics',
+  '/ai-memory': 'nav.aiMemory',
+  '/terms': 'nav.terms',
+  '/characters': 'nav.characters',
+  '/export': 'nav.export',
 };
 
 export function AppShell({ children, appInfo }: AppShellProps) {
@@ -75,6 +74,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
     sidebarCollapsed,
     sidebarPinned,
     density,
+    currentProjectId,
     currentProjectName,
     toggleSidebar,
   } = useUiShellStore();
@@ -110,18 +110,25 @@ export function AppShell({ children, appInfo }: AppShellProps) {
       }
     };
     window.addEventListener('keydown', onKey);
-    return () => { window.removeEventListener('keydown', onKey); };
+    return () => {
+      window.removeEventListener('keydown', onKey);
+    };
   }, [navigate, location.pathname]);
 
   const unread = notifications.filter((n) => !n.read).length;
-  const pageKey =
-    ROUTE_TITLE[location.pathname] ??
-    (location.pathname.includes('/ai-memory')
-      ? 'nav.aiMemory'
-      : location.pathname.startsWith('/projects')
-        ? 'nav.projects'
-        : 'nav.dashboard');
-  const flush = location.pathname === '/translation' || location.pathname === '/editor';
+  const inProject = isProjectWorkspacePath(location.pathname);
+  const pageKey = inProject
+    ? projectTabKeyFromPath(location.pathname)
+    : (ROUTE_TITLE[location.pathname] ??
+      (location.pathname.startsWith('/projects') ? 'nav.projects' : 'nav.dashboard'));
+  const flush =
+    location.pathname === '/translation' ||
+    location.pathname === '/editor' ||
+    isProjectTranslatePath(location.pathname);
+
+  const translationTarget = currentProjectId
+    ? `/projects/${currentProjectId}/translate`
+    : '/projects';
 
   const shellClass = useMemo(() => {
     const parts = ['app-shell'];
@@ -132,6 +139,16 @@ export function AppShell({ children, appInfo }: AppShellProps) {
 
   const workerEmail = status.primaryWorkerEmail;
   const workerHealth = status.primaryWorkerHealth;
+
+  const navActive = (to: string, isActive: boolean) => {
+    if (to === '/translation') {
+      return isProjectTranslatePath(location.pathname) || isActive;
+    }
+    if (to === '/projects') {
+      return location.pathname === '/projects';
+    }
+    return isActive;
+  };
 
   return (
     <div className={shellClass}>
@@ -150,19 +167,17 @@ export function AppShell({ children, appInfo }: AppShellProps) {
           </IconButton>
         </div>
         <nav className="sidebar-nav" aria-label={t('common.mainNav')}>
-          {MAIN_NAV.map((item) => {
+          {PRIMARY_NAV.map((item) => {
             const Icon = item.icon;
+            const to = item.to === '/translation' ? translationTarget : item.to;
             return (
               <NavLink
-                key={item.to}
-                to={item.to}
+                key={item.key}
+                to={to}
                 end={'end' in item ? item.end : false}
-                className={({ isActive }) => {
-                  const aiActive =
-                    item.to === '/ai-memory' &&
-                    location.pathname.includes('/ai-memory');
-                  return isActive || aiActive ? 'nav-link active' : 'nav-link';
-                }}
+                className={({ isActive }) =>
+                  navActive(item.to, isActive) ? 'nav-link active' : 'nav-link'
+                }
                 title={t(item.key)}
               >
                 <Icon aria-hidden />
@@ -171,27 +186,43 @@ export function AppShell({ children, appInfo }: AppShellProps) {
             );
           })}
           <div className="sidebar-nav-divider" />
-          <NavLink
-            to="/settings"
-            className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
-            title={t('nav.settings')}
-          >
-            <Settings aria-hidden />
-            <span>{t('nav.settings')}</span>
-          </NavLink>
+          {SECONDARY_NAV.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+                title={t(item.key)}
+              >
+                <Icon aria-hidden />
+                <span>{t(item.key)}</span>
+              </NavLink>
+            );
+          })}
         </nav>
       </aside>
 
       <header className="topbar">
         <div className="topbar-left">
           <div className="topbar-breadcrumb">
-            <strong>{t(pageKey)}</strong>
-            {currentProjectName ? (
+            {inProject && currentProjectName ? (
               <>
+                <strong>{currentProjectName}</strong>
                 <span aria-hidden>/</span>
-                <span>{currentProjectName}</span>
+                <span>{t(pageKey)}</span>
               </>
-            ) : null}
+            ) : (
+              <>
+                <strong>{t(pageKey)}</strong>
+                {currentProjectName ? (
+                  <>
+                    <span aria-hidden>/</span>
+                    <span>{currentProjectName}</span>
+                  </>
+                ) : null}
+              </>
+            )}
           </div>
         </div>
         <div className="topbar-right">
@@ -202,7 +233,9 @@ export function AppShell({ children, appInfo }: AppShellProps) {
           <IconButton
             label={t('topbar.notifications')}
             active={notifOpen}
-            onClick={() => { setNotifOpen(true); }}
+            onClick={() => {
+              setNotifOpen(true);
+            }}
           >
             <Bell size={18} />
             {unread > 0 ? (
@@ -219,7 +252,12 @@ export function AppShell({ children, appInfo }: AppShellProps) {
               />
             ) : null}
           </IconButton>
-          <IconButton label={t('nav.help')} onClick={() => { navigate(`/help/${helpArticleForRoute(location.pathname)}`); }}>
+          <IconButton
+            label={t('nav.help')}
+            onClick={() => {
+              navigate(`/help/${helpArticleForRoute(location.pathname)}`);
+            }}
+          >
             <HelpCircle size={18} />
           </IconButton>
         </div>
@@ -294,7 +332,9 @@ export function AppShell({ children, appInfo }: AppShellProps) {
       <Drawer
         open={notifOpen}
         title={t('notifications.title')}
-        onClose={() => { setNotifOpen(false); }}
+        onClose={() => {
+          setNotifOpen(false);
+        }}
         closeLabel={t('actions.close')}
       >
         <div className="btn-row" style={{ marginBottom: '0.75rem' }}>
@@ -335,11 +375,22 @@ export function AppShell({ children, appInfo }: AppShellProps) {
                   </span>
                   <div className="btn-row" style={{ marginTop: '0.35rem' }}>
                     {!n.read ? (
-                      <Button size="sm" onClick={() => { markRead(n.id); }}>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          markRead(n.id);
+                        }}
+                      >
                         {t('actions.markRead')}
                       </Button>
                     ) : null}
-                    <Button size="sm" variant="ghost" onClick={() => { remove(n.id); }}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        remove(n.id);
+                      }}
+                    >
                       {t('actions.deleteNotification')}
                     </Button>
                   </div>
