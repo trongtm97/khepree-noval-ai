@@ -23,6 +23,7 @@ import {
 import { HelpContextButton } from '../features/help/HelpContextButton';
 import { useUiShellStore } from '../stores/ui-shell-store';
 import { OnboardingChecklistPanel } from '../hooks/useOnboardingChecklist';
+import { LanguagePairLabel } from '../components/LanguagePairLabel';
 
 function formatCount(n: number): string {
   return n.toLocaleString('vi-VN');
@@ -178,7 +179,7 @@ export function DashboardPage() {
       ) : (
         <div className="cc-next-list">
           {focusProjects.map((project) => {
-            const source = project.sourceChapterCount ?? project.chapterCount ?? 0;
+            const source = project.sourceChapterCount ?? 0;
             const done = project.translatedChapterCount ?? 0;
             const next = project.nextUntranslatedChapter;
             const health = project.health;
@@ -195,6 +196,12 @@ export function DashboardPage() {
                 <div className="cc-next-main">
                   <div>
                     <h3 className="cc-next-title">{project.title}</h3>
+                    <p className="cc-next-pair">
+                      <LanguagePairLabel
+                        sourceLanguage={project.sourceLanguage}
+                        targetLanguage={project.targetLanguage}
+                      />
+                    </p>
                     <p className="cc-next-progress">
                       {t('dashboard.translatedOfTotal', {
                         done: formatCount(done),

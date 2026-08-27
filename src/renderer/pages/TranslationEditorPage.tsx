@@ -23,12 +23,14 @@ import {
 } from '../utils/ensure-translate-ready';
 import { confirmDangerous } from '../utils/confirm-dangerous';
 import { chapterRef } from '../components/translation/chapter-utils';
-import { TranslationToolbar } from '../components/translation/TranslationToolbar';
+import { TranslationHeader } from '../components/translation/TranslationHeader';
 import { ChapterNavigator } from '../components/translation/ChapterNavigator';
-import { TranslationWorkspace } from '../components/translation/TranslationWorkspace';
-import { TranslationJobBanner } from '../components/translation/TranslationJobBanner';
+import { BilingualEditor } from '../components/translation/BilingualEditor';
+import { ContextDrawer } from '../components/translation/ContextDrawer';
+import { JobProgressBanner } from '../components/translation/JobProgressBanner';
 import { TranslationContextStatus } from '../components/translation/TranslationContextStatus';
-import { EditorSearchBar } from '../components/translation/EditorSearchBar';
+import { SearchReplaceBar } from '../components/translation/SearchReplaceBar';
+import { getLanguageProfile } from '@shared/constants/language-profile';
 
 export function TranslationEditorPage() {
   const t = useT();
@@ -57,7 +59,7 @@ export function TranslationEditorPage() {
   const [jobWatchMessage, setJobWatchMessage] = useState<string | null>(null);
   const [activeJob, setActiveJob] = useState<JobDto | null>(null);
   const [learningHint, setLearningHint] = useState<string | null>(null);
-  const [contextCollapsed, setContextCollapsed] = useState(false);
+  const [contextCollapsed, setContextCollapsed] = useState(true);
 
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const watchCancel = useRef<AbortController | null>(null);
@@ -541,10 +543,17 @@ export function TranslationEditorPage() {
 
   const continueTranslate = async () => {
     const project = projects.find((p) => p.id === projectId);
+    const chapter = chapters.at(chapterIndex);
     const from =
-      project?.nextUntranslatedChapter ??
-      (chapters.at(chapterIndex) ? chapterRef(chapters[chapterIndex]!) : undefined);
+      project?.nextUntranslatedChapter ?? (chapter ? chapterRef(chapter) : undefined);
     await enqueueNovelRange({ chapterFrom: from });
+  };
+
+  const translateNext3 = async () => {
+    const chapter = chapters.at(chapterIndex);
+    if (!chapter) return;
+    const from = chapterRef(chapter);
+    await enqueueNovelRange({ chapterFrom: from, chapterTo: from + 2 });
   };
 
   const selectedIds = useMemo(() => Array.from(selectedChapterIds), [selectedChapterIds]);
@@ -775,14 +784,16 @@ export function TranslationEditorPage() {
     searchMatches.length,
   ]);
 
-  const currentChapter = chapters.at(chapterIndex);
-  const projectTitle = projects.find((p) => p.id === projectId)?.title ?? '';
-  const chapterHeading = currentChapter
-    ? t('translation.batch', {
-        from: chapterRef(currentChapter),
-        to: chapterRef(currentChapter),
-      })
-    : '';
+  const currentChapter = chapters.at(chapterIndex) ?? null;
+  const project = projects.find((p) => p.id === projectId) ?? null;
+  const projectTitle = project?.title ?? '';
+  const sourceLanguage = project?.sourceLanguage ?? 'zh-Hans';
+  const targetLanguage = project?.targetLanguage ?? 'vi';
+  const sourceProfile = getLanguageProfile(sourceLanguage);
+  const targetProfile = getLanguageProfile(targetLanguage);
+  const chapterNumber = currentChapter
+    ? (currentChapter.chapterNumber ?? currentChapter.sequenceOrder ?? null)
+    : null;
 
   if (loading) {
     return (
@@ -794,39 +805,32 @@ export function TranslationEditorPage() {
   }
 
   return (
-    <div className="editor-page" style={{ height: '100%', padding: 0 }}>
-      <TranslationToolbar
-        projectId={projectId}
-        projects={projects}
+    <div className="editor-page translation-editor-page" style={{ height: '100%', padding: 0 }}>
+      <TranslationHeader
         projectTitle={projectTitle}
-        chapterLabel={chapterHeading}
-        selectedCount={selectedIds.length}
+        sourceLanguage={sourceLanguage}
+        targetLanguage={targetLanguage}
+        chapterNumber={chapterNumber}
+        projectId={projectId}
         busy={enqueueBusy}
         preparing={preparePhase}
         saveStatus={saveStatus}
         lastSavedAt={lastSavedAt}
-        hideProjectSelect={Boolean(routeProjectId)}
+        selectedCount={selectedIds.length}
         memoryBadge={
           <TranslationContextStatus
             projectId={projectId}
             packMode={activeJob?.progress?.packMode ?? null}
           />
         }
-        onProjectChange={(nextId) => {
-          if (routeProjectId) {
-            navigate(`/projects/${nextId}/translate`);
-            return;
-          }
-          setProjectId(nextId);
-        }}
         onContinue={() => {
           void continueTranslate();
         }}
         onTranslateCurrent={() => {
           void enqueueTranslateCurrent();
         }}
-        onTranslateSelected={() => {
-          void enqueueNovelRange({ chapterIds: selectedIds });
+        onTranslateNext3={() => {
+          void translateNext3();
         }}
         onTranslateRemaining={() => {
           void enqueueNovelRange({});
@@ -873,15 +877,12 @@ export function TranslationEditorPage() {
         </div>
       ) : null}
 
-      <TranslationJobBanner
+      <JobProgressBanner
         job={activeJob}
         preparing={preparePhase}
         preparingMessage={jobWatchMessage}
         onPause={() => {
           void window.novelTrans.jobs.pauseAll();
-        }}
-        onOpenJobs={() => {
-          navigate('/jobs');
         }}
       />
 
@@ -910,7 +911,7 @@ export function TranslationEditorPage() {
         </div>
       ) : null}
 
-      <EditorSearchBar
+      <SearchReplaceBar
         searchQuery={searchQuery}
         replaceQuery={replaceQuery}
         showReplace={showReplace}
@@ -951,7 +952,7 @@ export function TranslationEditorPage() {
           }}
         />
 
-        <TranslationWorkspace
+        <BilingualEditor
           paragraphs={paragraphs}
           activeParagraphId={activeParagraphId}
           dirty={dirty}
@@ -959,19 +960,26 @@ export function TranslationEditorPage() {
           searchMatches={searchMatches}
           projectId={projectId}
           chapterId={chapterId}
-          context={context}
-          contextCollapsed={contextCollapsed}
+          sourceLabel={sourceProfile.displayNameNative}
+          targetLabel={targetProfile.displayNameNative}
+          sourceDirection={sourceProfile.direction}
+          targetDirection={targetProfile.direction}
           onSelectParagraph={setActiveParagraph}
           onDraftChange={handleDraftChange}
-          onToggleContext={() => {
-            setContextCollapsed((v) => !v);
-          }}
           onReverted={() => {
             if (chapters.length === 0) return;
             const chapter = chapters[chapterIndex] ?? chapters[0];
             void loadChapter(projectId, chapterId, chapterRef(chapter)).then(() => {
               if (activeParagraphId) setActiveParagraph(activeParagraphId);
             });
+          }}
+        />
+
+        <ContextDrawer
+          context={context}
+          collapsed={contextCollapsed}
+          onToggle={() => {
+            setContextCollapsed((v) => !v);
           }}
         />
       </div>

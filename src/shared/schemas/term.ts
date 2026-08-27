@@ -10,8 +10,18 @@ import {
 export const TermDtoSchema = z.object({
   id: z.string().uuid(),
   sourceText: z.string(),
+  targetText: z.string().nullable(),
+  sourceLanguage: z.string(),
+  targetLanguage: z.string(),
+  sourceVariants: z.array(z.string()),
+  targetVariants: z.array(z.string()),
+  transliteration: z.string().nullable(),
+  transliterationSystem: z.string().nullable(),
+  /** Legacy Chinese alias of sourceText. */
   simplified: z.string(),
+  /** Legacy Chinese traditional form. */
   traditional: z.string().nullable(),
+  /** Legacy Chinese pinyin (= transliteration when system=pinyin). */
   pinyin: z.string().nullable(),
   preferredTranslation: z.string().nullable(),
   alternativeTranslations: z.array(z.string()),
@@ -55,7 +65,11 @@ export type TermCandidateDto = z.infer<typeof TermCandidateDtoSchema>;
 export const TermSearchRequestSchema = z.object({
   chinese: z.string().optional(),
   vietnamese: z.string().optional(),
+  sourceText: z.string().optional(),
+  targetText: z.string().optional(),
   pinyin: z.string().optional(),
+  sourceLanguage: z.string().optional(),
+  targetLanguage: z.string().optional(),
   type: z.enum(TERM_TYPES).optional(),
   scope: z.enum(TERM_SCOPES).optional(),
   scopeRef: z.string().optional(),
@@ -81,6 +95,13 @@ export const TermGetResponseSchema = z.object({
 export const TermUpsertRequestSchema = z.object({
   id: z.string().uuid().optional(),
   sourceText: z.string().min(1).max(200),
+  targetText: z.string().max(500).optional(),
+  sourceLanguage: z.string().max(32).optional(),
+  targetLanguage: z.string().max(32).optional(),
+  sourceVariants: z.array(z.string().max(200)).optional(),
+  targetVariants: z.array(z.string().max(500)).optional(),
+  transliteration: z.string().max(200).nullable().optional(),
+  transliterationSystem: z.string().max(64).nullable().optional(),
   simplified: z.string().min(1).max(200).optional(),
   traditional: z.string().max(200).nullable().optional(),
   pinyin: z.string().max(200).nullable().optional(),

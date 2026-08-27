@@ -28,6 +28,8 @@ export function toCharacterDto(
     projectId: row.project_id,
     canonicalName: row.canonical_name,
     translatedName: row.translated_name,
+    canonicalSourceName: row.canonical_name,
+    preferredTargetName: row.translated_name,
     aliases,
     gender: row.gender,
     role: row.role,

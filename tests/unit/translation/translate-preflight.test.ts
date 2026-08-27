@@ -16,6 +16,7 @@ describe('evaluateTranslatePreflight', () => {
     googleAccounts: [{ id: 'acc-1', status: 'READY' }],
     aiAccounts: [{ status: 'READY' }],
     notebookStatus: null as string | null,
+    resolvedWorkerAccountId: 'acc-1' as string | null,
   };
 
   it('ok when Web API account READY', () => {
@@ -86,7 +87,7 @@ describe('evaluateTranslatePreflight', () => {
     expect(result).toEqual({ ok: false, reason: 'no_channel' });
   });
 
-  it('uses resolvedWorkerAccountId over first READY', () => {
+  it('uses resolvedWorkerAccountId — never first READY', () => {
     const result = evaluateTranslatePreflight({
       ...base,
       workers: [
@@ -101,6 +102,22 @@ describe('evaluateTranslatePreflight', () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.workerAccountId).toBe('acc-2');
+  });
+
+  it('fails no_worker when resolvedWorkerAccountId missing', () => {
+    const result = evaluateTranslatePreflight({
+      ...base,
+      resolvedWorkerAccountId: null,
+    });
+    expect(result).toEqual({ ok: false, reason: 'no_worker' });
+  });
+
+  it('fails no_worker when resolved id not usable', () => {
+    const result = evaluateTranslatePreflight({
+      ...base,
+      resolvedWorkerAccountId: 'acc-other',
+    });
+    expect(result).toEqual({ ok: false, reason: 'no_worker' });
   });
 });
 

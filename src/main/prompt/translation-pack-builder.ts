@@ -1,8 +1,15 @@
 import { createHash } from 'node:crypto';
 import type { PackMode } from '@shared/constants/pack-mode';
 import {
+  DEFAULT_SOURCE_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+} from '@shared/constants/language-profile';
+import {
+  composeTranslationStyleRules,
+  formatTranslationTaskHeader,
+} from '@shared/constants/translation-style-model';
+import {
   OUTPUT_PROTOCOL_BLOCK,
-  TRANSLATION_STYLE_RULES,
   type TranslationStyle,
 } from '@shared/constants/translation-pack';
 import type { TranslationPackDto, TranslationPackSections } from '@shared/schemas/translation-pack';
@@ -29,6 +36,9 @@ export interface BuildPackInput {
   packMode?: PackMode;
   /** Unsynced hot deltas text (already formatted section body or empty). */
   hotMemoryOverride?: string;
+  /** Override pair for tests — otherwise read from project row. */
+  sourceLanguage?: string;
+  targetLanguage?: string;
 }
 
 function hashPrompt(prompt: string): string {
@@ -69,6 +79,8 @@ function buildTaskHeaderFromChapters(
   style: TranslationStyle,
   chapters: ChapterRow[],
   packMode: PackMode,
+  sourceLanguage: string,
+  targetLanguage: string,
 ): string {
   const labels = chapters.map(chapterLabel);
   const range =
@@ -82,10 +94,13 @@ function buildTaskHeaderFromChapters(
         ? 'Notebook holds cold knowledge. Apply Local Knowledge Delta / Hot Memory for unsynced updates since last verified Notebook version. Do not invent beyond Notebook + delta.'
         : 'Use ONLY active context below (local memory fallback). Do not invent terms, characters, or plot.';
   return [
-    '## Task',
-    `Translate Chinese → Vietnamese (${style}) for ${range}.`,
+    formatTranslationTaskHeader({
+      sourceLanguage,
+      targetLanguage,
+      styleLabel: style,
+      range,
+    }),
     contextHint,
-    'Preserve every paragraph ID from Source exactly.',
   ].join('\n');
 }
 
@@ -93,8 +108,14 @@ function buildCriticalRules(
   style: TranslationStyle,
   contextRules: string[],
   extraRules: string[] | undefined,
+  sourceLanguage: string,
+  targetLanguage: string,
 ): string {
-  const styleRules = TRANSLATION_STYLE_RULES[style];
+  const styleRules = composeTranslationStyleRules({
+    style,
+    sourceLanguage,
+    targetLanguage,
+  });
   const merged = [
     ...styleRules,
     ...contextRules,
@@ -331,12 +352,34 @@ export function buildTranslationPack(
         ? input.context.criticalProjectRules.slice(0, 8)
         : input.context.criticalProjectRules;
 
+  const project = db.projects.getById(input.projectId);
+  const sourceLanguage =
+    input.sourceLanguage ??
+    project?.source_language ??
+    DEFAULT_SOURCE_LANGUAGE;
+  const targetLanguage =
+    input.targetLanguage ??
+    project?.target_language ??
+    DEFAULT_TARGET_LANGUAGE;
+
   const sections: TranslationPackSections = {
-    taskHeader: buildTaskHeaderFromChapters(input.style, chapters, packMode),
+    taskHeader: buildTaskHeaderFromChapters(
+      input.style,
+      chapters,
+      packMode,
+      sourceLanguage,
+      targetLanguage,
+    ),
     criticalRules: [
       bookProfile,
       buildKnowledgePriorityRules(),
-      buildCriticalRules(input.style, projectRules, input.extraRules),
+      buildCriticalRules(
+        input.style,
+        projectRules,
+        input.extraRules,
+        sourceLanguage,
+        targetLanguage,
+      ),
     ]
       .filter(Boolean)
       .join('\n\n'),
@@ -408,16 +451,21 @@ export function buildTranslationPack(
 function buildTaskHeader(
   style: TranslationStyle,
   chapterNumbers: number[],
+  sourceLanguage: string,
+  targetLanguage: string,
 ): string {
   const range =
     chapterNumbers.length === 1
       ? `chapter ${chapterNumbers[0]}`
       : `chapters ${chapterNumbers[0]}–${chapterNumbers[chapterNumbers.length - 1]}`;
   return [
-    '## Task',
-    `Translate Chinese → Vietnamese (${style}) for ${range}.`,
+    formatTranslationTaskHeader({
+      sourceLanguage,
+      targetLanguage,
+      styleLabel: style,
+      range,
+    }),
     'Use ONLY active context below. Do not invent terms, characters, or plot.',
-    'Preserve every paragraph ID from Source exactly.',
   ].join('\n');
 }
 
@@ -431,8 +479,12 @@ export function assemblePackSections(input: {
   sourceLines: string[];
   packMode?: PackMode;
   hotMemoryOverride?: string;
+  sourceLanguage?: string;
+  targetLanguage?: string;
 }): { sections: TranslationPackSections; prompt: string } {
   const packMode = input.packMode ?? 'fat';
+  const sourceLanguage = input.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE;
+  const targetLanguage = input.targetLanguage ?? DEFAULT_TARGET_LANGUAGE;
   const rules =
     packMode === 'slim'
       ? []
@@ -440,10 +492,21 @@ export function assemblePackSections(input: {
         ? input.criticalRules.slice(0, 8)
         : input.criticalRules;
   const sections: TranslationPackSections = {
-    taskHeader: buildTaskHeader(input.style, input.chapterNumbers),
+    taskHeader: buildTaskHeader(
+      input.style,
+      input.chapterNumbers,
+      sourceLanguage,
+      targetLanguage,
+    ),
     criticalRules: [
       buildKnowledgePriorityRules(),
-      buildCriticalRules(input.style, rules, input.extraRules),
+      buildCriticalRules(
+        input.style,
+        rules,
+        input.extraRules,
+        sourceLanguage,
+        targetLanguage,
+      ),
     ].join('\n\n'),
     hotMemoryDelta: buildHotMemory(input.context, packMode, input.hotMemoryOverride),
     activeProjectTerms: buildActiveTerms(input.context, packMode),

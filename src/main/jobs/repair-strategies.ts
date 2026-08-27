@@ -2,6 +2,11 @@ import type { QaResult, ParsedBatchResult } from '@shared/schemas/output-protoco
 import type { RepairPromptPlan } from '@shared/schemas/job';
 import type { RepairReason } from '@shared/constants/job';
 import { CONTINUATION_REPAIR_THRESHOLD } from '@shared/constants/job';
+import {
+  DEFAULT_SOURCE_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+} from '@shared/constants/language-profile';
+import { formatLanguagePairPreamble } from '@shared/constants/translation-style-model';
 import { buildRepairPack } from './repair-pack-builder';
 import { TERM_DELTA_JSON_SCHEMA, MEMORY_DELTA_JSON_SCHEMA } from '@shared/schemas/term-delta';
 import {
@@ -22,6 +27,18 @@ export interface RepairStrategyContext {
   batchParagraphs: RepairParagraph[];
   /** Locked preferred terms for TERM_VIOLATION prompts. */
   lockedTermHints?: { source: string; preferred: string; paragraphIds: string[] }[];
+  sourceLanguage?: string;
+  targetLanguage?: string;
+}
+
+function pairLangs(ctx: RepairStrategyContext): {
+  sourceLanguage: string;
+  targetLanguage: string;
+} {
+  return {
+    sourceLanguage: ctx.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE,
+    targetLanguage: ctx.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
+  };
 }
 
 export interface RepairStrategy {
@@ -99,6 +116,7 @@ export const missingParagraphStrategy: RepairStrategy = {
     const pack = buildRepairPack({
       missingParagraphIds: ctx.qa.missingParagraphIds,
       batchParagraphs: ctx.batchParagraphs,
+      ...pairLangs(ctx),
     });
     return {
       mode: 'translation_missing',
@@ -119,6 +137,7 @@ export const emptyParagraphStrategy: RepairStrategy = {
     const pack = buildRepairPack({
       missingParagraphIds: ctx.qa.emptyParagraphIds,
       batchParagraphs: ctx.batchParagraphs,
+      ...pairLangs(ctx),
     });
     return {
       mode: 'translation_empty',
@@ -144,6 +163,7 @@ export const corruptParagraphStrategy: RepairStrategy = {
     const pack = buildRepairPack({
       missingParagraphIds: ctx.qa.corruptParagraphIds,
       batchParagraphs: ctx.batchParagraphs,
+      ...pairLangs(ctx),
     });
     return {
       mode: 'translation_corrupt',
@@ -151,7 +171,7 @@ export const corruptParagraphStrategy: RepairStrategy = {
       prompt: [
         'Previous response had CORRUPT / truncated translations for these IDs.',
         'Protocol tags (e.g. <TRANSLATION>) leaked into the body, or the line was cut short.',
-        'Re-translate ONLY these paragraphs. Text must be complete Vietnamese.',
+        'Re-translate ONLY these paragraphs. Text must be complete in the target language.',
         'Do NOT put protocol tags inside translation lines. One line per ID.',
         '',
         pack.prompt,
@@ -176,6 +196,7 @@ export const malformedOutputStrategy: RepairStrategy = {
       const pack = buildRepairPack({
         missingParagraphIds: ctx.qa.missingParagraphIds,
         batchParagraphs: ctx.batchParagraphs,
+        ...pairLangs(ctx),
       });
       return {
         mode: 'malformed_full',
@@ -186,6 +207,7 @@ export const malformedOutputStrategy: RepairStrategy = {
       };
     }
 
+    const langs = pairLangs(ctx);
     const sourceBlock = ctx.batchParagraphs
       .map((p) => `${p.paragraphId} ${p.sourceText}`)
       .join('\n');
@@ -194,11 +216,13 @@ export const malformedOutputStrategy: RepairStrategy = {
       mode: 'malformed_full',
       reason: 'MALFORMED_OUTPUT',
       prompt: [
+        formatLanguagePairPreamble(langs.sourceLanguage, langs.targetLanguage),
+        '',
         'Previous output was malformed and could not be parsed confidently.',
         'Return EXACTLY the three sections with proper closing tags. No markdown fences. No intro prose.',
         '',
         '<TRANSLATION>',
-        '[C000001:P000001] Vietnamese…',
+        '[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...',
         '</TRANSLATION>',
         '<TERM_DELTA>',
         '[]',
@@ -241,6 +265,7 @@ export const termViolationStrategy: RepairStrategy = {
     const pack = buildRepairPack({
       missingParagraphIds: paraIds.length > 0 ? paraIds : ctx.qa.missingParagraphIds,
       batchParagraphs: ctx.batchParagraphs,
+      ...pairLangs(ctx),
     });
 
     const termLines =
@@ -332,6 +357,7 @@ export const outputIncompleteStrategy: RepairStrategy = {
       fromParagraphId: fromId,
       batchParagraphs: ctx.batchParagraphs,
       remainingParagraphIds: ctx.qa.missingParagraphIds,
+      ...pairLangs(ctx),
     });
     return {
       mode: 'continuation',

@@ -53,7 +53,7 @@ function parseTerms(md: string): BootstrapAnalysisOutput['terms'] {
     if (!source || !preferred) continue;
     out.push({
       source,
-      preferred_vi: preferred,
+      preferred_target: preferred,
       category: m[3] ? m[3].toUpperCase() : undefined,
       first_seen_chapter: parseChapterNum(
         /ch\.?\s*(\d+)/i.exec(t)?.[1] ?? /chương\s*(\d+)/i.exec(t)?.[1] ?? null,
@@ -80,7 +80,9 @@ function parseCharacters(md: string): BootstrapAnalysisOutput['characters'] {
     const aliasesRaw = field(/bí\s*danh|aliases?/i);
     out.push({
       source_name,
-      preferred_vi: field(/tên\s*việt|preferred|translated/i),
+      preferred_target: field(
+        /preferred\s*target|tên\s*dịch|tên\s*việt|preferred|translated/i,
+      ),
       gender: field(/giới\s*tính|gender/i),
       role: field(/vai\s*trò|role/i),
       aliases: aliasesRaw

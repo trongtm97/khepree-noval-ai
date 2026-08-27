@@ -26,6 +26,11 @@ export interface LearningPipelineInput {
   ) => { shouldSync: boolean };
   /** Test inject: NotebookSyncService.syncDrive only — never call Drive API client here. */
   syncDrive?: (projectId: string) => Promise<unknown>;
+  /**
+   * Test inject: after Drive sync, schedule 08_SYNC_STATE version/nonce probe.
+   * Production uses NotebookSyncService.scheduleBackgroundVersionProbe.
+   */
+  scheduleVersionProbe?: (projectId: string, accountId: string) => void;
 }
 
 export interface LearningPipelineResult {
@@ -81,8 +86,8 @@ export function isCriticalLearningChange(
 
 /**
  * Post-PASS learning lifecycle (single Notebook sync path):
- * Learning → SQLite → markDirty → rebuild → sync policy →
- * NotebookSyncService.syncDrive → DRIVE_SYNC_COMPLETED → NOTEBOOK_SYNC_PENDING → verify → READY
+ * SQLite → Dirty → NotebookSyncService → Drive → Notebook Pending → Verify → Ready.
+ * Never call DriveSyncService directly from Learning.
  */
 export async function runLearningPipeline(
   db: DatabaseManager,
@@ -258,6 +263,26 @@ export async function runLearningPipeline(
         job_id: input.jobId,
         payload: { ok: true, via: 'NotebookSyncService.syncDrive' },
       });
+
+      // Pending → Verify (08_SYNC_STATE version+nonce) → Ready. Mapped notebook account only.
+      const { resolveProjectWorker } = await import('../services/project-worker-resolver');
+      const worker = resolveProjectWorker(db, {
+        projectId: input.projectId,
+        purpose: 'notebook',
+      });
+      if (worker.accountId) {
+        if (input.scheduleVersionProbe) {
+          input.scheduleVersionProbe(input.projectId, worker.accountId);
+        } else {
+          const { getNotebookSyncService } = await import(
+            '../notebook/notebook-sync-service-singleton'
+          );
+          getNotebookSyncService(db).scheduleBackgroundVersionProbe(
+            input.projectId,
+            worker.accountId,
+          );
+        }
+      }
     } catch (error) {
       // Drive failure: keep knowledge dirty; do not mark ready / sync_pending.
       logger.warn('Notebook Drive sync failed after learning', {

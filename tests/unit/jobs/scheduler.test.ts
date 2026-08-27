@@ -113,9 +113,11 @@ describe('AutomationScheduler (Phase 15)', () => {
   it('runs two POOL workers in parallel up to maxConcurrent', async () => {
     const startedAccounts: string[] = [];
     const releaseGates = new Map<string, () => void>();
+    const projectB = db.projects.create({ title: 'Scheduler Novel B' }).id;
 
     scheduler = new AutomationScheduler(db, {
       maxConcurrentWorkers: 2,
+      concurrencyPolicy: { allowSameProjectParallel: true, perProjectMax: 2 },
       tickMs: 50,
       leaseMs: 30_000,
       sendInitial: async (ctx) => {
@@ -138,7 +140,7 @@ describe('AutomationScheduler (Phase 15)', () => {
       priority: 10,
     });
     const { job: job2 } = service.enqueueTranslate({
-      projectId,
+      projectId: projectB,
       chapterFrom: 2,
       chapterTo: 2,
       workerMode: 'POOL',

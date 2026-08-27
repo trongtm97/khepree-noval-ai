@@ -20,6 +20,9 @@ export interface StartupAiReadinessState {
 }
 
 function issueTitle(issues: StartupAiIssue[]): string {
+  if (issues.includes('check_failed')) {
+    return t('notifications.startupAiNotReady');
+  }
   if (issues.includes('google_needs_login') || issues.includes('no_google_account')) {
     if (issues.includes('web_api_not_ready') || issues.includes('no_ai_provider')) {
       return t('notifications.startupAiNotReady');
@@ -31,6 +34,11 @@ function issueTitle(issues: StartupAiIssue[]): string {
 
 function issueBody(issues: StartupAiIssue[], detail: string | null): string {
   const parts: string[] = [];
+  if (issues.includes('check_failed')) {
+    parts.push(t('notifications.startupCheckFailedBody'));
+    if (detail) parts.push(detail);
+    return parts.join(' ');
+  }
   if (issues.includes('no_google_account')) {
     parts.push(t('notifications.startupNoGoogleBody'));
   } else if (issues.includes('google_needs_login')) {
@@ -45,6 +53,10 @@ function issueBody(issues: StartupAiIssue[], detail: string | null): string {
     parts.push(detail);
   }
   return parts.join(' ');
+}
+
+function settledValue<T>(result: PromiseSettledResult<T>): T | null {
+  return result.status === 'fulfilled' ? result.value : null;
 }
 
 /**
@@ -65,24 +77,66 @@ export function useStartupAiReadiness(intervalMs = 60_000): StartupAiReadinessSt
 
   const refresh = useCallback(async () => {
     try {
-      const [accountsRes, healthRes, listRes, aiAccRes] = await Promise.all([
-        window.novelTrans.accounts.list(),
-        window.novelTrans.aiProviders.health(),
-        window.novelTrans.aiProviders.list(),
-        window.novelTrans.aiAccounts.list({
-          providerId: AI_PROVIDER_IDS.GEMINI_WEB_API,
-        }),
-      ]);
+      const [accountsSettled, healthSettled, listSettled, aiAccSettled] =
+        await Promise.allSettled([
+          window.novelTrans.accounts.list(),
+          window.novelTrans.aiProviders.health(),
+          window.novelTrans.aiProviders.list(),
+          window.novelTrans.aiAccounts.list({
+            providerId: AI_PROVIDER_IDS.GEMINI_WEB_API,
+          }),
+        ]);
 
       if (cancelledRef.current) return;
 
+      const accountsRes = settledValue(accountsSettled);
+      const healthRes = settledValue(healthSettled);
+      const listRes = settledValue(listSettled);
+      const aiAccRes = settledValue(aiAccSettled);
+
+      const ipcFailed =
+        !accountsRes && !healthRes && !listRes && !aiAccRes;
+      const listOrHealthMissing = !listRes && !healthRes;
+
+      if (ipcFailed || listOrHealthMissing) {
+        const detail = [accountsSettled, healthSettled, listSettled, aiAccSettled]
+          .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+          .map((r) => (r.reason instanceof Error ? r.reason.message : String(r.reason)))
+          .filter(Boolean)
+          .slice(0, 2)
+          .join(' ');
+        const next = {
+          ok: false as const,
+          issues: ['check_failed'] as StartupAiIssue[],
+          detail: detail || null,
+        };
+        setResult(next);
+        setChecking(false);
+        const nextTitle = issueTitle(next.issues);
+        const nextBody = issueBody(next.issues, next.detail);
+        setTitle(nextTitle);
+        setDescription(nextBody);
+        const toast = wasOkRef.current !== false;
+        remove(STARTUP_AI_NOTIFY_ID);
+        add({
+          id: STARTUP_AI_NOTIFY_ID,
+          kind: 'ACTION_REQUIRED',
+          title: nextTitle,
+          description: nextBody,
+          toast,
+        });
+        if (toast) setDismissed(false);
+        wasOkRef.current = false;
+        return;
+      }
+
       const webApiHealth =
-        healthRes.providers.find((p) => p.id === AI_PROVIDER_IDS.GEMINI_WEB_API) ??
-        healthRes.providers.find((p) => p.type === 'GEMINI_WEB_API') ??
+        healthRes?.providers.find((p) => p.id === AI_PROVIDER_IDS.GEMINI_WEB_API) ??
+        healthRes?.providers.find((p) => p.type === 'GEMINI_WEB_API') ??
         null;
 
       const next = evaluateStartupAiReadiness({
-        googleAccounts: accountsRes.accounts.map((a) => ({
+        googleAccounts: (accountsRes?.accounts ?? []).map((a) => ({
           status: a.status,
           workerEnabled: a.workerEnabled,
         })),
@@ -93,9 +147,11 @@ export function useStartupAiReadiness(intervalMs = 60_000): StartupAiReadinessSt
               message: webApiHealth.message,
             }
           : null,
-        webApiAccounts: aiAccRes.accounts.map((a) => ({ status: a.status })),
-        workerRunning: listRes.workerRunning,
-        hasEnabledProvider: listRes.providers.some((p) => p.enabled),
+        webApiAccounts: (aiAccRes?.accounts ?? []).map((a) => ({ status: a.status })),
+        workerRunning: listRes?.workerRunning ?? false,
+        hasEnabledProvider:
+          listRes?.providers.some((p) => p.enabled) ??
+          (healthRes?.providers.length ?? 0) > 0,
       });
 
       setResult(next);
@@ -126,11 +182,12 @@ export function useStartupAiReadiness(intervalMs = 60_000): StartupAiReadinessSt
       });
       if (toast) setDismissed(false);
       wasOkRef.current = false;
-    } catch {
+    } catch (error) {
       if (cancelledRef.current) return;
-      setResult({ ok: false, issues: ['no_ai_provider'], detail: null });
+      const detail = error instanceof Error ? error.message : String(error);
+      setResult({ ok: false, issues: ['check_failed'], detail });
       const nextTitle = t('notifications.startupAiNotReady');
-      const nextBody = t('notifications.startupCheckFailedBody');
+      const nextBody = issueBody(['check_failed'], detail);
       setTitle(nextTitle);
       setDescription(nextBody);
       setChecking(false);

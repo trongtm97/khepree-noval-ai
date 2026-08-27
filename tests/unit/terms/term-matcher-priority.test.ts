@@ -10,9 +10,17 @@ import {
 function makeTerm(partial: Partial<TermRow> & Pick<TermRow, 'source_simplified' | 'scope'>): TermRow {
   return {
     id: partial.id ?? crypto.randomUUID(),
+    source_text: partial.source_text ?? partial.source_simplified,
     source_simplified: partial.source_simplified,
     source_traditional: partial.source_traditional ?? null,
     pinyin: partial.pinyin ?? null,
+    source_language: partial.source_language ?? 'zh-Hans',
+    target_language: partial.target_language ?? 'vi',
+    source_variants: partial.source_variants ?? null,
+    target_variants: partial.target_variants ?? null,
+    transliteration: partial.transliteration ?? partial.pinyin ?? null,
+    transliteration_system:
+      partial.transliteration_system ?? (partial.pinyin ? 'pinyin' : null),
     term_type: partial.term_type ?? 'GENERAL',
     genre: partial.genre ?? null,
     scope: partial.scope,

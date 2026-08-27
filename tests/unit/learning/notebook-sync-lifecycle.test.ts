@@ -228,7 +228,7 @@ describe('Learning Notebook sync lifecycle', () => {
     expect(row.status).not.toBe('ready');
   });
 
-  it('success → mapping sync_pending (not ready before verify)', async () => {
+  it('success → mapping sync_pending then schedules version probe (not ready before verify)', async () => {
     db.driveSyncState.patch(projectId, {
       syncEveryNChapters: 1,
       chaptersSinceSync: 0,
@@ -255,6 +255,7 @@ describe('Learning Notebook sync lifecycle', () => {
     resetNotebookSyncService();
     setNotebookDriveSyncFn(() => Promise.resolve());
 
+    const scheduleVersionProbe = vi.fn();
     await runLearningPipeline(db, {
       projectId,
       jobId: db.jobs.create({
@@ -267,6 +268,7 @@ describe('Learning Notebook sync lifecycle', () => {
       chapterFrom: 101,
       chapterTo: 101,
       syncDrive: (id) => getNotebookSyncService(db).syncDrive(id),
+      scheduleVersionProbe,
     });
 
     const row = db.notebooks.listByProject(projectId)[0];
@@ -276,6 +278,7 @@ describe('Learning Notebook sync lifecycle', () => {
     expect(events.some((e) => e.event_type === 'DRIVE_SYNC_COMPLETED')).toBe(true);
     expect(events.some((e) => e.event_type === 'NOTEBOOK_SYNC_PENDING')).toBe(true);
     expect(events.some((e) => e.event_type === 'NOTEBOOK_SYNC_VERIFIED')).toBe(false);
+    expect(scheduleVersionProbe).toHaveBeenCalledWith(projectId, account.id);
   });
 
   it('candidate discover alone does not force immediate sync under threshold', async () => {

@@ -11,6 +11,11 @@ import {
   CONTINUATION_REPAIR_THRESHOLD,
   DEFAULT_MAX_CONTINUATION_ATTEMPTS,
 } from '@shared/constants/job';
+import {
+  DEFAULT_SOURCE_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+} from '@shared/constants/language-profile';
+import { formatLanguagePairPreamble } from '@shared/constants/translation-style-model';
 import { buildMergedTranslationProtocol } from './translate-chunking';
 
 export { detectOutputIncomplete as isRawOutputIncomplete };
@@ -105,6 +110,8 @@ export function buildContinuationPrompt(input: {
   fromParagraphId: string;
   batchParagraphs: RepairParagraph[];
   remainingParagraphIds: string[];
+  sourceLanguage?: string;
+  targetLanguage?: string;
 }): string {
   const remaining = new Set(input.remainingParagraphIds);
   const sourceBlock = input.batchParagraphs
@@ -113,13 +120,19 @@ export function buildContinuationPrompt(input: {
     .join('\n');
 
   return [
-    `Tiếp tục từ ${input.fromParagraphId}.`,
-    'Không lặp lại đoạn đã dịch.',
-    'Chỉ trả phần còn lại.',
-    'Giữ nguyên protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> với thẻ đóng đầy đủ.',
-    'Không đánh số lại paragraph ID — dùng đúng ID nguồn.',
+    formatLanguagePairPreamble(
+      input.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE,
+      input.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
+    ),
     '',
-    'Source paragraphs (phần còn lại):',
+    `Continue from ${input.fromParagraphId}.`,
+    'Do not repeat paragraphs already translated.',
+    'Return only the remaining part.',
+    'Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.',
+    'Do not renumber paragraph IDs — use exact source IDs.',
+    'Translations must be in the target language.',
+    '',
+    'Source paragraphs (remaining):',
     sourceBlock,
   ].join('\n');
 }

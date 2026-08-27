@@ -176,6 +176,22 @@ describe('resolveTranslationPackMode transitions', () => {
     expect(d.reason).toBe('grounding_failed');
   });
 
+  it('sync_pending without bindings → HYBRID (not FAT)', () => {
+    seedNotebook({
+      status: 'sync_pending',
+      knowledgeVersion: 1,
+      withBinding: false,
+      verify: false,
+    });
+    const d = resolveTranslationPackMode(db, {
+      projectId,
+      accountId,
+      providerType: 'PLAYWRIGHT_GEMINI',
+    });
+    expect(d.packMode).toBe('hybrid');
+    expect(d.reason).toBe('sync_pending');
+  });
+
   it('sync_pending → HYBRID (not SLIM)', () => {
     seedNotebook({ status: 'sync_pending', knowledgeVersion: 2 });
     const d = resolveTranslationPackMode(db, {

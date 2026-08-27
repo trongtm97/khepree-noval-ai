@@ -6,6 +6,7 @@ import { shouldNotifyJobTransition } from '../utils/job-notify';
 export interface SystemStatus {
   workersReady: number;
   workersTotal: number;
+  accountsReady: number;
   jobsRunning: number;
   primaryWorkerEmail: string | null;
   primaryWorkerHealth: string | null;
@@ -27,6 +28,7 @@ export function useSystemStatusPoll(intervalMs = 4000): SystemStatus {
   const [status, setStatus] = useState<SystemStatus>({
     workersReady: 0,
     workersTotal: 0,
+    accountsReady: 0,
     jobsRunning: 0,
     primaryWorkerEmail: null,
     primaryWorkerHealth: null,
@@ -63,6 +65,9 @@ export function useSystemStatusPoll(intervalMs = 4000): SystemStatus {
         const ready = workers.filter(
           (w) => w.health.toUpperCase() === 'READY',
         ).length;
+        const accountsReady = accounts.filter(
+          (a) => a.status.toUpperCase() === 'READY' || a.status.toUpperCase() === 'BUSY',
+        ).length;
         // Prefer a READY worker for the top-bar signal; fall back to first.
         const primary =
           workers.find((w) => w.health.toUpperCase() === 'READY') ??
@@ -92,6 +97,7 @@ export function useSystemStatusPoll(intervalMs = 4000): SystemStatus {
         setStatus({
           workersReady: ready,
           workersTotal: workers.length > 0 ? workers.length : accounts.length,
+          accountsReady,
           jobsRunning: scheduler.inFlight,
           primaryWorkerEmail: primaryAccount ? (primaryAccount.email ?? null) : null,
           primaryWorkerHealth: displayHealth,

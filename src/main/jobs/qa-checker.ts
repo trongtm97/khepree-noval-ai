@@ -3,9 +3,9 @@ import type { QaVerdict } from '@shared/constants/output-protocol';
 import { isCorruptTranslationText } from './corrupt-translation';
 
 export interface LockedTermForQa {
-  /** Chinese source present in batch paragraph source text. */
+  /** Source term present in batch paragraph source text. */
   source: string;
-  /** Preferred Vietnamese (must appear if source appears). */
+  /** Preferred target-language form (must appear if source appears). */
   preferred: string;
   /**
    * Variants that must NOT be used instead of preferred when term is locked.

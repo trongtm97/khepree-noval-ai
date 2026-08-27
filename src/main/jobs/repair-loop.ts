@@ -14,6 +14,7 @@ import { newId } from '../db/utils/uuid';
 import { runLearningPipeline } from '../learning/learning-pipeline';
 import { persistParsedTranslations } from '../learning/translation-persistence';
 import { logger } from '../logging/logger';
+import { isWaveBarrierJob, storeWaveProvisional, markWaveJobFailed } from './wave-service';
 import {
   geminiSoftErrorSnippet,
   isGeminiSoftErrorText,
@@ -70,6 +71,33 @@ export interface RepairLoopInput {
 export interface RepairLoopDeps {
   db: DatabaseManager;
   parser?: ResponseParser;
+}
+
+/**
+ * Count distinct chapters actually present in a successful PASS batch.
+ * Falls back to job chapter_from–chapter_to span when paragraph rows missing.
+ */
+export function countCompletedChaptersFromBatch(
+  db: DatabaseManager,
+  batchParagraphs: RepairParagraph[],
+  chapterFrom?: number | null,
+  chapterTo?: number | null,
+): number {
+  const chapterIds = new Set<string>();
+  for (const p of batchParagraphs) {
+    const para = db.paragraphs.getByStableId(p.paragraphId);
+    if (para?.chapter_id) chapterIds.add(para.chapter_id);
+  }
+  if (chapterIds.size > 0) return chapterIds.size;
+  if (
+    chapterFrom != null &&
+    chapterTo != null &&
+    Number.isFinite(chapterFrom) &&
+    Number.isFinite(chapterTo)
+  ) {
+    return Math.max(0, Math.floor(chapterTo) - Math.floor(chapterFrom) + 1);
+  }
+  return 0;
 }
 
 /**
@@ -228,6 +256,49 @@ export async function runRepairLoop(
         const state = 'COMPLETED';
         deps.db.jobs.updateState(input.jobId, state);
         const versionSource = repairRound === 0 ? 'AI_INITIAL' : 'AI_REPAIR';
+        const jobRow = deps.db.jobs.getById(input.jobId);
+        const sourceContextByParagraph: Record<string, string> = {};
+        for (const p of input.batchParagraphs) {
+          sourceContextByParagraph[p.paragraphId] = p.sourceText;
+        }
+        const chaptersCompleted = countCompletedChaptersFromBatch(
+          deps.db,
+          input.batchParagraphs,
+          jobRow?.chapter_from ?? null,
+          jobRow?.chapter_to ?? null,
+        );
+
+        // Parallel Translation Waves: stash provisional — no global learning until commit barrier.
+        if (isWaveBarrierJob(deps.db, input.jobId)) {
+          await storeWaveProvisional(deps.db, input.jobId, {
+            parsed,
+            versionSource,
+            chapterFrom: jobRow?.chapter_from ?? null,
+            chapterTo: jobRow?.chapter_to ?? null,
+            chaptersCompleted,
+            sourceContextByParagraph,
+          });
+          persistProgress(deps.db, input.jobId, {
+            phase: 'done',
+            repairRound,
+            qa,
+            parsed,
+            waveProvisional: true,
+          });
+          return {
+            jobId: input.jobId,
+            finalState: state,
+            repairRounds: repairRound,
+            attempts: deps.db.jobs.listAttempts(input.jobId).map(toAttemptDto),
+            qa,
+            parsed,
+            message:
+              qa.verdict === 'PASS'
+                ? 'QA passed (wave provisional — awaiting commit barrier)'
+                : 'QA passed with warnings (wave provisional — awaiting commit barrier)',
+          };
+        }
+
         const translationPersist = persistParsedTranslations(deps.db, {
           projectId: input.projectId,
           parsed,
@@ -244,22 +315,14 @@ export async function runRepairLoop(
 
         // Phase 16: learning pipeline (TERM_DELTA / MEMORY_DELTA / consolidate)
         try {
-          const jobRow = deps.db.jobs.getById(input.jobId);
-          const sourceContextByParagraph: Record<string, string> = {};
-          for (const p of input.batchParagraphs) {
-            sourceContextByParagraph[p.paragraphId] = p.sourceText;
-          }
           const learning = await runLearningPipeline(deps.db, {
             projectId: input.projectId,
             jobId: input.jobId,
             parsed,
             chapterFrom: jobRow?.chapter_from ?? null,
             chapterTo: jobRow?.chapter_to ?? null,
-            // Real chapter span (101–103 → 3), never +1 per job.
-            chaptersCompleted:
-              jobRow?.chapter_from != null && jobRow.chapter_to != null
-                ? Math.max(0, jobRow.chapter_to - jobRow.chapter_from + 1)
-                : null,
+            // Unique chapters actually in this successful PASS batch (not blind +1).
+            chaptersCompleted,
             sourceContextByParagraph,
           });
           const emptyDeltas =
@@ -372,6 +435,7 @@ export async function runRepairLoop(
           stopReason,
           'QA requires manual attention',
         );
+        markWaveJobFailed(deps.db, input.jobId);
         persistProgress(deps.db, input.jobId, {
           phase: 'needs_attention',
           repairRound,
@@ -402,6 +466,7 @@ export async function runRepairLoop(
           reason,
           `Max repair attempts (${maxAttempts}) reached`,
         );
+        markWaveJobFailed(deps.db, input.jobId);
         persistProgress(deps.db, input.jobId, {
           phase: 'needs_attention',
           repairRound,
@@ -441,6 +506,8 @@ export async function runRepairLoop(
           preferred: t.preferred,
           paragraphIds: [],
         })),
+        sourceLanguage: deps.db.projects.getById(input.projectId)?.source_language,
+        targetLanguage: deps.db.projects.getById(input.projectId)?.target_language,
       });
 
       persistProgress(deps.db, input.jobId, {

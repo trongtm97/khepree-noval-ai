@@ -1,4 +1,9 @@
 import type { RepairPack } from '@shared/schemas/output-protocol';
+import {
+  DEFAULT_SOURCE_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+} from '@shared/constants/language-profile';
+import { formatLanguagePairPreamble } from '@shared/constants/translation-style-model';
 
 export interface RepairParagraphInput {
   paragraphId: string;
@@ -11,6 +16,8 @@ export interface BuildRepairPackInput {
   batchParagraphs: RepairParagraphInput[];
   /** How many neighbors on each side of a missing block (default 1). */
   contextRadius?: number;
+  sourceLanguage?: string;
+  targetLanguage?: string;
 }
 
 /**
@@ -40,7 +47,10 @@ export function buildRepairPack(input: BuildRepairPackInput): RepairPack {
     radius,
   );
 
-  const prompt = renderRepairPrompt(paragraphs, contextParagraphs);
+  const prompt = renderRepairPrompt(paragraphs, contextParagraphs, {
+    sourceLanguage: input.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE,
+    targetLanguage: input.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
+  });
 
   return {
     missingParagraphIds: [...input.missingParagraphIds],
@@ -76,6 +86,7 @@ function collectContext(
 function renderRepairPrompt(
   missing: RepairParagraphInput[],
   context: RepairParagraphInput[],
+  languages: { sourceLanguage: string; targetLanguage: string },
 ): string {
   const missingList = missing.map((p) => p.paragraphId).join('\n');
   const contextBlock =
@@ -85,20 +96,22 @@ function renderRepairPrompt(
   const sourceBlock = missing.map((p) => `${p.paragraphId} ${p.sourceText}`).join('\n');
 
   return [
+    formatLanguagePairPreamble(languages.sourceLanguage, languages.targetLanguage),
+    '',
     'Previous response was missing translations for these paragraph IDs:',
     missingList,
     '',
     'Local context (already translated — do NOT re-translate unless listed above):',
     contextBlock,
     '',
-    'Translate ONLY these source paragraphs:',
+    'Translate ONLY these source paragraphs into the target language:',
     sourceBlock,
     '',
     'Output ONLY the <TRANSLATION> section for the missing IDs.',
     'Use exact IDs. One line per ID. No other sections. No markdown fences.',
     '',
     '<TRANSLATION>',
-    '[C000001:P000001] …',
+    '[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...',
     '</TRANSLATION>',
   ].join('\n');
 }

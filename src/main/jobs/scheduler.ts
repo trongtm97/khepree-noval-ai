@@ -4,18 +4,37 @@ import { BatchExecutor, newLeaseOwner, type JobInitialSender } from './batch-exe
 import type { RepairSender } from './repair-loop';
 import {
   DEFAULT_JOB_LEASE_MS,
-  DEFAULT_MAX_CONCURRENT_WORKERS,
   DEFAULT_QUOTA_COOLDOWN_MS,
   DEFAULT_SCHEDULER_TICK_MS,
   SCHEDULER_SETTING_KEYS,
 } from '@shared/constants/job';
+import {
+  DEFAULT_AUTO_GLOBAL_CAP,
+  DEFAULT_CONCURRENCY_POLICY,
+  GLOBAL_MAX_MODE_AUTO,
+  type ConcurrencyPolicy,
+  type GlobalMaxWorkersMode,
+} from '@shared/constants/concurrency-policy';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
 import { recoverJobsGeminiAndProfilesOnStartup } from '../gemini/startup-recovery';
 import { pathsService } from '../services/paths-service';
 import { logger } from '../logging/logger';
+import {
+  buildConcurrencySnapshot,
+  canAdmitJob,
+  effectivePerProjectMax,
+  loadConcurrencyPolicy,
+  providerKindForWorker,
+  resolveGlobalMaxWorkers,
+  saveConcurrencyPolicy,
+  type ConcurrencyPolicyPatch,
+  type InFlightSlot,
+} from './concurrency-policy';
 
 export interface SchedulerOptions {
+  /** @deprecated Prefer concurrencyPolicy.globalMaxWorkers / AUTO. */
   maxConcurrentWorkers?: number;
+  concurrencyPolicy?: Partial<ConcurrencyPolicy>;
   tickMs?: number;
   leaseMs?: number;
   quotaCooldownMs?: number;
@@ -28,21 +47,24 @@ export interface SchedulerOptions {
 /**
  * Durable SQLite-backed scheduler.
  * - No in-memory-only queue
- * - One job per browser profile (profile lock)
- * - Multiple workers in parallel up to maxConcurrent
- * - Graceful shutdown waits for in-flight or abandons lease renew
+ * - ConcurrencyPolicy: global / per-provider / per-account / per-project
+ * - Fair project round-robin (no single novel starves queue)
+ * - Fair worker pick: priority, quota, LRU — not first DB row
  */
 export class AutomationScheduler {
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
   private shuttingDown = false;
   private readonly inFlight = new Set<string>();
+  private readonly inFlightMeta = new Map<string, InFlightSlot>();
+  /** Round-robin cursor over queued projects. */
+  private projectRrCursor = 0;
   private readonly pool: WorkerPool;
   private readonly executor: BatchExecutor;
   private readonly leaseOwner: string;
-  private readonly maxConcurrent: number;
   private readonly tickMs: number;
   private readonly leaseMs: number;
+  private readonly policyOverrides: Partial<ConcurrencyPolicy>;
 
   constructor(
     private readonly db: DatabaseManager,
@@ -56,12 +78,12 @@ export class AutomationScheduler {
       leaseMs: options.leaseMs ?? DEFAULT_JOB_LEASE_MS,
     });
     this.leaseOwner = newLeaseOwner();
-    this.maxConcurrent =
-      options.maxConcurrentWorkers ??
-      this.readMaxConcurrent() ??
-      DEFAULT_MAX_CONCURRENT_WORKERS;
     this.tickMs = options.tickMs ?? DEFAULT_SCHEDULER_TICK_MS;
     this.leaseMs = options.leaseMs ?? DEFAULT_JOB_LEASE_MS;
+    this.policyOverrides = { ...(options.concurrencyPolicy ?? {}) };
+    if (options.maxConcurrentWorkers != null) {
+      this.policyOverrides.globalMaxWorkers = options.maxConcurrentWorkers;
+    }
   }
 
   isRunning(): boolean {
@@ -72,11 +94,24 @@ export class AutomationScheduler {
     return this.inFlight.size;
   }
 
+  getEffectiveMaxConcurrent(): number {
+    const policy = this.resolvePolicy();
+    const ready = this.pool.listAvailable().length + this.countBusyWorkers();
+    return resolveGlobalMaxWorkers(policy, Math.max(ready, this.inFlight.size));
+  }
+
+  getConcurrencyPolicy(): ConcurrencyPolicy {
+    return this.resolvePolicy();
+  }
+
+  updateConcurrencyPolicy(patch: ConcurrencyPolicyPatch): ConcurrencyPolicy {
+    return saveConcurrencyPolicy(this.db, patch);
+  }
+
   start(): void {
     if (this.timer) return;
     this.running = true;
     this.shuttingDown = false;
-    // Recover jobs / gemini_requests / profile leases — not only expired scheduler leases.
     try {
       const profilesRoot = pathsService.getPath('browserProfiles');
       recoverJobsGeminiAndProfilesOnStartup(this.db, { profilesRoot });
@@ -93,14 +128,12 @@ export class AutomationScheduler {
     this.timer = setInterval(() => {
       this.tick();
     }, this.tickMs);
-    // Don't keep process alive solely for timer in Electron main — unref when possible
     if (typeof this.timer === 'object' && 'unref' in this.timer) {
       this.timer.unref();
     }
     this.tick();
   }
 
-  /** Graceful shutdown: stop claiming; wait for in-flight to finish (or timeout). */
   async stop(options?: { waitMs?: number }): Promise<void> {
     this.shuttingDown = true;
     if (this.timer) {
@@ -112,7 +145,6 @@ export class AutomationScheduler {
     while (this.inFlight.size > 0 && Date.now() - started < waitMs) {
       await sleep(50);
     }
-    // Remaining in-flight: release leases so next start recovers
     for (const jobId of this.inFlight) {
       this.db.jobs.releaseLease(jobId);
       const job = this.db.jobs.getById(jobId);
@@ -122,6 +154,7 @@ export class AutomationScheduler {
       if (job?.worker_id) {
         this.db.workerStates.markReady(job.worker_id);
       }
+      this.inFlightMeta.delete(jobId);
     }
     this.inFlight.clear();
     this.running = false;
@@ -141,8 +174,12 @@ export class AutomationScheduler {
     return this.readSetting(SCHEDULER_SETTING_KEYS.pauseAll) === '1';
   }
 
-  setMaxConcurrent(n: number): void {
-    this.writeSetting(SCHEDULER_SETTING_KEYS.maxConcurrentWorkers, String(n));
+  setMaxConcurrent(n: number | typeof GLOBAL_MAX_MODE_AUTO): void {
+    if (n === GLOBAL_MAX_MODE_AUTO) {
+      saveConcurrencyPolicy(this.db, { globalMaxWorkers: GLOBAL_MAX_MODE_AUTO });
+      return;
+    }
+    saveConcurrencyPolicy(this.db, { globalMaxWorkers: n });
   }
 
   tick(): void {
@@ -151,38 +188,69 @@ export class AutomationScheduler {
     this.db.jobs.recoverExpiredLeases();
     this.db.workerStates.clearExpiredLimits();
 
-    const capacity =
-      Math.min(this.maxConcurrent, this.readMaxConcurrent() ?? this.maxConcurrent) -
-      this.inFlight.size;
+    const policy = this.resolvePolicy();
+    const readyWorkers = this.pool.listAvailable();
+    const globalMax = resolveGlobalMaxWorkers(
+      policy,
+      readyWorkers.length + this.countBusyWorkers(),
+    );
+    let capacity = globalMax - this.inFlight.size;
     if (capacity <= 0) return;
 
-    for (let i = 0; i < capacity; i += 1) {
-      const available = this.pool.listAvailable();
-      if (available.length === 0) break;
+    const projects = this.fairProjectOrder();
+    if (projects.length === 0) return;
 
-      // Try each available worker until one claims a job
-      let claimed = false;
-      for (const worker of available) {
-        if (this.inFlight.size >= this.maxConcurrent) break;
+    let claimedThisTick = 0;
+
+    for (let pass = 0; pass < projects.length && capacity > 0; pass += 1) {
+      const projectId = projects[pass]!;
+      let snap = buildConcurrencySnapshot(this.inFlightMeta.values());
+      const projectMax = effectivePerProjectMax(policy);
+      if ((snap.byProject.get(projectId) ?? 0) >= projectMax) continue;
+
+      const workers = this.pool.listAvailableFair({ projectId });
+      if (workers.length === 0) continue;
+
+      for (const worker of workers) {
+        const providerKind = providerKindForWorker(this.db, worker.google_account_id);
+        snap = buildConcurrencySnapshot(this.inFlightMeta.values());
+        if (
+          !canAdmitJob(policy, snap, {
+            projectId,
+            accountId: worker.google_account_id,
+            providerKind,
+          })
+        ) {
+          continue;
+        }
+
         const job = this.db.jobs.claimNext({
           leaseOwner: this.leaseOwner,
           leaseMs: this.leaseMs,
           workerId: worker.id,
           accountId: worker.google_account_id,
+          projectId,
         });
         if (!job) continue;
 
-        claimed = true;
+        const slot: InFlightSlot = {
+          jobId: job.id,
+          projectId: job.project_id,
+          accountId: worker.google_account_id,
+          providerKind,
+        };
         this.inFlight.add(job.id);
-        // Mark BUSY immediately so next capacity slot cannot double-claim same profile
+        this.inFlightMeta.set(job.id, slot);
         this.db.workerStates.markBusy(worker.id, job.id);
         this.db.jobs.updateState(job.id, 'WAITING_WORKER');
+
         const profile = this.db.googleAccounts.getProfile(worker.google_account_id);
         if (!profile) {
           this.db.jobs.updateState(job.id, 'QUEUED', 'Missing profile');
           this.db.jobs.releaseLease(job.id);
           this.db.workerStates.markReady(worker.id);
           this.inFlight.delete(job.id);
+          this.inFlightMeta.delete(job.id);
           continue;
         }
         const profilePath = browserProfileManager.resolveProfilePath(
@@ -194,9 +262,46 @@ export class AutomationScheduler {
           profilePath,
           worker.id,
         );
+        claimedThisTick += 1;
+        capacity -= 1;
+        this.projectRrCursor = (this.projectRrCursor + 1) % Math.max(projects.length, 1);
         break;
       }
-      if (!claimed) break;
+    }
+
+    if (claimedThisTick === 0 && projects.length > 0) {
+      // No claim possible this tick — nudge cursor so we don't stick forever.
+      this.projectRrCursor = (this.projectRrCursor + 1) % projects.length;
+    }
+  }
+
+  private fairProjectOrder(): string[] {
+    const ids = this.db.jobs.listQueuedProjectIds();
+    if (ids.length === 0) return [];
+    const start = this.projectRrCursor % ids.length;
+    return [...ids.slice(start), ...ids.slice(0, start)];
+  }
+
+  private resolvePolicy(): ConcurrencyPolicy {
+    const loaded = loadConcurrencyPolicy(this.db);
+    return {
+      ...DEFAULT_CONCURRENCY_POLICY,
+      ...loaded,
+      ...this.policyOverrides,
+      perAccountMax: {
+        ...DEFAULT_CONCURRENCY_POLICY.perAccountMax,
+        ...loaded.perAccountMax,
+        ...this.policyOverrides.perAccountMax,
+      },
+      autoCap: this.policyOverrides.autoCap ?? loaded.autoCap ?? DEFAULT_AUTO_GLOBAL_CAP,
+    };
+  }
+
+  private countBusyWorkers(): number {
+    try {
+      return this.db.workerStates.countBusy();
+    } catch {
+      return this.inFlight.size;
     }
   }
 
@@ -224,14 +329,8 @@ export class AutomationScheduler {
       });
     } finally {
       this.inFlight.delete(jobId);
+      this.inFlightMeta.delete(jobId);
     }
-  }
-
-  private readMaxConcurrent(): number | null {
-    const raw = this.readSetting(SCHEDULER_SETTING_KEYS.maxConcurrentWorkers);
-    if (!raw) return null;
-    const n = Number.parseInt(raw, 10);
-    return Number.isFinite(n) && n > 0 ? n : null;
   }
 
   private readSetting(key: string): string | null {
@@ -252,3 +351,5 @@ function sleep(ms: number): Promise<void> {
     setTimeout(resolve, ms);
   });
 }
+
+export type { GlobalMaxWorkersMode };

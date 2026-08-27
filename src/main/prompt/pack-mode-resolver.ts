@@ -58,9 +58,9 @@ export function isSourceGroundingConfirmed(
 /**
  * Resolve SLIM / HYBRID / FAT for a translation send.
  *
- * SLIM: Playwright + Translation Notebook ready + version verified + grounded.
- * HYBRID: Notebook exists but sync_pending / stale / version not verified.
- * FAT: WebAPI, mapping missing, grounding failed, or notebook unavailable.
+ * SLIM: READY + expected version + expected nonce (08_SYNC_STATE probe) + grounded.
+ * HYBRID: SYNC_PENDING / STALE, or ready but version unverified/mismatch.
+ * FAT: WebAPI, no Notebook mapping, grounding failed on ready, or notebook unavailable.
  */
 export function resolveTranslationPackMode(
   db: DatabaseManager,
@@ -155,6 +155,19 @@ export function resolveTranslationPackMode(
     };
   }
 
+  // SYNC_PENDING / STALE → HYBRID always (local delta fills gap). Grounding gates SLIM only.
+  if (status === 'sync_pending' || status === 'stale') {
+    return {
+      packMode: 'hybrid',
+      notebookId,
+      localKnowledgeVersion: Math.max(localKnowledgeVersion, pendingVersion),
+      notebookVerifiedVersion,
+      sourceGroundingConfirmed,
+      reason: status === 'sync_pending' ? 'sync_pending' : 'stale',
+    };
+  }
+
+  // ready without source bindings / with migration debt → cannot trust Notebook cold → FAT.
   if (!sourceGroundingConfirmed) {
     return {
       packMode: 'fat',
@@ -166,7 +179,8 @@ export function resolveTranslationPackMode(
     };
   }
 
-  // CONTENT_CURRENT: version+nonce probe matched pending Drive sync-state.
+  // CONTENT_CURRENT: version+nonce probe matched pending Drive sync-state (08_SYNC_STATE).
+  // Never SLIM from source-name presence alone.
   const contentCurrent =
     driveState.version_probe_status === 'verified' &&
     driveState.verified_knowledge_version === driveState.pending_knowledge_version &&
@@ -188,7 +202,7 @@ export function resolveTranslationPackMode(
     };
   }
 
-  // ready + mismatch, sync_pending, or stale → HYBRID (Notebook cold + local delta).
+  // ready + mismatch / unverified → HYBRID (Notebook cold + local delta).
   return {
     packMode: 'hybrid',
     notebookId,
@@ -196,12 +210,8 @@ export function resolveTranslationPackMode(
     notebookVerifiedVersion,
     sourceGroundingConfirmed,
     reason:
-      status === 'sync_pending'
-        ? 'sync_pending'
-        : status === 'stale'
-          ? 'stale'
-          : driveState.version_probe_status === 'mismatch'
-            ? 'version_mismatch'
-            : 'version_unverified',
+      driveState.version_probe_status === 'mismatch'
+        ? 'version_mismatch'
+        : 'version_unverified',
   };
 }

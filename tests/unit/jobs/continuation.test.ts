@@ -85,8 +85,10 @@ describe('continuation', () => {
       batchParagraphs,
       remainingParagraphIds: IDS.slice(3),
     });
-    expect(prompt).toContain(`Tiếp tục từ ${IDS[3]}`);
-    expect(prompt).toContain('Không lặp lại');
+    expect(prompt).toContain(`Continue from ${IDS[3]}`);
+    expect(prompt).toContain('Do not repeat paragraphs already translated');
+    expect(prompt).toContain('Source language:');
+    expect(prompt).toContain('Target language:');
     expect(prompt).toContain(IDS[3]);
   });
 

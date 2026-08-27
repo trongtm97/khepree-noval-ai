@@ -1,12 +1,10 @@
 import path from 'node:path';
 import { detectAndDecode } from '../import/encoding';
-import { parseChineseOrdinal, normalizeDigits } from '../import/chapter-detector/utils';
 import {
-  chineseChapterDetector,
-  englishChapterDetector,
-  prefixedChapterDetector,
-} from '../import/chapter-detector/detectors';
-import { normalizeNovelText } from '../import/paragraphs/normalize';
+  detectFilenameWithAdapters,
+  detectHeadingWithAdapters,
+  getTextLanguageAdapter,
+} from '../language/text-adapters';
 import { sha256Text } from '../import/hash';
 import type { DetectedChapterFileDto } from '@shared/schemas/source-folder';
 
@@ -19,6 +17,8 @@ export interface DetectChapterFileInput {
   filePath: string;
   buffer: Buffer;
   stat: FileStatInfo;
+  /** When known, selects TextLanguageAdapter for heading / encoding. */
+  sourceLanguage?: string | null;
 }
 
 export interface FilenameDetection {
@@ -27,80 +27,42 @@ export interface FilenameDetection {
   confidence: number;
 }
 
-const HEADING_DETECTORS = [prefixedChapterDetector, chineseChapterDetector, englishChapterDetector];
-
 const LOW_CONFIDENCE_THRESHOLD = 0.75;
 
 export function computeFileFingerprint(size: number, mtimeMs: number): string {
   return `${size}:${Math.floor(mtimeMs)}`;
 }
 
-export function detectChapterFromFilename(fileName: string): FilenameDetection | null {
-  const base = fileName.replace(/\.txt$/i, '');
-  const normalized = normalizeDigits(base);
-
-  const patterns: { regex: RegExp; titleFrom?: (m: RegExpMatchArray) => string }[] = [
-    { regex: /^(\d+)$/ },
-    { regex: /^chuong[_\s-]*(\d+)$/i },
-    { regex: /^chapter[_\s-]*(\d+)$/i },
-    { regex: /^第([零〇○两一二三四五六七八九十百千0-9０-９]+)章(.*)$/u },
-    { regex: /^(\d+)\s*[-–—]\s*(.+)$/ },
-    { regex: /^(.+?)[_\s-]*(\d+)$/ },
-  ];
-
-  for (const { regex, titleFrom } of patterns) {
-    const match = regex.exec(normalized);
-    if (!match) continue;
-
-    let chapterNumber: number | undefined;
-    let chapterTitle = base;
-
-    if (regex.source.startsWith('^(.+?)[_\\s-]*(\\d+)$')) {
-      chapterNumber = Number.parseInt(match[2], 10);
-      chapterTitle = match[1].trim() || base;
-    } else if (regex.source.includes('第')) {
-      chapterNumber = parseChineseOrdinal(match[1]);
-      chapterTitle = `第${match[1].trim()}章${match[2] ? match[2].trim() : ''}`.trim();
-    } else if (titleFrom) {
-      chapterNumber = Number.parseInt(match[1], 10);
-      chapterTitle = titleFrom(match).trim() || base;
-    } else {
-      chapterNumber = Number.parseInt(match[1], 10);
-      if (match[2]) {
-        chapterTitle = match[2].trim() || base;
-      }
-    }
-
-    if (!chapterNumber || chapterNumber <= 0 || !Number.isFinite(chapterNumber)) {
-      continue;
-    }
-
-    return {
-      chapterNumber,
-      chapterTitle,
-      confidence: 0.95,
-    };
-  }
-
-  return null;
+export function detectChapterFromFilename(
+  fileName: string,
+  sourceLanguage?: string | null,
+): FilenameDetection | null {
+  const hit = detectFilenameWithAdapters(fileName, sourceLanguage);
+  if (!hit) return null;
+  return {
+    chapterNumber: hit.chapterNumber,
+    chapterTitle: hit.chapterTitle,
+    confidence: hit.confidence,
+  };
 }
 
-export function detectChapterFromHeading(text: string): FilenameDetection | null {
-  const lines = text.split('\n').slice(0, 20);
-  let offset = 0;
-  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
-    const line = lines[lineIndex];
-    for (const detector of HEADING_DETECTORS) {
-      const candidate = detector.detectLine(line, lineIndex, offset);
-      if (candidate?.ordinal && candidate.ordinal > 0) {
-        return {
-          chapterNumber: candidate.ordinal,
-          chapterTitle: candidate.title.trim(),
-          confidence: candidate.confidence,
-        };
-      }
+export function detectChapterFromHeading(
+  text: string,
+  sourceLanguage?: string | null,
+): FilenameDetection | null {
+  const adapter = sourceLanguage
+    ? getTextLanguageAdapter(sourceLanguage)
+    : null;
+  const lines = (adapter?.normalizeText(text) ?? text).split('\n').slice(0, 20);
+  for (const line of lines) {
+    const hit = detectHeadingWithAdapters(line, sourceLanguage);
+    if (hit?.ordinal && hit.ordinal > 0) {
+      return {
+        chapterNumber: hit.ordinal,
+        chapterTitle: hit.title.trim(),
+        confidence: hit.confidence,
+      };
     }
-    offset += line.length + 1;
   }
   return null;
 }
@@ -109,10 +71,11 @@ export function detectChapterFile(input: DetectChapterFileInput): DetectedChapte
   const fileName = path.basename(input.filePath);
   const fileModifiedAt = new Date(input.stat.mtimeMs).toISOString();
   const sourceFileHash = computeFileFingerprint(input.stat.size, input.stat.mtimeMs);
+  const sourceLanguage = input.sourceLanguage ?? null;
 
   let decodeResult;
   try {
-    decodeResult = detectAndDecode(input.buffer);
+    decodeResult = detectAndDecode(input.buffer, { sourceLanguage });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Không thể đọc file chương.';
     return {
@@ -150,10 +113,11 @@ export function detectChapterFile(input: DetectChapterFileInput): DetectedChapte
     };
   }
 
-  const normalizedText = normalizeNovelText(decodeResult.text);
+  const adapter = getTextLanguageAdapter(sourceLanguage);
+  const normalizedText = adapter.normalizeText(decodeResult.text);
   const contentHash = sha256Text(normalizedText);
-  const fromFilename = detectChapterFromFilename(fileName);
-  const fromHeading = detectChapterFromHeading(decodeResult.text);
+  const fromFilename = detectChapterFromFilename(fileName, sourceLanguage);
+  const fromHeading = detectChapterFromHeading(decodeResult.text, sourceLanguage);
 
   if (
     fromFilename?.chapterNumber &&

@@ -3,6 +3,14 @@ import type { ProjectDto } from '@shared/schemas/import';
 import type { DatabaseManager } from '../db/database-manager';
 import { JOB_TERMINAL_STATES, type JobState } from '@shared/constants/job';
 import { NOTEBOOK_CHANNEL_READY } from '@shared/constants/notebook';
+import {
+  resolveNotebookMappedAccountId,
+  resolveProjectWorker,
+} from './project-worker-resolver';
+
+function isNotebookChannelUsable(status: string): boolean {
+  return NOTEBOOK_CHANNEL_READY.has(status);
+}
 
 export interface ProjectChapterStatsInput {
   sourceChapterCount: number;
@@ -58,6 +66,7 @@ export function toProjectDto(
     queuedChapterCount: stats?.queuedChapterCount,
     errorChapterCount: stats?.errorChapterCount,
     nextUntranslatedChapter: stats?.nextUntranslatedChapter ?? null,
+    activeEditionId: row.active_edition_id ?? null,
     health,
   };
 }
@@ -80,8 +89,9 @@ function countQueuedChapters(
   );
   const queued = new Set<number>();
   for (const job of jobs) {
-    const from = job.chapter_from as number;
-    const to = job.chapter_to as number;
+    if (job.chapter_from == null || job.chapter_to == null) continue;
+    const from = job.chapter_from;
+    const to = job.chapter_to;
     const lo = Math.min(from, to);
     const hi = Math.max(from, to);
     for (let n = lo; n <= hi; n += 1) {
@@ -103,11 +113,23 @@ function projectHealth(
   if (source === 'ok' && errorChapterCount > 0) source = 'warn';
 
   const accounts = db.googleAccounts.list();
-  const ready = accounts.some((a) => {
-    if (a.status !== 'READY') return false;
-    const worker = db.workerStates.getByAccountId(a.id);
-    return worker != null && worker.is_enabled === 1;
+  const mappedWorker = resolveProjectWorker(db, {
+    projectId: row.id,
+    purpose: 'translation',
   });
+  const mappedAccountId = mappedWorker.accountId;
+  const ready = mappedAccountId
+    ? (() => {
+        const a = accounts.find((x) => x.id === mappedAccountId);
+        if (!a || (a.status !== 'READY' && a.status !== 'BUSY')) return false;
+        const worker = db.workerStates.getByAccountId(a.id);
+        return worker?.is_enabled === 1;
+      })()
+    : accounts.some((a) => {
+        if (a.status !== 'READY') return false;
+        const worker = db.workerStates.getByAccountId(a.id);
+        return worker?.is_enabled === 1;
+      });
   const needsLogin = accounts.some(
     (a) => a.status === 'LOGIN_REQUIRED' || a.status === 'NEEDS_ATTENTION',
   );
@@ -115,9 +137,19 @@ function projectHealth(
   if (ready) google = 'ok';
   else if (accounts.length > 0 || needsLogin) google = 'warn';
 
+  // Prefer Translation Notebook mapped to project worker — never first READY notebook.
+  const notebookAccountId =
+    resolveNotebookMappedAccountId(db, row.id, 'translation') ?? mappedAccountId;
   const notebooks = db.notebooks.listByProject(row.id);
-  const usable = notebooks.find((n) => NOTEBOOK_CHANNEL_READY.has(n.status));
-  const anyNotebook = notebooks[0];
+  const mappedNotebooks = notebookAccountId
+    ? notebooks.filter((n) => n.google_account_id === notebookAccountId)
+    : notebooks;
+  const translationNotebooks = mappedNotebooks.filter(
+    (n) => n.notebook_role === 'TRANSLATION' || n.notebook_role === 'SINGLE',
+  );
+  const pool = translationNotebooks.length > 0 ? translationNotebooks : mappedNotebooks;
+  const usable = pool.find((n) => isNotebookChannelUsable(n.status));
+  const anyNotebook = pool.at(0) ?? notebooks.at(0);
   let notebook: ProjectHealthTone = 'missing';
   if (usable) notebook = 'ok';
   else if (anyNotebook) notebook = 'warn';
@@ -128,7 +160,6 @@ function projectHealth(
     anyNotebook?.local_knowledge_version ??
     null;
   const memoryVerified =
-    Boolean(usable) &&
     usable != null &&
     usable.local_knowledge_version > 0 &&
     usable.local_knowledge_version === usable.knowledge_version;

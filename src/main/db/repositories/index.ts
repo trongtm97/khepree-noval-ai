@@ -93,6 +93,16 @@ export type {
   ProjectBatchStatsRow,
   InsertBatchSizeDecisionInput,
 } from './batch-size-repository';
+export { TranslationWaveRepository } from './translation-wave-repository';
+export type {
+  TranslationWaveRow,
+  WaveJobRow,
+} from './translation-wave-repository';
+export { TranslationEditionRepository } from './translation-edition-repository';
+export type {
+  TranslationEditionRow,
+  EditionStatus,
+} from './translation-edition-repository';
 export type {
   FullNovelPreprocessRunRow,
   FullNovelPreprocessPartRow,

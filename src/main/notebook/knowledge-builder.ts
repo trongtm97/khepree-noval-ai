@@ -12,6 +12,7 @@ import {
   generateSyncNonce,
 } from '@shared/constants/notebook-version-probe';
 import { DRIVE_RESOURCE_KEYS } from '@shared/constants/drive';
+import { getLanguageProfile } from '@shared/constants/language-profile';
 import { OUTPUT_PROTOCOL_BLOCK } from '@shared/constants/translation-pack';
 import type { TermRow } from '../db/repositories/term-repository';
 import type { CharacterRow } from '../db/repositories/character-repository';
@@ -88,7 +89,7 @@ function resolveCurrentChapter(db: DatabaseManager, projectId: string): number |
 
 function termLine(term: TermRow, primary: string): string {
   return (
-    `- ${term.source_simplified} → ${primary} (${term.term_type})` +
+    `- ${term.source_text ?? term.source_simplified} → ${primary} (${term.term_type})` +
     (term.locked === 1 ? ' [LOCKED]' : '')
   );
 }
@@ -98,7 +99,7 @@ function characterRecord(
   aliases: string[],
 ): KnowledgeRecord {
   const lines: string[] = [`## ${character.canonical_name}`];
-  if (character.translated_name) lines.push(`Tên Việt: ${character.translated_name}`);
+  if (character.translated_name) lines.push(`Tên dịch: ${character.translated_name}`);
   if (character.gender) lines.push(`Giới tính: ${character.gender}`);
   if (character.role) lines.push(`Vai trò: ${character.role}`);
   if (aliases.length) lines.push(`Bí danh: ${aliases.join(', ')}`);
@@ -153,11 +154,28 @@ export class NotebookKnowledgeBuilder {
       if (block.trim()) records.push({ id, text: block });
     };
 
-    if (project.title_cn?.trim()) {
-      pushField('title_cn', `Tên gốc:\n${project.title_cn.trim()}`);
+    const sourceTitle = project.source_title ?? project.title_cn;
+    const targetTitle = project.target_title ?? project.title_vi ?? project.title;
+    if (sourceTitle?.trim()) {
+      pushField('source_title', `Tên gốc:\n${sourceTitle.trim()}`);
     }
-    const titleVi = project.title_vi ?? project.title;
-    if (titleVi.trim()) pushField('title_vi', `Tên Việt:\n${titleVi.trim()}`);
+    if (targetTitle.trim()) {
+      pushField('target_title', `Tên dịch:\n${targetTitle.trim()}`);
+    }
+    let alternativeTitles: string[] = [];
+    try {
+      if (project.alternative_titles) {
+        alternativeTitles = JSON.parse(project.alternative_titles) as string[];
+      }
+    } catch {
+      alternativeTitles = [];
+    }
+    if (alternativeTitles.length > 0) {
+      pushField(
+        'alternative_titles',
+        `Tên khác:\n${alternativeTitles.map((t) => `- ${t}`).join('\n')}`,
+      );
+    }
     const author = project.author_name ?? project.author_name_cn;
     if (author?.trim()) pushField('author', `Tác giả:\n${author.trim()}`);
     if (project.genre?.trim()) pushField('genre', `Thể loại:\n${project.genre.trim()}`);
@@ -192,8 +210,8 @@ export class NotebookKnowledgeBuilder {
     const staticHeader = [
       `# ${project.title} — Quy tắc dịch`,
       '',
-      'Ngôn ngữ nguồn: Tiếng Trung.',
-      'Ngôn ngữ đích: Tiếng Việt.',
+      `Ngôn ngữ nguồn: ${getLanguageProfile(project.source_language).displayNameNative} (${project.source_language}).`,
+      `Ngôn ngữ đích: ${getLanguageProfile(project.target_language).displayNameNative} (${project.target_language}).`,
       '',
       'Yêu cầu:',
       '- dịch đầy đủ, không tóm tắt, không bỏ nội dung',

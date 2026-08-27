@@ -3,10 +3,7 @@ import type { JobInitialSender } from '../jobs/batch-executor';
 import type { RepairSender } from '../jobs/repair-loop';
 import { getDatabase } from '../db/connection';
 import { getJobService } from './job-service-singleton';
-import {
-  DEFAULT_MAX_CONCURRENT_WORKERS,
-  DEFAULT_SCHEDULER_TICK_MS,
-} from '@shared/constants/job';
+import { DEFAULT_SCHEDULER_TICK_MS } from '@shared/constants/job';
 import { logger } from '../logging/logger';
 
 let scheduler: AutomationScheduler | null = null;
@@ -35,7 +32,9 @@ export function initializeAutomationScheduler(options?: {
   scheduler = new AutomationScheduler(db, {
     sendInitial,
     sendRepair: options?.sendRepair,
-    maxConcurrentWorkers: options?.maxConcurrentWorkers ?? DEFAULT_MAX_CONCURRENT_WORKERS,
+    ...(options?.maxConcurrentWorkers != null
+      ? { maxConcurrentWorkers: options.maxConcurrentWorkers }
+      : {}),
     tickMs: options?.tickMs ?? DEFAULT_SCHEDULER_TICK_MS,
   });
 
@@ -44,7 +43,8 @@ export function initializeAutomationScheduler(options?: {
   if (options?.autoStart !== false) {
     scheduler.start();
     logger.info('Automation scheduler started', {
-      maxConcurrent: options?.maxConcurrentWorkers ?? DEFAULT_MAX_CONCURRENT_WORKERS,
+      maxConcurrent: scheduler.getEffectiveMaxConcurrent(),
+      policy: scheduler.getConcurrencyPolicy().globalMaxWorkers,
     });
   }
 

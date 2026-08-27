@@ -1,5 +1,8 @@
 import type { DatabaseManager } from '../db/database-manager';
-import type { BootstrapAnalysisOutput } from '@shared/schemas/bootstrap';
+import {
+  preferredTargetOf,
+  type BootstrapAnalysisOutput,
+} from '@shared/schemas/bootstrap';
 import { normalizeTermType } from '@shared/constants/term';
 import { utcNow } from '../db/utils/timestamps';
 
@@ -44,7 +47,7 @@ export function persistBootstrapAnalysis(
     }
     if (existing) {
       db.characters.update(existing.id, {
-        translated_name: ch.preferred_vi ?? existing.translated_name,
+        translated_name: preferredTargetOf(ch) ?? existing.translated_name,
         gender: ch.gender ?? existing.gender,
         role: ch.role ?? existing.role,
         first_chapter: ch.first_seen_chapter ?? existing.first_chapter,
@@ -55,7 +58,7 @@ export function persistBootstrapAnalysis(
       const row = db.characters.create({
         project_id: projectId,
         canonical_name: ch.source_name,
-        translated_name: ch.preferred_vi ?? null,
+        translated_name: preferredTargetOf(ch),
         gender: ch.gender ?? null,
         role: ch.role ?? null,
         first_chapter: ch.first_seen_chapter ?? null,
@@ -112,8 +115,14 @@ export function persistBootstrapAnalysis(
     result.relationshipsUpserted += 1;
   }
 
+  const projectForTerms = db.projects.getById(projectId);
+  const termPair = {
+    sourceLanguage: projectForTerms?.source_language ?? 'zh-Hans',
+    targetLanguage: projectForTerms?.target_language ?? 'vi',
+  };
+
   for (const term of output.terms) {
-    const existing = db.terms.findBySource(term.source, projectId);
+    const existing = db.terms.findBySource(term.source, projectId, termPair);
     if (existing && (existing.locked === 1 || existing.status === 'GLOBAL_VERIFIED')) {
       continue;
     }
@@ -122,7 +131,7 @@ export function persistBootstrapAnalysis(
       project_id: projectId,
       chapter_id: null,
       source_text: term.source,
-      suggested_translation: term.preferred_vi,
+      suggested_translation: preferredTargetOf(term) ?? term.source,
       suggested_type: term.category ? normalizeTermType(term.category) : 'OTHER',
       confidence: term.confidence ?? 0.6,
       frequency: 1,
@@ -254,7 +263,10 @@ function applyFullTemporalProvenance(
   }
 
   for (const term of output.terms) {
-    const existing = db.terms.findBySource(term.source, projectId);
+    const existing = db.terms.findBySource(term.source, projectId, {
+      sourceLanguage: db.projects.getById(projectId)?.source_language ?? 'zh-Hans',
+      targetLanguage: db.projects.getById(projectId)?.target_language ?? 'vi',
+    });
     if (!existing || existing.locked === 1) continue;
     const first = term.first_seen_chapter ?? existing.first_seen_chapter;
     const discovered =

@@ -8,7 +8,9 @@ import {
 export const CharacterDtoSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string().uuid(),
+  /** Canonical name in source language (= canonicalSourceName). */
   canonicalName: z.string(),
+  /** Preferred name in target language (= preferredTargetName). */
   translatedName: z.string().nullable(),
   aliases: z.array(z.string()),
   gender: z.string().nullable(),
@@ -22,7 +24,12 @@ export const CharacterDtoSchema = z.object({
   updatedAt: z.string(),
 });
 
-export type CharacterDto = z.infer<typeof CharacterDtoSchema>;
+export type CharacterDto = z.infer<typeof CharacterDtoSchema> & {
+  /** Alias of canonicalName. */
+  canonicalSourceName?: string;
+  /** Alias of translatedName. */
+  preferredTargetName?: string | null;
+};
 
 export const RelationshipDtoSchema = z.object({
   id: z.string().uuid(),

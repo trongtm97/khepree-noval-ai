@@ -10,7 +10,7 @@ export interface ChapterBoundaryCandidate {
   detectorId: string;
   /** Optional parsed ordinal (chapter/volume number). */
   ordinal?: number;
-  kind: 'chapter' | 'volume' | 'english' | 'prefixed';
+  kind: 'chapter' | 'volume' | 'english' | 'prefixed' | 'wa' | 'hwa' | 'generic-abbrev' | string;
 }
 
 export interface DetectedChapter {

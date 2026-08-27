@@ -1,4 +1,9 @@
-/** Configurable translation style presets. */
+import {
+  FIDELITY_RULES,
+  GENRE_RULES,
+} from './translation-style-model';
+
+/** Configurable translation style presets (legacy UI/API values). */
 export const TRANSLATION_STYLES = [
   'literal',
   'balanced',
@@ -36,43 +41,24 @@ export const PACK_SIZE_LIMITS = {
   maxTotalChars: 120_000,
 } as const;
 
+/**
+ * @deprecated Prefer composeTranslationStyleRules with source/target languages.
+ * Generic fidelity + genre only — no language-pair overrides.
+ */
 export const TRANSLATION_STYLE_RULES: Record<TranslationStyle, string[]> = {
-  literal: [
-    'Prefer literal accuracy over fluency.',
-    'Keep Chinese sentence order when Vietnamese allows.',
-    'Do not add unexplained cultural adaptation.',
-  ],
-  balanced: [
-    'Balance accuracy and natural Vietnamese readability.',
-    'Preserve proper nouns via locked/active terms.',
-    'Keep tone consistent with previous chapters.',
-  ],
-  natural: [
-    'Prioritize natural Vietnamese narration.',
-    'Smooth awkward Chinese syntax without inventing plot.',
-    'Dialogue should sound spoken, not translated.',
-  ],
-  xianxia: [
-    'Use established cultivation terminology from active terms.',
-    'Keep realm/technique names consistent; do not freestyle ranks.',
-    'Preserve martial/cultivation tone; avoid modern slang.',
-  ],
-  urban: [
-    'Modern urban diction; keep names and brands exact.',
-    'Prefer contemporary Vietnamese speech for dialogue.',
-    'Avoid archaic xianxia phrasing.',
-  ],
-  romance: [
-    'Preserve emotional subtext and relationship nuance.',
-    'Keep address terms (A calls B) consistent with memory.',
-    'Do not flatten affection levels or conflict tension.',
-  ],
+  literal: [...FIDELITY_RULES.LITERAL],
+  balanced: [...FIDELITY_RULES.BALANCED],
+  natural: [...FIDELITY_RULES.NATURAL],
+  xianxia: [...FIDELITY_RULES.BALANCED, ...GENRE_RULES.XIANXIA],
+  urban: [...FIDELITY_RULES.BALANCED, ...GENRE_RULES.URBAN],
+  romance: [...FIDELITY_RULES.BALANCED, ...GENRE_RULES.ROMANCE],
 };
 
+/** Language-agnostic output protocol — no locale-specific examples. */
 export const OUTPUT_PROTOCOL_BLOCK = `Return EXACTLY these sections in order. No markdown fences inside tags.
 
 <TRANSLATION>
-[C000001:P000001] Vietnamese translation...
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
 </TRANSLATION>
 
 <TERM_DELTA>
@@ -84,7 +70,7 @@ export const OUTPUT_PROTOCOL_BLOCK = `Return EXACTLY these sections in order. No
 </MEMORY_DELTA>
 
 Rules:
-- TRANSLATION: one line per source paragraph; ID must match source exactly.
+- TRANSLATION: one line per source paragraph; ID must match source exactly; text in the target language only.
 - TERM_DELTA: JSON array of discover|update|confirm objects. Use [] only when the batch truly has no new names/terms.
 - MEMORY_DELTA: JSON array of upsert|delete|relationship|story_state objects. Use [] only when nothing new about cast/world/plot.
 - Opening chapters should extract main cast and key terms when they appear.

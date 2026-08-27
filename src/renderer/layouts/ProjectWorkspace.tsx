@@ -1,8 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import type { ProjectDto } from '@shared/schemas/import';
 import { useT } from '../i18n';
 import { Button } from '../components/ui';
+import { LanguagePairLabel } from '../components/LanguagePairLabel';
+import { EditionSwitcher } from '../components/EditionSwitcher';
 import { useUiShellStore } from '../stores/ui-shell-store';
 
 const PROJECT_TABS = [
@@ -16,7 +19,7 @@ const PROJECT_TABS = [
 ] as const;
 
 export function projectTabKeyFromPath(pathname: string): string {
-  const match = pathname.match(/^\/projects\/[^/]+(?:\/([^/]+))?/);
+  const match = /^\/projects\/[^/]+(?:\/([^/]+))?/.exec(pathname);
   const segment = match?.[1] ?? '';
   if (!segment || segment === 'info') return 'projectNav.overview';
   if (segment === 'source' || segment === 'chapters') return 'projectNav.chapters';
@@ -43,6 +46,7 @@ export function ProjectWorkspace() {
   const { projectId = '' } = useParams();
   const currentProjectName = useUiShellStore((s) => s.currentProjectName);
   const setCurrentProject = useUiShellStore((s) => s.setCurrentProject);
+  const [project, setProject] = useState<ProjectDto | null>(null);
 
   useEffect(() => {
     if (!projectId) return;
@@ -50,7 +54,8 @@ export function ProjectWorkspace() {
     void window.novelTrans.projects
       .get(projectId)
       .then((result) => {
-        if (!alive || !result.project) return;
+        if (!alive) return;
+        setProject(result.project);
         setCurrentProject(result.project.id, result.project.title);
       })
       .catch(() => {
@@ -63,6 +68,7 @@ export function ProjectWorkspace() {
 
   const base = `/projects/${projectId}`;
   const flush = isProjectTranslatePath(location.pathname);
+  const title = project?.title ?? currentProjectName ?? t('projectNav.untitled');
 
   return (
     <div className={flush ? 'project-workspace project-workspace--flush' : 'project-workspace'}>
@@ -78,10 +84,30 @@ export function ProjectWorkspace() {
             <ArrowLeft size={16} aria-hidden />
             {t('projectNav.backToProjects')}
           </Button>
-          <h1 className="project-workspace-title">
-            {currentProjectName ?? t('projectNav.untitled')}
-          </h1>
+          <h1 className="project-workspace-title">{title}</h1>
         </div>
+
+        {project ? (
+          <div className="project-workspace-pair-row">
+            <LanguagePairLabel
+              sourceLanguage={project.sourceLanguage}
+              targetLanguage={project.targetLanguage}
+              className="project-workspace-pair"
+            />
+            <EditionSwitcher
+              projectId={project.id}
+              sourceLanguage={project.sourceLanguage}
+              onChanged={(targetLanguage, activeEditionId) => {
+                setProject((prev) =>
+                  prev
+                    ? { ...prev, targetLanguage, activeEditionId }
+                    : prev,
+                );
+              }}
+            />
+          </div>
+        ) : null}
+
         <nav className="project-workspace-tabs" aria-label={t('projectNav.tabsLabel')}>
           {PROJECT_TABS.map((tab) => {
             const to = tab.segment ? `${base}/${tab.segment}` : base;

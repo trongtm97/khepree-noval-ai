@@ -2,6 +2,8 @@ import type { TermRow, TermTranslationRow } from '../db/repositories/term-reposi
 import type { TermCandidateRow } from '../db/repositories/term-candidate-repository';
 import { normalizeTermType } from '@shared/constants/term';
 import type { TermDto, TermCandidateDto } from '@shared/schemas/term';
+import { termSourceText } from '../terms/term-language-adapter';
+import { parseJsonStringArray } from '../terms/term-variant-json';
 
 export function toTermDto(
   row: TermRow,
@@ -11,13 +13,22 @@ export function toTermDto(
   const alternatives = translations
     .filter((t) => t.is_primary !== 1)
     .map((t) => t.target_text);
+  const sourceText = termSourceText(row);
 
   return {
     id: row.id,
-    sourceText: row.source_simplified,
-    simplified: row.source_simplified,
+    sourceText,
+    targetText: primary,
+    sourceLanguage: row.source_language,
+    targetLanguage: row.target_language,
+    sourceVariants: parseJsonStringArray(row.source_variants),
+    targetVariants: parseJsonStringArray(row.target_variants),
+    transliteration: row.transliteration ?? row.pinyin,
+    transliterationSystem:
+      row.transliteration_system ?? (row.pinyin ? 'pinyin' : null),
+    simplified: row.source_simplified || sourceText,
     traditional: row.source_traditional,
-    pinyin: row.pinyin,
+    pinyin: row.pinyin ?? row.transliteration,
     preferredTranslation: primary,
     alternativeTranslations: alternatives,
     type: normalizeTermType(row.term_type),

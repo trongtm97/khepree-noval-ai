@@ -17,7 +17,7 @@ export const PLAYWRIGHT_PROTOCOL_NUDGE = `
 CRITICAL OUTPUT RULE (NotebookLM):
 Reply with ONLY these sections — no greeting, no explanation, no markdown outside tags:
 <TRANSLATION>
-[Cxxxxxx:Pxxxxxx] Vietnamese line…
+[Cxxxxxx:Pxxxxxx] TARGET_LANGUAGE_TRANSLATION…
 </TRANSLATION>
 <TERM_DELTA>[]</TERM_DELTA>
 <MEMORY_DELTA>[]</MEMORY_DELTA>

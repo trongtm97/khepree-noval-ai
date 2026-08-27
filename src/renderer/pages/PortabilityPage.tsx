@@ -11,7 +11,7 @@ export function PortabilityPage() {
   const { projectId: routeProjectId } = useParams();
   const storeProjectId = useUiShellStore((s) => s.currentProjectId) ?? '';
   const [projects, setProjects] = useState<ProjectDto[]>([]);
-  const [projectId, setProjectId] = useState(routeProjectId || storeProjectId);
+  const [projectId, setProjectId] = useState(routeProjectId ?? storeProjectId);
   const [format, setFormat] = useState<NovelExportFormat>('txt');
   const [chapterFrom, setChapterFrom] = useState('');
   const [chapterTo, setChapterTo] = useState('');

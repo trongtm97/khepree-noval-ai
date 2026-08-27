@@ -1,5 +1,6 @@
 import { memo, useCallback, useRef } from 'react';
 import type { EditorParagraphDto } from '@shared/schemas/translation-editor';
+import type { TextDirection } from '@shared/constants/language-profile';
 import { useT } from '../../i18n';
 import { HighlightedSourceText } from './HighlightedSourceText';
 
@@ -8,6 +9,8 @@ interface EditorParagraphRowProps {
   draftText: string;
   isActive: boolean;
   searchHighlight?: { side: 'source' | 'translation'; start: number; end: number } | null;
+  sourceDirection?: TextDirection;
+  targetDirection?: TextDirection;
   onSelect: (stableId: string) => void;
   onDraftChange: (stableId: string, text: string, previous: string) => void;
   rowRef?: (el: HTMLDivElement | null) => void;
@@ -18,6 +21,8 @@ export const EditorParagraphRow = memo(function EditorParagraphRow({
   draftText,
   isActive,
   searchHighlight,
+  sourceDirection = 'ltr',
+  targetDirection = 'ltr',
   onSelect,
   onDraftChange,
   rowRef,
@@ -49,7 +54,9 @@ export const EditorParagraphRow = memo(function EditorParagraphRow({
       ref={rowRef}
       className={`editor-row ${isActive ? 'editor-row--active' : ''} ${statusClass}`}
       data-paragraph-id={paragraph.stableParagraphId}
-      onClick={() => { onSelect(paragraph.stableParagraphId); }}
+      onClick={() => {
+        onSelect(paragraph.stableParagraphId);
+      }}
     >
       <div className="editor-row-meta">
         <code>{paragraph.stableParagraphId}</code>
@@ -63,7 +70,11 @@ export const EditorParagraphRow = memo(function EditorParagraphRow({
         ) : null}
       </div>
       <div className="editor-row-cols">
-        <div className="editor-col editor-col--source" onFocus={handleFocus}>
+        <div
+          className="editor-col editor-col--source"
+          dir={sourceDirection}
+          onFocus={handleFocus}
+        >
           <HighlightedSourceText
             text={paragraph.sourceText}
             highlights={paragraph.termHighlights}
@@ -74,13 +85,16 @@ export const EditorParagraphRow = memo(function EditorParagraphRow({
             }
           />
         </div>
-        <div className="editor-col editor-col--target">
+        <div className="editor-col editor-col--target" dir={targetDirection}>
           <textarea
             className="editor-textarea"
             value={draftText}
             rows={3}
+            dir={targetDirection}
             onFocus={handleFocus}
-            onChange={(event) => { handleChange(event.target.value); }}
+            onChange={(event) => {
+              handleChange(event.target.value);
+            }}
             aria-label={t('editor.translationAria', { id: paragraph.stableParagraphId })}
           />
         </div>

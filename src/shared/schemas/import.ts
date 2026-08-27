@@ -1,4 +1,13 @@
 import { z } from 'zod';
+import {
+  DEFAULT_SOURCE_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+  LANGUAGE_AUTO,
+} from '../constants/language-profile';
+import {
+  LanguageCodeSchema,
+  SourceLanguageInputSchema,
+} from './language-profile';
 
 export const ProjectDtoSchema = z.object({
   id: z.string().uuid(),
@@ -19,6 +28,7 @@ export const ProjectDtoSchema = z.object({
   errorChapterCount: z.number().int().nonnegative().optional(),
   /** Next chapter_number to translate (null if none / complete). */
   nextUntranslatedChapter: z.number().int().positive().nullable().optional(),
+  activeEditionId: z.string().uuid().nullable().optional(),
   health: z
     .object({
       source: z.enum(['ok', 'warn', 'missing']),
@@ -40,11 +50,46 @@ export const ProjectCreateRequestSchema = z.object({
   title: z.string().min(1).max(500),
   genre: z.string().max(200).nullable().optional(),
   description: z.string().max(5000).nullable().optional(),
+  /**
+   * Source language: AUTO or BCP-47-ish code.
+   * AUTO is resolved at create/import via detect — never stored as AUTO.
+   */
+  sourceLanguage: SourceLanguageInputSchema.default(DEFAULT_SOURCE_LANGUAGE),
+  targetLanguage: LanguageCodeSchema.default(DEFAULT_TARGET_LANGUAGE),
+  /** Optional sample for AUTO detection when creating without folder yet. */
+  sampleText: z.string().max(50_000).optional(),
 });
 
 export const ProjectCreateResponseSchema = z.object({
   project: ProjectDtoSchema,
+  /** Present when source was AUTO or detection ran. */
+  sourceDetection: z
+    .object({
+      code: z.string(),
+      displayNameVi: z.string(),
+      displayNameNative: z.string(),
+      confidence: z.number(),
+      method: z.enum(['heuristic', 'ai', 'hint', 'fallback']),
+      needsUserConfirm: z.boolean(),
+    })
+    .nullable()
+    .optional(),
 });
+
+export const ProjectUpdateLanguagesRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  sourceLanguage: LanguageCodeSchema,
+  targetLanguage: LanguageCodeSchema,
+}).refine((v) => v.sourceLanguage !== v.targetLanguage, {
+  message: 'sourceLanguage and targetLanguage must differ',
+});
+
+export const ProjectUpdateLanguagesResponseSchema = z.object({
+  project: ProjectDtoSchema,
+});
+
+/** Re-export for callers that need AUTO sentinel. */
+export { LANGUAGE_AUTO };
 
 export const ProjectIdRequestSchema = z.object({
   projectId: z.string().uuid(),

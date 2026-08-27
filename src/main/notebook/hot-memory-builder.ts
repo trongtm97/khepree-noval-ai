@@ -157,7 +157,7 @@ function listHotTerms(
     const preferred =
       db.terms.listTranslations(t.id).find((x) => x.is_primary === 1)?.target_text ?? null;
     return {
-      source: t.source_simplified,
+      source: t.source_text ?? t.source_simplified,
       preferred,
       status: t.status === 'LOCKED' || t.locked === 1 ? 'LOCKED' : t.status,
       locked: t.locked === 1 || t.status === 'LOCKED',

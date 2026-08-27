@@ -6,6 +6,7 @@ import {
   parseTermDelta,
   type TermDeltaItem,
 } from '@shared/schemas/term-delta';
+import { normalizeLanguageCode } from '@shared/constants/language-profile';
 import type { DatabaseManager } from '../db/database-manager';
 import { withTransaction } from '../db/transaction';
 import { mapDeltaConfidence, refreshTermConfidence } from './confidence';
@@ -18,6 +19,8 @@ export interface TermDeltaContext {
   /** Source snippet for occurrence records. */
   sourceContext?: string | null;
   jobId?: string | null;
+  sourceLanguage?: string;
+  targetLanguage?: string;
 }
 
 export interface TermDeltaApplyResult {
@@ -103,13 +106,29 @@ function applyItem(
   }
 }
 
+function projectLangPair(
+  db: DatabaseManager,
+  ctx: TermDeltaContext,
+): { sourceLanguage: string; targetLanguage: string } {
+  const project = db.projects.getById(ctx.projectId);
+  return {
+    sourceLanguage: normalizeLanguageCode(
+      ctx.sourceLanguage ?? project?.source_language ?? 'zh-Hans',
+    ),
+    targetLanguage: normalizeLanguageCode(
+      ctx.targetLanguage ?? project?.target_language ?? 'vi',
+    ),
+  };
+}
+
 function applyDiscover(
   db: DatabaseManager,
   item: Extract<TermDeltaItem, { action: 'discover' }>,
   ctx: TermDeltaContext,
   result: TermDeltaApplyResult,
 ): void {
-  const existing = db.terms.findBySource(item.source, ctx.projectId);
+  const pair = projectLangPair(db, ctx);
+  const existing = db.terms.findBySource(item.source, ctx.projectId, pair);
   const confidence = mapDeltaConfidence(item.confidence);
 
   if (existing) {
@@ -172,7 +191,8 @@ function applyUpdate(
   ctx: TermDeltaContext,
   result: TermDeltaApplyResult,
 ): void {
-  const existing = db.terms.findBySource(item.source, ctx.projectId);
+  const pair = projectLangPair(db, ctx);
+  const existing = db.terms.findBySource(item.source, ctx.projectId, pair);
   if (existing) {
     if (existing.locked === 1 || existing.status === 'GLOBAL_VERIFIED' || existing.status === 'LOCKED') {
       // Never auto-mutate locked / global — leave as candidate suggestion only
@@ -241,7 +261,8 @@ function applyConfirm(
   ctx: TermDeltaContext,
   result: TermDeltaApplyResult,
 ): void {
-  let term = db.terms.findBySource(item.source, ctx.projectId);
+  const pair = projectLangPair(db, ctx);
+  let term = db.terms.findBySource(item.source, ctx.projectId, pair);
 
   if (!term) {
     // Promote candidate into project CANDIDATE/PROJECT vault entry — still not GLOBAL
@@ -249,7 +270,10 @@ function applyConfirm(
       .listPending(ctx.projectId)
       .find((c) => c.source_text === item.source);
     term = db.terms.create({
+      source_text: item.source,
       source_simplified: item.source,
+      source_language: pair.sourceLanguage,
+      target_language: pair.targetLanguage,
       term_type: pending?.suggested_type
         ? normalizeTermType(pending.suggested_type)
         : 'OTHER',

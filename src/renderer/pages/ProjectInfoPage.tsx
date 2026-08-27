@@ -126,8 +126,8 @@ export function ProjectInfoPage() {
 
       <div className="card form-stack">
         {field(t('bookMetadata.title'), 'title')}
-        {field(t('bookMetadata.titleCn'), 'titleCn')}
-        {field(t('bookMetadata.titleVi'), 'titleVi')}
+        {field(t('bookMetadata.sourceTitle'), 'sourceTitle')}
+        {field(t('bookMetadata.targetTitle'), 'targetTitle')}
         {field(t('bookMetadata.author'), 'authorName')}
         <label>
           {t('bookMetadata.genre')}

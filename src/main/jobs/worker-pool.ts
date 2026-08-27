@@ -8,6 +8,13 @@ import { getBrowserRuntimeManager } from '../automation/browser-runner/browser-r
 import { healIdleWorkers } from './heal-workers';
 import { logger } from '../logging/logger';
 import { runtimeLockOwner } from '@shared/constants/browser-runtime';
+import { resolveProjectWorker } from '../services/project-worker-resolver';
+import type { ConcurrencyPolicy } from '@shared/constants/concurrency-policy';
+import {
+  canAdmitJob,
+  providerKindForWorker,
+  type ConcurrencySnapshot,
+} from './concurrency-policy';
 
 export interface SelectedWorker {
   worker: WorkerStateRow;
@@ -15,14 +22,22 @@ export interface SelectedWorker {
   profilePath: string;
 }
 
+export interface FairSelectOptions {
+  policy: ConcurrencyPolicy;
+  snapshot: ConcurrencySnapshot;
+  /** Prefer workers assigned / resolved for this project. */
+  projectId?: string | null;
+}
+
 /**
  * Select READY workers for PINNED / POOL modes.
+ * Fair order: priority → quota/health → least-recently-used → project assignment.
  * Never selects LIMITED (until cooldown), DISABLED, OFFLINE, BUSY.
  */
 export class WorkerPool {
   constructor(private readonly db: DatabaseManager) {}
 
-  /** Candidates eligible to run a job right now. */
+  /** Candidates eligible to run a job right now (unsorted). */
   listAvailable(): WorkerStateRow[] {
     this.db.workerStates.clearExpiredLimits();
     healIdleWorkers(this.db);
@@ -33,7 +48,6 @@ export class WorkerPool {
       if (w.health === 'NEEDS_ATTENTION') return false;
       if (w.health === 'LIMITED') {
         if (w.limited_until && Date.parse(w.limited_until) > now) return false;
-        // expired limit should have been cleared; treat as available
       } else if (w.health !== 'READY') {
         return false;
       }
@@ -47,7 +61,6 @@ export class WorkerPool {
       const profilePath = browserProfileManager.resolveProfilePath(profile.profile_dir_name);
       const lockOwner = profileLockManager.getOwner(profilePath);
       if (lockOwner) {
-        // Persistent runtime for THIS account is OK — context reused across batches.
         if (lockOwner === runtimeLockOwner(w.google_account_id)) {
           // continue
         } else if (lockOwner.startsWith(`job:`)) {
@@ -56,7 +69,6 @@ export class WorkerPool {
           });
           return false;
         } else {
-          // Manual Accounts browser (ownerId === accountId) or unknown — try stale recover.
           profileLockManager.recoverIfStale(profilePath);
           if (profileLockManager.isLocked(profilePath)) {
             logger.info('Worker skipped — browser profile locked', {
@@ -75,7 +87,30 @@ export class WorkerPool {
     });
   }
 
-  selectForJob(job: JobRow): SelectedWorker | null {
+  /**
+   * Fair-sorted available workers for claiming.
+   * Never returns DB-order first account blindly.
+   */
+  listAvailableFair(options?: { projectId?: string | null }): WorkerStateRow[] {
+    const available = this.listAvailable();
+    const assigned = options?.projectId
+      ? this.assignedAccountIds(options.projectId)
+      : new Set<string>();
+    let preferredAccountId: string | null = null;
+    if (options?.projectId) {
+      const resolved = resolveProjectWorker(this.db, {
+        projectId: options.projectId,
+        purpose: 'translation',
+      });
+      preferredAccountId = resolved.accountId;
+    }
+    return this.sortFair(available, {
+      preferredAccountId,
+      assignedAccountIds: assigned,
+    });
+  }
+
+  selectForJob(job: JobRow, fair?: FairSelectOptions): SelectedWorker | null {
     const mode: WorkerMode = job.worker_mode === 'PINNED' ? 'PINNED' : 'POOL';
     const available = this.listAvailable();
 
@@ -84,16 +119,76 @@ export class WorkerPool {
       if (!pinned) return null;
       const worker = available.find((w) => w.google_account_id === pinned);
       if (!worker) return null;
+      if (fair && !this.passesAdmit(fair, worker, job.project_id)) return null;
       return this.toSelected(worker);
     }
 
-    // POOL: prefer assigned project workers, then priority
+    const resolved = resolveProjectWorker(this.db, {
+      projectId: job.project_id,
+      purpose: 'translation',
+      jobId: job.id,
+    });
     const assigned = this.assignedAccountIds(job.project_id);
     const preferred = available.filter((w) => assigned.has(w.google_account_id));
     const pool = preferred.length > 0 ? preferred : available;
-    const worker = pool.at(0);
-    if (!worker) return null;
-    return this.toSelected(worker);
+    const sorted = this.sortFair(pool, {
+      preferredAccountId: resolved.accountId,
+      assignedAccountIds: assigned,
+    });
+
+    for (const worker of sorted) {
+      if (fair && !this.passesAdmit(fair, worker, job.project_id)) continue;
+      const selected = this.toSelected(worker);
+      if (selected) return selected;
+    }
+    return null;
+  }
+
+  private passesAdmit(
+    fair: FairSelectOptions,
+    worker: WorkerStateRow,
+    projectId: string,
+  ): boolean {
+    return canAdmitJob(fair.policy, fair.snapshot, {
+      projectId,
+      accountId: worker.google_account_id,
+      providerKind: providerKindForWorker(this.db, worker.google_account_id),
+    });
+  }
+
+  /**
+   * priority ASC → healthy quota → LRU (last_active_at) → preferred / assigned → account id.
+   */
+  private sortFair(
+    workers: WorkerStateRow[],
+    opts: {
+      preferredAccountId?: string | null;
+      assignedAccountIds?: Set<string>;
+    },
+  ): WorkerStateRow[] {
+    const preferred = opts.preferredAccountId ?? null;
+    const assigned = opts.assignedAccountIds ?? new Set<string>();
+    return [...workers].sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+
+      const quotaA = a.quota_state === 'exhausted' || a.health === 'LIMITED' ? 1 : 0;
+      const quotaB = b.quota_state === 'exhausted' || b.health === 'LIMITED' ? 1 : 0;
+      if (quotaA !== quotaB) return quotaA - quotaB;
+
+      const lruA = a.last_active_at ? Date.parse(a.last_active_at) : 0;
+      const lruB = b.last_active_at ? Date.parse(b.last_active_at) : 0;
+      if (lruA !== lruB) return lruA - lruB;
+
+      const prefA = preferred && a.google_account_id === preferred ? 0 : 1;
+      const prefB = preferred && b.google_account_id === preferred ? 0 : 1;
+      if (prefA !== prefB) return prefA - prefB;
+
+      const asgA = assigned.has(a.google_account_id) ? 0 : 1;
+      const asgB = assigned.has(b.google_account_id) ? 0 : 1;
+      if (asgA !== asgB) return asgA - asgB;
+
+      return a.google_account_id.localeCompare(b.google_account_id);
+    });
   }
 
   private assignedAccountIds(projectId: string): Set<string> {

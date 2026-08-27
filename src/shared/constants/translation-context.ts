@@ -78,8 +78,33 @@ export function formatDiagnosticsMemorySurface(
   return 'SQLite local memory';
 }
 
-/** Context mode line (SLIM / HYBRID / FAT) with version nuance. */
+/** Context mode line — human label; technical pack mode for tooltips only. */
 export function formatDiagnosticsContextMode(
+  diagnostics: Pick<
+    TranslationContextDiagnostics,
+    | 'packMode'
+    | 'notebookGroundingVerified'
+    | 'localKnowledgeVersion'
+    | 'notebookKnowledgeVersion'
+  >,
+): string {
+  if (diagnostics.packMode === 'slim' && diagnostics.notebookGroundingVerified) {
+    return '✓ Notebook đã cập nhật';
+  }
+  if (diagnostics.packMode === 'hybrid') {
+    return 'Notebook + cập nhật mới';
+  }
+  if (diagnostics.packMode === 'fat') {
+    return 'Bộ nhớ cục bộ';
+  }
+  if (diagnostics.packMode === 'slim' && !diagnostics.notebookGroundingVerified) {
+    return 'Notebook + cập nhật mới';
+  }
+  return '—';
+}
+
+/** Technical pack-mode label for tooltips (SLIM / HYBRID / FAT). */
+export function formatDiagnosticsPackModeTooltip(
   diagnostics: Pick<
     TranslationContextDiagnostics,
     | 'packMode'

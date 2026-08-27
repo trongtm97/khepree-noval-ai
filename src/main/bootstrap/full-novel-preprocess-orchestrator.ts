@@ -223,6 +223,8 @@ export class FullNovelPreprocessOrchestrator {
         author: project.author_name,
         genre: project.genre,
         partFileNames: partNames,
+        sourceLanguage: project.source_language,
+        targetLanguage: project.target_language,
       });
       const promptHash = createHash('sha256').update(prompt, 'utf8').digest('hex');
 

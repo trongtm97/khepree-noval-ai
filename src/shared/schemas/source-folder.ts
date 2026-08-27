@@ -159,6 +159,9 @@ export const SourceFolderImportRequestSchema = z.object({
   genre: z.string().max(200).nullable().optional(),
   description: z.string().max(5000).nullable().optional(),
   chineseTitle: z.string().max(500).nullable().optional(),
+  /** AUTO or language code — resolved before persist. */
+  sourceLanguage: z.string().min(2).max(32).optional(),
+  targetLanguage: z.string().min(2).max(32).optional(),
   accountId: z.string().uuid().nullable().optional(),
   styleConfig: z.record(z.unknown()).nullable().optional(),
   expectedStartChapter: z.number().int().positive().nullable().optional(),

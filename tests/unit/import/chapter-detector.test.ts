@@ -29,10 +29,16 @@ describe('encoding detection', () => {
   it('falls back to GBK/GB18030 for Chinese bytes', () => {
     const text = '第一章 开端\n林风走在路上。';
     const buf = iconv.encode(text, 'gbk');
-    const result = detectAndDecode(buf);
+    const result = detectAndDecode(buf, { sourceLanguage: 'zh-Hans' });
     expect(['gbk', 'gb18030']).toContain(result.encoding);
     expect(result.text).toContain('第一章');
     expect(result.text).toContain('林风');
+  });
+
+  it('does not force GB on English/generic path', () => {
+    const buf = Buffer.from([0x80, 0x81, 0x82, 0x83]);
+    const result = detectAndDecode(buf, { sourceLanguage: 'en' });
+    expect(['gbk', 'gb18030']).not.toContain(result.encoding);
   });
 });
 

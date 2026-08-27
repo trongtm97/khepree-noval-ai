@@ -4,7 +4,9 @@ import type { DatabaseManager } from '../db/database-manager';
 import { NotebookProvider } from '../automation/providers/google/notebook-provider';
 import { AutomationError } from '../automation/errors/automation-errors';
 import { formatNotebookNameForRole, type NotebookRole } from '@shared/constants/notebook-role';
+import { getActiveEdition } from './edition-service';
 import type { NotebookAssistedStep } from '@shared/constants/notebook';
+import { getLanguageProfile } from '@shared/constants/language-profile';
 import { DRIVE_PROJECT_DOC_TITLES } from '@shared/constants/notebook-source-binding';
 import type { NotebookSourceBindingType } from '@shared/constants/notebook-source-binding';
 import {
@@ -130,27 +132,34 @@ function loadNotebookInstructions(
     .prepare(`SELECT style_config FROM project_settings WHERE project_id = ?`)
     .get(projectId) as { style_config: string | null } | undefined;
 
+  const project = db.projects.getById(projectId);
+  const sourceCode = project?.source_language ?? 'zh-Hans';
+  const targetCode = project?.target_language ?? 'vi';
+  const sourceName = getLanguageProfile(sourceCode).displayNameNative;
+  const targetName = getLanguageProfile(targetCode).displayNameNative;
+
   const lines: string[] =
     role === 'RESEARCH'
       ? [
-          'Notebook RESEARCH — corpus đầy đủ cho phân tích toàn truyện (NovelTrans Studio).',
+          'Notebook RESEARCH — full corpus for whole-novel analysis (NovelTrans Studio).',
           '',
-          'Chứa các phần NOVEL_PART_* (corpus gốc).',
-          'Dùng cho: terminology discovery, nhân vật, quan hệ, thế giới, cốt truyện.',
-          'KHÔNG dịch trực tiếp tại đây — kết quả import vào SQLite rồi sync sang Translation Notebook.',
-          'Tránh spoiler tương lai khi trả lời — ghi rõ first_seen_chapter khi có thể.',
+          'Contains NOVEL_PART_* sections (source corpus).',
+          'Use for: terminology discovery, characters, relationships, world, plot.',
+          'Do NOT translate chapter prose here — import results into SQLite then sync to Translation Notebook.',
+          'Avoid future spoilers when answering — note first_seen_chapter when possible.',
         ]
       : [
-          'Notebook này là bộ nhớ tri thức dài hạn của một dự án dịch tiểu thuyết Trung → Việt (NovelTrans Studio).',
+          `This Notebook is long-term knowledge memory for a novel translation project: ${sourceName} → ${targetName} (NovelTrans Studio).`,
+          `Source language: ${sourceName} (${sourceCode}). Target language: ${targetName} (${targetCode}).`,
           '',
-          'Luôn ưu tiên các nguồn:',
+          'Always prioritize these sources:',
           'Translation Rules, Project Terms, Characters, Relationships, Story State, World Knowledge, Recent Context.',
           '',
-          'Không tự phát minh thông tin ngoài sources khi được hỏi về dữ liệu truyện.',
-          'Đối với tên nhân vật và thuật ngữ, ưu tiên bản dịch đã xác nhận / LOCKED trong Project Terms.',
-          'Official Summary trong Book Profile KHÔNG phải trạng thái hiện tại — Story State mới là trạng thái hiện tại.',
-          'HOT MEMORY trong Translation Pack override Notebook nếu xung đột (chưa kịp sync).',
-          'Không tự dịch toàn bộ novel; chỉ dịch khi nhận Translation Pack với Source + Output Protocol.',
+          'Do not invent story facts beyond sources when asked about novel data.',
+          'For character names and terms, prefer confirmed / LOCKED Project Terms.',
+          'Official Summary in Book Profile is NOT current state — Story State is current.',
+          'HOT MEMORY in the Translation Pack overrides Notebook on conflict (not yet synced).',
+          'Do not translate the whole novel here; translate only when given a Translation Pack with Source + Output Protocol.',
         ];
 
   if (role !== 'RESEARCH' && row?.style_config) {
@@ -211,7 +220,12 @@ export class NotebookService {
     if (!account) throw new Error(`Account not found: ${input.accountId}`);
 
     const notebookRole = input.role ?? 'TRANSLATION';
-    const notebookName = formatNotebookNameForRole(project.title, notebookRole);
+    const activeEdition =
+      notebookRole === 'RESEARCH' ? null : getActiveEdition(this.db, input.projectId);
+    const notebookName = formatNotebookNameForRole(project.title, notebookRole, {
+      targetLanguage: activeEdition?.target_language ?? project.target_language,
+      editionTitle: activeEdition?.name ?? project.target_title ?? project.title,
+    });
     const attachKnowledge = notebookRole !== 'RESEARCH';
     const instructions = loadNotebookInstructions(this.db, input.projectId, notebookRole);
     const instructionsHash = hashText(instructions);
@@ -236,6 +250,7 @@ export class NotebookService {
       google_account_id: input.accountId,
       notebook_name: notebookName,
       notebook_role: notebookRole,
+      edition_id: activeEdition?.id ?? null,
       status: 'provisioning',
       instructions_hash: instructionsHash,
       last_error: null,

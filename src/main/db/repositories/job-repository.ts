@@ -22,6 +22,7 @@ export interface JobRow {
   lease_owner: string | null;
   lease_expires_at: string | null;
   scheduled_at: string | null;
+  edition_id: string | null;
   created_at: string;
   updated_at: string;
   started_at: string | null;
@@ -62,6 +63,7 @@ export interface CreateJobInput {
   worker_mode?: WorkerMode;
   pinned_account_id?: string | null;
   scheduled_at?: string | null;
+  edition_id?: string | null;
 }
 
 export interface StartAttemptInput {
@@ -99,9 +101,9 @@ export class JobRepository extends BaseRepository {
         `INSERT INTO jobs (
           id, project_id, type, state, worker_id, config, progress, error, paused_reason,
           priority, chapter_from, chapter_to, worker_mode, pinned_account_id, attempt_count,
-          lease_owner, lease_expires_at, scheduled_at,
+          lease_owner, lease_expires_at, scheduled_at, edition_id,
           created_at, updated_at, started_at, completed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, NULL, NULL)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, NULL, NULL)`,
       )
       .run(
         id,
@@ -116,6 +118,7 @@ export class JobRepository extends BaseRepository {
         input.worker_mode ?? 'POOL',
         input.pinned_account_id ?? null,
         input.scheduled_at ?? null,
+        input.edition_id ?? null,
         ts.created_at,
         ts.updated_at,
       );
@@ -218,16 +221,29 @@ export class JobRepository extends BaseRepository {
 
   /**
    * Atomically claim next QUEUED/WAITING_WORKER job (durable SQLite).
-   * Skips jobs pinned to a different account when workerAccountId provided for pool pick.
+   * Optional projectId restricts to one project (fair round-robin scheduling).
    */
   claimNext(options: {
     leaseOwner: string;
     leaseMs: number;
     workerId: string;
     accountId: string;
+    projectId?: string | null;
+    excludeProjectIds?: readonly string[];
   }): JobRow | null {
     const now = utcNow();
     const expires = new Date(Date.now() + options.leaseMs).toISOString();
+
+    const exclude = options.excludeProjectIds ?? [];
+    const excludeClause =
+      exclude.length > 0
+        ? `AND project_id NOT IN (${exclude.map(() => '?').join(',')})`
+        : '';
+    const projectClause = options.projectId ? 'AND project_id = ?' : '';
+
+    const params: unknown[] = [now, options.accountId, options.accountId, now];
+    if (options.projectId) params.push(options.projectId);
+    if (exclude.length > 0) params.push(...exclude);
 
     const candidate = this.db
       .prepare(
@@ -239,10 +255,12 @@ export class JobRepository extends BaseRepository {
              OR (worker_mode = 'POOL' AND (pinned_account_id IS NULL OR pinned_account_id = ?))
            )
            AND (lease_owner IS NULL OR lease_expires_at < ?)
+           ${projectClause}
+           ${excludeClause}
          ORDER BY priority ASC, COALESCE(chapter_from, 2147483647) ASC, created_at ASC
          LIMIT 1`,
       )
-      .get(now, options.accountId, options.accountId, now) as JobRow | undefined;
+      .get(...params) as JobRow | undefined;
 
     if (!candidate) return null;
 
@@ -276,6 +294,25 @@ export class JobRepository extends BaseRepository {
 
     if (result.changes === 0) return null;
     return this.getById(candidate.id);
+  }
+
+  /**
+   * Projects with runnable queued jobs, oldest waiting first (fair RR base order).
+   */
+  listQueuedProjectIds(): string[] {
+    const now = utcNow();
+    const rows = this.db
+      .prepare(
+        `SELECT project_id AS projectId, MIN(created_at) AS waitSince
+         FROM jobs
+         WHERE state IN ('QUEUED', 'WAITING_WORKER')
+           AND (scheduled_at IS NULL OR scheduled_at <= ?)
+           AND (lease_owner IS NULL OR lease_expires_at < ?)
+         GROUP BY project_id
+         ORDER BY waitSince ASC`,
+      )
+      .all(now, now) as { projectId: string; waitSince: string }[];
+    return rows.map((r) => r.projectId);
   }
 
   renewLease(id: string, leaseOwner: string, leaseMs: number): boolean {
@@ -351,6 +388,18 @@ export class JobRepository extends BaseRepository {
          WHERE id = ? AND state IN ('FAILED', 'NEEDS_ATTENTION', 'CANCELLED', 'SKIPPED')`,
       )
       .run(utcNow(), id);
+    return this.getById(id);
+  }
+
+  /** Wave commit barrier hard conflict — re-run with latest knowledge. */
+  requeueForRetranslate(id: string, reason: string): JobRow | null {
+    this.db
+      .prepare(
+        `UPDATE jobs SET state = 'QUEUED', error = ?, paused_reason = NULL,
+          completed_at = NULL, lease_owner = NULL, lease_expires_at = NULL, updated_at = ?
+         WHERE id = ?`,
+      )
+      .run(reason, utcNow(), id);
     return this.getById(id);
   }
 

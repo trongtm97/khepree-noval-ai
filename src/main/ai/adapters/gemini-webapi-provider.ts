@@ -375,7 +375,8 @@ export class GeminiWebApiProvider implements IAIProvider {
       );
       if (linked) return linked;
     }
-    return this.db.aiAccounts.listReadyByProvider(this.providerId)[0] ?? null;
+    // Project sends must pass googleAccountId / aiAccountId — never blind first READY.
+    return null;
   }
 
   private async workerFetch(pathname: string, init?: RequestInit): Promise<Response> {

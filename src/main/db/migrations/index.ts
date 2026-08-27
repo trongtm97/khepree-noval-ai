@@ -26,6 +26,14 @@ import { MIGRATION_023_GEMINI_REQUEST_LIFECYCLE } from './023-gemini-request-lif
 import { MIGRATION_024_NOTEBOOK_SOURCE_BINDINGS } from './024-notebook-source-bindings';
 import { MIGRATION_025_KNOWLEDGE_VERSION_PROBE } from './025-knowledge-version-probe';
 import { MIGRATION_026_REPAIR_CHANNEL_CONTEXT } from './026-repair-channel-context';
+import { MIGRATION_027_LANGUAGE_PROFILES } from './027-language-profiles';
+import { MIGRATION_028_GENERIC_BOOK_TITLES } from './028-generic-book-titles';
+import { MIGRATION_029_MULTILINGUAL_TERMS } from './029-multilingual-terms';
+import { MIGRATION_030_TRANSLATION_WAVES } from './030-translation-waves';
+import {
+  MIGRATION_031_TRANSLATION_EDITIONS,
+  runMigration031Backfill,
+} from './031-translation-editions';
 
 export const MIGRATIONS: MigrationDefinition[] = [
   {
@@ -157,6 +165,32 @@ export const MIGRATIONS: MigrationDefinition[] = [
     version: 26,
     name: 'repair_channel_context',
     sql: MIGRATION_026_REPAIR_CHANNEL_CONTEXT,
+  },
+  {
+    version: 27,
+    name: 'language_profiles',
+    sql: MIGRATION_027_LANGUAGE_PROFILES,
+  },
+  {
+    version: 28,
+    name: 'generic_book_titles',
+    sql: MIGRATION_028_GENERIC_BOOK_TITLES,
+  },
+  {
+    version: 29,
+    name: 'multilingual_terms',
+    sql: MIGRATION_029_MULTILINGUAL_TERMS,
+  },
+  {
+    version: 30,
+    name: 'translation_waves',
+    sql: MIGRATION_030_TRANSLATION_WAVES,
+  },
+  {
+    version: 31,
+    name: 'translation_editions',
+    sql: MIGRATION_031_TRANSLATION_EDITIONS,
+    run: runMigration031Backfill,
   },
 ];
 

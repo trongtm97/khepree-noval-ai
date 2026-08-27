@@ -13,6 +13,7 @@ import type {
 } from '@shared/schemas/translation-editor';
 import type { TranslationVersionSource } from '@shared/constants/translation-editor';
 import type { z } from 'zod';
+import { resolveActiveEditionId } from './edition-service';
 
 type EditorChapterResponse = z.infer<typeof EditorGetChapterResponseSchema>;
 type EditorContextResponse = z.infer<typeof EditorContextResponseSchema>;
@@ -31,18 +32,23 @@ export class TranslationEditorService {
     const matchContext: TermMatchContext = {
       projectId,
       genre: project?.genre ?? null,
+      sourceLanguage: project?.source_language,
+      targetLanguage: project?.target_language,
     };
     const termRows = this.db.terms.listForMatching(matchContext);
-    const termIndex = buildTermMatchIndex(termRows);
+    const termIndex = buildTermMatchIndex(termRows, {
+      sourceLanguage: matchContext.sourceLanguage,
+    });
 
     const paragraphs = this.db.paragraphs.listByChapter(chapterId);
     const qaChapterRef = chapter.chapter_number ?? chapter.sequence_order;
     const qaSummary = this.loadQaSummary(projectId, qaChapterRef);
+    const editionId = resolveActiveEditionId(this.db, projectId);
 
     const missingSet = new Set(qaSummary?.missingParagraphIds ?? []);
 
     const dtos: EditorParagraphDto[] = paragraphs.map((para) => {
-      const translation = this.db.translations.getByParagraphId(para.id);
+      const translation = this.db.translations.getByParagraphId(para.id, editionId);
       const matches = matchKnownTermsInText(
         para.source_text,
         termIndex,
@@ -112,7 +118,11 @@ export class TranslationEditorService {
       .find((p) => p.paragraph_id === stableParagraphId);
     if (!para) throw new Error(`Paragraph not found: ${stableParagraphId}`);
 
-    this.db.translations.saveHumanEdit(para.id, translatedText);
+    this.db.translations.saveHumanEdit(
+      para.id,
+      translatedText,
+      resolveActiveEditionId(this.db, projectId),
+    );
 
     const refreshed = this.getChapter(projectId, chapterId);
     const paragraph = refreshed.paragraphs.find(
@@ -167,10 +177,15 @@ export class TranslationEditorService {
         };
       });
 
-    const termRows = this.db.terms.listForMatching({ projectId });
+    const project = this.db.projects.getById(projectId);
+    const termRows = this.db.terms.listForMatching({
+      projectId,
+      sourceLanguage: project?.source_language,
+      targetLanguage: project?.target_language,
+    });
     const terms = termRows.slice(0, 40).map((t) => ({
       id: t.id,
-      sourceText: t.source_simplified,
+      sourceText: t.source_text ?? t.source_simplified,
       translation: this.db.terms.getPrimaryTranslation(t.id),
       scope: t.scope,
       confidence: t.confidence,
@@ -202,7 +217,10 @@ export class TranslationEditorService {
     if (chapter?.project_id !== projectId) {
       throw new Error('Chapter not found for project');
     }
-    const cleared = this.db.translations.clearAiByChapter(chapterId);
+    const cleared = this.db.translations.clearAiByChapter(
+      chapterId,
+      resolveActiveEditionId(this.db, projectId),
+    );
     return {
       ...cleared,
       chapter: this.getChapter(projectId, chapterId),
@@ -216,12 +234,13 @@ export class TranslationEditorService {
     let deleted = 0;
     let keptLocked = 0;
     const clearedIds: string[] = [];
+    const editionId = resolveActiveEditionId(this.db, projectId);
     for (const chapterId of chapterIds) {
       const chapter = this.db.chapters.getById(chapterId);
       if (chapter?.project_id !== projectId) {
         throw new Error(`Chapter not found for project: ${chapterId}`);
       }
-      const result = this.db.translations.clearAiByChapter(chapterId);
+      const result = this.db.translations.clearAiByChapter(chapterId, editionId);
       deleted += result.deleted;
       keptLocked += result.keptLocked;
       clearedIds.push(chapterId);
@@ -295,7 +314,10 @@ export class TranslationEditorService {
       if (chapter?.project_id !== projectId) {
         throw new Error(`Chapter not found for project: ${chapterId}`);
       }
-      const cleared = this.db.translations.clearAiByChapter(chapterId);
+      const cleared = this.db.translations.clearAiByChapter(
+      chapterId,
+      resolveActiveEditionId(this.db, projectId),
+    );
       deleted += cleared.deleted;
       keptLocked += cleared.keptLocked;
 

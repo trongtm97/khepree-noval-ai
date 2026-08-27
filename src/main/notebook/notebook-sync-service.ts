@@ -410,21 +410,28 @@ export class NotebookSyncService {
     role: 'TRANSLATION' | 'RESEARCH' | 'SINGLE' = 'TRANSLATION',
   ): NotebookHealthDto {
     const mappings = this.db.notebooks.listByProject(projectId);
+    const resolvedAccountId =
+      accountId ??
+      resolveProjectWorker(this.db, {
+        projectId,
+        purpose: role === 'RESEARCH' ? 'research' : 'notebook',
+      }).accountId;
     let mapping =
-      accountId != null
+      resolvedAccountId != null
         ? resolveNotebookForPurpose(
             this.db,
             projectId,
-            accountId,
+            resolvedAccountId,
             role === 'RESEARCH' ? 'research' : 'translation',
           )
         : null;
-    if (!mapping && mappings.length > 0) {
+    if (!mapping && mappings.length > 0 && !resolvedAccountId) {
+      // No project worker — pick role-matched mapping only (never arbitrary mappings[0]).
       mapping =
         mappings.find((m) => m.notebook_role === role) ??
         mappings.find((m) => m.notebook_role === 'TRANSLATION') ??
         mappings.find((m) => m.notebook_role === 'SINGLE') ??
-        mappings[0];
+        null;
     }
 
     const files = KNOWLEDGE_TYPES.map((type) => {

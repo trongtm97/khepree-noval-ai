@@ -394,6 +394,8 @@ async function scenarioH(session: Session): Promise<void> {
     author: 'Smoke',
     genre: 'test',
     partFileNames: ['NOVEL_PART_01.txt'],
+    sourceLanguage: 'zh-Hans',
+    targetLanguage: 'vi',
   });
   const prompt = [
     base,

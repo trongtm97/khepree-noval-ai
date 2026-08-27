@@ -39,6 +39,8 @@ import {
   NotebookHotDeltaRepository,
   FullNovelPreprocessRepository,
   BatchSizeRepository,
+  TranslationWaveRepository,
+  TranslationEditionRepository,
 } from './repositories';
 
 export interface DatabaseOptions {
@@ -85,6 +87,8 @@ export class DatabaseManager {
   readonly notebookHotDeltas: NotebookHotDeltaRepository;
   readonly fullNovelPreprocess: FullNovelPreprocessRepository;
   readonly batchSize: BatchSizeRepository;
+  readonly translationWaves: TranslationWaveRepository;
+  readonly translationEditions: TranslationEditionRepository;
 
   constructor(options: DatabaseOptions) {
     fs.mkdirSync(options.dataDir, { recursive: true });
@@ -143,6 +147,8 @@ export class DatabaseManager {
     this.notebookHotDeltas = new NotebookHotDeltaRepository(this.db);
     this.fullNovelPreprocess = new FullNovelPreprocessRepository(this.db);
     this.batchSize = new BatchSizeRepository(this.db);
+    this.translationWaves = new TranslationWaveRepository(this.db);
+    this.translationEditions = new TranslationEditionRepository(this.db);
 
     this.appMeta.set('schema_version', String(getCurrentSchemaVersion(this.db)));
   }

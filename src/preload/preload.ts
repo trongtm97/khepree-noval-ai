@@ -67,9 +67,21 @@ const api: NovelTransApi = {
     get: (projectId) => invokeChannel(IPC_CHANNELS.PROJECT_GET, { projectId }),
     delete: (projectId) =>
       invokeChannel(IPC_CHANNELS.PROJECT_DELETE, { projectId }),
+    updateLanguages: (input) =>
+      invokeChannel(IPC_CHANNELS.PROJECT_UPDATE_LANGUAGES, input),
     resolveWorker: (input) =>
       invokeChannel(IPC_CHANNELS.PROJECT_RESOLVE_WORKER, input),
     setWorker: (input) => invokeChannel(IPC_CHANNELS.PROJECT_SET_WORKER, input),
+  },
+  editions: {
+    list: (projectId) =>
+      invokeChannel(IPC_CHANNELS.EDITION_LIST, { projectId }),
+    create: (input) => invokeChannel(IPC_CHANNELS.EDITION_CREATE, input),
+    switch: (input) => invokeChannel(IPC_CHANNELS.EDITION_SWITCH, input),
+  },
+  languages: {
+    list: () => invokeChannel(IPC_CHANNELS.LANGUAGE_LIST),
+    detect: (input) => invokeChannel(IPC_CHANNELS.LANGUAGE_DETECT, input),
   },
   import: {
     selectFile: () => invokeChannel(IPC_CHANNELS.IMPORT_SELECT_FILE),
@@ -243,6 +255,8 @@ const api: NovelTransApi = {
     pauseAll: () => invokeChannel(IPC_CHANNELS.JOB_PAUSE_ALL),
     resumeAll: () => invokeChannel(IPC_CHANNELS.JOB_RESUME_ALL),
     schedulerStatus: () => invokeChannel(IPC_CHANNELS.JOB_SCHEDULER_STATUS),
+    updateSchedulerSettings: (input) =>
+      invokeChannel(IPC_CHANNELS.JOB_SCHEDULER_UPDATE_SETTINGS, input),
     workers: () => invokeChannel(IPC_CHANNELS.JOB_WORKERS),
   },
   learning: {

@@ -14,6 +14,7 @@ export interface NotebookResourceRow {
   google_account_id: string | null;
   notebook_name: string | null;
   notebook_role: string;
+  edition_id: string | null;
   last_verified_at: string | null;
   assisted_step: string | null;
   last_error: string | null;
@@ -32,6 +33,7 @@ export interface UpsertNotebookInput {
   google_account_id: string;
   notebook_name: string;
   notebook_role?: NotebookRole;
+  edition_id?: string | null;
   notebook_id?: string | null;
   resource_url?: string | null;
   linked_drive_resource_id?: string | null;
@@ -47,12 +49,37 @@ export class NotebookRepository extends BaseRepository {
     projectId: string,
     accountId: string,
     role: NotebookRole,
+    editionId?: string | null,
   ): NotebookResourceRow | null {
+    if (editionId) {
+      return (
+        (this.db
+          .prepare(
+            `SELECT * FROM notebook_resources
+             WHERE project_id = ? AND google_account_id = ? AND notebook_role = ? AND edition_id = ?`,
+          )
+          .get(projectId, accountId, role, editionId) as NotebookResourceRow | undefined) ?? null
+      );
+    }
+    if (role === 'RESEARCH') {
+      return (
+        (this.db
+          .prepare(
+            `SELECT * FROM notebook_resources
+             WHERE project_id = ? AND google_account_id = ? AND notebook_role = ?
+               AND edition_id IS NULL
+             LIMIT 1`,
+          )
+          .get(projectId, accountId, role) as NotebookResourceRow | undefined) ?? null
+      );
+    }
     return (
       (this.db
         .prepare(
           `SELECT * FROM notebook_resources
-           WHERE project_id = ? AND google_account_id = ? AND notebook_role = ?`,
+           WHERE project_id = ? AND google_account_id = ? AND notebook_role = ?
+           ORDER BY CASE WHEN edition_id IS NULL THEN 1 ELSE 0 END, updated_at DESC
+           LIMIT 1`,
         )
         .get(projectId, accountId, role) as NotebookResourceRow | undefined) ?? null
     );
@@ -91,10 +118,12 @@ export class NotebookRepository extends BaseRepository {
 
   upsert(input: UpsertNotebookInput): NotebookResourceRow {
     const role = input.notebook_role ?? 'TRANSLATION';
+    const editionId = role === 'RESEARCH' ? null : (input.edition_id ?? null);
     const existing = this.getByProjectWorkerRole(
       input.project_id,
       input.google_account_id,
       role,
+      editionId,
     );
     const ts = touchTimestamps();
 
@@ -111,6 +140,7 @@ export class NotebookRepository extends BaseRepository {
             last_error = ?,
             instructions_hash = ?,
             last_verified_at = ?,
+            edition_id = COALESCE(?, edition_id),
             updated_at = ?
           WHERE id = ?`,
         )
@@ -132,11 +162,17 @@ export class NotebookRepository extends BaseRepository {
           input.last_verified_at !== undefined
             ? input.last_verified_at
             : existing.last_verified_at,
+          editionId,
           ts.updated_at,
           existing.id,
         );
       return this.assertRow(
-        this.getByProjectWorkerRole(input.project_id, input.google_account_id, role),
+        this.getByProjectWorkerRole(
+          input.project_id,
+          input.google_account_id,
+          role,
+          editionId,
+        ),
         'notebook',
         existing.id,
       );
@@ -147,9 +183,9 @@ export class NotebookRepository extends BaseRepository {
       .prepare(
         `INSERT INTO notebook_resources (
           id, project_id, notebook_id, resource_url, linked_drive_resource_id, status,
-          google_account_id, notebook_name, notebook_role, last_verified_at, assisted_step,
+          google_account_id, notebook_name, notebook_role, edition_id, last_verified_at, assisted_step,
           last_error, instructions_hash, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -161,6 +197,7 @@ export class NotebookRepository extends BaseRepository {
         input.google_account_id,
         input.notebook_name,
         role,
+        editionId,
         input.last_verified_at ?? null,
         input.assisted_step ?? null,
         input.last_error ?? null,
@@ -169,7 +206,12 @@ export class NotebookRepository extends BaseRepository {
         ts.updated_at,
       );
     return this.assertRow(
-      this.getByProjectWorkerRole(input.project_id, input.google_account_id, role),
+      this.getByProjectWorkerRole(
+        input.project_id,
+        input.google_account_id,
+        role,
+        editionId,
+      ),
       'notebook',
       id,
     );

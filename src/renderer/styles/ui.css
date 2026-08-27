@@ -17,6 +17,7 @@
   transition: background var(--transition-fast), border-color var(--transition-fast),
     opacity var(--transition-fast);
   white-space: nowrap;
+  -webkit-app-region: no-drag;
 }
 
 .nt-btn:focus-visible {
@@ -87,6 +88,7 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
+  -webkit-app-region: no-drag;
 }
 
 .nt-icon-btn:focus-visible {
@@ -408,6 +410,7 @@
   display: flex;
   gap: var(--space-3);
   align-items: flex-start;
+  -webkit-app-region: no-drag;
 }
 
 .nt-toast h4 {
@@ -678,6 +681,73 @@
   margin-top: var(--space-4);
 }
 
+.translation-editor-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.translation-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+
+.translation-header__identity {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.translation-header__title {
+  margin: 0;
+  font-size: var(--font-section);
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.translation-header__pair {
+  font-size: var(--font-small);
+  color: var(--text-secondary);
+}
+
+.translation-header__chapter {
+  margin: 0;
+  font-size: var(--font-small);
+}
+
+.translation-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.translation-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.translation-menu__sep {
+  margin: 0.25rem 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.translation-menu__advanced {
+  display: grid;
+  margin: 0.15rem 0 0.25rem;
+  padding-left: 0.35rem;
+  border-left: 2px solid var(--border);
+}
+
 .translation-workspace {
   display: grid;
   grid-template-columns: 220px 1fr 280px;
@@ -689,7 +759,7 @@
 }
 
 .translation-workspace--collapsed {
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 220px 1fr 2.25rem;
 }
 
 @media (max-width: 1366px) {
@@ -698,7 +768,7 @@
   }
 
   .translation-workspace--collapsed {
-    grid-template-columns: 180px 1fr;
+    grid-template-columns: 180px 1fr 2.25rem;
   }
 }
 
@@ -713,6 +783,44 @@
 .translation-context {
   border-right: none;
   border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.translation-context__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.translation-context__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.translation-context-rail {
+  appearance: none;
+  border: none;
+  border-left: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 0.04em;
+  font: inherit;
+  font-size: var(--font-small);
+  cursor: pointer;
+  padding: 0.75rem 0.35rem;
+}
+
+.translation-context-rail:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .translation-editor-pane {
@@ -990,3 +1098,183 @@
   box-shadow: var(--focus-ring);
   border-radius: var(--radius-sm);
 }
+
+/* —— Operations Center / Công việc —— */
+.ops-center {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ops-header-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: 1.25rem;
+  background: var(--bg-secondary, var(--bg-primary));
+}
+
+.ops-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--space-3);
+}
+
+.ops-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.ops-stat-label {
+  font-size: var(--font-small);
+  color: var(--text-secondary);
+}
+
+.ops-stat-value {
+  font-size: 1.55rem;
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.ops-stat-unit {
+  font-size: var(--font-small);
+  color: var(--text-secondary);
+}
+
+.ops-header-actions {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ops-fairness {
+  margin: 0.65rem 0 0;
+  font-size: var(--font-small);
+}
+
+.ops-lane-list,
+.ops-queue-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.ops-lane-title,
+.ops-queue-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.ops-lane-head,
+.ops-queue-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ops-lane-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0;
+  font-size: var(--font-small);
+  color: var(--text-secondary);
+}
+
+.ops-lane-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.ops-lane-status--running .ops-lane-dot {
+  background: var(--success, #1a7f37);
+}
+
+.ops-lane-status--ready .ops-lane-dot {
+  background: transparent;
+  border: 2px solid var(--text-secondary);
+  box-sizing: border-box;
+}
+
+.ops-lane-status--limited .ops-lane-dot,
+.ops-lane-status--attention .ops-lane-dot {
+  background: var(--warning, #b54708);
+}
+
+.ops-lane-status--paused .ops-lane-dot {
+  background: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.ops-lane-body {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.ops-lane-project {
+  margin: 0;
+  font-weight: 560;
+}
+
+.ops-lane-meta,
+.ops-lane-paras {
+  margin: 0.25rem 0 0;
+}
+
+.ops-lane-paras {
+  font-weight: 560;
+}
+
+.ops-lane-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.ops-priority {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 140px;
+}
+
+.ops-queue-note {
+  margin: 0.5rem 0 0;
+  font-size: var(--font-small);
+}
+
+.ops-advanced-toggle {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  margin-top: 1rem;
+  font: inherit;
+  font-size: var(--font-small);
+}
+
+.ops-advanced {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border);
+  font-size: var(--font-small);
+}
+
+.ops-advanced p {
+  margin: 0.25rem 0;
+}
+

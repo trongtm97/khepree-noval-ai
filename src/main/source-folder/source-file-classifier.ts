@@ -5,7 +5,7 @@ import type {
   SourceFileClassification,
 } from '@shared/constants/book-metadata';
 import { detectAndDecode } from '../import/encoding';
-import { normalizeNovelText } from '../import/paragraphs/normalize';
+import { getTextLanguageAdapter } from '../language/text-adapters';
 import { sha256Text } from '../import/hash';
 import { detectChapterFromFilename, detectChapterFromHeading, computeFileFingerprint } from './chapter-file-detector';
 import { parseBookInfoText, type ParsedBookMetadata } from './book-info-parser';
@@ -19,6 +19,7 @@ export interface ClassifyFileInput {
   filePath: string;
   buffer: Buffer;
   stat: FileStatInfo;
+  sourceLanguage?: string | null;
 }
 
 export interface ClassifiedSourceFile {
@@ -117,7 +118,9 @@ export function classifySourceFile(input: ClassifyFileInput): ClassifiedSourceFi
 
   let decodeResult;
   try {
-    decodeResult = detectAndDecode(input.buffer);
+    decodeResult = detectAndDecode(input.buffer, {
+      sourceLanguage: input.sourceLanguage,
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Không thể đọc file.';
     return {
@@ -136,7 +139,8 @@ export function classifySourceFile(input: ClassifyFileInput): ClassifiedSourceFi
     };
   }
 
-  const normalizedText = normalizeNovelText(decodeResult.text);
+  const adapter = getTextLanguageAdapter(input.sourceLanguage);
+  const normalizedText = adapter.normalizeText(decodeResult.text);
   const contentHash = sha256Text(normalizedText);
 
   if (base.startsWith('_') && /^_book_info$/i.test(base)) {
@@ -256,8 +260,8 @@ export function classifySourceFile(input: ClassifyFileInput): ClassifiedSourceFi
     };
   }
 
-  const fromFilename = detectChapterFromFilename(fileName);
-  const fromHeading = detectChapterFromHeading(decodeResult.text);
+  const fromFilename = detectChapterFromFilename(fileName, input.sourceLanguage);
+  const fromHeading = detectChapterFromHeading(decodeResult.text, input.sourceLanguage);
 
   if (
     fromFilename?.chapterNumber &&

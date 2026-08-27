@@ -13,6 +13,8 @@ export interface MigrationDefinition {
   name: string;
   sql: string;
   checksum?: string;
+  /** Optional JS backfill in the same transaction after `sql`. */
+  run?: (db: Database.Database) => void;
 }
 
 export interface MigrationResult {
@@ -72,6 +74,7 @@ export function runMigrations(
     try {
       withTransaction(db, () => {
         db.exec(migration.sql);
+        migration.run?.(db);
         db.prepare(
           `INSERT INTO schema_migrations (version, name, applied_at, checksum)
            VALUES (?, ?, ?, ?)`,

@@ -177,9 +177,27 @@ export interface NovelTransApi {
       title: string;
       genre?: string | null;
       description?: string | null;
-    }) => Promise<{ project: ProjectDto }>;
+      sourceLanguage?: string;
+      targetLanguage?: string;
+      sampleText?: string;
+    }) => Promise<{
+      project: ProjectDto;
+      sourceDetection?: {
+        code: string;
+        displayNameVi: string;
+        displayNameNative: string;
+        confidence: number;
+        method: 'heuristic' | 'ai' | 'hint' | 'fallback';
+        needsUserConfirm: boolean;
+      } | null;
+    }>;
     get: (projectId: string) => Promise<{ project: ProjectDto }>;
     delete: (projectId: string) => Promise<{ ok: true }>;
+    updateLanguages: (input: {
+      projectId: string;
+      sourceLanguage: string;
+      targetLanguage: string;
+    }) => Promise<{ project: ProjectDto }>;
     resolveWorker: (input: {
       projectId: string;
       purpose?:
@@ -197,6 +215,86 @@ export interface NovelTransApi {
       accountId: string;
       ensureNotebook?: boolean;
     }) => Promise<import('../schemas/project-worker').ProjectWorkerSetResponse>;
+  };
+  editions: {
+    list: (projectId: string) => Promise<{
+      editions: {
+        id: string;
+        projectId: string;
+        targetLanguage: string;
+        name: string;
+        status: string;
+        styleConfig: string | null;
+        createdAt: string;
+        updatedAt: string;
+        isActive: boolean;
+      }[];
+    }>;
+    create: (input: {
+      projectId: string;
+      targetLanguage: string;
+      name?: string;
+      activate?: boolean;
+    }) => Promise<{
+      edition: {
+        id: string;
+        projectId: string;
+        targetLanguage: string;
+        name: string;
+        status: string;
+        styleConfig: string | null;
+        createdAt: string;
+        updatedAt: string;
+        isActive: boolean;
+      };
+      editions: {
+        id: string;
+        projectId: string;
+        targetLanguage: string;
+        name: string;
+        status: string;
+        styleConfig: string | null;
+        createdAt: string;
+        updatedAt: string;
+        isActive: boolean;
+      }[];
+    }>;
+    switch: (input: {
+      projectId: string;
+      editionId: string;
+    }) => Promise<{
+      edition: {
+        id: string;
+        projectId: string;
+        targetLanguage: string;
+        name: string;
+        status: string;
+        styleConfig: string | null;
+        createdAt: string;
+        updatedAt: string;
+        isActive: boolean;
+      };
+      editions: {
+        id: string;
+        projectId: string;
+        targetLanguage: string;
+        name: string;
+        status: string;
+        styleConfig: string | null;
+        createdAt: string;
+        updatedAt: string;
+        isActive: boolean;
+      }[];
+    }>;
+  };
+  languages: {
+    list: () => Promise<{
+      languages: import('../schemas/language-profile').LanguageProfileDto[];
+    }>;
+    detect: (input: {
+      sampleText: string;
+      hintCode?: string;
+    }) => Promise<import('../schemas/language-profile').LanguageDetectResponse>;
   };
   import: {
     selectFile: () => Promise<{ canceled: boolean; filePath: string | null }>;
@@ -237,6 +335,8 @@ export interface NovelTransApi {
       genre?: string | null;
       description?: string | null;
       chineseTitle?: string | null;
+      sourceLanguage?: string | null;
+      targetLanguage?: string | null;
       accountId?: string | null;
       styleConfig?: Record<string, unknown> | null;
       expectedStartChapter?: number | null;
@@ -773,6 +873,39 @@ export interface NovelTransApi {
       paused: boolean;
       inFlight: number;
       maxConcurrent: number;
+      globalMaxMode: 'AUTO' | number;
+      autoCap: number;
+      perProjectMax: number;
+      perProviderMax: number;
+      perAccountPlaywrightMax: number;
+      perAccountWebApiMax: number;
+      allowSameProjectParallel: boolean;
+      parallelTranslationWaves: boolean;
+      parallelWavesWarning: string;
+    }>;
+    updateSchedulerSettings: (input: {
+      globalMaxWorkers?: 'AUTO' | number;
+      autoCap?: number;
+      perProjectMax?: number;
+      perProviderMax?: number;
+      perAccountPlaywrightMax?: number;
+      perAccountWebApiMax?: number;
+      allowSameProjectParallel?: boolean;
+      parallelTranslationWaves?: boolean;
+    }) => Promise<{
+      running: boolean;
+      paused: boolean;
+      inFlight: number;
+      maxConcurrent: number;
+      globalMaxMode: 'AUTO' | number;
+      autoCap: number;
+      perProjectMax: number;
+      perProviderMax: number;
+      perAccountPlaywrightMax: number;
+      perAccountWebApiMax: number;
+      allowSameProjectParallel: boolean;
+      parallelTranslationWaves: boolean;
+      parallelWavesWarning: string;
     }>;
     workers: () => Promise<{
       workers: {

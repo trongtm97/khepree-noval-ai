@@ -30,6 +30,8 @@ Tóm tắt:
 Vương Lâm...`;
 
     const parsed = parseBookInfoText(text);
+    expect(parsed.sourceTitle).toBe('仙逆');
+    expect(parsed.targetTitle).toBe('Tiên Nghịch');
     expect(parsed.titleCn).toBe('仙逆');
     expect(parsed.titleVi).toBe('Tiên Nghịch');
     expect(parsed.authorName).toBe('耳根');

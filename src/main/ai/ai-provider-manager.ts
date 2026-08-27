@@ -3,6 +3,7 @@ import type { TranslationPackDto } from '@shared/schemas/translation-pack';
 import {
   AI_FALLBACK_META_KEYS,
   AI_PROVIDER_IDS,
+  AI_RESPONSE_STATUSES,
   AUTH_FALLBACK_STATUSES,
   DEFAULT_FALLBACK_STATUSES,
   type AiProviderType,
@@ -168,7 +169,8 @@ export class AiProviderManager {
       'NETWORK_ERROR',
       'TIMEOUT',
     ];
-    return [...new Set(merged)];
+    const allowed = new Set<string>(AI_RESPONSE_STATUSES);
+    return [...new Set(merged)].filter((s): s is AiResponseStatus => allowed.has(s));
   }
 
   setFallbackConfig(enabled: boolean, statuses?: AiResponseStatus[]): void {

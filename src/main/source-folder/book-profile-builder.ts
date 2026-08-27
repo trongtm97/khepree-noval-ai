@@ -44,8 +44,8 @@ export function buildBookProfile(
     if (value?.trim()) lines.push(`${label}: ${value.trim()}`);
   };
 
-  push('Tên gốc', project.title_cn);
-  push('Tên Việt', project.title_vi ?? project.title);
+  push('Tên gốc', project.source_title ?? project.title_cn);
+  push('Tên dịch', project.target_title ?? project.title_vi ?? project.title);
   push('Tác giả', project.author_name ?? project.author_name_cn);
   push('Thể loại', joinGenres(project.genre, project.subgenres));
 
@@ -84,8 +84,8 @@ export function buildBookProfileMarkdown(
     }
   };
 
-  push('Tên gốc', project.title_cn);
-  push('Tên Việt', project.title_vi ?? project.title);
+  push('Tên gốc', project.source_title ?? project.title_cn);
+  push('Tên dịch', project.target_title ?? project.title_vi ?? project.title);
   push('Tác giả', project.author_name ?? project.author_name_cn);
   push('Thể loại', joinGenres(project.genre, project.subgenres));
 
@@ -103,6 +103,8 @@ export function buildBookProfileMarkdown(
 }
 
 export function metadataFromParsed(parsed: ParsedBookMetadata): {
+  source_title?: string | null;
+  target_title?: string | null;
   title_cn?: string | null;
   title_vi?: string | null;
   title_original?: string | null;
@@ -118,9 +120,14 @@ export function metadataFromParsed(parsed: ParsedBookMetadata): {
   official_summary?: string | null;
   notes?: string | null;
 } {
+  const sourceTitle = parsed.sourceTitle ?? parsed.titleCn ?? null;
+  const targetTitle = parsed.targetTitle ?? parsed.titleVi ?? null;
   return {
-    title_cn: parsed.titleCn ?? null,
-    title_vi: parsed.titleVi ?? null,
+    source_title: sourceTitle,
+    target_title: targetTitle,
+    // Legacy columns stay in sync for older readers / exports.
+    title_cn: sourceTitle,
+    title_vi: targetTitle,
     title_original: parsed.titleOriginal ?? null,
     alternative_titles: parsed.alternativeTitles?.length
       ? JSON.stringify(parsed.alternativeTitles)

@@ -16,8 +16,13 @@ import {
 
 describe('notebook role constants', () => {
   it('formats distinct names for research vs translation', () => {
-    expect(formatNotebookNameForRole('Test Novel', 'RESEARCH')).toContain('Research');
-    expect(formatNotebookNameForRole('Test Novel', 'TRANSLATION')).toContain('[NovelTrans]');
+    expect(formatNotebookNameForRole('Test Novel', 'RESEARCH')).toContain('[Research]');
+    expect(
+      formatNotebookNameForRole('Test Novel', 'TRANSLATION', {
+        targetLanguage: 'vi',
+        editionTitle: 'Tiên Nghịch',
+      }),
+    ).toBe('[Translation][VI] Tiên Nghịch');
     expect(formatNotebookNameForRole('Test Novel', 'SINGLE')).toContain('[NovelTrans]');
   });
 

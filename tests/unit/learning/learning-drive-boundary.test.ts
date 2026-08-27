@@ -15,5 +15,7 @@ describe('LearningPipeline Drive boundary', () => {
     );
     expect(src).toContain('NotebookSyncService');
     expect(src).toContain('syncDrive');
+    expect(src).toContain('scheduleBackgroundVersionProbe');
+    expect(src).toContain('resolveProjectWorker');
   });
 });

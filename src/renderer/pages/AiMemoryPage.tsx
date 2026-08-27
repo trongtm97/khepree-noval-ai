@@ -332,10 +332,10 @@ export function AiMemoryPage() {
 
   const friendly = classifyStatus(health);
   const version =
-    health?.verifiedKnowledgeVersion ||
-    health?.notebookVersion ||
-    health?.pendingKnowledgeVersion ||
-    health?.localVersion ||
+    health?.verifiedKnowledgeVersion ??
+    health?.notebookVersion ??
+    health?.pendingKnowledgeVersion ??
+    health?.localVersion ??
     0;
   const updatedAt =
     health?.lastVerifiedAt ?? health?.lastDriveSyncAt ?? health?.lastSyncAt ?? null;
@@ -441,13 +441,13 @@ export function AiMemoryPage() {
 
       {(error || friendly === 'error' || friendly === 'assisted') && errorCta ? (
         <ErrorPanel
-          title={friendlyError(error || health?.lastError).title}
+          title={friendlyError(error ?? health?.lastError).title}
           description={
             friendly === 'assisted'
               ? t('aiMemory.initNeedsAssisted')
-              : friendlyError(error || health?.lastError).description
+              : friendlyError(error ?? health?.lastError).description
           }
-          technical={error || health?.lastError}
+          technical={error ?? health?.lastError}
           tone={friendly === 'assisted' ? 'warning' : 'error'}
           actions={[
             {
@@ -567,8 +567,8 @@ export function AiMemoryPage() {
               <li>
                 <span>{t('aiMemory.versions')}</span>
                 <strong>
-                  v{health?.pendingKnowledgeVersion || health?.localVersion || 0} / v
-                  {health?.verifiedKnowledgeVersion || health?.notebookVersion || 0}
+                  v{health?.pendingKnowledgeVersion ?? health?.localVersion ?? 0} / v
+                  {health?.verifiedKnowledgeVersion ?? health?.notebookVersion ?? 0}
                 </strong>
               </li>
               {bootstrap ? (
@@ -641,7 +641,7 @@ export function AiMemoryPage() {
               </li>
             </ul>
 
-            {health?.files?.length ? (
+            {health?.files.length ? (
               <div>
                 <h4>{t('aiMemory.knowledgeFiles')}</h4>
                 <ul className="ai-memory-files">

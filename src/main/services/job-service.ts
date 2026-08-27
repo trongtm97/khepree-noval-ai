@@ -27,9 +27,19 @@ import {
 import type { JobAttemptRow, JobRow } from '../db/repositories/job-repository';
 import type { AutomationScheduler } from '../jobs/scheduler';
 import { healIdleWorkers } from '../jobs/heal-workers';
+import { saveConcurrencyPolicy } from '../jobs/concurrency-policy';
+import {
+  createTranslationWave,
+  isParallelWavesEnabled,
+  setParallelWavesEnabled,
+} from '../jobs/wave-service';
+import { resolveActiveEditionId } from './edition-service';
 import { logger } from '../logging/logger';
 import { isGeminiSoftErrorText } from '@shared/utils/gemini-soft-error';
 import { QaResultSchema, ParsedBatchResultSchema } from '@shared/schemas/output-protocol';
+import {
+  PARALLEL_WAVES_UI_WARNING_VI,
+} from '@shared/constants/parallel-waves';
 
 export interface CreateRepairJobInput {
   projectId: string;
@@ -136,6 +146,7 @@ export class JobService {
 
     const skipTranslated = input.skipTranslated !== false;
     healIdleWorkers(this.db);
+    const editionId = resolveActiveEditionId(this.db, input.projectId);
 
     const idFilter =
       input.chapterIds && input.chapterIds.length > 0
@@ -176,7 +187,7 @@ export class JobService {
       const paragraphs = this.db.paragraphs.listByChapter(chapter.id);
       const batchParagraphs = paragraphs
         .filter((p) => {
-          const translation = this.db.translations.getByParagraphId(p.id);
+          const translation = this.db.translations.getByParagraphId(p.id, editionId);
           if (translation?.human_locked === 1 && translation.translated_text?.trim()) {
             return false;
           }
@@ -248,6 +259,22 @@ export class JobService {
     }
 
     if (jobs.length > 0) {
+      if (isParallelWavesEnabled(this.db) && jobs.length > 1) {
+        const waveJobs = jobs
+          .filter((j) => j.chapterFrom != null && j.chapterTo != null)
+          .map((j) => ({
+            jobId: j.id,
+            chapterFrom: j.chapterFrom as number,
+            chapterTo: j.chapterTo as number,
+          }));
+        if (waveJobs.length > 1) {
+          createTranslationWave(this.db, {
+            projectId: input.projectId,
+            editionId: resolveActiveEditionId(this.db, input.projectId),
+            jobs: waveJobs,
+          });
+        }
+      }
       void this.prepareProfilesAndKickScheduler();
     }
 
@@ -285,6 +312,7 @@ export class JobService {
       worker_mode: input.workerMode ?? 'POOL',
       pinned_account_id: input.pinnedAccountId ?? null,
       config: JSON.stringify(config),
+      edition_id: resolveActiveEditionId(this.db, input.projectId),
     });
     return this.toJobDto(job);
   }
@@ -445,13 +473,68 @@ export class JobService {
     paused: boolean;
     inFlight: number;
     maxConcurrent: number;
+    globalMaxMode: 'AUTO' | number;
+    autoCap: number;
+    perProjectMax: number;
+    perProviderMax: number;
+    perAccountPlaywrightMax: number;
+    perAccountWebApiMax: number;
+    allowSameProjectParallel: boolean;
+    parallelTranslationWaves: boolean;
+    parallelWavesWarning: string;
   } {
+    const policy = this.scheduler?.getConcurrencyPolicy();
+    const maxConcurrent =
+      this.scheduler?.getEffectiveMaxConcurrent() ?? DEFAULT_MAX_CONCURRENT_WORKERS;
+    const parallelTranslationWaves = isParallelWavesEnabled(this.db);
     return {
       running: this.scheduler?.isRunning() ?? false,
       paused: this.scheduler?.isPaused() ?? false,
       inFlight: this.scheduler?.getInFlightCount() ?? 0,
-      maxConcurrent: DEFAULT_MAX_CONCURRENT_WORKERS,
+      maxConcurrent,
+      globalMaxMode: policy?.globalMaxWorkers ?? 'AUTO',
+      autoCap: policy?.autoCap ?? 3,
+      perProjectMax: policy?.perProjectMax ?? 1,
+      perProviderMax: policy?.perProviderMax ?? 3,
+      perAccountPlaywrightMax: policy?.perAccountMax.playwright ?? 1,
+      perAccountWebApiMax: policy?.perAccountMax.webApi ?? 1,
+      allowSameProjectParallel: policy?.allowSameProjectParallel ?? false,
+      parallelTranslationWaves,
+      parallelWavesWarning: PARALLEL_WAVES_UI_WARNING_VI,
     };
+  }
+
+  updateSchedulerSettings(input: {
+    globalMaxWorkers?: 'AUTO' | number;
+    autoCap?: number;
+    perProjectMax?: number;
+    perProviderMax?: number;
+    perAccountPlaywrightMax?: number;
+    perAccountWebApiMax?: number;
+    allowSameProjectParallel?: boolean;
+    parallelTranslationWaves?: boolean;
+  }): ReturnType<JobService['schedulerStatus']> {
+    if (input.parallelTranslationWaves !== undefined) {
+      setParallelWavesEnabled(this.db, input.parallelTranslationWaves);
+      // Waves ON ⇒ same-project parallel allowed; OFF ⇒ force serial per project.
+      if (input.allowSameProjectParallel === undefined) {
+        input = {
+          ...input,
+          allowSameProjectParallel: input.parallelTranslationWaves,
+          perProjectMax:
+            input.perProjectMax ??
+            (input.parallelTranslationWaves
+              ? Math.max(2, this.schedulerStatus().perProjectMax)
+              : 1),
+        };
+      }
+    }
+    if (this.scheduler) {
+      this.scheduler.updateConcurrencyPolicy(input);
+    } else {
+      saveConcurrencyPolicy(this.db, input);
+    }
+    return this.schedulerStatus();
   }
 
   listWorkers(): {

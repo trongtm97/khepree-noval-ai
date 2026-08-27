@@ -4,16 +4,16 @@ export const operationsArticles: HelpArticle[] = [
   {
     id: 'jobs-monitor',
     categoryId: 'jobs',
-    title: 'Theo dõi tiến trình dịch',
-    description: 'Trạng thái job và thao tác điều khiển.',
-    keywords: ['tiến trình', 'job', 'trạng thái', 'tạm dừng', 'hủy'],
+    title: 'Theo dõi công việc dịch',
+    description: 'Luồng tài khoản, hàng đợi theo dự án và thao tác điều khiển.',
+    keywords: ['công việc', 'luồng', 'tiến trình', 'job', 'tạm dừng', 'ưu tiên'],
     order: 1,
     relatedIds: ['workflow-steps', 'start-translate'],
     blocks: [
-      { type: 'heading', level: 1, text: 'Trang Tiến trình' },
+      { type: 'heading', level: 1, text: 'Trang Công việc' },
       {
         type: 'paragraph',
-        text: 'Theo dõi mọi công việc dịch đang chạy hoặc đã xong. Mở chi tiết để xem bước workflow, QA và lịch sử lần thử.',
+        text: 'Xem từng tài khoản Google như một luồng: đang chạy gì, sẵn sàng hay cần xử lý. Hàng đợi nhóm theo dự án — đặt ưu tiên Cao / Bình thường / Thấp. Chi tiết kỹ thuật nằm trong mục mở rộng.',
       },
       { type: 'heading', level: 2, text: 'Trạng thái thường gặp' },
       {

@@ -32,6 +32,12 @@ import {
 } from './source-folder-event-bridge';
 import { getJobService } from '../services/job-service-singleton';
 import { logger } from '../logging/logger';
+import {
+  DEFAULT_SOURCE_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+  normalizeLanguageCode,
+} from '@shared/constants/language-profile';
+import { detectLanguageHeuristic } from '../language/language-detect';
 import type { ProjectRow } from '../db/repositories/project-repository';
 
 export type FolderPreviewDto = z.infer<typeof FolderPreviewDtoSchema>;
@@ -130,6 +136,7 @@ export class SourceFolderService {
         existingChapters: snapshots,
         expectedStartChapter: project.expected_start_chapter,
         expectedEndChapter: project.expected_end_chapter,
+        sourceLanguage: project.source_language,
         onProgress: (processed, total) => {
           onProgress?.(processed, total);
           emitSourceFolderEvent({
@@ -181,6 +188,8 @@ export class SourceFolderService {
     genre?: string | null;
     description?: string | null;
     chineseTitle?: string | null;
+    sourceLanguage?: string | null;
+    targetLanguage?: string | null;
     accountId?: string | null;
     styleConfig?: Record<string, unknown> | null;
     expectedStartChapter?: number | null;
@@ -193,6 +202,30 @@ export class SourceFolderService {
       (ch) => ch.status === 'new' && ch.chapterNumber > 0,
     );
 
+    const sampleChunks: string[] = [];
+    for (const ch of importable.slice(0, 3)) {
+      sampleChunks.push(ch.chapterTitle);
+      try {
+        const raw = fsSync.readFileSync(ch.sourceFilePath, 'utf8');
+        sampleChunks.push(raw.slice(0, 2500));
+      } catch {
+        /* skip unreadable sample */
+      }
+    }
+    const sampleText = sampleChunks.join('\n').slice(0, 8000);
+
+    const rawSource = (input.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE).trim();
+    const sourceLanguage =
+      rawSource.toUpperCase() === 'AUTO'
+        ? detectLanguageHeuristic(sampleText).code
+        : normalizeLanguageCode(rawSource);
+    const targetLanguage = normalizeLanguageCode(
+      input.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
+    );
+    if (sourceLanguage === targetLanguage) {
+      throw new Error('sourceLanguage and targetLanguage must differ');
+    }
+
     const result = withTransaction(db.getConnection(), () => {
       const project = db.projects.create({
         title: input.projectTitle.trim(),
@@ -200,6 +233,8 @@ export class SourceFolderService {
         description: input.chineseTitle
           ? [input.chineseTitle, input.description].filter(Boolean).join('\n')
           : (input.description ?? null),
+        source_language: sourceLanguage,
+        target_language: targetLanguage,
         source_mode: 'FOLDER',
         source_folder_path: session.folderPath,
         source_folder_status: 'AVAILABLE',
@@ -290,6 +325,7 @@ export class SourceFolderService {
       existingChapters: this.buildSnapshots(projectId),
       expectedStartChapter: project.expected_start_chapter,
       expectedEndChapter: project.expected_end_chapter,
+      sourceLanguage: project.source_language,
     });
 
     const { chapterCount, paragraphCount } = this.importChapterEntries(
@@ -397,7 +433,12 @@ export class SourceFolderService {
     }
     const buffer = await fs.readFile(chosenFilePath);
     const stat = await fs.stat(chosenFilePath);
-    const detected = detectChapterFile({ filePath: chosenFilePath, buffer, stat });
+    const detected = detectChapterFile({
+      filePath: chosenFilePath,
+      buffer,
+      stat,
+      sourceLanguage: project.source_language,
+    });
     if (detected.readError || detected.chapterNumber !== chapterNumber) {
       throw new Error(detected.readError ?? 'File không khớp số chương');
     }
@@ -494,10 +535,12 @@ export class SourceFolderService {
     }
     const buffer = await fs.readFile(chapter.source_file_path);
     const stat = await fs.stat(chapter.source_file_path);
+    const project = db.projects.getById(projectId);
     const detected = detectChapterFile({
       filePath: chapter.source_file_path,
       buffer,
       stat,
+      sourceLanguage: project?.source_language,
     });
     return {
       oldText: chapter.source_text ?? '',
@@ -570,9 +613,11 @@ export class SourceFolderService {
     await this.assertFolderAccessible(newFolderPath);
     const db = getDatabase();
     const snapshots = this.buildSnapshots(projectId);
+    const project = db.projects.getById(projectId);
     const scanResult = await scanSourceFolder({
       folderPath: newFolderPath,
       existingChapters: snapshots,
+      sourceLanguage: project?.source_language,
     });
 
     if (!confirm) {
@@ -620,7 +665,12 @@ export class SourceFolderService {
 
     const buffer = await fs.readFile(filePath);
     const stat = await fs.stat(filePath);
-    const detected = detectChapterFile({ filePath, buffer, stat });
+    const detected = detectChapterFile({
+      filePath,
+      buffer,
+      stat,
+      sourceLanguage: project.source_language,
+    });
 
     if (detected.readError || detected.chapterNumber <= 0) {
       logger.warn('source-folder FILE_ADDED unreadable', {
@@ -698,6 +748,7 @@ export class SourceFolderService {
     folderPath: string,
   ): number {
     const db = getDatabase();
+    const projectRow = db.projects.getById(projectId);
     let imported = 0;
 
     for (const entry of scanResult.specialChapters) {
@@ -710,7 +761,12 @@ export class SourceFolderService {
         : path.join(folderPath, entry.sourceFileName);
       const buffer = fsSync.readFileSync(fullPath);
       const stat = fsSync.statSync(fullPath);
-      const classified = classifySourceFile({ filePath: fullPath, buffer, stat });
+      const classified = classifySourceFile({
+        filePath: fullPath,
+        buffer,
+        stat,
+        sourceLanguage: projectRow?.source_language,
+      });
       if (classified.readError && !classified.normalizedText) continue;
 
       const chapterType = entry.chapterType;
@@ -777,7 +833,13 @@ export class SourceFolderService {
         : path.join(folderPath, entry.sourceFileName);
       const buffer = fsSync.readFileSync(fullPath);
       const stat = fsSync.statSync(fullPath);
-      const detected = detectChapterFile({ filePath: fullPath, buffer, stat });
+      const projectRow = db.projects.getById(projectId);
+      const detected = detectChapterFile({
+        filePath: fullPath,
+        buffer,
+        stat,
+        sourceLanguage: projectRow?.source_language,
+      });
       if (detected.readError) {
         db.chapters.create({
           project_id: projectId,

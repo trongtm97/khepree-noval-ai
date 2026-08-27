@@ -1,14 +1,28 @@
 import type { TermScope, TermStatus, TermType } from '@shared/constants/term';
 import { normalizeTermType } from '@shared/constants/term';
+import {
+  DEFAULT_SOURCE_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+  normalizeLanguageCode,
+} from '@shared/constants/language-profile';
 import { BaseRepository } from './base-repository';
 import { newId } from '../utils/uuid';
 import { touchTimestamps, utcNow } from '../utils/timestamps';
+import { stringifyJsonStringArray } from '../../terms/term-variant-json';
 
 export interface TermRow {
   id: string;
+  /** Logical source text (pair-scoped). Mirrors source_simplified for legacy. */
+  source_text: string | null;
   source_simplified: string;
   source_traditional: string | null;
   pinyin: string | null;
+  source_language: string;
+  target_language: string;
+  source_variants: string | null;
+  target_variants: string | null;
+  transliteration: string | null;
+  transliteration_system: string | null;
   term_type: string;
   genre: string | null;
   scope: string;
@@ -34,15 +48,28 @@ export interface TermTranslationRow {
   id: string;
   term_id: string;
   target_text: string;
+  target_language: string | null;
   is_primary: number;
   created_at: string;
   updated_at: string;
 }
 
+export interface LanguagePairFilter {
+  sourceLanguage?: string;
+  targetLanguage?: string;
+}
+
 export interface CreateTermInput {
-  source_simplified: string;
+  source_text?: string;
+  source_simplified?: string;
   source_traditional?: string | null;
   pinyin?: string | null;
+  source_language?: string;
+  target_language?: string;
+  source_variants?: string[] | null;
+  target_variants?: string[] | null;
+  transliteration?: string | null;
+  transliteration_system?: string | null;
   term_type?: TermType;
   genre?: string | null;
   scope: TermScope;
@@ -58,9 +85,16 @@ export interface CreateTermInput {
 }
 
 export interface UpdateTermInput {
+  source_text?: string;
   source_simplified?: string;
   source_traditional?: string | null;
   pinyin?: string | null;
+  source_language?: string;
+  target_language?: string;
+  source_variants?: string[] | null;
+  target_variants?: string[] | null;
+  transliteration?: string | null;
+  transliteration_system?: string | null;
   term_type?: TermType;
   genre?: string | null;
   scope?: TermScope;
@@ -77,7 +111,11 @@ export interface UpdateTermInput {
 export interface TermSearchFilters {
   chinese?: string;
   vietnamese?: string;
+  sourceText?: string;
+  targetText?: string;
   pinyin?: string;
+  sourceLanguage?: string;
+  targetLanguage?: string;
   termType?: TermType;
   scope?: TermScope;
   scopeRef?: string;
@@ -93,25 +131,112 @@ export interface TermSearchResult {
   rank: number;
 }
 
+function resolveSourceText(input: {
+  source_text?: string;
+  source_simplified?: string;
+}): string {
+  return (input.source_text ?? input.source_simplified ?? '').trim();
+}
+
+function syncChineseLegacy(input: {
+  source_traditional?: string | null;
+  pinyin?: string | null;
+  transliteration?: string | null;
+  transliteration_system?: string | null;
+  source_variants?: string[] | null;
+  source_language?: string;
+}): {
+  traditional: string | null | undefined;
+  pinyin: string | null | undefined;
+  transliteration: string | null | undefined;
+  transliterationSystem: string | null | undefined;
+  sourceVariantsJson: string | null | undefined;
+} {
+  const isZh = (input.source_language ?? DEFAULT_SOURCE_LANGUAGE)
+    .toLowerCase()
+    .startsWith('zh');
+  let traditional = input.source_traditional;
+  let pinyin = input.pinyin;
+  let transliteration = input.transliteration;
+  let transliterationSystem = input.transliteration_system;
+  let variants = input.source_variants;
+
+  if (isZh) {
+    if (transliteration === undefined && pinyin !== undefined) {
+      transliteration = pinyin;
+      if (transliterationSystem === undefined && pinyin) {
+        transliterationSystem = 'pinyin';
+      }
+    }
+    if (pinyin === undefined && transliteration !== undefined) {
+      transliterationSystem = transliterationSystem ?? 'pinyin';
+      pinyin = transliteration;
+    }
+    if (variants === undefined && traditional?.trim()) {
+      variants = [traditional.trim()];
+    }
+    if (
+      traditional === undefined &&
+      variants &&
+      variants.length > 0
+    ) {
+      traditional = variants[0] ?? null;
+    }
+  }
+
+  return {
+    traditional,
+    pinyin,
+    transliteration,
+    transliterationSystem,
+    sourceVariantsJson:
+      variants !== undefined ? stringifyJsonStringArray(variants ?? []) : undefined,
+  };
+}
+
 export class TermRepository extends BaseRepository {
   create(input: CreateTermInput): TermRow {
     const id = newId();
     const ts = touchTimestamps();
     const termType = normalizeTermType(input.term_type ?? 'OTHER');
+    const sourceText = resolveSourceText(input);
+    if (!sourceText) throw new Error('Term source_text is required');
+    const sourceLanguage = normalizeLanguageCode(
+      input.source_language ?? DEFAULT_SOURCE_LANGUAGE,
+    );
+    const targetLanguage = normalizeLanguageCode(
+      input.target_language ?? DEFAULT_TARGET_LANGUAGE,
+    );
+    const legacy = syncChineseLegacy({
+      ...input,
+      source_language: sourceLanguage,
+    });
 
     this.db
       .prepare(
         `INSERT INTO terms (
-          id, source_simplified, source_traditional, pinyin, term_type, genre,
-          scope, scope_ref, status, confidence, occurrence_count, novel_count,
-          project_count, locked, meaning, notes, created_at, updated_at, deleted_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, ?, ?, NULL)`,
+          id, source_text, source_simplified, source_traditional, pinyin,
+          source_language, target_language, source_variants, target_variants,
+          transliteration, transliteration_system,
+          term_type, genre, scope, scope_ref, status, confidence,
+          occurrence_count, novel_count, project_count, locked, meaning, notes,
+          created_at, updated_at, deleted_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, ?, ?, NULL)`,
       )
       .run(
         id,
-        input.source_simplified,
-        input.source_traditional ?? null,
-        input.pinyin ?? null,
+        sourceText,
+        sourceText,
+        legacy.traditional ?? null,
+        legacy.pinyin ?? null,
+        sourceLanguage,
+        targetLanguage,
+        legacy.sourceVariantsJson ?? null,
+        input.target_variants !== undefined
+          ? stringifyJsonStringArray(input.target_variants ?? [])
+          : null,
+        legacy.transliteration ?? null,
+        legacy.transliterationSystem ?? null,
         termType,
         input.genre ?? null,
         input.scope,
@@ -130,6 +255,7 @@ export class TermRepository extends BaseRepository {
         id,
         input.preferred_translation ?? input.target_text ?? '',
         input.alternative_translations ?? [],
+        targetLanguage,
       );
     }
 
@@ -148,28 +274,76 @@ export class TermRepository extends BaseRepository {
     source: string,
     scope: TermScope,
     scopeRef?: string | null,
+    pair?: LanguagePairFilter,
   ): TermRow | null {
+    const sourceLanguage = normalizeLanguageCode(
+      pair?.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE,
+    );
+    const targetLanguage = normalizeLanguageCode(
+      pair?.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
+    );
     const row = scopeRef
       ? (this.db
           .prepare(
-            `SELECT * FROM terms WHERE source_simplified = ? AND scope = ? AND scope_ref = ? AND deleted_at IS NULL LIMIT 1`,
+            `SELECT * FROM terms
+             WHERE (source_text = ? OR source_simplified = ?)
+               AND scope = ? AND scope_ref = ?
+               AND source_language = ? AND target_language = ?
+               AND deleted_at IS NULL
+             LIMIT 1`,
           )
-          .get(source, scope, scopeRef) as TermRow | undefined)
+          .get(
+            source,
+            source,
+            scope,
+            scopeRef,
+            sourceLanguage,
+            targetLanguage,
+          ) as TermRow | undefined)
       : (this.db
           .prepare(
-            `SELECT * FROM terms WHERE source_simplified = ? AND scope = ? AND scope_ref IS NULL AND deleted_at IS NULL LIMIT 1`,
+            `SELECT * FROM terms
+             WHERE (source_text = ? OR source_simplified = ?)
+               AND scope = ? AND scope_ref IS NULL
+               AND source_language = ? AND target_language = ?
+               AND deleted_at IS NULL
+             LIMIT 1`,
           )
-          .get(source, scope) as TermRow | undefined);
+          .get(source, source, scope, sourceLanguage, targetLanguage) as
+            | TermRow
+            | undefined);
     return row ?? null;
   }
 
-  /** Any non-deleted term matching source (prefer PROJECT-linked). */
-  findBySource(sourceSimplified: string, projectId?: string): TermRow | null {
+  /**
+   * Find term for a language pair.
+   * When projectId is set and pair omitted, uses the project's source/target languages.
+   */
+  findBySource(
+    sourceText: string,
+    projectId?: string,
+    pair?: LanguagePairFilter,
+  ): TermRow | null {
+    let sourceLanguage = pair?.sourceLanguage;
+    let targetLanguage = pair?.targetLanguage;
+    if ((!sourceLanguage || !targetLanguage) && projectId) {
+      const project = this.db
+        .prepare(`SELECT source_language, target_language FROM projects WHERE id = ?`)
+        .get(projectId) as
+        | { source_language: string; target_language: string }
+        | undefined;
+      sourceLanguage ??= project?.source_language;
+      targetLanguage ??= project?.target_language;
+    }
+    sourceLanguage = normalizeLanguageCode(sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE);
+    targetLanguage = normalizeLanguageCode(targetLanguage ?? DEFAULT_TARGET_LANGUAGE);
     if (projectId) {
       const projectScoped = this.db
         .prepare(
           `SELECT * FROM terms
-           WHERE source_simplified = ? AND deleted_at IS NULL
+           WHERE (source_text = ? OR source_simplified = ?)
+             AND source_language = ? AND target_language = ?
+             AND deleted_at IS NULL
              AND (
                (scope = 'PROJECT' AND scope_ref = ?)
                OR id IN (SELECT term_id FROM project_terms WHERE project_id = ?)
@@ -185,16 +359,28 @@ export class TermRepository extends BaseRepository {
              END
            LIMIT 1`,
         )
-        .get(sourceSimplified, projectId, projectId) as TermRow | undefined;
+        .get(
+          sourceText,
+          sourceText,
+          sourceLanguage,
+          targetLanguage,
+          projectId,
+          projectId,
+        ) as TermRow | undefined;
       if (projectScoped) return projectScoped;
     }
     return (
       (this.db
         .prepare(
-          `SELECT * FROM terms WHERE source_simplified = ? AND deleted_at IS NULL
+          `SELECT * FROM terms
+           WHERE (source_text = ? OR source_simplified = ?)
+             AND source_language = ? AND target_language = ?
+             AND deleted_at IS NULL
            ORDER BY occurrence_count DESC LIMIT 1`,
         )
-        .get(sourceSimplified) as TermRow | undefined) ?? null
+        .get(sourceText, sourceText, sourceLanguage, targetLanguage) as
+          | TermRow
+          | undefined) ?? null
     );
   }
 
@@ -229,11 +415,13 @@ export class TermRepository extends BaseRepository {
       .all(scope) as TermRow[];
   }
 
-  /** All active terms for matcher (optionally filtered by project/genre context). */
+  /** All active terms for matcher (optionally filtered by project/genre/language pair). */
   listForMatching(context: {
     projectId?: string;
     genre?: string | null;
     userId?: string;
+    sourceLanguage?: string;
+    targetLanguage?: string;
   }): TermRow[] {
     const clauses = [`deleted_at IS NULL`, `status != 'REJECTED'`];
     const params: unknown[] = [];
@@ -247,9 +435,18 @@ export class TermRepository extends BaseRepository {
       clauses.push(`scope IN ('GLOBAL', 'GENRE', 'USER')`);
     }
 
+    if (context.sourceLanguage) {
+      clauses.push(`source_language = ?`);
+      params.push(normalizeLanguageCode(context.sourceLanguage));
+    }
+    if (context.targetLanguage) {
+      clauses.push(`target_language = ?`);
+      params.push(normalizeLanguageCode(context.targetLanguage));
+    }
+
     return this.db
       .prepare(
-        `SELECT * FROM terms WHERE ${clauses.join(' AND ')} ORDER BY source_simplified`,
+        `SELECT * FROM terms WHERE ${clauses.join(' AND ')} ORDER BY COALESCE(source_text, source_simplified)`,
       )
       .all(...params) as TermRow[];
   }
@@ -275,16 +472,25 @@ export class TermRepository extends BaseRepository {
     const where: string[] = ['deleted_at IS NULL'];
     const params: unknown[] = [];
 
-    if (filters.chinese?.trim()) {
+    const sourceQuery = filters.sourceText?.trim() ?? filters.chinese?.trim();
+    if (sourceQuery) {
       where.push(
-        `(source_simplified LIKE ? OR source_traditional LIKE ? OR source_simplified = ?)`,
+        `(source_text LIKE ? OR source_simplified LIKE ? OR source_traditional LIKE ? OR source_text = ? OR source_simplified = ?)`,
       );
-      const q = `%${filters.chinese.trim()}%`;
-      params.push(q, q, filters.chinese.trim());
+      const q = `%${sourceQuery}%`;
+      params.push(q, q, q, sourceQuery, sourceQuery);
     }
     if (filters.pinyin?.trim()) {
-      where.push(`pinyin LIKE ?`);
-      params.push(`%${filters.pinyin.trim()}%`);
+      where.push(`(pinyin LIKE ? OR transliteration LIKE ?)`);
+      params.push(`%${filters.pinyin.trim()}%`, `%${filters.pinyin.trim()}%`);
+    }
+    if (filters.sourceLanguage) {
+      where.push(`source_language = ?`);
+      params.push(filters.sourceLanguage);
+    }
+    if (filters.targetLanguage) {
+      where.push(`target_language = ?`);
+      params.push(filters.targetLanguage);
     }
     if (filters.termType) {
       where.push(`term_type = ?`);
@@ -314,10 +520,11 @@ export class TermRepository extends BaseRepository {
     }
 
     let sql = `SELECT DISTINCT t.* FROM terms t`;
-    if (filters.vietnamese?.trim()) {
+    const targetQuery = filters.targetText?.trim() ?? filters.vietnamese?.trim();
+    if (targetQuery) {
       sql += ` JOIN term_translations tt ON tt.term_id = t.id`;
       where.push(`tt.target_text LIKE ?`);
-      params.push(`%${filters.vietnamese.trim()}%`);
+      params.push(`%${targetQuery}%`);
     }
     sql += ` WHERE ${where.join(' AND ')} ORDER BY t.updated_at DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
@@ -342,12 +549,71 @@ export class TermRepository extends BaseRepository {
         ? normalizeTermType(input.term_type)
         : existing.term_type;
 
+    const nextSource =
+      input.source_text ??
+      input.source_simplified ??
+      existing.source_text ??
+      existing.source_simplified;
+    const sourceLanguage = normalizeLanguageCode(
+      input.source_language ?? existing.source_language,
+    );
+    const targetLanguage = normalizeLanguageCode(
+      input.target_language ?? existing.target_language,
+    );
+    const legacy = syncChineseLegacy({
+      source_traditional:
+        input.source_traditional !== undefined
+          ? input.source_traditional
+          : existing.source_traditional,
+      pinyin: input.pinyin !== undefined ? input.pinyin : existing.pinyin,
+      transliteration:
+        input.transliteration !== undefined
+          ? input.transliteration
+          : existing.transliteration,
+      transliteration_system:
+        input.transliteration_system !== undefined
+          ? input.transliteration_system
+          : existing.transliteration_system,
+      source_variants: input.source_variants,
+      source_language: sourceLanguage,
+    });
+
+    const nextTraditional =
+      legacy.traditional !== undefined
+        ? legacy.traditional
+        : existing.source_traditional;
+    const nextPinyin =
+      legacy.pinyin !== undefined ? legacy.pinyin : existing.pinyin;
+    const nextTransliteration =
+      legacy.transliteration !== undefined
+        ? legacy.transliteration
+        : existing.transliteration;
+    const nextTransliterationSystem =
+      legacy.transliterationSystem !== undefined
+        ? legacy.transliterationSystem
+        : existing.transliteration_system;
+    const nextSourceVariants =
+      legacy.sourceVariantsJson !== undefined
+        ? legacy.sourceVariantsJson
+        : existing.source_variants;
+    const nextTargetVariants =
+      input.target_variants !== undefined
+        ? stringifyJsonStringArray(input.target_variants ?? [])
+        : existing.target_variants;
+
     this.db
       .prepare(
         `UPDATE terms SET
+          source_text = ?,
           source_simplified = ?,
           source_traditional = ?,
           pinyin = ?,
+          source_language = ?,
+          target_language = ?,
+          source_variants = ?,
+          target_variants = ?,
+          transliteration = ?,
+          transliteration_system = ?,
           term_type = ?,
           genre = ?,
           scope = ?,
@@ -361,11 +627,16 @@ export class TermRepository extends BaseRepository {
         WHERE id = ? AND deleted_at IS NULL`,
       )
       .run(
-        input.source_simplified ?? existing.source_simplified,
-        input.source_traditional !== undefined
-          ? input.source_traditional
-          : existing.source_traditional,
-        input.pinyin !== undefined ? input.pinyin : existing.pinyin,
+        nextSource,
+        nextSource,
+        nextTraditional,
+        nextPinyin,
+        sourceLanguage,
+        targetLanguage,
+        nextSourceVariants,
+        nextTargetVariants,
+        nextTransliteration,
+        nextTransliterationSystem,
         termType,
         input.genre !== undefined ? input.genre : existing.genre,
         input.scope ?? existing.scope,
@@ -384,10 +655,11 @@ export class TermRepository extends BaseRepository {
         id,
         input.preferred_translation,
         input.alternative_translations ?? [],
+        targetLanguage,
       );
     } else if (input.alternative_translations !== undefined) {
       const primary = this.getPrimaryTranslation(id) ?? '';
-      this.setTranslations(id, primary, input.alternative_translations);
+      this.setTranslations(id, primary, input.alternative_translations, targetLanguage);
     }
 
     return this.getById(id);
@@ -538,25 +810,35 @@ export class TermRepository extends BaseRepository {
       .all(termId) as TermTranslationRow[];
   }
 
-  setTranslations(termId: string, primary: string, alternatives: string[]): void {
+  setTranslations(
+    termId: string,
+    primary: string,
+    alternatives: string[],
+    targetLanguage?: string,
+  ): void {
     const ts = touchTimestamps();
+    const term = this.getById(termId);
+    const lang =
+      targetLanguage ??
+      term?.target_language ??
+      DEFAULT_TARGET_LANGUAGE;
     this.db.prepare(`DELETE FROM term_translations WHERE term_id = ?`).run(termId);
     if (primary.trim()) {
       this.db
         .prepare(
-          `INSERT INTO term_translations (id, term_id, target_text, is_primary, created_at, updated_at)
-           VALUES (?, ?, ?, 1, ?, ?)`,
+          `INSERT INTO term_translations (id, term_id, target_text, target_language, is_primary, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 1, ?, ?)`,
         )
-        .run(newId(), termId, primary.trim(), ts.created_at, ts.updated_at);
+        .run(newId(), termId, primary.trim(), lang, ts.created_at, ts.updated_at);
     }
     for (const alt of alternatives) {
       if (!alt.trim() || alt.trim() === primary.trim()) continue;
       this.db
         .prepare(
-          `INSERT INTO term_translations (id, term_id, target_text, is_primary, created_at, updated_at)
-           VALUES (?, ?, ?, 0, ?, ?)`,
+          `INSERT INTO term_translations (id, term_id, target_text, target_language, is_primary, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 0, ?, ?)`,
         )
-        .run(newId(), termId, alt.trim(), ts.created_at, ts.updated_at);
+        .run(newId(), termId, alt.trim(), lang, ts.created_at, ts.updated_at);
     }
   }
 

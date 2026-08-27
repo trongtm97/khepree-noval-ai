@@ -1,5 +1,10 @@
 import type { DatabaseManager } from '../db/database-manager';
 import JSZip from 'jszip';
+import {
+  getLanguageProfile,
+  normalizeLanguageCode,
+} from '@shared/constants/language-profile';
+import { resolveActiveEditionId } from '../services/edition-service';
 
 export interface NovelExportParagraph {
   stableParagraphId: string;
@@ -24,7 +29,10 @@ export interface NovelExportOptions {
 
 export interface NovelExportData {
   projectTitle: string;
+  sourceLanguage: string;
   targetLanguage: string;
+  sourceLanguageLabel: string;
+  targetLanguageLabel: string;
   chapters: NovelExportChapter[];
 }
 
@@ -50,13 +58,14 @@ export function loadNovelExportData(
   }
 
   const exportChapters: NovelExportChapter[] = [];
+  const editionId = resolveActiveEditionId(db, options.projectId);
 
   for (const chapter of chapters) {
     const paragraphs = db.paragraphs.listByChapter(chapter.id);
     const exportParagraphs: NovelExportParagraph[] = [];
 
     for (const para of paragraphs) {
-      const translation = db.translations.getByParagraphId(para.id);
+      const translation = db.translations.getByParagraphId(para.id, editionId);
       const translatedText = translation?.translated_text ?? null;
       if (options.translatedOnly && !translatedText?.trim()) continue;
 
@@ -83,7 +92,10 @@ export function loadNovelExportData(
 
   return {
     projectTitle: project.title,
-    targetLanguage: project.target_language,
+    sourceLanguage: normalizeLanguageCode(project.source_language),
+    targetLanguage: normalizeLanguageCode(project.target_language),
+    sourceLanguageLabel: getLanguageProfile(project.source_language).displayNameNative,
+    targetLanguageLabel: getLanguageProfile(project.target_language).displayNameNative,
     chapters: exportChapters,
   };
 }
@@ -289,7 +301,10 @@ export async function buildEpubBuffer(
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:title>${escapeXml(data.projectTitle)}</dc:title>
-    <dc:language>${escapeXml(data.targetLanguage)}</dc:language>
+    <dc:language>${escapeXml(normalizeLanguageCode(data.targetLanguage))}</dc:language>
+    <meta property="dcterms:source">${escapeXml(normalizeLanguageCode(data.sourceLanguage))}</meta>
+    <meta name="noveltrans:source-language" content="${escapeXml(data.sourceLanguageLabel)}"/>
+    <meta name="noveltrans:target-language" content="${escapeXml(data.targetLanguageLabel)}"/>
     <dc:identifier id="uid">urn:noveltrans:${Date.now()}</dc:identifier>
   </metadata>
   <manifest>

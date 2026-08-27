@@ -20,6 +20,7 @@ import { pathsService } from '../services/paths-service';
 import type { GeminiService } from '../services/gemini-service';
 import { logger } from '../logging/logger';
 import { getSecretStorage } from '../security';
+import { summarizeLinkedAiAccount } from './provider-account-summary';
 
 export class AiProviderService {
   readonly manager: AiProviderManager;
@@ -55,8 +56,7 @@ export class AiProviderService {
   } {
     const runtime = workerProcessManager.getStatus();
     const providers = this.db.aiProviders.listAll().map((row) => {
-      const accounts = this.db.aiAccounts.listByProvider(row.id);
-      const ready = accounts.find((a) => a.status === 'READY') ?? accounts[0];
+      const linked = summarizeLinkedAiAccount(this.db.aiAccounts.listByProvider(row.id));
       const models = this.db.aiModels.listByProvider(row.id);
       return {
         id: row.id,
@@ -66,9 +66,9 @@ export class AiProviderService {
         priority: row.priority,
         enabled: row.enabled === 1,
         fallbackAllowed: row.fallback_allowed === 1,
-        accountEmail: ready.google_email ?? null,
-        lastUsedAt: ready.last_used_at ?? null,
-        lastError: ready.last_error ?? null,
+        accountEmail: linked.accountEmail,
+        lastUsedAt: linked.lastUsedAt,
+        lastError: linked.lastError,
         modelCount: models.length,
       };
     });
@@ -86,19 +86,39 @@ export class AiProviderService {
   async healthReport() {
     const result = [];
     for (const provider of this.manager.listRegistered()) {
-      const health = await provider.healthCheck();
       const row = this.db.aiProviders.getById(provider.providerId);
-      result.push({
-        id: provider.providerId,
-        type: provider.providerType,
-        name: row?.name ?? provider.providerType,
-        ok: health.ok,
-        status: health.status,
-        message: health.message,
-        accountEmail: health.accountEmail ?? null,
-        lastUsedAt: health.lastUsedAt ?? null,
-        lastError: health.lastError ?? null,
-      });
+      const name = row?.name ?? provider.providerType;
+      try {
+        const health = await provider.healthCheck();
+        result.push({
+          id: provider.providerId,
+          type: provider.providerType,
+          name,
+          ok: health.ok,
+          status: health.status,
+          message: health.message ?? '',
+          accountEmail: health.accountEmail ?? null,
+          lastUsedAt: health.lastUsedAt ?? null,
+          lastError: health.lastError ?? null,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn('Provider healthCheck failed', {
+          providerId: provider.providerId,
+          message,
+        });
+        result.push({
+          id: provider.providerId,
+          type: provider.providerType,
+          name,
+          ok: false,
+          status: 'ERROR' as const,
+          message,
+          accountEmail: null,
+          lastUsedAt: null,
+          lastError: message,
+        });
+      }
     }
     return { providers: result };
   }

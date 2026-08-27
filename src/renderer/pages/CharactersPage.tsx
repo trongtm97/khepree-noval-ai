@@ -36,7 +36,7 @@ export function CharactersPage() {
   const { projectId: routeProjectId } = useParams();
   const storeProjectId = useUiShellStore((s) => s.currentProjectId) ?? '';
   const [projects, setProjects] = useState<ProjectDto[]>([]);
-  const [projectId, setProjectId] = useState(routeProjectId || storeProjectId);
+  const [projectId, setProjectId] = useState(routeProjectId ?? storeProjectId);
   const [tab, setTab] = useState<Tab>('characters');
   const [characters, setCharacters] = useState<CharacterDto[]>([]);
   const [relationships, setRelationships] = useState<RelationshipDto[]>([]);
@@ -123,14 +123,14 @@ export function CharactersPage() {
 
   const characterColumns = [
     {
-      key: 'chinese',
-      header: t('characters.chinese'),
-      render: (c: CharacterDto) => c.canonicalName,
+      key: 'sourceName',
+      header: t('characters.sourceName'),
+      render: (c: CharacterDto) => c.canonicalSourceName ?? c.canonicalName,
     },
     {
-      key: 'vietnamese',
-      header: t('characters.vietnamese'),
-      render: (c: CharacterDto) => c.translatedName ?? '—',
+      key: 'targetName',
+      header: t('characters.targetName'),
+      render: (c: CharacterDto) => c.preferredTargetName ?? c.translatedName ?? '—',
     },
     {
       key: 'role',

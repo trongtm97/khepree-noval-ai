@@ -22,6 +22,7 @@ import {
 import { useUiShellStore } from '../stores/ui-shell-store';
 import { HelpContextButton } from '../features/help/HelpContextButton';
 import { confirmDangerous } from '../utils/confirm-dangerous';
+import { LanguagePairLabel } from '../components/LanguagePairLabel';
 
 type SortKey = 'updated' | 'name' | 'progress';
 type ViewMode = 'grid' | 'list';
@@ -60,7 +61,7 @@ export function ProjectsPage() {
     let list = projects.filter((p) => !q || p.title.toLowerCase().includes(q));
     list = [...list].sort((a, b) => {
       if (sort === 'name') return a.title.localeCompare(b.title, 'vi');
-      if (sort === 'progress') return (b.chapterCount ?? 0) - (a.chapterCount ?? 0);
+      if (sort === 'progress') return (b.sourceChapterCount ?? 0) - (a.sourceChapterCount ?? 0);
       return b.updatedAt.localeCompare(a.updatedAt);
     });
     return list;
@@ -225,7 +226,7 @@ export function ProjectsPage() {
 
           <div className={view === 'grid' ? 'project-grid' : 'project-list'}>
             {filtered.map((project) => {
-              const total = project.sourceChapterCount ?? project.chapterCount ?? 0;
+              const total = project.sourceChapterCount ?? 0;
               const done = project.translatedChapterCount ?? 0;
               const pct = total > 0 ? Math.round((done / total) * 100) : 0;
               return (
@@ -234,7 +235,10 @@ export function ProjectsPage() {
                     <div>
                       <h3 style={{ margin: 0 }}>{project.title}</h3>
                       <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-                        {project.sourceLanguage} → {project.targetLanguage}
+                        <LanguagePairLabel
+                          sourceLanguage={project.sourceLanguage}
+                          targetLanguage={project.targetLanguage}
+                        />
                       </p>
                     </div>
                     <Badge tone="accent">{statusLabel(project.status)}</Badge>

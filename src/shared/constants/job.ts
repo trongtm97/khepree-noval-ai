@@ -30,8 +30,8 @@ export const PLAYWRIGHT_MAX_SOURCE_CHARS_PER_CHUNK = 40_000;
 /** Web API char budget per chapter batch (smaller than Playwright). */
 export const WEB_API_MAX_SOURCE_CHARS_PER_CHUNK = 8_000;
 
-/** Global max concurrent Chromium profiles / workers. */
-export const DEFAULT_MAX_CONCURRENT_WORKERS = 2;
+/** Global max concurrent Chromium profiles / workers (legacy fixed default). */
+export const DEFAULT_MAX_CONCURRENT_WORKERS = 3;
 
 /** Lease duration for claimed jobs (crash recovery). Renewed while job runs. */
 export const DEFAULT_JOB_LEASE_MS = 15 * 60 * 1000;
@@ -143,3 +143,6 @@ export const SCHEDULER_SETTING_KEYS = {
   tickMs: 'scheduler.tick_ms',
   quotaCooldownMs: 'scheduler.quota_cooldown_ms',
 } as const;
+
+/** @deprecated Prefer DEFAULT_AUTO_GLOBAL_CAP + AUTO mode from concurrency-policy. */
+export { DEFAULT_AUTO_GLOBAL_CAP } from './concurrency-policy';

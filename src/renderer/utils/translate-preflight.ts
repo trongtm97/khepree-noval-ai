@@ -62,14 +62,18 @@ export function evaluateTranslatePreflight(
     return { ok: false, reason: 'no_worker' };
   }
 
+  // Project-sensitive: require canonical ProjectWorkerResolver id — never first READY.
   const resolved = input.resolvedWorkerAccountId ?? null;
-  const workerAccountId =
-    resolved ??
-    usableWorkers.find((w) => isReady(w.health))?.accountId ??
-    usableWorkers.at(0)?.accountId ??
-    usableGoogle.find((a) => isReady(a.status))?.id ??
-    usableGoogle.at(0)?.id ??
-    null;
+  if (!resolved) {
+    return { ok: false, reason: 'no_worker' };
+  }
+  const resolvedUsable =
+    usableWorkers.some((w) => w.accountId === resolved) ||
+    usableGoogle.some((a) => a.id === resolved);
+  if (!resolvedUsable) {
+    return { ok: false, reason: 'no_worker' };
+  }
+  const workerAccountId = resolved;
 
   const webApiReady = input.aiAccounts.some((a) => isReady(a.status));
   const notebookReady = NOTEBOOK_CHANNEL_READY.has(

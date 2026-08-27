@@ -8,6 +8,11 @@ export type NotificationKind =
   | 'ERROR'
   | 'ACTION_REQUIRED';
 
+/** Sticky toasts stay until the user acts. ACTION_REQUIRED must not auto-hide. */
+export function shouldAutoDismissToast(kind: NotificationKind): boolean {
+  return kind !== 'ACTION_REQUIRED';
+}
+
 export interface AppNotification {
   id: string;
   kind: NotificationKind;

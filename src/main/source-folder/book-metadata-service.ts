@@ -67,8 +67,10 @@ export function projectRowToMetadataDto(
 
   return {
     title: project.title,
-    titleCn: project.title_cn,
-    titleVi: project.title_vi,
+    sourceTitle: project.source_title ?? project.title_cn,
+    targetTitle: project.target_title ?? project.title_vi,
+    titleCn: project.title_cn ?? project.source_title,
+    titleVi: project.title_vi ?? project.target_title,
     titleOriginal: project.title_original,
     alternativeTitles,
     authorName: project.author_name,
@@ -112,6 +114,8 @@ export function applyBookMetadataFromScan(
     existingFields[key] = { source, confidence: 0.9, locked: false };
   };
 
+  tryField('sourceTitle', 'source_title', mapped.source_title);
+  tryField('targetTitle', 'target_title', mapped.target_title);
   tryField('titleCn', 'title_cn', mapped.title_cn);
   tryField('titleVi', 'title_vi', mapped.title_vi);
   tryField('titleOriginal', 'title_original', mapped.title_original);
@@ -146,9 +150,13 @@ export function applyBookMetadataFromScan(
     existingFields.publicationStatus = { source, confidence: 0.9, locked: false };
   }
 
-  if (!patch.title_vi && mapped.title_vi && shouldApplyField('titleVi', source, existingFields)) {
-    patch.title = mapped.title_vi;
-  } else if (!patch.title && mapped.title_cn) {
+  if (
+    !patch.title &&
+    mapped.target_title &&
+    shouldApplyField('targetTitle', source, existingFields)
+  ) {
+    patch.title = mapped.target_title;
+  } else if (!patch.title && mapped.source_title) {
     patch.title = project.title;
   }
 
@@ -227,8 +235,10 @@ export function updateMetadataFromUserEdit(
 
   const patch: ProjectMetadataPatch = {
     title: dto.title,
-    title_cn: dto.titleCn,
-    title_vi: dto.titleVi,
+    source_title: dto.sourceTitle ?? dto.titleCn,
+    target_title: dto.targetTitle ?? dto.titleVi,
+    title_cn: dto.titleCn ?? dto.sourceTitle,
+    title_vi: dto.titleVi ?? dto.targetTitle,
     title_original: dto.titleOriginal,
     alternative_titles: dto.alternativeTitles ? JSON.stringify(dto.alternativeTitles) : undefined,
     author_name: dto.authorName,
@@ -273,8 +283,8 @@ export function detectMetadataConflict(
     }
   };
 
-  check('titleCn', 'title_cn', project.title_cn, mapped.title_cn);
-  check('titleVi', 'title_vi', project.title_vi, mapped.title_vi);
+  check('sourceTitle', 'source_title', project.source_title ?? project.title_cn, mapped.source_title);
+  check('targetTitle', 'target_title', project.target_title ?? project.title_vi, mapped.target_title);
   check('authorName', 'author_name', project.author_name, mapped.author_name);
   check('genre', 'genre', project.genre, mapped.genre);
   check('description', 'description', project.description, mapped.description);

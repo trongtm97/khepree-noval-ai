@@ -5,16 +5,20 @@ import { useT } from '../../i18n';
 
 interface TranslationContextStatusProps {
   projectId: string;
-  /** Live packMode from active job — tooltip only. */
+  /** Live packMode from active job — technical tooltip only. */
   packMode?: 'slim' | 'hybrid' | 'fat' | null;
 }
 
-type MemoryBadge = {
+interface MemoryBadge {
   label: string;
   ok: boolean;
   tooltip: string;
-};
+}
 
+/**
+ * Translator-facing memory status.
+ * Never shows SLIM/HYBRID/FAT in the badge — those stay in tooltip.
+ */
 export function TranslationContextStatus({
   projectId,
   packMode,
@@ -38,7 +42,9 @@ export function TranslationContextStatus({
         setBadge({
           label: t('translation.memoryLocal'),
           ok: false,
-          tooltip: t('translation.memoryTooltipLocal'),
+          tooltip: [t('translation.memoryTooltipLocal'), packModeTip(packMode, t)]
+            .filter(Boolean)
+            .join(' · '),
         });
         return;
       }
@@ -48,36 +54,45 @@ export function TranslationContextStatus({
       });
       const single = 'translation' in healthRes ? healthRes.translation : healthRes;
       const status = single.status;
-      const local = single.localVersion ?? 0;
-      const notebook = single.notebookVersion ?? 0;
+      const local = single.localVersion;
+      const notebook = single.notebookVersion;
       const channelOk = NOTEBOOK_CHANNEL_READY.has(status);
-      const packTip = packMode
-        ? t('translation.memoryPackTooltip', { mode: packMode.toUpperCase() })
-        : '';
 
       if (channelOk && notebook > 0 && local > 0 && notebook === local) {
         setBadge({
-          label: t('translation.memoryNotebookOk', { version: String(notebook) }),
+          label: t('translation.memoryNotebookOk'),
           ok: true,
-          tooltip: [t('translation.memoryTooltipSynced'), packTip].filter(Boolean).join(' · '),
+          tooltip: [
+            t('translation.memoryTooltipSynced', { version: String(notebook) }),
+            packModeTip(packMode, t),
+          ]
+            .filter(Boolean)
+            .join(' · '),
         });
         return;
       }
       if (channelOk && (notebook > 0 || local > 0)) {
         setBadge({
-          label: t('translation.memoryNotebookMixed', {
-            notebook: notebook > 0 ? String(notebook) : '—',
-            local: local > 0 ? String(local) : '—',
-          }),
+          label: t('translation.memoryNotebookMixed'),
           ok: false,
-          tooltip: [t('translation.memoryTooltipMixed'), packTip].filter(Boolean).join(' · '),
+          tooltip: [
+            t('translation.memoryTooltipMixed', {
+              notebook: notebook > 0 ? String(notebook) : '—',
+              local: local > 0 ? String(local) : '—',
+            }),
+            packModeTip(packMode, t),
+          ]
+            .filter(Boolean)
+            .join(' · '),
         });
         return;
       }
       setBadge({
         label: t('translation.memoryLocal'),
         ok: local > 0,
-        tooltip: [t('translation.memoryTooltipLocal'), packTip].filter(Boolean).join(' · '),
+        tooltip: [t('translation.memoryTooltipLocal'), packModeTip(packMode, t)]
+          .filter(Boolean)
+          .join(' · '),
       });
     } catch {
       setBadge({
@@ -107,4 +122,12 @@ export function TranslationContextStatus({
       <span>{badge.label}</span>
     </button>
   );
+}
+
+function packModeTip(
+  packMode: 'slim' | 'hybrid' | 'fat' | null | undefined,
+  t: (key: string, vars?: Record<string, string>) => string,
+): string {
+  if (!packMode) return '';
+  return t('translation.memoryPackTooltip', { mode: packMode.toUpperCase() });
 }

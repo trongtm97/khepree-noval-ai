@@ -6,6 +6,7 @@ import type { TranslationVersionSource } from '@shared/constants/translation-edi
 export interface TranslationRow {
   id: string;
   paragraph_id: string;
+  edition_id: string | null;
   translated_text: string | null;
   status: string;
   provider: string | null;
@@ -33,6 +34,7 @@ export interface TranslationVersionRow {
 
 export interface CreateTranslationInput {
   paragraph_id: string;
+  edition_id?: string | null;
   translated_text?: string | null;
   status?: string;
   provider?: string | null;
@@ -44,6 +46,7 @@ export interface CreateTranslationInput {
 
 export interface UpsertTranslationInput {
   paragraph_id: string;
+  edition_id?: string | null;
   translated_text: string | null;
   status?: string;
   version_source: TranslationVersionSource;
@@ -62,13 +65,14 @@ export class TranslationRepository extends BaseRepository {
     this.db
       .prepare(
         `INSERT INTO translations (
-          id, paragraph_id, translated_text, status, provider, model, metadata,
+          id, paragraph_id, edition_id, translated_text, status, provider, model, metadata,
           human_locked, version_source, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
         input.paragraph_id,
+        input.edition_id ?? null,
         input.translated_text ?? null,
         input.status ?? 'pending',
         input.provider ?? null,
@@ -104,15 +108,41 @@ export class TranslationRepository extends BaseRepository {
     );
   }
 
-  getByParagraphId(paragraphUuid: string): TranslationRow | null {
+  getByParagraphId(
+    paragraphUuid: string,
+    editionId?: string | null,
+  ): TranslationRow | null {
+    if (editionId) {
+      return (
+        (this.db
+          .prepare(
+            `SELECT * FROM translations WHERE paragraph_id = ? AND edition_id = ?`,
+          )
+          .get(paragraphUuid, editionId) as TranslationRow | undefined) ?? null
+      );
+    }
     return (
       (this.db
-        .prepare(`SELECT * FROM translations WHERE paragraph_id = ?`)
+        .prepare(
+          `SELECT * FROM translations WHERE paragraph_id = ?
+           ORDER BY CASE WHEN edition_id IS NULL THEN 1 ELSE 0 END, updated_at DESC
+           LIMIT 1`,
+        )
         .get(paragraphUuid) as TranslationRow | undefined) ?? null
     );
   }
 
-  listByChapter(chapterUuid: string): TranslationRow[] {
+  listByChapter(chapterUuid: string, editionId?: string | null): TranslationRow[] {
+    if (editionId) {
+      return this.db
+        .prepare(
+          `SELECT t.* FROM translations t
+           INNER JOIN chapter_paragraphs p ON p.id = t.paragraph_id
+           WHERE p.chapter_id = ? AND t.edition_id = ?
+           ORDER BY p.sequence ASC`,
+        )
+        .all(chapterUuid, editionId) as TranslationRow[];
+    }
     return this.db
       .prepare(
         `SELECT t.* FROM translations t
@@ -128,7 +158,7 @@ export class TranslationRepository extends BaseRepository {
    * When respectHumanLock and row human_locked → returns existing unchanged.
    */
   upsert(input: UpsertTranslationInput): { row: TranslationRow; skipped: boolean } {
-    const existing = this.getByParagraphId(input.paragraph_id);
+    const existing = this.getByParagraphId(input.paragraph_id, input.edition_id);
     if (existing && input.respectHumanLock && existing.human_locked === 1) {
       return { row: existing, skipped: true };
     }
@@ -136,6 +166,7 @@ export class TranslationRepository extends BaseRepository {
     if (!existing) {
       const row = this.create({
         paragraph_id: input.paragraph_id,
+        edition_id: input.edition_id ?? null,
         translated_text: input.translated_text,
         status: input.status ?? 'translated',
         version_source: input.version_source,
@@ -156,11 +187,16 @@ export class TranslationRepository extends BaseRepository {
     return { row: row ?? existing, skipped: false };
   }
 
-  saveHumanEdit(paragraphUuid: string, translatedText: string): TranslationRow {
-    const existing = this.getByParagraphId(paragraphUuid);
+  saveHumanEdit(
+    paragraphUuid: string,
+    translatedText: string,
+    editionId?: string | null,
+  ): TranslationRow {
+    const existing = this.getByParagraphId(paragraphUuid, editionId);
     if (!existing) {
       return this.create({
         paragraph_id: paragraphUuid,
+        edition_id: editionId ?? null,
         translated_text: translatedText,
         status: 'reviewed',
         version_source: 'HUMAN_EDIT',
@@ -283,24 +319,37 @@ export class TranslationRepository extends BaseRepository {
    * Delete AI translations for a chapter; keep human_locked rows.
    * Version history cascades via FK ON DELETE CASCADE.
    */
-  clearAiByChapter(chapterUuid: string): { deleted: number; keptLocked: number } {
+  clearAiByChapter(
+    chapterUuid: string,
+    editionId?: string | null,
+  ): { deleted: number; keptLocked: number } {
     const locked = this.db
       .prepare(
-        `SELECT COUNT(*) AS c FROM translations t
-         INNER JOIN chapter_paragraphs p ON p.id = t.paragraph_id
-         WHERE p.chapter_id = ? AND t.human_locked = 1`,
+        editionId
+          ? `SELECT COUNT(*) AS c FROM translations t
+             INNER JOIN chapter_paragraphs p ON p.id = t.paragraph_id
+             WHERE p.chapter_id = ? AND t.edition_id = ? AND t.human_locked = 1`
+          : `SELECT COUNT(*) AS c FROM translations t
+             INNER JOIN chapter_paragraphs p ON p.id = t.paragraph_id
+             WHERE p.chapter_id = ? AND t.human_locked = 1`,
       )
-      .get(chapterUuid) as { c: number };
+      .get(...(editionId ? [chapterUuid, editionId] : [chapterUuid])) as { c: number };
 
     const result = this.db
       .prepare(
-        `DELETE FROM translations WHERE id IN (
-           SELECT t.id FROM translations t
-           INNER JOIN chapter_paragraphs p ON p.id = t.paragraph_id
-           WHERE p.chapter_id = ? AND COALESCE(t.human_locked, 0) = 0
-         )`,
+        editionId
+          ? `DELETE FROM translations WHERE id IN (
+               SELECT t.id FROM translations t
+               INNER JOIN chapter_paragraphs p ON p.id = t.paragraph_id
+               WHERE p.chapter_id = ? AND t.edition_id = ? AND COALESCE(t.human_locked, 0) = 0
+             )`
+          : `DELETE FROM translations WHERE id IN (
+               SELECT t.id FROM translations t
+               INNER JOIN chapter_paragraphs p ON p.id = t.paragraph_id
+               WHERE p.chapter_id = ? AND COALESCE(t.human_locked, 0) = 0
+             )`,
       )
-      .run(chapterUuid);
+      .run(...(editionId ? [chapterUuid, editionId] : [chapterUuid]));
 
     return { deleted: result.changes, keptLocked: locked.c };
   }

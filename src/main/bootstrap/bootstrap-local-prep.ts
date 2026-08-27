@@ -11,6 +11,8 @@ import type { ChapterRow } from '../db/repositories/chapter-repository';
 
 export interface BootstrapLocalPrepResult {
   projectId: string;
+  sourceLanguage: string;
+  targetLanguage: string;
   bookProfile: string;
   translationRules: string;
   knownTerms: { source: string; target: string; scope: string }[];
@@ -119,9 +121,19 @@ export function prepareBootstrapLocal(
   }));
   const batchText = chapterPayload.map((c) => c.text).join('\n');
 
-  const termRows = db.terms.listForMatching({ projectId });
-  const index = buildTermMatchIndex(termRows);
-  const matches = matchKnownTermsInText(batchText, index, termRows, { projectId });
+  const termRows = db.terms.listForMatching({
+    projectId,
+    sourceLanguage: project.source_language,
+    targetLanguage: project.target_language,
+  });
+  const index = buildTermMatchIndex(termRows, {
+    sourceLanguage: project.source_language,
+  });
+  const matches = matchKnownTermsInText(batchText, index, termRows, {
+    projectId,
+    sourceLanguage: project.source_language,
+    targetLanguage: project.target_language,
+  });
   const knownTerms = matches.map((m) => {
     const translations = db.terms.listTranslations(m.term.id);
     const target =
@@ -138,7 +150,9 @@ export function prepareBootstrapLocal(
 
   return {
     projectId,
-    bookProfile: bookProfile || '# Thông tin truyện\n',
+    sourceLanguage: project.source_language,
+    targetLanguage: project.target_language,
+    bookProfile: bookProfile || '# Book profile\n',
     translationRules,
     knownTerms,
     chapters: chapterPayload,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { EditorParagraphDto } from '@shared/schemas/translation-editor';
+import type { TextDirection } from '@shared/constants/language-profile';
 import { EDITOR_OVERSCAN, EDITOR_ROW_HEIGHT } from '@shared/constants/translation-editor';
 import { computeVirtualWindow } from '../../utils/virtual-window';
 import { EditorParagraphRow } from './EditorParagraphRow';
@@ -16,6 +17,8 @@ interface EditorVirtualListProps {
     start: number;
     end: number;
   }[];
+  sourceDirection?: TextDirection;
+  targetDirection?: TextDirection;
   onSelect: (stableId: string) => void;
   onDraftChange: (stableId: string, text: string, previous: string) => void;
 }
@@ -26,6 +29,8 @@ export function EditorVirtualList({
   dirty,
   searchMatchIndex,
   searchMatches,
+  sourceDirection = 'ltr',
+  targetDirection = 'ltr',
   onSelect,
   onDraftChange,
 }: EditorVirtualListProps) {
@@ -42,7 +47,9 @@ export function EditorVirtualList({
     });
     ro.observe(el);
     setViewportHeight(el.clientHeight);
-    return () => { ro.disconnect(); };
+    return () => {
+      ro.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -86,7 +93,9 @@ export function EditorVirtualList({
     <div
       ref={containerRef}
       className="editor-scroll"
-      onScroll={(event) => { setScrollTop(event.currentTarget.scrollTop); }}
+      onScroll={(event) => {
+        setScrollTop(event.currentTarget.scrollTop);
+      }}
     >
       <div className="editor-scroll-inner" style={{ height: windowRange.totalHeight }}>
         <div style={{ transform: `translateY(${windowRange.offsetY}px)` }}>
@@ -108,9 +117,13 @@ export function EditorVirtualList({
                   draftText={draftText}
                   isActive={activeParagraphId === paragraph.stableParagraphId}
                   searchHighlight={highlight}
+                  sourceDirection={sourceDirection}
+                  targetDirection={targetDirection}
                   onSelect={onSelect}
                   onDraftChange={onDraftChange}
-                  rowRef={(el) => { setRowRef(paragraph.stableParagraphId, el); }}
+                  rowRef={(el) => {
+                    setRowRef(paragraph.stableParagraphId, el);
+                  }}
                 />
               </div>
             );

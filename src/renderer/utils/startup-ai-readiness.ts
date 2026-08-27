@@ -3,7 +3,8 @@ export type StartupAiIssue =
   | 'no_google_account'
   | 'google_needs_login'
   | 'web_api_not_ready'
-  | 'no_ai_provider';
+  | 'no_ai_provider'
+  | 'check_failed';
 
 export interface StartupAiReadinessInput {
   googleAccounts: { status: string; workerEnabled?: boolean }[];

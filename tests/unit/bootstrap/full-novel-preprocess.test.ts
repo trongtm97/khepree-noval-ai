@@ -74,7 +74,9 @@ describe('parseFullNovelPreprocessResponse', () => {
     };
     const out = knowledgeMarkdownToBootstrapOutput(files);
     expect(out.terms.length).toBeGreaterThanOrEqual(2);
+    expect(out.terms[0]?.preferred_target).toBeTruthy();
     expect(out.characters[0]?.source_name).toBe('张三');
+    expect(out.characters[0]?.preferred_target).toBe('Trương Tam');
     expect(out.relationships[0]?.relationship_type).toContain('friends');
     expect(out.recent_context.important_events.length).toBeGreaterThan(0);
   });
@@ -87,8 +89,13 @@ describe('buildFullNovelPreprocessPrompt', () => {
       author: 'Author',
       genre: 'xianxia',
       partFileNames: ['NOVEL_PART_01.txt', 'NOVEL_PART_02.txt'],
+      sourceLanguage: 'zh-Hans',
+      targetLanguage: 'vi',
     });
     expect(prompt).toContain('DO NOT TRANSLATE');
+    expect(prompt).toContain('SOURCE_LANGUAGE:');
+    expect(prompt).toContain('TARGET_LANGUAGE:');
+    expect(prompt).not.toMatch(/Chinese → Vietnamese|中文→Tiếng Việt/i);
     for (const key of KNOWLEDGE_FILE_KEYS) {
       expect(prompt).toContain('file:' + key);
     }

@@ -56,6 +56,8 @@ export class FullNovelPreprocessService {
             author: project.author_name,
             genre: project.genre,
             partFileNames: names,
+            sourceLanguage: project.source_language,
+            targetLanguage: project.target_language,
           });
           const promptPath = path.join(dir, 'FULL_NOVEL_PREPROCESS.prompt.md');
           fs.writeFileSync(promptPath, prompt, 'utf8');
@@ -69,6 +71,8 @@ export class FullNovelPreprocessService {
       author: project.author_name,
       genre: project.genre,
       partFileNames: names,
+      sourceLanguage: project.source_language,
+      targetLanguage: project.target_language,
     });
 
     let promptPath: string | null = null;

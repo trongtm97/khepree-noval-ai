@@ -265,6 +265,26 @@ export const SchedulerStatusResponseSchema = z.object({
   paused: z.boolean(),
   inFlight: z.number().int().nonnegative(),
   maxConcurrent: z.number().int().positive(),
+  globalMaxMode: z.union([z.literal('AUTO'), z.number().int().positive()]),
+  autoCap: z.number().int().positive(),
+  perProjectMax: z.number().int().positive(),
+  perProviderMax: z.number().int().positive(),
+  perAccountPlaywrightMax: z.number().int().positive(),
+  perAccountWebApiMax: z.number().int().positive(),
+  allowSameProjectParallel: z.boolean(),
+  parallelTranslationWaves: z.boolean(),
+  parallelWavesWarning: z.string(),
+});
+
+export const SchedulerSettingsUpdateSchema = z.object({
+  globalMaxWorkers: z.union([z.literal('AUTO'), z.number().int().positive().max(16)]).optional(),
+  autoCap: z.number().int().positive().max(16).optional(),
+  perProjectMax: z.number().int().positive().max(16).optional(),
+  perProviderMax: z.number().int().positive().max(16).optional(),
+  perAccountPlaywrightMax: z.number().int().positive().max(4).optional(),
+  perAccountWebApiMax: z.number().int().positive().max(4).optional(),
+  allowSameProjectParallel: z.boolean().optional(),
+  parallelTranslationWaves: z.boolean().optional(),
 });
 
 export const WorkerDtoSchema = z.object({

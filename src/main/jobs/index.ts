@@ -17,6 +17,27 @@ export { AutomationScheduler } from './scheduler';
 export type { SchedulerOptions } from './scheduler';
 export { WorkerPool } from './worker-pool';
 export type { SelectedWorker } from './worker-pool';
+export {
+  loadConcurrencyPolicy,
+  saveConcurrencyPolicy,
+  canAdmitJob,
+  resolveGlobalMaxWorkers,
+} from './concurrency-policy';
+export type { ConcurrencyPolicyPatch, InFlightSlot } from './concurrency-policy';
+export {
+  assignWaveOrderIndices,
+  validateWaveConsistency,
+  stripConflictingDeltas,
+} from './wave-consistency-validator';
+export {
+  createTranslationWave,
+  isParallelWavesEnabled,
+  setParallelWavesEnabled,
+  storeWaveProvisional,
+  tryAdvanceWaveCommit,
+  isWaveBarrierJob,
+  markWaveJobFailed,
+} from './wave-service';
 export { BatchExecutor, newLeaseOwner, parseJobConfig } from './batch-executor';
 export type {
   JobInitialSender,

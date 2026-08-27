@@ -24,17 +24,30 @@ If conflict:
 Do not let general knowledge override locked project terms.
 
 ## Critical Rules
-- Balance accuracy and natural Vietnamese readability.
+- Balance accuracy and natural target-language readability.
 - Preserve proper nouns via locked/active terms.
 - Keep tone consistent with previous chapters.
+- Hán-Việt terminology: prefer established Sino-Vietnamese readings for names/terms when locked terms allow.
+- Keep classical / cultivation titles consistent with Project Terms; do not freestyle Hán-Việt.
+- Source is Simplified Chinese; do not invent Traditional variants in the target.
 - Keep locked names exact."
 `;
 
 exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > full-prompt 1`] = `
 "## Task
-Translate Chinese → Vietnamese (balanced) for chapter 451.
-Use ONLY active context below. Do not invent terms, characters, or plot.
+Source language:
+简体中文
+
+Target language:
+Tiếng Việt
+
+Translate:
+简体中文 → Tiếng Việt
+
+Style: balanced
+Range: chapter 451
 Preserve every paragraph ID from Source exactly.
+Use ONLY active context below. Do not invent terms, characters, or plot.
 
 ## Knowledge Priority
 If conflict:
@@ -47,9 +60,12 @@ If conflict:
 Do not let general knowledge override locked project terms.
 
 ## Critical Rules
-- Balance accuracy and natural Vietnamese readability.
+- Balance accuracy and natural target-language readability.
 - Preserve proper nouns via locked/active terms.
 - Keep tone consistent with previous chapters.
+- Hán-Việt terminology: prefer established Sino-Vietnamese readings for names/terms when locked terms allow.
+- Keep classical / cultivation titles consistent with Project Terms; do not freestyle Hán-Việt.
+- Source is Simplified Chinese; do not invent Traditional variants in the target.
 - Keep locked names exact.
 
 ## Hot Memory
@@ -70,7 +86,7 @@ mem@450: plot.mc_realm=Foundation Establishment
 Return EXACTLY these sections in order. No markdown fences inside tags.
 
 <TRANSLATION>
-[C000001:P000001] Vietnamese translation...
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
 </TRANSLATION>
 
 <TERM_DELTA>
@@ -82,7 +98,7 @@ Return EXACTLY these sections in order. No markdown fences inside tags.
 </MEMORY_DELTA>
 
 Rules:
-- TRANSLATION: one line per source paragraph; ID must match source exactly.
+- TRANSLATION: one line per source paragraph; ID must match source exactly; text in the target language only.
 - TERM_DELTA: JSON array of discover|update|confirm objects. Use [] only when the batch truly has no new names/terms.
 - MEMORY_DELTA: JSON array of upsert|delete|relationship|story_state objects. Use [] only when nothing new about cast/world/plot.
 - Opening chapters should extract main cast and key terms when they appear.
@@ -102,7 +118,17 @@ mem@450: plot.mc_realm=Foundation Establishment"
 
 exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > task-header 1`] = `
 "## Task
-Translate Chinese → Vietnamese (balanced) for chapter 451.
-Use ONLY active context below. Do not invent terms, characters, or plot.
-Preserve every paragraph ID from Source exactly."
+Source language:
+简体中文
+
+Target language:
+Tiếng Việt
+
+Translate:
+简体中文 → Tiếng Việt
+
+Style: balanced
+Range: chapter 451
+Preserve every paragraph ID from Source exactly.
+Use ONLY active context below. Do not invent terms, characters, or plot."
 `;

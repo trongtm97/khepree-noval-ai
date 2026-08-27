@@ -4,11 +4,19 @@ import {
   TERM_SCOPE_PRIORITY,
 } from '@shared/constants/term';
 import type { TermRow } from '../db/repositories/term-repository';
+import {
+  adaptersForSourceLanguage,
+  collectMatchKeys,
+  termSourceText,
+  type LanguageTermAdapter,
+} from './term-language-adapter';
 
 export interface TermMatchContext {
   projectId?: string;
   genre?: string | null;
   userId?: string;
+  sourceLanguage?: string;
+  targetLanguage?: string;
 }
 
 export interface ResolvedTermMatch {
@@ -22,22 +30,35 @@ export interface ResolvedTermMatch {
 }
 
 export interface TermMatchIndex {
+  /** Map match-key → representative term (highest priority). */
   bySource: Map<string, TermRow>;
-  scanTerms: TermRow[];
+  scanTerms: { key: string; term: TermRow }[];
 }
 
-export function buildTermMatchIndex(terms: TermRow[]): TermMatchIndex {
+export function buildTermMatchIndex(
+  terms: TermRow[],
+  options?: {
+    sourceLanguage?: string;
+    adapters?: readonly LanguageTermAdapter[];
+  },
+): TermMatchIndex {
+  const adapters =
+    options?.adapters ?? adaptersForSourceLanguage(options?.sourceLanguage);
   const bySource = new Map<string, TermRow>();
+
   for (const term of terms) {
-    const key = term.source_simplified;
-    const existing = bySource.get(key);
-    if (!existing || termEffectivePriority(term) > termEffectivePriority(existing)) {
-      bySource.set(key, term);
+    for (const key of collectMatchKeys(term, adapters)) {
+      const existing = bySource.get(key);
+      if (!existing || termEffectivePriority(term) > termEffectivePriority(existing)) {
+        bySource.set(key, term);
+      }
     }
   }
-  const scanTerms = [...bySource.values()].sort(
-    (a, b) => b.source_simplified.length - a.source_simplified.length,
-  );
+
+  const scanTerms = [...bySource.entries()]
+    .map(([key, term]) => ({ key, term }))
+    .sort((a, b) => b.key.length - a.key.length);
+
   return { bySource, scanTerms };
 }
 
@@ -84,6 +105,17 @@ export function resolveTermConflict(
 }
 
 function termMatchesContext(term: TermRow, context: TermMatchContext): boolean {
+  if (context.sourceLanguage && term.source_language) {
+    if (normalizeLang(term.source_language) !== normalizeLang(context.sourceLanguage)) {
+      return false;
+    }
+  }
+  if (context.targetLanguage && term.target_language) {
+    if (normalizeLang(term.target_language) !== normalizeLang(context.targetLanguage)) {
+      return false;
+    }
+  }
+
   const scope = term.scope as TermScope;
   switch (scope) {
     case 'PROJECT':
@@ -100,6 +132,10 @@ function termMatchesContext(term: TermRow, context: TermMatchContext): boolean {
   }
 }
 
+function normalizeLang(code: string): string {
+  return code.trim().toLowerCase();
+}
+
 export function matchKnownTermsInText(
   text: string,
   index: TermMatchIndex,
@@ -108,27 +144,31 @@ export function matchKnownTermsInText(
 ): ResolvedTermMatch[] {
   const matches: ResolvedTermMatch[] = [];
   const covered = new Uint8Array(text.length);
+  const adapters = adaptersForSourceLanguage(
+    context.sourceLanguage ?? allTerms[0]?.source_language,
+  );
 
-  const candidatesBySource = new Map<string, TermRow[]>();
+  const candidatesByKey = new Map<string, TermRow[]>();
   for (const term of allTerms) {
-    const list = candidatesBySource.get(term.source_simplified) ?? [];
-    list.push(term);
-    candidatesBySource.set(term.source_simplified, list);
+    for (const key of collectMatchKeys(term, adapters)) {
+      const list = candidatesByKey.get(key) ?? [];
+      list.push(term);
+      candidatesByKey.set(key, list);
+    }
   }
 
-  for (const term of index.scanTerms) {
-    const source = term.source_simplified;
-    if (!source) continue;
+  for (const { key, term } of index.scanTerms) {
+    if (!key) continue;
 
-    const pool = candidatesBySource.get(source) ?? [term];
+    const pool = candidatesByKey.get(key) ?? [term];
     const resolved = resolveTermConflict(pool, context);
     if (!resolved) continue;
 
     let pos = 0;
     while (pos < text.length) {
-      const idx = text.indexOf(source, pos);
+      const idx = text.indexOf(key, pos);
       if (idx < 0) break;
-      const end = idx + source.length;
+      const end = idx + key.length;
       let overlap = false;
       for (let i = idx; i < end; i += 1) {
         if (covered[i]) {
@@ -139,7 +179,7 @@ export function matchKnownTermsInText(
       if (!overlap) {
         for (let i = idx; i < end; i += 1) covered[i] = 1;
         matches.push({
-          sourceText: source,
+          sourceText: termSourceText(resolved) || key,
           term: resolved,
           scope: resolved.scope as TermScope,
           effectivePriority: termEffectivePriority(resolved),

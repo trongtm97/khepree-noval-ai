@@ -51,9 +51,16 @@ body {
   grid-area: title;
   height: var(--titlebar-height);
   -webkit-app-region: drag;
-  z-index: var(--z-titlebar);
+  position: relative;
   background: var(--bg-app);
   border-bottom: 1px solid var(--border);
+}
+
+.sidebar,
+.topbar,
+.main-content,
+.statusbar {
+  -webkit-app-region: no-drag;
 }
 
 .sidebar {
@@ -245,6 +252,92 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.project-workspace-pair-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.project-workspace-pair,
+.language-pair-label {
+  font-size: var(--font-body);
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.project-workspace-pair {
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.switch-translation {
+  position: relative;
+}
+
+.edition-switcher {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.edition-switcher-add {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.switch-translation-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  min-width: 240px;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated, var(--bg-primary));
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
+}
+
+.topbar-ops {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary, transparent);
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  padding: 0.35rem 0.7rem;
+  font-size: var(--font-small);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: min(420px, 46vw);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-ops:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.topbar-ops-sep {
+  opacity: 0.55;
+}
+
+.cc-next-pair {
+  margin: 0.2rem 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-small);
 }
 
 .project-workspace-tabs {
@@ -629,6 +722,13 @@ body {
 .banner-error {
   background: var(--error-bg);
   color: var(--error-text);
+}
+
+.startup-ai-banner {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
 }
 
 .banner-info {

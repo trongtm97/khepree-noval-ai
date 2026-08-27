@@ -3,6 +3,7 @@ import { newId } from '../utils/uuid';
 import { touchTimestamps, utcNow } from '../utils/timestamps';
 import type { SourceFolderStatus, SourceMode } from '@shared/constants/source-folder';
 import type { MetadataSource } from '@shared/constants/book-metadata';
+import { normalizeLanguageCode } from '@shared/constants/language-profile';
 
 export interface ProjectRow {
   id: string;
@@ -28,6 +29,8 @@ export interface ProjectRow {
   last_folder_scan_at: string | null;
   title_cn: string | null;
   title_vi: string | null;
+  source_title: string | null;
+  target_title: string | null;
   title_original: string | null;
   alternative_titles: string | null;
   author_name: string | null;
@@ -49,10 +52,13 @@ export interface ProjectRow {
   bootstrap_through_chapter: number | null;
   bootstrap_version: string;
   bootstrap_chapter_count: number;
+  active_edition_id: string | null;
 }
 
 export interface ProjectMetadataPatch {
   title?: string;
+  source_title?: string | null;
+  target_title?: string | null;
   title_cn?: string | null;
   title_vi?: string | null;
   title_original?: string | null;
@@ -92,6 +98,8 @@ export interface CreateProjectInput {
   expected_end_chapter?: number | null;
   title_cn?: string | null;
   title_vi?: string | null;
+  source_title?: string | null;
+  target_title?: string | null;
   author_name?: string | null;
   expected_chapter_count?: number | null;
   official_summary?: string | null;
@@ -124,15 +132,19 @@ export class ProjectRepository extends BaseRepository {
           watch_folder_enabled, scan_on_startup,
           auto_import_new_chapters, auto_queue_new_chapters, auto_translate_new_chapters,
           expected_start_chapter, expected_end_chapter, last_folder_scan_at,
-          title_cn, title_vi, author_name, expected_chapter_count, official_summary,
+          title_cn, title_vi, source_title, target_title, author_name, expected_chapter_count, official_summary,
           book_profile_dirty
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       )
       .run(
         id,
         input.title,
-        input.source_language ?? 'zh',
-        input.target_language ?? 'vi',
+        input.source_language
+          ? normalizeLanguageCode(input.source_language)
+          : 'zh-Hans',
+        input.target_language
+          ? normalizeLanguageCode(input.target_language)
+          : 'vi',
         input.genre ?? null,
         input.description ?? null,
         input.status ?? 'draft',
@@ -149,8 +161,10 @@ export class ProjectRepository extends BaseRepository {
         input.expected_start_chapter ?? null,
         input.expected_end_chapter ?? null,
         null,
-        input.title_cn ?? null,
-        input.title_vi ?? null,
+        input.title_cn ?? input.source_title ?? null,
+        input.title_vi ?? input.target_title ?? null,
+        input.source_title ?? input.title_cn ?? null,
+        input.target_title ?? input.title_vi ?? null,
         input.author_name ?? null,
         input.expected_chapter_count ?? null,
         input.official_summary ?? null,
@@ -226,9 +240,68 @@ export class ProjectRepository extends BaseRepository {
     return this.getById(id);
   }
 
+  updateLanguages(
+    id: string,
+    sourceLanguage: string,
+    targetLanguage: string,
+  ): ProjectRow | null {
+    const existing = this.getById(id);
+    if (!existing) return null;
+    this.db
+      .prepare(
+        `UPDATE projects SET source_language = ?, target_language = ?, updated_at = ? WHERE id = ?`,
+      )
+      .run(
+        normalizeLanguageCode(sourceLanguage),
+        normalizeLanguageCode(targetLanguage),
+        utcNow(),
+        id,
+      );
+    return this.getById(id);
+  }
+
+  setActiveEditionId(id: string, editionId: string | null): ProjectRow | null {
+    const existing = this.getById(id);
+    if (!existing) return null;
+    this.db
+      .prepare(`UPDATE projects SET active_edition_id = ?, updated_at = ? WHERE id = ?`)
+      .run(editionId, utcNow(), id);
+    return this.getById(id);
+  }
+
+  getStyleConfig(projectId: string): string | null {
+    const row = this.db
+      .prepare(`SELECT style_config FROM project_settings WHERE project_id = ?`)
+      .get(projectId) as { style_config: string | null } | undefined;
+    return row?.style_config ?? null;
+  }
+
+  setStyleConfig(projectId: string, styleConfig: string | null): void {
+    this.db
+      .prepare(
+        `UPDATE project_settings SET style_config = ?, updated_at = ? WHERE project_id = ?`,
+      )
+      .run(styleConfig, utcNow(), projectId);
+  }
+
   updateMetadata(id: string, patch: ProjectMetadataPatch): ProjectRow | null {
     const existing = this.getById(id);
     if (!existing) return null;
+
+    const nextSourceTitle =
+      patch.source_title !== undefined
+        ? patch.source_title
+        : patch.title_cn !== undefined
+          ? patch.title_cn
+          : (existing.source_title ?? existing.title_cn);
+    const nextTargetTitle =
+      patch.target_title !== undefined
+        ? patch.target_title
+        : patch.title_vi !== undefined
+          ? patch.title_vi
+          : (existing.target_title ?? existing.title_vi);
+    const nextTitleCn = patch.title_cn !== undefined ? patch.title_cn : nextSourceTitle;
+    const nextTitleVi = patch.title_vi !== undefined ? patch.title_vi : nextTargetTitle;
 
     this.db
       .prepare(
@@ -236,6 +309,8 @@ export class ProjectRepository extends BaseRepository {
           title = ?,
           title_cn = ?,
           title_vi = ?,
+          source_title = ?,
+          target_title = ?,
           title_original = ?,
           alternative_titles = ?,
           author_name = ?,
@@ -258,8 +333,10 @@ export class ProjectRepository extends BaseRepository {
       )
       .run(
         patch.title ?? existing.title,
-        patch.title_cn !== undefined ? patch.title_cn : existing.title_cn,
-        patch.title_vi !== undefined ? patch.title_vi : existing.title_vi,
+        nextTitleCn,
+        nextTitleVi,
+        nextSourceTitle,
+        nextTargetTitle,
         patch.title_original !== undefined ? patch.title_original : existing.title_original,
         patch.alternative_titles !== undefined
           ? patch.alternative_titles

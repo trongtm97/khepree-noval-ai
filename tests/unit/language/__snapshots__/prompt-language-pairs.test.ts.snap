@@ -1,0 +1,271 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`repair / continuation preserve language pair > continuation en → vi > continuation-en-vi 1`] = `
+"Source language: English (en)
+Target language: Tiếng Việt (vi)
+Translate: English → Tiếng Việt
+
+Continue from C000001:P000002.
+Do not repeat paragraphs already translated.
+Return only the remaining part.
+Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
+Do not renumber paragraph IDs — use exact source IDs.
+Translations must be in the target language.
+
+Source paragraphs (remaining):
+C000001:P000002 b"
+`;
+
+exports[`repair / continuation preserve language pair > continuation es → vi > continuation-es-vi 1`] = `
+"Source language: Español (es)
+Target language: Tiếng Việt (vi)
+Translate: Español → Tiếng Việt
+
+Continue from C000001:P000002.
+Do not repeat paragraphs already translated.
+Return only the remaining part.
+Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
+Do not renumber paragraph IDs — use exact source IDs.
+Translations must be in the target language.
+
+Source paragraphs (remaining):
+C000001:P000002 b"
+`;
+
+exports[`repair / continuation preserve language pair > continuation ja → en > continuation-ja-en 1`] = `
+"Source language: 日本語 (ja)
+Target language: English (en)
+Translate: 日本語 → English
+
+Continue from C000001:P000002.
+Do not repeat paragraphs already translated.
+Return only the remaining part.
+Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
+Do not renumber paragraph IDs — use exact source IDs.
+Translations must be in the target language.
+
+Source paragraphs (remaining):
+C000001:P000002 b"
+`;
+
+exports[`repair / continuation preserve language pair > continuation vi → en > continuation-vi-en 1`] = `
+"Source language: Tiếng Việt (vi)
+Target language: English (en)
+Translate: Tiếng Việt → English
+
+Continue from C000001:P000002.
+Do not repeat paragraphs already translated.
+Return only the remaining part.
+Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
+Do not renumber paragraph IDs — use exact source IDs.
+Translations must be in the target language.
+
+Source paragraphs (remaining):
+C000001:P000002 b"
+`;
+
+exports[`repair / continuation preserve language pair > continuation zh-Hans → vi > continuation-zh-Hans-vi 1`] = `
+"Source language: 简体中文 (zh-Hans)
+Target language: Tiếng Việt (vi)
+Translate: 简体中文 → Tiếng Việt
+
+Continue from C000001:P000002.
+Do not repeat paragraphs already translated.
+Return only the remaining part.
+Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
+Do not renumber paragraph IDs — use exact source IDs.
+Translations must be in the target language.
+
+Source paragraphs (remaining):
+C000001:P000002 b"
+`;
+
+exports[`repair / continuation preserve language pair > repair en → vi > repair-en-vi 1`] = `
+"Source language: English (en)
+Target language: Tiếng Việt (vi)
+Translate: English → Tiếng Việt
+
+Previous response was missing translations for these paragraph IDs:
+C000001:P000001
+
+Local context (already translated — do NOT re-translate unless listed above):
+C000001:P000002 world
+
+Translate ONLY these source paragraphs into the target language:
+C000001:P000001 hello
+
+Output ONLY the <TRANSLATION> section for the missing IDs.
+Use exact IDs. One line per ID. No other sections. No markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>"
+`;
+
+exports[`repair / continuation preserve language pair > repair es → vi > repair-es-vi 1`] = `
+"Source language: Español (es)
+Target language: Tiếng Việt (vi)
+Translate: Español → Tiếng Việt
+
+Previous response was missing translations for these paragraph IDs:
+C000001:P000001
+
+Local context (already translated — do NOT re-translate unless listed above):
+C000001:P000002 world
+
+Translate ONLY these source paragraphs into the target language:
+C000001:P000001 hello
+
+Output ONLY the <TRANSLATION> section for the missing IDs.
+Use exact IDs. One line per ID. No other sections. No markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>"
+`;
+
+exports[`repair / continuation preserve language pair > repair ja → en > repair-ja-en 1`] = `
+"Source language: 日本語 (ja)
+Target language: English (en)
+Translate: 日本語 → English
+
+Previous response was missing translations for these paragraph IDs:
+C000001:P000001
+
+Local context (already translated — do NOT re-translate unless listed above):
+C000001:P000002 world
+
+Translate ONLY these source paragraphs into the target language:
+C000001:P000001 hello
+
+Output ONLY the <TRANSLATION> section for the missing IDs.
+Use exact IDs. One line per ID. No other sections. No markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>"
+`;
+
+exports[`repair / continuation preserve language pair > repair vi → en > repair-vi-en 1`] = `
+"Source language: Tiếng Việt (vi)
+Target language: English (en)
+Translate: Tiếng Việt → English
+
+Previous response was missing translations for these paragraph IDs:
+C000001:P000001
+
+Local context (already translated — do NOT re-translate unless listed above):
+C000001:P000002 world
+
+Translate ONLY these source paragraphs into the target language:
+C000001:P000001 hello
+
+Output ONLY the <TRANSLATION> section for the missing IDs.
+Use exact IDs. One line per ID. No other sections. No markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>"
+`;
+
+exports[`repair / continuation preserve language pair > repair zh-Hans → vi > repair-zh-Hans-vi 1`] = `
+"Source language: 简体中文 (zh-Hans)
+Target language: Tiếng Việt (vi)
+Translate: 简体中文 → Tiếng Việt
+
+Previous response was missing translations for these paragraph IDs:
+C000001:P000001
+
+Local context (already translated — do NOT re-translate unless listed above):
+C000001:P000002 world
+
+Translate ONLY these source paragraphs into the target language:
+C000001:P000001 hello
+
+Output ONLY the <TRANSLATION> section for the missing IDs.
+Use exact IDs. One line per ID. No other sections. No markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>"
+`;
+
+exports[`translation task header snapshots (5 pairs) > en → vi > task-header-en-vi 1`] = `
+"## Task
+Source language:
+English
+
+Target language:
+Tiếng Việt
+
+Translate:
+English → Tiếng Việt
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`translation task header snapshots (5 pairs) > es → vi > task-header-es-vi 1`] = `
+"## Task
+Source language:
+Español
+
+Target language:
+Tiếng Việt
+
+Translate:
+Español → Tiếng Việt
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`translation task header snapshots (5 pairs) > ja → en > task-header-ja-en 1`] = `
+"## Task
+Source language:
+日本語
+
+Target language:
+English
+
+Translate:
+日本語 → English
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`translation task header snapshots (5 pairs) > vi → en > task-header-vi-en 1`] = `
+"## Task
+Source language:
+Tiếng Việt
+
+Target language:
+English
+
+Translate:
+Tiếng Việt → English
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`translation task header snapshots (5 pairs) > zh-Hans → vi > task-header-zh-Hans-vi 1`] = `
+"## Task
+Source language:
+简体中文
+
+Target language:
+Tiếng Việt
+
+Translate:
+简体中文 → Tiếng Việt
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;

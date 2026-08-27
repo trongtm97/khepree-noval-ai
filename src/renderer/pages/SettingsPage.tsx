@@ -21,6 +21,7 @@ import { HelpContextButton } from '../features/help/HelpContextButton';
 
 import { AiProvidersSettingsPanel } from '../components/settings/AiProvidersSettingsPanel';
 import { AiDiagnosticsSettingsPanel } from '../components/settings/AiDiagnosticsSettingsPanel';
+import { SchedulerConcurrencyPanel } from '../components/settings/SchedulerConcurrencyPanel';
 
 type SettingsTab =
   | 'appearance'
@@ -291,6 +292,8 @@ export function SettingsPage() {
       </TabPanel>
 
       <TabPanel active={tab === 'advanced'}>
+        <SchedulerConcurrencyPanel onMessage={setMessage} onError={setError} />
+
         <Card as="section" style={{ marginTop: '1rem' }}>
           <SectionHeader title={t('settings.developerTools')} />
           <div className="btn-row">

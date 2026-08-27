@@ -6,7 +6,11 @@ import {
 } from '../constants/book-metadata';
 
 export const ParsedBookMetadataSchema = z.object({
+  sourceTitle: z.string().optional(),
+  targetTitle: z.string().optional(),
+  /** Legacy alias of sourceTitle. */
   titleCn: z.string().optional(),
+  /** Legacy alias of targetTitle. */
   titleVi: z.string().optional(),
   titleOriginal: z.string().optional(),
   alternativeTitles: z.array(z.string()).optional(),
@@ -70,7 +74,11 @@ export type ClassifiedFileEntryDto = z.infer<typeof ClassifiedFileEntrySchema>;
 
 export const ProjectMetadataDtoSchema = z.object({
   title: z.string(),
+  sourceTitle: z.string().nullable(),
+  targetTitle: z.string().nullable(),
+  /** Legacy alias of sourceTitle. */
   titleCn: z.string().nullable(),
+  /** Legacy alias of targetTitle. */
   titleVi: z.string().nullable(),
   titleOriginal: z.string().nullable(),
   alternativeTitles: z.array(z.string()),

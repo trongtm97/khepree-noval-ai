@@ -37,6 +37,13 @@ export class TermService {
   upsert(input: {
     id?: string;
     sourceText: string;
+    targetText?: string;
+    sourceLanguage?: string;
+    targetLanguage?: string;
+    sourceVariants?: string[];
+    targetVariants?: string[];
+    transliteration?: string | null;
+    transliterationSystem?: string | null;
     simplified?: string;
     traditional?: string | null;
     pinyin?: string | null;
@@ -53,12 +60,24 @@ export class TermService {
     locked?: boolean;
   }): TermDto {
     const db = getDatabase();
-    const simplified = input.simplified ?? input.sourceText;
+    const sourceText = input.simplified ?? input.sourceText;
+    const preferred =
+      input.preferredTranslation ?? input.targetText;
+    const sourceLanguage = input.sourceLanguage ?? 'zh-Hans';
+    const targetLanguage = input.targetLanguage ?? 'vi';
+
     if (input.id) {
       const updated = db.terms.update(input.id, {
-        source_simplified: simplified,
+        source_text: sourceText,
+        source_simplified: sourceText,
         source_traditional: input.traditional,
         pinyin: input.pinyin,
+        source_language: sourceLanguage,
+        target_language: targetLanguage,
+        source_variants: input.sourceVariants,
+        target_variants: input.targetVariants,
+        transliteration: input.transliteration,
+        transliteration_system: input.transliterationSystem,
         term_type: input.type ? normalizeTermType(input.type) : undefined,
         meaning: input.meaning,
         scope: input.scope,
@@ -68,17 +87,55 @@ export class TermService {
         status: input.status,
         notes: input.notes,
         locked: input.locked,
-        preferred_translation: input.preferredTranslation,
+        preferred_translation: preferred,
         alternative_translations: input.alternativeTranslations,
       });
       if (!updated) throw new Error(`Term not found: ${input.id}`);
       return this.toDto(updated);
     }
 
+    // Pair-scoped upsert: same source for another language pair is a new row.
+    const existing = db.terms.getBySourceAndScope(
+      sourceText,
+      input.scope,
+      input.scopeRef,
+      { sourceLanguage, targetLanguage },
+    );
+    if (existing) {
+      const updated = db.terms.update(existing.id, {
+        source_text: sourceText,
+        source_simplified: sourceText,
+        source_traditional: input.traditional,
+        pinyin: input.pinyin,
+        source_language: sourceLanguage,
+        target_language: targetLanguage,
+        source_variants: input.sourceVariants,
+        target_variants: input.targetVariants,
+        transliteration: input.transliteration,
+        transliteration_system: input.transliterationSystem,
+        term_type: input.type ? normalizeTermType(input.type) : undefined,
+        meaning: input.meaning,
+        confidence: input.confidence,
+        status: input.status,
+        notes: input.notes,
+        locked: input.locked,
+        preferred_translation: preferred,
+        alternative_translations: input.alternativeTranslations,
+      });
+      return this.toDto(updated ?? existing);
+    }
+
     const created = db.terms.create({
-      source_simplified: simplified,
+      source_text: sourceText,
+      source_simplified: sourceText,
       source_traditional: input.traditional,
       pinyin: input.pinyin,
+      source_language: sourceLanguage,
+      target_language: targetLanguage,
+      source_variants: input.sourceVariants,
+      target_variants: input.targetVariants,
+      transliteration: input.transliteration,
+      transliteration_system: input.transliterationSystem,
       term_type: input.type ? normalizeTermType(input.type) : undefined,
       meaning: input.meaning,
       scope: input.scope,
@@ -88,7 +145,7 @@ export class TermService {
       status: input.status ?? 'CANDIDATE',
       notes: input.notes,
       locked: input.locked,
-      preferred_translation: input.preferredTranslation,
+      preferred_translation: preferred,
       alternative_translations: input.alternativeTranslations,
     });
     return this.toDto(created);
@@ -121,9 +178,16 @@ export class TermService {
           case 'edit': {
             if (!input.patch) break;
             const row = db.terms.update(termId, {
+              source_text: input.patch.sourceText ?? input.patch.simplified,
               source_simplified: input.patch.sourceText ?? input.patch.simplified,
               source_traditional: input.patch.traditional,
               pinyin: input.patch.pinyin,
+              source_language: input.patch.sourceLanguage,
+              target_language: input.patch.targetLanguage,
+              source_variants: input.patch.sourceVariants,
+              target_variants: input.patch.targetVariants,
+              transliteration: input.patch.transliteration,
+              transliteration_system: input.patch.transliterationSystem,
               term_type: input.patch.type ? normalizeTermType(input.patch.type) : undefined,
               meaning: input.patch.meaning,
               scope: input.patch.scope,
@@ -133,7 +197,8 @@ export class TermService {
               status: input.patch.status,
               notes: input.patch.notes,
               locked: input.patch.locked,
-              preferred_translation: input.patch.preferredTranslation,
+              preferred_translation:
+                input.patch.preferredTranslation ?? input.patch.targetText,
               alternative_translations: input.patch.alternativeTranslations,
             });
             if (row) results.push(this.toDto(row));
@@ -192,9 +257,13 @@ export class TermService {
     const context: TermMatchContext = {
       projectId,
       genre: project?.genre ?? null,
+      sourceLanguage: project?.source_language,
+      targetLanguage: project?.target_language,
     };
     const allTerms = db.terms.listForMatching(context);
-    const index = buildTermMatchIndex(allTerms);
+    const index = buildTermMatchIndex(allTerms, {
+      sourceLanguage: context.sourceLanguage,
+    });
     const matches = matchKnownTermsInText(text, index, allTerms, context);
 
     for (const m of matches) {

@@ -17,6 +17,10 @@ const GUARDED_FILES = [
   'src/main/services/translate-readiness-service.ts',
   'src/main/bootstrap/full-novel-preprocess-orchestrator.ts',
   'src/main/bootstrap/full-novel-preprocess-auto-service.ts',
+  'src/main/services/project-dto.ts',
+  'src/renderer/utils/translate-preflight.ts',
+  'src/main/jobs/worker-pool.ts',
+  'src/main/learning/learning-pipeline.ts',
 ];
 
 /** Patterns that indicate blind first-READY / first-account selection. */

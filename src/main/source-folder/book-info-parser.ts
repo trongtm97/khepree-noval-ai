@@ -1,7 +1,11 @@
 import type { MetadataSource } from '@shared/constants/book-metadata';
 
 export interface ParsedBookMetadata {
+  sourceTitle?: string;
+  targetTitle?: string;
+  /** Legacy alias of sourceTitle (BOOK_INFO / older parsers). */
   titleCn?: string;
+  /** Legacy alias of targetTitle (BOOK_INFO / older parsers). */
   titleVi?: string;
   titleOriginal?: string;
   alternativeTitles?: string[];
@@ -25,12 +29,28 @@ interface FieldMapping {
 
 const FIELD_MAPPINGS: FieldMapping[] = [
   {
-    field: 'titleCn',
-    keys: ['tên truyện', 'tên gốc', 'title', '作品名', '书名', '小说名', '原名'],
+    field: 'sourceTitle',
+    keys: [
+      'tên truyện',
+      'tên gốc',
+      'source title',
+      'title',
+      '作品名',
+      '书名',
+      '小说名',
+      '原名',
+    ],
   },
   {
-    field: 'titleVi',
-    keys: ['tên tiếng việt', 'tên việt', 'vietnamese title', '越南语名'],
+    field: 'targetTitle',
+    keys: [
+      'tên dịch',
+      'tên tiếng việt',
+      'tên việt',
+      'target title',
+      'vietnamese title',
+      '越南语名',
+    ],
   },
   {
     field: 'titleOriginal',
@@ -207,6 +227,12 @@ export function parseBookInfoText(text: string): ParsedBookMetadata {
     const existingNotes = result.notes?.trim();
     result.notes = [existingNotes, result.unclassifiedNotes].filter(Boolean).join('\n\n');
   }
+
+  // Legacy mirrors for older callers still reading titleCn / titleVi.
+  if (result.sourceTitle && !result.titleCn) result.titleCn = result.sourceTitle;
+  if (result.targetTitle && !result.titleVi) result.titleVi = result.targetTitle;
+  if (result.titleCn && !result.sourceTitle) result.sourceTitle = result.titleCn;
+  if (result.titleVi && !result.targetTitle) result.targetTitle = result.titleVi;
 
   return result;
 }

@@ -17,7 +17,7 @@ export function ProgressBar({
     ? 0
     : max <= 0
       ? 0
-      : Math.min(100, Math.max(0, ((value as number) / max) * 100));
+      : Math.min(100, Math.max(0, (value / max) * 100));
 
   return (
     <div

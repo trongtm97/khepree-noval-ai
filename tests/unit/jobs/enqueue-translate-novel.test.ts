@@ -103,6 +103,7 @@ function mockNovelDb(opts: {
           lease_owner: null,
           lease_expires_at: null,
           scheduled_at: null,
+          edition_id: null,
           created_at: '2026-01-01T00:00:00.000Z',
           updated_at: '2026-01-01T00:00:00.000Z',
           started_at: null,

@@ -30,6 +30,7 @@ export interface FolderScannerOptions {
   concurrency?: number;
   onProgress?: (processed: number, total: number) => void;
   signal?: AbortSignal;
+  sourceLanguage?: string | null;
 }
 
 async function mapWithConcurrency<T, R>(
@@ -173,7 +174,12 @@ export async function scanSourceFolder(
       }
 
       const buffer = await fs.readFile(filePath);
-      const classified = classifySourceFile({ filePath, buffer, stat });
+      const classified = classifySourceFile({
+        filePath,
+        buffer,
+        stat,
+        sourceLanguage: options.sourceLanguage,
+      });
       processed += 1;
       onProgress?.(processed, txtFiles.length);
       return classified;

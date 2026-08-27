@@ -2,11 +2,13 @@ import type { DatabaseManager } from '../db/database-manager';
 import type { ParsedBatchResult } from '@shared/schemas/output-protocol';
 import type { TranslationVersionSource } from '@shared/constants/translation-editor';
 import { logger } from '../logging/logger';
+import { resolveActiveEditionId } from '../services/edition-service';
 
 export interface PersistTranslationsInput {
   projectId: string;
   parsed: ParsedBatchResult;
   versionSource: TranslationVersionSource;
+  editionId?: string | null;
 }
 
 /**
@@ -19,6 +21,8 @@ export function persistParsedTranslations(
 ): { saved: number; skipped: number } {
   let saved = 0;
   let skipped = 0;
+  const editionId =
+    input.editionId ?? resolveActiveEditionId(db, input.projectId);
 
   for (const line of input.parsed.translations) {
     const para = db.paragraphs.getByStableId(line.paragraphId);
@@ -29,6 +33,7 @@ export function persistParsedTranslations(
 
     const result = db.translations.upsert({
       paragraph_id: para.id,
+      edition_id: editionId,
       translated_text: line.text,
       status: 'translated',
       version_source: input.versionSource,

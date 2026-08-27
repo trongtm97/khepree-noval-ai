@@ -65,13 +65,23 @@ function loadCriticalRules(db: DatabaseManager, projectId: string): string[] {
 }
 
 /** Synthetic vault-like row so matcher can find pending candidates in source text. */
-function candidateAsMatchTerm(candidate: TermCandidateRow): TermRow {
+function candidateAsMatchTerm(
+  candidate: TermCandidateRow,
+  pair: { sourceLanguage: string; targetLanguage: string },
+): TermRow {
   const now = candidate.updated_at;
   return {
     id: candidate.id,
+    source_text: candidate.source_text,
     source_simplified: candidate.source_text,
     source_traditional: null,
     pinyin: null,
+    source_language: pair.sourceLanguage,
+    target_language: pair.targetLanguage,
+    source_variants: null,
+    target_variants: null,
+    transliteration: null,
+    transliteration_system: null,
     term_type: candidate.suggested_type ?? 'OTHER',
     genre: null,
     scope: 'PROJECT',
@@ -95,12 +105,20 @@ function candidateAsMatchTerm(candidate: TermCandidateRow): TermRow {
 }
 
 function loadTermsForPack(db: DatabaseManager, projectId: string): TermRow[] {
-  const vaultRows = db.terms.listForMatching({ projectId });
-  const vaultSources = new Set(vaultRows.map((row) => row.source_simplified));
+  const projectRepo = (db as { projects?: DatabaseManager['projects'] }).projects;
+  const project = projectRepo?.getById(projectId);
+  const pair = {
+    sourceLanguage: project?.source_language ?? 'zh-Hans',
+    targetLanguage: project?.target_language ?? 'vi',
+  };
+  const vaultRows = db.terms.listForMatching({ projectId, ...pair });
+  const vaultSources = new Set(
+    vaultRows.map((row) => row.source_text ?? row.source_simplified),
+  );
   const candidateRows = db.termCandidates
     .listPendingForPack(projectId, PACK_CANDIDATE_MIN_CONFIDENCE)
     .filter((c) => !vaultSources.has(c.source_text))
-    .map(candidateAsMatchTerm);
+    .map((c) => candidateAsMatchTerm(c, pair));
   return [...vaultRows, ...candidateRows];
 }
 
@@ -149,12 +167,18 @@ export function buildMemoryContext(
     ),
   });
 
+  const projectRepo = (db as { projects?: DatabaseManager['projects'] }).projects;
+  const project = projectRepo?.getById(input.projectId);
   const termRows = loadTermsForPack(db, input.projectId);
   // Lexical look-ahead: all known terms may standardize names early.
   // Plot/relationship timing is enforced via listActiveAtChapter + character first_chapter.
-  const termIndex = buildTermMatchIndex(termRows);
+  const termIndex = buildTermMatchIndex(termRows, {
+    sourceLanguage: project?.source_language,
+  });
   const termMatches = matchKnownTermsInText(batchText, termIndex, termRows, {
     projectId: input.projectId,
+    sourceLanguage: project?.source_language,
+    targetLanguage: project?.target_language,
   });
   const activeTerms = trimToTokenBudget(
     termMatches.map((match) => {

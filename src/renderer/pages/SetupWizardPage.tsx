@@ -244,7 +244,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
             <ul className="setup-account-list">
               {accounts.map((a) => (
                 <li key={a.id}>
-                  <span>{a.label || a.email || a.id.slice(0, 8)}</span>
+                  <span>{a.label || (a.email ?? a.id.slice(0, 8))}</span>
                   <Badge tone={a.status === 'READY' ? 'success' : 'default'}>
                     {statusLabel(a.status)}
                   </Badge>

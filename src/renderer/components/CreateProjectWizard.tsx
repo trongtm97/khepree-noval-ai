@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import type { FolderPreviewDto } from '@shared/schemas/source-folder';
 import type { GoogleAccountDto } from '@shared/schemas/account';
 import type { ProjectDto } from '@shared/schemas/import';
+import type { LanguageProfileDto } from '@shared/schemas/language-profile';
+import {
+  DEFAULT_SOURCE_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+  LANGUAGE_AUTO,
+  canSwapLanguages,
+} from '@shared/constants/language-profile';
 import { Button, Input, Select } from './ui';
 import { useT } from '../i18n';
 
@@ -30,6 +37,10 @@ export function CreateProjectWizard({
   const [genre, setGenre] = useState('');
   const [accountId, setAccountId] = useState('');
   const [stylePreset, setStylePreset] = useState('balanced');
+  const [sourceLanguage, setSourceLanguage] = useState(DEFAULT_SOURCE_LANGUAGE);
+  const [targetLanguage, setTargetLanguage] = useState(DEFAULT_TARGET_LANGUAGE);
+  const [languages, setLanguages] = useState<LanguageProfileDto[]>([]);
+  const [detectionBanner, setDetectionBanner] = useState<string | null>(null);
   const [folderPath, setFolderPath] = useState<string | null>(null);
   const [expectedStart, setExpectedStart] = useState('');
   const [expectedEnd, setExpectedEnd] = useState('');
@@ -48,7 +59,18 @@ export function CreateProjectWizard({
       .list()
       .then((res) => { setAccounts(res.accounts); })
       .catch(() => { setAccounts([]); });
+    void window.novelTrans.languages
+      .list()
+      .then((res) => { setLanguages(res.languages); })
+      .catch(() => { setLanguages([]); });
   }, []);
+
+  const swapLanguages = () => {
+    if (!canSwapLanguages(sourceLanguage, targetLanguage)) return;
+    setSourceLanguage(targetLanguage);
+    setTargetLanguage(sourceLanguage);
+    setDetectionBanner(null);
+  };
 
   const pickFolder = async () => {
     setBusy(true);
@@ -76,6 +98,21 @@ export function CreateProjectWizard({
         expectedEndChapter: expectedEnd ? Number.parseInt(expectedEnd, 10) : undefined,
       });
       setPreview(next);
+
+      if (sourceLanguage === LANGUAGE_AUTO) {
+        const sample = next.scanResult.newChapters
+          .slice(0, 3)
+          .map((c) => c.chapterTitle || c.sourceFileName)
+          .join('\n');
+        if (sample.trim()) {
+          const detected = await window.novelTrans.languages.detect({ sampleText: sample });
+          setSourceLanguage(detected.code);
+          setDetectionBanner(
+            t('createProjectWizard.detectedLanguage', { name: detected.displayNameVi }),
+          );
+        }
+      }
+
       setStep('preview');
     } catch (err: unknown) {
       onError(err instanceof Error ? err.message : t('createProjectWizard.scanFailed'));
@@ -93,6 +130,8 @@ export function CreateProjectWizard({
         projectTitle: title.trim() || t('createProjectWizard.defaultTitle'),
         genre: genre.trim() || null,
         chineseTitle: chineseTitle.trim() || null,
+        sourceLanguage,
+        targetLanguage,
         accountId: accountId || null,
         styleConfig: { preset: stylePreset },
         expectedStartChapter: expectedStart ? Number.parseInt(expectedStart, 10) : null,
@@ -174,6 +213,51 @@ export function CreateProjectWizard({
             {t('createProjectWizard.chineseTitle')}
             <Input value={chineseTitle} onChange={(e) => { setChineseTitle(e.target.value); }} />
           </label>
+          <div className="btn-row" style={{ alignItems: 'flex-end', gap: 12 }}>
+            <label style={{ flex: 1 }}>
+              {t('createProjectWizard.sourceLanguage')}
+              <Select
+                value={sourceLanguage}
+                onChange={(e) => {
+                  setSourceLanguage(e.target.value);
+                  setDetectionBanner(null);
+                }}
+              >
+                <option value={LANGUAGE_AUTO}>{t('createProjectWizard.languageAuto')}</option>
+                {languages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.displayNameVi}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <Button
+              type="button"
+              disabled={!canSwapLanguages(sourceLanguage, targetLanguage)}
+              onClick={swapLanguages}
+              title={t('createProjectWizard.swapLanguages')}
+            >
+              ↔
+            </Button>
+            <label style={{ flex: 1 }}>
+              {t('createProjectWizard.targetLanguage')}
+              <Select
+                value={targetLanguage}
+                onChange={(e) => { setTargetLanguage(e.target.value); }}
+              >
+                {languages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.displayNameVi}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          </div>
+          {detectionBanner ? (
+            <p className="muted">
+              {detectionBanner} {t('createProjectWizard.detectedEditHint')}
+            </p>
+          ) : null}
           <label>
             {t('createProjectWizard.genre')}
             <Input value={genre} onChange={(e) => { setGenre(e.target.value); }} />
@@ -253,11 +337,21 @@ export function CreateProjectWizard({
               <h3>{t('createProjectWizard.metadataDetected')}</h3>
               <p className="muted">{t('createProjectWizard.metadataFromBookInfo')}</p>
               <ul>
-                {preview.scanResult.bookMetadata.parsed.titleCn ? (
-                  <li>Tên gốc: {preview.scanResult.bookMetadata.parsed.titleCn}</li>
+                {(preview.scanResult.bookMetadata.parsed.sourceTitle ??
+                  preview.scanResult.bookMetadata.parsed.titleCn) ? (
+                  <li>
+                    Tên gốc:{' '}
+                    {preview.scanResult.bookMetadata.parsed.sourceTitle ??
+                      preview.scanResult.bookMetadata.parsed.titleCn}
+                  </li>
                 ) : null}
-                {preview.scanResult.bookMetadata.parsed.titleVi ? (
-                  <li>Tên Việt: {preview.scanResult.bookMetadata.parsed.titleVi}</li>
+                {(preview.scanResult.bookMetadata.parsed.targetTitle ??
+                  preview.scanResult.bookMetadata.parsed.titleVi) ? (
+                  <li>
+                    Tên dịch:{' '}
+                    {preview.scanResult.bookMetadata.parsed.targetTitle ??
+                      preview.scanResult.bookMetadata.parsed.titleVi}
+                  </li>
                 ) : null}
                 {preview.scanResult.bookMetadata.parsed.authorName ? (
                   <li>Tác giả: {preview.scanResult.bookMetadata.parsed.authorName}</li>

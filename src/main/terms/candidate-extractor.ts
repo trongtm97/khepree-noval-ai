@@ -119,6 +119,7 @@ function classifyByHeuristics(source: string): {
 export function knownSourceSet(terms: TermRow[]): Set<string> {
   const set = new Set<string>();
   for (const t of terms) {
+    if (t.source_text?.trim()) set.add(t.source_text.trim());
     set.add(t.source_simplified);
     if (t.source_traditional) set.add(t.source_traditional);
   }

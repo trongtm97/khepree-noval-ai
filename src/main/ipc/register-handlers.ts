@@ -47,7 +47,25 @@ import {
   ProjectDtoSchema,
   ProjectIdRequestSchema,
   ProjectListResponseSchema,
+  ProjectUpdateLanguagesRequestSchema,
+  ProjectUpdateLanguagesResponseSchema,
 } from '@shared/schemas/import';
+import {
+  LanguageDetectRequestSchema,
+  LanguageDetectResponseSchema,
+  LanguageListResponseSchema,
+  LanguageProfileDtoSchema,
+} from '@shared/schemas/language-profile';
+import {
+  listLanguageProfiles,
+  normalizeLanguageCode,
+  DEFAULT_SOURCE_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+} from '@shared/constants/language-profile';
+import {
+  detectLanguage,
+  resolveSourceLanguageInput,
+} from '../language/language-detect';
 import {
   ProjectWorkerResolveRequestSchema,
   ProjectWorkerResolutionDtoSchema,
@@ -65,6 +83,20 @@ import { getAccountWorkerService } from '../services/account-worker-singleton';
 import { toGoogleAccountDto } from '../services/account-dto';
 import { getDatabase } from '../db/connection';
 import { toProjectDto, toProjectDtoFromDb } from '../services/project-dto';
+import {
+  createEdition,
+  ensureDefaultEdition,
+  listEditions,
+  switchEdition,
+} from '../services/edition-service';
+import {
+  EditionCreateRequestSchema,
+  EditionCreateResponseSchema,
+  EditionListRequestSchema,
+  EditionListResponseSchema,
+  EditionSwitchRequestSchema,
+  EditionSwitchResponseSchema,
+} from '@shared/schemas/edition';
 import { getImportService } from '../import/import-service-singleton';
 import {
   getSourceFolderService,
@@ -319,6 +351,7 @@ import {
   JobRecoverRequestSchema,
   JobRecoverResponseSchema,
   SchedulerStatusResponseSchema,
+  SchedulerSettingsUpdateSchema,
   WorkerListResponseSchema,
 } from '@shared/schemas/job';
 import type { RepairSender } from '../jobs/repair-loop';
@@ -639,15 +672,103 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.PROJECT_CREATE,
-    createIpcHandler(ProjectCreateRequestSchema, (request) => {
+    createIpcHandler(ProjectCreateRequestSchema, async (request) => {
+      const resolved = await resolveSourceLanguageInput({
+        sourceLanguage: request.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE,
+        sampleText: request.sampleText,
+      });
+      const targetLanguage = normalizeLanguageCode(
+        request.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
+      );
+      if (resolved.code === targetLanguage) {
+        throw new Error('sourceLanguage and targetLanguage must differ');
+      }
       const row = getDatabase().projects.create({
         title: request.title,
         genre: request.genre,
         description: request.description,
+        source_language: resolved.code,
+        target_language: targetLanguage,
       });
+      ensureDefaultEdition(getDatabase(), row.id);
+      const refreshed = getDatabase().projects.getById(row.id)!;
       return ProjectCreateResponseSchema.parse({
-        project: ProjectDtoSchema.parse(toProjectDto(row, 0)),
+        project: ProjectDtoSchema.parse(toProjectDto(refreshed, 0)),
+        sourceDetection: resolved.detection,
       });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_UPDATE_LANGUAGES,
+    createIpcHandler(ProjectUpdateLanguagesRequestSchema, (request) => {
+      const db = getDatabase();
+      const existing = db.projects.getById(request.projectId);
+      if (!existing) throw new Error(`Project not found: ${request.projectId}`);
+      ensureDefaultEdition(db, request.projectId);
+
+      // Source language stays on project; target language maps to edition switch/create.
+      db.projects.updateLanguages(
+        request.projectId,
+        request.sourceLanguage,
+        existing.target_language,
+      );
+      createEdition(db, {
+        projectId: request.projectId,
+        targetLanguage: request.targetLanguage,
+        activate: true,
+      });
+      const row = db.projects.getById(request.projectId);
+      if (!row) throw new Error(`Project not found: ${request.projectId}`);
+      return ProjectUpdateLanguagesResponseSchema.parse({
+        project: ProjectDtoSchema.parse(toProjectDtoFromDb(db, row)),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.EDITION_LIST,
+    createIpcHandler(EditionListRequestSchema, (request) => {
+      const editions = listEditions(getDatabase(), request.projectId);
+      return EditionListResponseSchema.parse({ editions });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.EDITION_CREATE,
+    createIpcHandler(EditionCreateRequestSchema, (request) => {
+      const result = createEdition(getDatabase(), request);
+      return EditionCreateResponseSchema.parse(result);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.EDITION_SWITCH,
+    createIpcHandler(EditionSwitchRequestSchema, (request) => {
+      const result = switchEdition(getDatabase(), request);
+      return EditionSwitchResponseSchema.parse(result);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LANGUAGE_LIST,
+    createIpcHandlerNoArg(() => {
+      return LanguageListResponseSchema.parse({
+        languages: listLanguageProfiles().map((p) =>
+          LanguageProfileDtoSchema.parse(p),
+        ),
+      });
+    }, LanguageListResponseSchema),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LANGUAGE_DETECT,
+    createIpcHandler(LanguageDetectRequestSchema, async (request) => {
+      const result = await detectLanguage({
+        sampleText: request.sampleText,
+        hintCode: request.hintCode,
+      });
+      return LanguageDetectResponseSchema.parse(result);
     }),
   );
 
@@ -659,8 +780,10 @@ export function registerIpcHandlers(): void {
       if (!row || row.deleted_at) {
         throw new Error(`Project not found: ${request.projectId}`);
       }
+      ensureDefaultEdition(db, request.projectId);
+      const refreshed = db.projects.getById(request.projectId)!;
       return ProjectCreateResponseSchema.parse({
-        project: ProjectDtoSchema.parse(toProjectDtoFromDb(db, row)),
+        project: ProjectDtoSchema.parse(toProjectDtoFromDb(db, refreshed)),
       });
     }),
   );
@@ -851,6 +974,8 @@ export function registerIpcHandlers(): void {
           genre: request.genre,
           description: request.description,
           chineseTitle: request.chineseTitle,
+          sourceLanguage: request.sourceLanguage,
+          targetLanguage: request.targetLanguage,
           accountId: request.accountId,
           styleConfig: request.styleConfig,
           expectedStartChapter: request.expectedStartChapter,
@@ -1439,7 +1564,14 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.NOTEBOOK_REBUILD,
     createIpcHandler(NotebookRebuildRequestSchema, (request) => {
       getNotebookSyncService().rebuildKnowledge(request.projectId);
-      const health = getNotebookSyncService().getHealth(request.projectId);
+      const accountId = new ProjectWorkerResolver(getDatabase()).resolve({
+        projectId: request.projectId,
+        purpose: 'notebook',
+      }).accountId;
+      const health = getNotebookSyncService().getHealth(
+        request.projectId,
+        accountId,
+      );
       return NotebookHealthDtoSchema.parse(health);
     }),
   );
@@ -1799,6 +1931,15 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.JOB_SCHEDULER_STATUS,
     createIpcHandlerNoArg(() => {
       return SchedulerStatusResponseSchema.parse(getJobService().schedulerStatus());
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.JOB_SCHEDULER_UPDATE_SETTINGS,
+    createIpcHandler(SchedulerSettingsUpdateSchema, (request) => {
+      return SchedulerStatusResponseSchema.parse(
+        getJobService().updateSchedulerSettings(request),
+      );
     }),
   );
 

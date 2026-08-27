@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import {
   LayoutDashboard,
   FolderKanban,
-  Languages,
   ListTodo,
   Settings,
   PanelLeftClose,
@@ -19,7 +18,7 @@ import { useT } from '../i18n';
 import { helpArticleForRoute } from '../features/help/content';
 import { useUiShellStore, applyDensity } from '../stores/ui-shell-store';
 import { useNotificationStore } from '../stores/notification-store';
-import { IconButton, Drawer, Button, WorkerStatus } from '../components/ui';
+import { IconButton, Drawer, Button } from '../components/ui';
 import { ToastViewport } from '../components/shell/ToastViewport';
 import { useSystemStatusPoll } from '../hooks/useSystemStatusPoll';
 import { useStartupAiReadiness } from '../hooks/useStartupAiReadiness';
@@ -38,14 +37,13 @@ interface AppShellProps {
 const PRIMARY_NAV = [
   { to: '/', key: 'nav.dashboard', icon: LayoutDashboard, end: true },
   { to: '/projects', key: 'nav.projects', icon: FolderKanban },
-  { to: '/translation', key: 'nav.translation', icon: Languages },
   { to: '/jobs', key: 'nav.jobs', icon: ListTodo },
 ] as const;
 
 const SECONDARY_NAV = [
   { to: '/accounts', key: 'nav.accounts', icon: CircleUser },
-  { to: '/settings', key: 'nav.settings', icon: Settings },
   { to: '/help', key: 'nav.help', icon: BookOpen },
+  { to: '/settings', key: 'nav.settings', icon: Settings },
 ] as const;
 
 const ROUTE_TITLE: Record<string, string> = {
@@ -74,7 +72,6 @@ export function AppShell({ children, appInfo }: AppShellProps) {
     sidebarCollapsed,
     sidebarPinned,
     density,
-    currentProjectId,
     currentProjectName,
     toggleSidebar,
   } = useUiShellStore();
@@ -126,10 +123,6 @@ export function AppShell({ children, appInfo }: AppShellProps) {
     location.pathname === '/editor' ||
     isProjectTranslatePath(location.pathname);
 
-  const translationTarget = currentProjectId
-    ? `/projects/${currentProjectId}/translate`
-    : '/projects';
-
   const shellClass = useMemo(() => {
     const parts = ['app-shell'];
     if (sidebarCollapsed) parts.push('sidebar-collapsed');
@@ -137,15 +130,12 @@ export function AppShell({ children, appInfo }: AppShellProps) {
     return parts.join(' ');
   }, [sidebarCollapsed, sidebarPinned]);
 
-  const workerEmail = status.primaryWorkerEmail;
-  const workerHealth = status.primaryWorkerHealth;
-
   const navActive = (to: string, isActive: boolean) => {
-    if (to === '/translation') {
-      return isProjectTranslatePath(location.pathname) || isActive;
-    }
     if (to === '/projects') {
       return location.pathname === '/projects';
+    }
+    if (to === '/jobs') {
+      return isActive || location.pathname.startsWith('/jobs');
     }
     return isActive;
   };
@@ -169,11 +159,10 @@ export function AppShell({ children, appInfo }: AppShellProps) {
         <nav className="sidebar-nav" aria-label={t('common.mainNav')}>
           {PRIMARY_NAV.map((item) => {
             const Icon = item.icon;
-            const to = item.to === '/translation' ? translationTarget : item.to;
             return (
               <NavLink
                 key={item.key}
-                to={to}
+                to={item.to}
                 end={'end' in item ? item.end : false}
                 className={({ isActive }) =>
                   navActive(item.to, isActive) ? 'nav-link active' : 'nav-link'
@@ -226,10 +215,24 @@ export function AppShell({ children, appInfo }: AppShellProps) {
           </div>
         </div>
         <div className="topbar-right">
-          <div className="topbar-meta">
-            <span>{t('topbar.googleAi')}</span>
-            <WorkerStatus email={workerEmail} status={workerHealth ?? 'READY'} />
-          </div>
+          <button
+            type="button"
+            className="topbar-ops"
+            title={t('topbar.openOperations')}
+            onClick={() => {
+              navigate('/jobs');
+            }}
+          >
+            <span>
+              {t('topbar.streamsRunning', { count: status.jobsRunning })}
+            </span>
+            <span className="topbar-ops-sep" aria-hidden>
+              ·
+            </span>
+            <span>
+              {t('topbar.accountsReady', { count: status.accountsReady })}
+            </span>
+          </button>
           <IconButton
             label={t('topbar.notifications')}
             active={notifOpen}
@@ -269,38 +272,64 @@ export function AppShell({ children, appInfo }: AppShellProps) {
         !startupAi.result.ok &&
         !startupAi.checking &&
         startupAi.title ? (
-          <div className="banner banner-error" style={{ margin: '0.75rem 1rem 0' }} role="status">
+          <div
+            className="banner banner-error startup-ai-banner"
+            style={{ margin: '0.75rem 1rem 0' }}
+            role="status"
+          >
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
               <span style={{ flex: '1 1 220px' }}>
                 <strong>{startupAi.title}</strong>
                 {startupAi.description ? ` — ${startupAi.description}` : ''}
               </span>
               <div className="btn-row">
+                {startupAi.result.issues.includes('check_failed') ? (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => {
+                      navigate('/settings?tab=aiProviders');
+                    }}
+                  >
+                    {t('notifications.startupBannerCtaSettings')}
+                  </Button>
+                ) : null}
+                {startupAi.result.issues.includes('no_google_account') ||
+                startupAi.result.issues.includes('google_needs_login') ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      navigate('/accounts');
+                    }}
+                  >
+                    {t('notifications.startupBannerCtaAccounts')}
+                  </Button>
+                ) : null}
+                {startupAi.result.issues.includes('no_ai_provider') ||
+                startupAi.result.issues.includes('web_api_not_ready') ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      navigate('/settings?tab=aiProviders');
+                    }}
+                  >
+                    {t('notifications.startupBannerCtaProviders')}
+                  </Button>
+                ) : null}
                 <Button
                   size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    navigate('/accounts');
-                  }}
-                >
-                  {t('notifications.startupBannerCtaAccounts')}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    navigate('/settings?tab=aiProviders');
-                  }}
-                >
-                  {t('notifications.startupBannerCtaProviders')}
-                </Button>
-                <Button
-                  size="sm"
+                  variant={
+                    startupAi.result.issues.includes('check_failed') ? 'secondary' : 'primary'
+                  }
                   onClick={() => {
                     void startupAi.refresh();
                   }}
                 >
-                  {t('notifications.startupBannerRecheck')}
+                  {startupAi.result.issues.includes('check_failed')
+                    ? t('notifications.startupBannerRetry')
+                    : t('notifications.startupBannerRecheck')}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={startupAi.dismiss}>
                   {t('notifications.startupBannerDismiss')}
@@ -318,13 +347,15 @@ export function AppShell({ children, appInfo }: AppShellProps) {
         <span>{t('statusbar.dbReady')}</span>
         <span className="statusbar-sep">|</span>
         <span>
-          {t('statusbar.googleAi', {
-            ready: status.workersReady,
+          {t('statusbar.streamsRunning', { count: status.jobsRunning })}
+        </span>
+        <span className="statusbar-sep">|</span>
+        <span>
+          {t('statusbar.accountsReady', {
+            ready: status.accountsReady,
             total: status.workersTotal,
           })}
         </span>
-        <span className="statusbar-sep">|</span>
-        <span>{t('statusbar.jobsRunning', { count: status.jobsRunning })}</span>
         <span className="statusbar-sep">|</span>
         <span>{t('statusbar.version', { version: appInfo.version })}</span>
       </footer>
@@ -401,7 +432,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
         )}
       </Drawer>
 
-      <ToastViewport />
+      <ToastViewport onStartupRecheck={() => void startupAi.refresh()} />
     </div>
   );
 }

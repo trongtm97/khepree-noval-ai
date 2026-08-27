@@ -1,52 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { JobAttemptDto, JobDto } from '@shared/schemas/job';
-import type { AttentionAction } from '@shared/constants/job';
 import type { ProjectDto } from '@shared/schemas/import';
-import { formatMemoryUsage, formatTranslateChannel } from '@shared/utils/translate-channel';
-import { measureJobProgress } from '@shared/utils/job-progress';
-import {
-  formatDiagnosticsAiChannel,
-  formatDiagnosticsContextMode,
-  formatDiagnosticsGroundingWarning,
-  formatDiagnosticsKnowledgeVersions,
-  formatDiagnosticsMemorySurface,
-  readDiagnosticsFromProgress,
-} from '@shared/constants/translation-context';
+import type { GoogleAccountDto } from '@shared/schemas/account';
+import { measureJobProgress, isJobAttention } from '@shared/utils/job-progress';
 import { useT } from '../i18n';
 import { friendlyError } from '../i18n/errors';
-import {
-  formatJobAttemptDetail,
-  formatJobAttemptHeadline,
-} from '../utils/job-attempt-summary';
 import { statusLabel } from '../i18n/status';
-import { workerModeLabel } from '../i18n/enums';
 import { helpArticleForErrorCode } from '../features/help/content';
 import {
   PageHeader,
   Button,
   Card,
   EmptyState,
-  StatusBadge,
-  Dialog,
   Drawer,
-  DataTable,
   ProgressBar,
   ErrorPanel,
   Select,
   Skeleton,
-  Input,
   SectionHeader,
-  ChapterStatus,
 } from '../components/ui';
 import { HelpContextButton } from '../features/help/HelpContextButton';
-
-interface SchedulerStatus {
-  running: boolean;
-  paused: boolean;
-  inFlight: number;
-  maxConcurrent: number;
-}
 
 interface WorkerRow {
   id: string;
@@ -58,154 +32,256 @@ interface WorkerRow {
   lastError: string | null;
 }
 
-const WORKFLOW_KEYS = [
-  'jobs.workflow.prepare',
-  'jobs.workflow.matchTerms',
-  'jobs.workflow.openGemini',
-  'jobs.workflow.translating',
-  'jobs.workflow.check',
-  'jobs.workflow.updateMemory',
-  'jobs.workflow.done',
-] as const;
+interface SchedulerSnap {
+  running: boolean;
+  paused: boolean;
+  inFlight: number;
+  maxConcurrent: number;
+  perProjectMax: number;
+  allowSameProjectParallel: boolean;
+}
 
-function workflowStepIndex(state: string): number {
-  switch (state) {
-    case 'QUEUED':
-    case 'PREPARING':
-      return 0;
-    case 'WAITING_WORKER':
-      return 1;
-    case 'SENDING':
-      return 2;
-    case 'WAITING_AI':
-    case 'RUNNING':
-    case 'PAUSED':
-      return 3;
-    case 'PARSING':
-    case 'QA':
-    case 'REPAIRING':
-    case 'NEEDS_ATTENTION':
-      return 4;
-    case 'COMPLETED':
-    case 'ACCEPTED_WITH_WARNINGS':
-      return 6;
-    case 'FAILED':
-    case 'CANCELLED':
-    case 'SKIPPED':
-      return 4;
-    default:
-      return 0;
+/** Lower number = higher scheduler priority (ORDER BY priority ASC). */
+const PRIORITY = {
+  high: 10,
+  normal: 100,
+  low: 500,
+} as const;
+
+type PriorityBand = keyof typeof PRIORITY;
+
+function priorityBand(priority: number): PriorityBand {
+  if (priority <= 50) return 'high';
+  if (priority <= 200) return 'normal';
+  return 'low';
+}
+
+function isQueuedState(state: string): boolean {
+  return state === 'QUEUED' || state === 'WAITING_WORKER' || state === 'PAUSED';
+}
+
+function friendlyChannel(job: JobDto | null): string | null {
+  if (!job?.progress) return null;
+  const p = (job.progress.providerType ?? '').toUpperCase();
+  if (p.includes('PLAYWRIGHT') || p.includes('NOTEBOOK')) return 'Gemini Notebook';
+  if (p.includes('WEB')) return 'Gemini Web';
+  if (job.progress.notebookName) return 'Gemini Notebook';
+  return null;
+}
+
+function knowledgeLabel(job: JobDto | null): string | null {
+  if (!job?.progress) return null;
+  const v =
+    job.progress.localKnowledgeVersion ??
+    job.progress.knowledgeVersion ??
+    job.progress.notebookVerifiedVersion;
+  if (typeof v !== 'number') return null;
+  return `Knowledge v${v}`;
+}
+
+function paragraphProgress(job: JobDto | null): string | null {
+  if (!job) return null;
+  const done = job.progress?.paragraphsDone;
+  const total = job.progress?.paragraphsTotal;
+  if (typeof done === 'number' && typeof total === 'number' && total > 0) {
+    return `${done} / ${total}`;
   }
+  return null;
 }
 
-function jobProgress(job: JobDto): { value: number | null; indeterminate: boolean } {
-  const measure = measureJobProgress(job);
-  return { value: measure.percent, indeterminate: measure.indeterminate };
-}
-
-function jobProgressLabel(job: JobDto, fallback: string, t: (key: string) => string): string {
-  if (job.progress?.phase === 'continuation') {
-    const round = job.progress.continuationRound;
-    const suffix = typeof round === 'number' ? ` (${round})` : '';
-    return t('jobs.continuationReceiving') + suffix;
+function chapterRange(job: JobDto | null): string | null {
+  if (!job || job.chapterFrom == null) return null;
+  if (job.chapterTo != null && job.chapterTo !== job.chapterFrom) {
+    return `${job.chapterFrom}–${job.chapterTo}`;
   }
-  const measure = measureJobProgress(job);
-  const channel = formatTranslateChannel({
-    providerType: job.progress?.providerType,
-    packMode: job.progress?.packMode,
-  });
-  const parts = [...measure.labelParts];
-  if (channel) parts.push(channel);
-  if (parts.length > 0) return `${parts.join(' · ')} · ${fallback}`;
-  return fallback;
+  return String(job.chapterFrom);
 }
 
-function formatDuration(startedAt: string | null, completedAt: string | null): string {
-  if (!startedAt) return '—';
-  const start = Date.parse(startedAt);
-  if (Number.isNaN(start)) return '—';
-  const end = completedAt ? Date.parse(completedAt) : Date.now();
-  if (Number.isNaN(end)) return '—';
-  const sec = Math.max(0, Math.floor((end - start) / 1000));
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+function accountDisplayName(account: GoogleAccountDto | undefined, fallbackId: string): string {
+  if (!account) return fallbackId.slice(0, 8);
+  return account.label || account.displayName || account.email || fallbackId.slice(0, 8);
+}
+
+function findLaneJob(
+  worker: WorkerRow,
+  jobById: Map<string, JobDto>,
+  allJobs: JobDto[],
+): JobDto | null {
+  if (worker.currentJobId) {
+    const byId = jobById.get(worker.currentJobId);
+    if (byId) return byId;
+  }
+  return (
+    allJobs.find((j) => {
+      const accountMatch =
+        j.progress?.accountId === worker.accountId ||
+        j.pinnedAccountId === worker.accountId;
+      if (!accountMatch) return false;
+      if (isQueuedState(j.state)) return false;
+      return ![
+        'COMPLETED',
+        'ACCEPTED_WITH_WARNINGS',
+        'CANCELLED',
+        'FAILED',
+        'SKIPPED',
+      ].includes(j.state);
+    }) ?? null
+  );
+}
+
+function laneStatusKey(health: string): 'running' | 'ready' | 'limited' | 'attention' | 'paused' {
+  const h = health.toUpperCase();
+  if (h === 'BUSY') return 'running';
+  if (h === 'READY') return 'ready';
+  if (h === 'LIMITED') return 'limited';
+  if (h === 'DISABLED' || h === 'OFFLINE') return 'paused';
+  return 'attention';
 }
 
 export function JobsPage() {
   const t = useT();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectDto[]>([]);
-  const [projectId, setProjectId] = useState('');
+  const [accounts, setAccounts] = useState<GoogleAccountDto[]>([]);
   const [jobs, setJobs] = useState<JobDto[]>([]);
   const [workers, setWorkers] = useState<WorkerRow[]>([]);
-  const [scheduler, setScheduler] = useState<SchedulerStatus | null>(null);
+  const [scheduler, setScheduler] = useState<SchedulerSnap | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [attempts, setAttempts] = useState<JobAttemptDto[]>([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [priorityDraft, setPriorityDraft] = useState('100');
-  const [workerModeDraft, setWorkerModeDraft] = useState<'POOL' | 'PINNED'>('POOL');
-  const [pinnedAccountDraft, setPinnedAccountDraft] = useState('');
-  const [cancelTarget, setCancelTarget] = useState<JobDto | null>(null);
-  const [bulkConfirm, setBulkConfirm] = useState<'cancel' | 'delete' | 'retry' | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const projectResult = await window.novelTrans.projects.list();
-    setProjects(projectResult.projects);
-    const pid = projectId || projectResult.projects[0]?.id || '';
-    if (!projectId && pid) setProjectId(pid);
-    const [jobResult, status, workerResult] = await Promise.all([
-      window.novelTrans.jobs.list(pid || undefined),
+    const [projectResult, accountResult, jobResult, status, workerResult] = await Promise.all([
+      window.novelTrans.projects.list(),
+      window.novelTrans.accounts.list(),
+      window.novelTrans.jobs.list(undefined),
       window.novelTrans.jobs.schedulerStatus(),
       window.novelTrans.jobs.workers(),
     ]);
+    setProjects(projectResult.projects);
+    setAccounts(accountResult.accounts);
     setJobs(jobResult.jobs);
-    setScheduler(status);
-    setWorkers(workerResult.workers);
-    setSelectedIds((prev) => {
-      if (prev.size === 0) return prev;
-      const alive = new Set(jobResult.jobs.map((j) => j.id));
-      const next = new Set([...prev].filter((id) => alive.has(id)));
-      return next.size === prev.size ? prev : next;
+    setScheduler({
+      running: status.running,
+      paused: status.paused,
+      inFlight: status.inFlight,
+      maxConcurrent: status.maxConcurrent,
+      perProjectMax: status.perProjectMax,
+      allowSameProjectParallel: status.allowSameProjectParallel,
     });
-  }, [projectId]);
+    setWorkers(workerResult.workers);
+  }, []);
 
   useEffect(() => {
     void refresh()
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
       })
-      .finally(() => { setLoading(false); });
+      .finally(() => {
+        setLoading(false);
+      });
+    const id = window.setInterval(() => {
+      void refresh().catch(() => {
+        /* poll best-effort */
+      });
+    }, 4000);
+    return () => {
+      window.clearInterval(id);
+    };
   }, [refresh, t]);
 
-  const selectJob = useCallback(async (jobId: string) => {
-    setSelectedId(jobId);
-    setDrawerOpen(true);
-    setError(null);
-    try {
-      const detail = await window.novelTrans.jobs.get(jobId);
-      setAttempts(detail.attempts);
-      setPriorityDraft(String(detail.job.priority));
-      setWorkerModeDraft(detail.job.workerMode);
-      setPinnedAccountDraft(detail.job.pinnedAccountId ?? '');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
-    }
-  }, [t]);
+  const accountById = useMemo(
+    () => new Map(accounts.map((a) => [a.id, a])),
+    [accounts],
+  );
+  const jobById = useMemo(() => new Map(jobs.map((j) => [j.id, j])), [jobs]);
 
-  const runControl = async (fn: () => Promise<{ message: string }>) => {
+  const projectTitle = useCallback(
+    (id: string) => projects.find((p) => p.id === id)?.title ?? id.slice(0, 8),
+    [projects],
+  );
+
+  const runningCount = scheduler?.inFlight ?? 0;
+  const readyAccounts = accounts.filter((a) => a.status === 'READY').length;
+  const queuedCount = jobs.filter((j) => isQueuedState(j.state)).length;
+  const attentionJobs = useMemo(
+    () => jobs.filter((j) => isJobAttention(j.state)),
+    [jobs],
+  );
+
+  const queuedByProject = useMemo(() => {
+    const map = new Map<string, JobDto[]>();
+    for (const job of jobs) {
+      if (!isQueuedState(job.state)) continue;
+      const list = map.get(job.projectId) ?? [];
+      list.push(job);
+      map.set(job.projectId, list);
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => {
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        return (a.chapterFrom ?? 0) - (b.chapterFrom ?? 0);
+      });
+    }
+    return [...map.entries()].sort((a, b) => {
+      const aPri = a[1][0]?.priority ?? 999;
+      const bPri = b[1][0]?.priority ?? 999;
+      if (aPri !== bPri) return aPri - bPri;
+      return projectTitle(a[0]).localeCompare(projectTitle(b[0]));
+    });
+  }, [jobs, projectTitle]);
+
+  const sortedWorkers = useMemo(() => {
+    return [...workers].sort((a, b) => {
+      const rank = (h: string) => {
+        const k = laneStatusKey(h);
+        if (k === 'running') return 0;
+        if (k === 'attention') return 1;
+        if (k === 'limited') return 2;
+        if (k === 'ready') return 3;
+        return 4;
+      };
+      const d = rank(a.health) - rank(b.health);
+      if (d !== 0) return d;
+      return a.priority - b.priority;
+    });
+  }, [workers]);
+
+  const openJob = useCallback(
+    async (jobId: string) => {
+      setSelectedId(jobId);
+      setDrawerOpen(true);
+      setShowAdvanced(false);
+      setError(null);
+      try {
+        const detail = await window.novelTrans.jobs.get(jobId);
+        setAttempts(detail.attempts);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
+      }
+    },
+    [t],
+  );
+
+  const runControl = async (fn: () => Promise<{ message?: string } | void>) => {
     setBusy(true);
     setError(null);
     setMessage(null);
     try {
       const result = await fn();
-      setMessage(result.message);
+      if (result && typeof result === 'object' && 'message' in result && result.message) {
+        setMessage(result.message);
+      }
       await refresh();
-      if (selectedId) await selectJob(selectedId);
+      if (selectedId) {
+        const detail = await window.novelTrans.jobs.get(selectedId);
+        setAttempts(detail.attempts);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
     } finally {
@@ -213,223 +289,52 @@ export function JobsPage() {
     }
   };
 
-  const runAction = async (action: AttentionAction) => {
-    if (!selectedId) return;
-    await runControl(() => window.novelTrans.jobs.attention({ jobId: selectedId, action }));
-  };
-
-  const recover = async () => {
-    if (!selectedId) return;
+  const setJobPriority = async (jobId: string, band: PriorityBand) => {
     await runControl(async () => {
-      const result = await window.novelTrans.jobs.recover(selectedId);
-      return { message: `${t('actions.retry')} · ${result.crashed}` };
+      await window.novelTrans.jobs.move(jobId, PRIORITY[band]);
+      return { message: t('jobs.priorityUpdated') };
     });
   };
 
-  const toggleSelect = useCallback((jobId: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(jobId)) next.delete(jobId);
-      else next.add(jobId);
-      return next;
-    });
-  }, []);
-
-  const selectAllVisible = useCallback(() => {
-    setSelectedIds(new Set(jobs.map((j) => j.id)));
-  }, [jobs]);
-
-  const clearSelection = useCallback(() => {
-    setSelectedIds(new Set());
-  }, []);
-
-  const runBulk = async (action: 'cancel' | 'delete' | 'retry') => {
-    const jobIds = [...selectedIds];
-    if (jobIds.length === 0) return;
-    setBulkConfirm(null);
+  const setProjectQueuePriority = async (projectId: string, band: PriorityBand) => {
+    const queued = jobs.filter((j) => j.projectId === projectId && isQueuedState(j.state));
+    if (queued.length === 0) return;
     await runControl(async () => {
-      const result = await window.novelTrans.jobs.bulk({ jobIds, action });
-      if (action === 'delete') setSelectedIds(new Set());
-      return { message: result.message };
+      for (const job of queued) {
+        await window.novelTrans.jobs.move(job.id, PRIORITY[band]);
+      }
+      return { message: t('jobs.priorityUpdated') };
     });
   };
 
-  const projectTitle = useCallback(
-    (id: string) => projects.find((p) => p.id === id)?.title ?? id.slice(0, 8),
-    [projects],
-  );
-
-  const selected = jobs.find((j) => j.id === selectedId) ?? null;
-  const selectedCount = selectedIds.size;
-  const allSelected = jobs.length > 0 && selectedCount === jobs.length;
-  const emptyDeltaJobs = useMemo(
-    () =>
-      jobs.filter(
-        (j) =>
-          (j.state === 'COMPLETED' || j.state === 'ACCEPTED_WITH_WARNINGS') &&
-          j.progress?.learning?.emptyDeltas === true,
-      ),
-    [jobs],
-  );
+  const selected = selectedId ? jobById.get(selectedId) ?? null : null;
   const errInfo = error ? friendlyError(error) : null;
-  const stepIndex = selected ? workflowStepIndex(selected.state) : -1;
-
-  const bulkConfirmCopy =
-    bulkConfirm === 'cancel'
-      ? t('jobs.bulkCancelConfirm', { n: selectedCount })
-      : bulkConfirm === 'delete'
-        ? t('jobs.bulkDeleteConfirm', { n: selectedCount })
-        : bulkConfirm === 'retry'
-          ? t('jobs.bulkRetryConfirm', { n: selectedCount })
-          : undefined;
-
-  const columns = useMemo(
-    () => [
-      {
-        key: 'select',
-        header: (
-          <input
-            type="checkbox"
-            aria-label={t('jobs.selectAll')}
-            checked={allSelected}
-            disabled={jobs.length === 0 || busy}
-            onChange={() => {
-              if (allSelected) clearSelection();
-              else selectAllVisible();
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          />
-        ),
-        width: '2.5rem',
-        render: (job: JobDto) => (
-          <input
-            type="checkbox"
-            checked={selectedIds.has(job.id)}
-            disabled={busy}
-            onChange={() => {
-              toggleSelect(job.id);
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          />
-        ),
-      },
-      {
-        key: 'project',
-        header: t('jobs.project'),
-        render: (job: JobDto) => projectTitle(job.projectId),
-      },
-      {
-        key: 'chapters',
-        header: t('jobs.chapters'),
-        render: (job: JobDto) =>
-          job.chapterFrom != null
-            ? t('topbar.chapters', {
-                from: job.chapterFrom,
-                to: job.chapterTo ?? job.chapterFrom,
-              })
-            : '—',
-      },
-      {
-        key: 'status',
-        header: t('jobs.status'),
-        render: (job: JobDto) => <StatusBadge status={job.state} />,
-      },
-      {
-        key: 'progress',
-        header: t('jobs.progress'),
-        render: (job: JobDto) => {
-          const progress = jobProgress(job);
-          return (
-          <div style={{ minWidth: 100 }}>
-            <ProgressBar
-              value={progress.value}
-              indeterminate={progress.indeterminate}
-              label={jobProgressLabel(job, statusLabel(job.state), t)}
-            />
-            {job.progress?.learning?.emptyDeltas ? (
-              <div className="muted" style={{ fontSize: '0.8em', marginTop: 2 }}>
-                {t('jobs.emptyDeltasShort')}
-              </div>
-            ) : null}
-          </div>
-          );
-        },
-      },
-      {
-        key: 'actions',
-        header: t('jobs.actions'),
-        render: (job: JobDto) => (
-          <div className="btn-row" onClick={(e) => { e.stopPropagation(); }}>
-            <Button size="sm" disabled={busy} onClick={() => void selectJob(job.id)}>
-              {t('actions.viewDetails')}
-            </Button>
-            <Button
-              size="sm"
-              variant="danger"
-              disabled={busy}
-              onClick={() => { setCancelTarget(job); }}
-            >
-              {t('actions.cancel')}
-            </Button>
-          </div>
-        ),
-      },
-    ],
-    [
-      t,
-      projectTitle,
-      busy,
-      selectJob,
-      selectedIds,
-      allSelected,
-      jobs.length,
-      clearSelection,
-      selectAllVisible,
-      toggleSelect,
-    ],
-  );
+  const fairnessNote =
+    scheduler && !scheduler.allowSameProjectParallel
+      ? t('jobs.fairnessOnePerProject')
+      : scheduler
+        ? t('jobs.fairnessPerProjectMax', { n: String(scheduler.perProjectMax) })
+        : null;
 
   if (loading) {
     return (
       <div>
         <PageHeader title={t('jobs.title')} description={t('jobs.subtitle')} />
-        <Skeleton height={48} />
-        <div style={{ marginTop: '1rem' }}>
-          <Skeleton height={240} />
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} height={88} />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="ops-center">
       <PageHeader
         title={t('jobs.title')}
         description={t('jobs.subtitle')}
-        actions={
-          <>
-            <HelpContextButton articleId="jobs-monitor" />
-            <Button disabled={busy} onClick={() => void refresh()}>
-              {t('actions.check')}
-            </Button>
-            <Button
-              disabled={busy}
-              onClick={() => void runControl(() => window.novelTrans.jobs.pauseAll())}
-            >
-              {t('actions.pause')}
-            </Button>
-            <Button
-              disabled={busy}
-              onClick={() => void runControl(() => window.novelTrans.jobs.resumeAll())}
-            >
-              {t('actions.resume')}
-            </Button>
-          </>
-        }
+        actions={<HelpContextButton articleId="jobs-monitor" />}
       />
 
       {errInfo ? (
@@ -438,522 +343,464 @@ export function JobsPage() {
           description={errInfo.description}
           technical={errInfo.technical}
           helpArticleId={helpArticleForErrorCode(errInfo.code)}
-          actions={[{ label: t('actions.retry'), onClick: () => void refresh(), primary: true }]}
         />
       ) : null}
-      {message ? <div className="banner banner-info">{message}</div> : null}
-      {emptyDeltaJobs.length > 0 ? (
-        <div className="banner banner-warn" style={{ marginBottom: '1rem' }}>
-          {t('jobs.emptyDeltasBanner', { n: emptyDeltaJobs.length })}
+      {message ? (
+        <div className="banner banner-info" style={{ marginBottom: '0.75rem' }}>
+          {message}
         </div>
       ) : null}
 
-      <div className="btn-row" style={{ marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <label className="inline-field">
-          {t('jobs.project')}
-          <Select
-            value={projectId}
-            disabled={busy}
-            onChange={(event) => {
-              setProjectId(event.target.value);
-              setSelectedId(null);
-              setSelectedIds(new Set());
-              setAttempts([]);
-              setDrawerOpen(false);
-            }}
-          >
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.title}
-              </option>
-            ))}
-          </Select>
-        </label>
-        {scheduler ? (
-          <span className="muted">
-            {scheduler.running ? t('status.running') : t('status.paused')}
-            {scheduler.paused ? ` · ${t('actions.pause')}` : ''} · {scheduler.inFlight}/
-            {scheduler.maxConcurrent}
-          </span>
-        ) : null}
+      <div className="ops-header-card">
+        <div className="ops-stat-grid">
+          <div className="ops-stat">
+            <span className="ops-stat-label">{t('jobs.statRunning')}</span>
+            <strong className="ops-stat-value">{runningCount}</strong>
+            <span className="ops-stat-unit">{t('jobs.statStreams')}</span>
+          </div>
+          <div className="ops-stat">
+            <span className="ops-stat-label">{t('jobs.statReady')}</span>
+            <strong className="ops-stat-value">{readyAccounts}</strong>
+            <span className="ops-stat-unit">{t('jobs.statAccounts')}</span>
+          </div>
+          <div className="ops-stat">
+            <span className="ops-stat-label">{t('jobs.statQueued')}</span>
+            <strong className="ops-stat-value">{queuedCount}</strong>
+            <span className="ops-stat-unit">{t('jobs.statJobs')}</span>
+          </div>
+          <div className="ops-stat">
+            <span className="ops-stat-label">{t('jobs.statAttention')}</span>
+            <strong className="ops-stat-value">{attentionJobs.length}</strong>
+          </div>
+        </div>
+        <div className="ops-header-actions">
+          {scheduler?.paused ? (
+            <Button
+              disabled={busy}
+              onClick={() =>
+                void runControl(async () => {
+                  const r = await window.novelTrans.jobs.resumeAll();
+                  return { message: r.message };
+                })
+              }
+            >
+              {t('jobs.resumeAll')}
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() =>
+                void runControl(async () => {
+                  const r = await window.novelTrans.jobs.pauseAll();
+                  return { message: r.message };
+                })
+              }
+            >
+              {t('jobs.pauseAll')}
+            </Button>
+          )}
+        </div>
+        {fairnessNote ? <p className="ops-fairness muted">{fairnessNote}</p> : null}
       </div>
 
-      {workers.length > 0 ? (
-        <div style={{ marginBottom: '1rem' }}>
-          <Card className="account-card">
-            <SectionHeader title={t('jobs.account')} />
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {workers.map((w) => (
-                <li key={w.id} className="muted" style={{ marginBottom: '0.35rem' }}>
-                  <StatusBadge status={w.health} />{' '}
-                  {w.accountId.slice(0, 8)}…
-                  {w.currentJobId ? ` · ${w.currentJobId.slice(0, 8)}…` : ''}
-                  {w.limitedUntil ? ` · ${t('status.limited')} ${w.limitedUntil}` : ''}
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </div>
-      ) : null}
-
-      {jobs.length === 0 ? (
+      <SectionHeader title={t('jobs.workerLanes')} />
+      {sortedWorkers.length === 0 ? (
         <EmptyState
-          icon={<Users />}
-          title={t('jobs.emptyTitle')}
-          description={t('jobs.emptyDesc')}
+          title={t('jobs.noWorkers')}
+          description={t('jobs.noWorkersHint')}
+          actionLabel={t('nav.accounts')}
+          onAction={() => {
+            navigate('/accounts');
+          }}
         />
       ) : (
+        <div className="ops-lane-list">
+          {sortedWorkers.map((worker) => {
+            const account = accountById.get(worker.accountId);
+            const job = findLaneJob(worker, jobById, jobs);
+            const lane = laneStatusKey(worker.health);
+            const measure = job ? measureJobProgress(job) : null;
+            const channel = friendlyChannel(job);
+            const knowledge = knowledgeLabel(job);
+            const chapters = chapterRange(job);
+
+            return (
+              <Card key={worker.id} className={`ops-lane ops-lane--${lane}`}>
+                <div className="ops-lane-head">
+                  <div>
+                    <h3 className="ops-lane-title">
+                      {accountDisplayName(account, worker.accountId)}
+                    </h3>
+                    <p className={`ops-lane-status ops-lane-status--${lane}`}>
+                      <span className="ops-lane-dot" aria-hidden />
+                      {t(`jobs.lane.${lane}`)}
+                    </p>
+                  </div>
+                  <div className="ops-lane-actions">
+                    {lane === 'paused' || account?.workerEnabled === false ? (
+                      <Button
+                        size="sm"
+                        disabled={busy}
+                        onClick={() =>
+                          void runControl(async () => {
+                            await window.novelTrans.accounts.enable(worker.accountId);
+                            return { message: t('jobs.workerResumed') };
+                          })
+                        }
+                      >
+                        {t('actions.resume')}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busy || lane === 'running'}
+                        title={
+                          lane === 'running' ? t('jobs.pauseWorkerBusyHint') : undefined
+                        }
+                        onClick={() =>
+                          void runControl(async () => {
+                            await window.novelTrans.accounts.disable(worker.accountId);
+                            return { message: t('jobs.workerPaused') };
+                          })
+                        }
+                      >
+                        {t('jobs.pauseWorker')}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() =>
+                        void runControl(async () => {
+                          await window.novelTrans.accounts.openBrowser(
+                            worker.accountId,
+                            'gemini',
+                          );
+                          return { message: t('jobs.openedGemini') };
+                        })
+                      }
+                    >
+                      {t('jobs.openGemini')}
+                    </Button>
+                  </div>
+                </div>
+
+                {job ? (
+                  <div className="ops-lane-body">
+                    <p className="ops-lane-project">{projectTitle(job.projectId)}</p>
+                    {chapters ? (
+                      <p className="muted ops-lane-meta">
+                        {t('jobs.chapterLabel', { range: chapters })}
+                      </p>
+                    ) : null}
+                    <p className="muted ops-lane-meta">
+                      {[channel, knowledge].filter(Boolean).join(' · ')}
+                    </p>
+                    {typeof job.progress?.paragraphsDone === 'number' &&
+                    typeof job.progress?.paragraphsTotal === 'number' &&
+                    job.progress.paragraphsTotal > 0 ? (
+                      <p className="ops-lane-paras">
+                        {t('jobs.paragraphsProgress', {
+                          done: String(job.progress.paragraphsDone),
+                          total: String(job.progress.paragraphsTotal),
+                        })}
+                      </p>
+                    ) : null}
+                    {measure ? (
+                      <ProgressBar
+                        value={measure.percent}
+                        indeterminate={measure.indeterminate}
+                        label={
+                          paragraphProgress(job) ?? statusLabel(job.state)
+                        }
+                      />
+                    ) : null}
+                    <div className="ops-lane-actions" style={{ marginTop: '0.5rem' }}>
+                      {job.error || isJobAttention(job.state) ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            void openJob(job.id);
+                          }}
+                        >
+                          {t('jobs.viewError')}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            void openJob(job.id);
+                          }}
+                        >
+                          {t('actions.viewDetails')}
+                        </Button>
+                      )}
+                      {(job.state === 'FAILED' || job.state === 'NEEDS_ATTENTION' || job.state === 'CANCELLED') && (
+                        <Button
+                          size="sm"
+                          disabled={busy}
+                          onClick={() =>
+                            void runControl(async () => {
+                              const r = await window.novelTrans.jobs.retry(job.id);
+                              return { message: r.message };
+                            })
+                          }
+                        >
+                          {t('actions.retry')}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : worker.lastError && lane === 'attention' ? (
+                  <div className="ops-lane-body">
+                    <p className="error-text" style={{ margin: 0 }}>
+                      {worker.lastError.slice(0, 160)}
+                    </p>
+                  </div>
+                ) : null}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {attentionJobs.length > 0 ? (
         <>
-          <div className="btn-row" style={{ marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-            <span className="muted">
-              {t('jobs.selectedCount', { n: selectedCount })}
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={busy || allSelected}
-              onClick={selectAllVisible}
-            >
-              {t('jobs.selectAll')}
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={busy || selectedCount === 0}
-              onClick={clearSelection}
-            >
-              {t('jobs.clearSelection')}
-            </Button>
-            <Button
-              size="sm"
-              disabled={busy || selectedCount === 0}
-              onClick={() => { setBulkConfirm('cancel'); }}
-            >
-              {t('jobs.bulkCancel')}
-            </Button>
-            <Button
-              size="sm"
-              disabled={busy || selectedCount === 0}
-              onClick={() => { setBulkConfirm('retry'); }}
-            >
-              {t('jobs.bulkRetry')}
-            </Button>
-            <Button
-              size="sm"
-              variant="danger"
-              disabled={busy || selectedCount === 0}
-              onClick={() => { setBulkConfirm('delete'); }}
-            >
-              {t('jobs.bulkDelete')}
-            </Button>
+          <SectionHeader title={t('jobs.needsAttention')} />
+          <div className="ops-lane-list">
+            {attentionJobs.map((job) => (
+              <Card key={job.id} className="ops-attention-card">
+                <div className="page-header-row">
+                  <div>
+                    <strong>{projectTitle(job.projectId)}</strong>
+                    <p className="muted" style={{ margin: '0.2rem 0 0' }}>
+                      {chapterRange(job)
+                        ? t('jobs.chapterLabel', { range: chapterRange(job)! })
+                        : null}
+                      {' · '}
+                      {statusLabel(job.state)}
+                    </p>
+                    {job.error ? (
+                      <p className="error-text" style={{ margin: '0.35rem 0 0' }}>
+                        {job.error.slice(0, 180)}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="btn-row">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        void openJob(job.id);
+                      }}
+                    >
+                      {t('jobs.viewError')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={busy}
+                      onClick={() =>
+                        void runControl(async () => {
+                          const r = await window.novelTrans.jobs.retry(job.id);
+                          return { message: r.message };
+                        })
+                      }
+                    >
+                      {t('actions.retry')}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
-          <DataTable
-            columns={columns}
-            rows={jobs}
-            rowKey={(row) => row.id}
-            selectedKey={selectedId}
-            onRowClick={(row) => {
-              void selectJob(row.id);
-            }}
-          />
         </>
+      ) : null}
+
+      <SectionHeader title={t('jobs.nextQueued')} />
+      {queuedByProject.length === 0 ? (
+        <EmptyState title={t('jobs.queueEmpty')} />
+      ) : (
+        <div className="ops-queue-list">
+          {queuedByProject.map(([projectId, projectJobs]) => {
+            const next = projectJobs[0]!;
+            const band = priorityBand(next.priority);
+            return (
+              <Card key={projectId} className="ops-queue-card">
+                <div className="ops-queue-main">
+                  <div>
+                    <h3 className="ops-queue-title">{projectTitle(projectId)}</h3>
+                    <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+                      {t('jobs.queuedCount', { n: String(projectJobs.length) })}
+                      {chapterRange(next)
+                        ? ` · ${t('jobs.nextChapter', { range: chapterRange(next)! })}`
+                        : ''}
+                    </p>
+                  </div>
+                  <label className="ops-priority">
+                    <span className="muted">{t('jobs.priority')}</span>
+                    <Select
+                      value={band}
+                      disabled={busy}
+                      aria-label={t('jobs.priority')}
+                      onChange={(e) => {
+                        void setProjectQueuePriority(
+                          projectId,
+                          e.target.value as PriorityBand,
+                        );
+                      }}
+                    >
+                      <option value="high">{t('jobs.priorityHigh')}</option>
+                      <option value="normal">{t('jobs.priorityNormal')}</option>
+                      <option value="low">{t('jobs.priorityLow')}</option>
+                    </Select>
+                  </label>
+                </div>
+                {!scheduler?.allowSameProjectParallel ? (
+                  <p className="muted ops-queue-note">{t('jobs.oneStreamHint')}</p>
+                ) : null}
+              </Card>
+            );
+          })}
+        </div>
       )}
 
       <Drawer
-        open={drawerOpen && selected !== null}
-        title={t('jobs.detail')}
+        open={drawerOpen && selected != null}
+        title={selected ? projectTitle(selected.projectId) : t('jobs.detail')}
+        onClose={() => {
+          setDrawerOpen(false);
+        }}
         closeLabel={t('actions.close')}
-        onClose={() => { setDrawerOpen(false); }}
       >
         {selected ? (
-          <>
-            <p style={{ marginTop: 0 }}>
-              <StatusBadge status={selected.state} />
-              {selected.error ? (
-                <span className="muted"> — {friendlyError(selected.error).title}</span>
-              ) : null}
+          <div className="ops-detail">
+            <p>
+              <strong>{statusLabel(selected.state)}</strong>
+              {(() => {
+                const range = chapterRange(selected);
+                return range ? ` · ${t('jobs.chapterLabel', { range })}` : '';
+              })()}
             </p>
             {selected.error ? (
-              <p
-                className="banner banner-error"
-                style={{ marginTop: '0.5rem', whiteSpace: 'pre-wrap', fontSize: '0.9em' }}
-              >
+              <div className="banner banner-error" style={{ margin: '0.75rem 0' }}>
                 {selected.error}
-              </p>
+              </div>
             ) : null}
             <p className="muted">
-              {projectTitle(selected.projectId)}
-              {selected.chapterFrom != null
-                ? ` · ${t('topbar.chapters', {
-                    from: selected.chapterFrom,
-                    to: selected.chapterTo ?? selected.chapterFrom,
-                  })}`
-                : ''}
+              {[friendlyChannel(selected), knowledgeLabel(selected), paragraphProgress(selected)]
+                .filter(Boolean)
+                .join(' · ')}
             </p>
-            <p className="muted">
-              {t('jobs.started')}: {selected.startedAt ?? '—'} · {t('jobs.duration')}:{' '}
-              {formatDuration(selected.startedAt, selected.completedAt)}
-            </p>
-            <p className="muted">
-              {t('jobs.progress')} · {selected.attemptCount} · {selected.repairRound}/
-              {selected.maxRepairAttempts} · {workerModeLabel(selected.workerMode)}
-              {selected.pinnedAccountId
-                ? ` · ${selected.pinnedAccountId.slice(0, 8)}…`
-                : ''}
-            </p>
-            {(() => {
-              const diag = readDiagnosticsFromProgress(
-                selected.progress,
-              );
-              if (!diag) {
-                return formatTranslateChannel({
-                  providerType: selected.progress?.providerType,
-                  packMode: selected.progress?.packMode,
-                }) ? (
-                  <p className="muted">
-                    {t('jobs.channel')}:{' '}
-                    {formatTranslateChannel({
-                      providerType: selected.progress?.providerType,
-                      packMode: selected.progress?.packMode,
-                    })}
-                  </p>
-                ) : null;
-              }
-              const ai = formatDiagnosticsAiChannel(diag.providerType);
-              const memory = formatDiagnosticsMemorySurface(diag);
-              const knowledge = formatDiagnosticsKnowledgeVersions(diag);
-              const mode = formatDiagnosticsContextMode(diag);
-              const warning = formatDiagnosticsGroundingWarning(diag);
-              return (
-                <div className="job-context-diagnostics" style={{ marginTop: '0.5rem' }}>
-                  {ai ? (
-                    <p className="muted" style={{ margin: '0.15rem 0' }}>
-                      {t('jobs.diagAiChannel')}: <strong>{ai}</strong>
-                    </p>
-                  ) : null}
-                  <p className="muted" style={{ margin: '0.15rem 0' }}>
-                    {t('jobs.diagMemory')}: <strong>{memory}</strong>
-                  </p>
-                  {diag.notebookName ? (
-                    <p className="muted" style={{ margin: '0.15rem 0' }}>
-                      {t('jobs.diagNotebook')}: <strong>{diag.notebookName}</strong>
-                    </p>
-                  ) : null}
-                  {knowledge ? (
-                    <p className="muted" style={{ margin: '0.15rem 0' }}>
-                      {t('jobs.diagKnowledge')}: <strong>{knowledge}</strong>
-                    </p>
-                  ) : null}
-                  <p className="muted" style={{ margin: '0.15rem 0' }}>
-                    {t('jobs.diagContextMode')}: <strong>{mode}</strong>
-                  </p>
-                  <p className="muted" style={{ margin: '0.15rem 0' }}>
-                      {t('jobs.diagSourceMode')}: {diag.knowledgeSourceMode}
-                      {typeof diag.hotDeltaCount === 'number' && diag.hotDeltaCount > 0
-                        ? ` · delta ${diag.hotDeltaCount}`
-                        : ''}
-                    </p>
-                  {warning ? (
-                    <p
-                      className="banner"
-                      style={{
-                        marginTop: '0.4rem',
-                        fontSize: '0.9em',
-                        background: 'var(--warning-bg, #fff3cd)',
-                        padding: '0.4rem 0.6rem',
-                      }}
-                    >
-                      {warning}
-                    </p>
-                  ) : null}
-                  {selected.progress?.timeline && selected.progress.timeline.length > 0 ? (
-                    <div style={{ marginTop: '0.6rem' }}>
-                      <p className="muted" style={{ marginBottom: '0.25rem' }}>
-                        {t('jobs.diagTimeline')}
-                      </p>
-                      <ul
-                        style={{
-                          listStyle: 'none',
-                          padding: 0,
-                          margin: 0,
-                          fontSize: '0.85em',
-                          maxHeight: '10rem',
-                          overflow: 'auto',
-                        }}
-                      >
-                        {selected.progress.timeline.map((entry, i) => (
-                          <li
-                            key={`${entry.at}-${entry.event}-${i}`}
-                            className="muted"
-                            style={{ marginBottom: '0.2rem' }}
-                          >
-                            <code>{entry.event}</code>
-                            {entry.message ? ` — ${entry.message}` : ''}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })()}
-            {selected.progress?.packMode &&
-            !readDiagnosticsFromProgress(
-              selected.progress,
-            ) ? (
-              <p className="muted">
-                {formatMemoryUsage(selected.progress.packMode)}
-                {typeof selected.progress.hotDeltaCount === 'number'
-                  ? ` · delta ${selected.progress.hotDeltaCount}`
-                  : ''}
-                {typeof selected.progress.localKnowledgeVersion === 'number' &&
-                typeof selected.progress.notebookVerifiedVersion === 'number'
-                  ? ` · v${selected.progress.localKnowledgeVersion}/v${selected.progress.notebookVerifiedVersion}`
-                  : ''}
-              </p>
-            ) : null}
-            {selected.progress?.learning ? (
-              <p className="muted">
-                {t('jobs.learning')}: candidates{' '}
-                {selected.progress.learning.candidatesCreated ?? 0} · memory{' '}
-                {selected.progress.learning.memoryApplied ?? 0}
-                {selected.progress.learning.emptyDeltas ? ' · empty deltas' : ''}
-              </p>
-            ) : null}
-            <ProgressBar
-              value={jobProgress(selected).value}
-              indeterminate={jobProgress(selected).indeterminate}
-              label={jobProgressLabel(selected, statusLabel(selected.state), t)}
-            />
 
-            <SectionHeader title={t('jobs.detail')} />
-            <ul className="workflow-checklist" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {WORKFLOW_KEYS.map((key, index) => {
-                const done = index < stepIndex || (selected.state === 'COMPLETED' && index <= 6);
-                const current = index === stepIndex && selected.state !== 'COMPLETED';
-                return (
-                  <li
-                    key={key}
-                    style={{
-                      display: 'flex',
-                      gap: '0.5rem',
-                      alignItems: 'center',
-                      marginBottom: '0.4rem',
-                      fontWeight: current ? 600 : undefined,
-                      color: current ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    }}
-                  >
-                    <ChapterStatus done={done || (selected.state === 'COMPLETED' && index === 6)} />
-                    <span>{t(key)}</span>
-                  </li>
-                );
-              })}
-            </ul>
-
-            {selected.lastQa ? (
-              <p>
-                {t('translation.qa')}: <strong>{selected.lastQa.verdict}</strong>
-                {selected.lastQa.missingParagraphIds.length > 0
-                  ? ` · ${selected.lastQa.missingParagraphIds.length}`
-                  : ''}
-              </p>
-            ) : null}
-
-            <div className="btn-row" style={{ flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' }}>
-              <label className="inline-field">
-                {t('jobs.progress')}
-                <Input
-                  type="number"
-                  value={priorityDraft}
-                  disabled={busy}
-                  style={{ width: '5rem' }}
-                  onChange={(e) => { setPriorityDraft(e.target.value); }}
-                />
-              </label>
-              <Button
-                size="sm"
+            <label className="ops-priority" style={{ display: 'block', marginTop: '0.75rem' }}>
+              <span className="muted">{t('jobs.priority')}</span>
+              <Select
+                value={priorityBand(selected.priority)}
                 disabled={busy}
-                onClick={() =>
-                  void runControl(() =>
-                    window.novelTrans.jobs.move(
-                      selected.id,
-                      Number.parseInt(priorityDraft, 10) || 100,
-                    ),
-                  )
-                }
+                onChange={(e) => {
+                  void setJobPriority(selected.id, e.target.value as PriorityBand);
+                }}
               >
-                {t('actions.manage')}
-              </Button>
-              <label className="inline-field">
-                {t('jobs.account')}
-                <Select
-                  value={workerModeDraft}
-                  disabled={busy}
-                  onChange={(e) => { setWorkerModeDraft(e.target.value as 'POOL' | 'PINNED'); }}
-                >
-                  <option value="POOL">{workerModeLabel('POOL')}</option>
-                  <option value="PINNED">{workerModeLabel('PINNED')}</option>
-                </Select>
-              </label>
-              {workerModeDraft === 'PINNED' ? (
-                <Select
-                  value={pinnedAccountDraft}
-                  disabled={busy}
-                  onChange={(e) => { setPinnedAccountDraft(e.target.value); }}
-                >
-                  <option value="">{t('actions.switchAccount')}</option>
-                  {workers.map((w) => (
-                    <option key={w.id} value={w.accountId}>
-                      {w.accountId.slice(0, 8)}… ({statusLabel(w.health)})
-                    </option>
-                  ))}
-                </Select>
-              ) : null}
-              <Button
-                size="sm"
-                disabled={busy}
-                onClick={() =>
-                  void runControl(() =>
-                    window.novelTrans.jobs.changeWorker({
-                      jobId: selected.id,
-                      workerMode: workerModeDraft,
-                      pinnedAccountId:
-                        workerModeDraft === 'PINNED' ? pinnedAccountDraft || null : null,
-                    }),
-                  )
-                }
-              >
-                {t('actions.switchAccount')}
-              </Button>
-              <Button size="sm" variant="danger" disabled={busy} onClick={() => { setCancelTarget(selected); }}>
-                {t('actions.cancel')}
-              </Button>
-              <Button
-                size="sm"
-                disabled={busy}
-                onClick={() => void runControl(() => window.novelTrans.jobs.retry(selected.id))}
-              >
-                {t('actions.retry')}
-              </Button>
-              <Button size="sm" disabled={busy} onClick={() => void recover()}>
-                {t('actions.handle')}
-              </Button>
-            </div>
+                <option value="high">{t('jobs.priorityHigh')}</option>
+                <option value="normal">{t('jobs.priorityNormal')}</option>
+                <option value="low">{t('jobs.priorityLow')}</option>
+              </Select>
+            </label>
 
-            {selected.state === 'NEEDS_ATTENTION' ? (
-              <div className="btn-row" style={{ flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' }}>
+            <div className="btn-row" style={{ marginTop: '0.75rem' }}>
+              {(selected.state === 'FAILED' ||
+                selected.state === 'NEEDS_ATTENTION' ||
+                selected.state === 'CANCELLED') && (
                 <Button
                   size="sm"
-                  variant="primary"
                   disabled={busy}
-                  onClick={() => void runControl(() => window.novelTrans.jobs.retry(selected.id))}
+                  onClick={() =>
+                    void runControl(async () => {
+                      const r = await window.novelTrans.jobs.retry(selected.id);
+                      return { message: r.message };
+                    })
+                  }
                 >
                   {t('actions.retry')}
                 </Button>
-                <Button size="sm" disabled={busy} onClick={() => void runAction('skip')}>
-                  {t('actions.cancel')}
-                </Button>
-                <Button size="sm" disabled={busy} onClick={() => void runAction('manual_fix')}>
-                  {t('actions.handle')}
-                </Button>
+              )}
+              {selected.pinnedAccountId || selected.progress?.accountId ? (
                 <Button
                   size="sm"
+                  variant="ghost"
                   disabled={busy}
-                  onClick={() => void runAction('accept_with_warning')}
+                  onClick={() => {
+                    const aid = selected.progress?.accountId ?? selected.pinnedAccountId;
+                    if (!aid) return;
+                    void runControl(async () => {
+                      await window.novelTrans.accounts.openBrowser(aid, 'gemini');
+                      return { message: t('jobs.openedGemini') };
+                    });
+                  }}
                 >
-                  {t('actions.confirm')}
+                  {t('jobs.openGemini')}
                 </Button>
+              ) : null}
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={busy || selected.state === 'CANCELLED'}
+                onClick={() =>
+                  void runControl(async () => {
+                    const r = await window.novelTrans.jobs.cancel(selected.id);
+                    return { message: r.message };
+                  })
+                }
+              >
+                {t('actions.cancel')}
+              </Button>
+            </div>
+
+            <button
+              type="button"
+              className="ops-advanced-toggle"
+              onClick={() => {
+                setShowAdvanced((v) => !v);
+              }}
+            >
+              {showAdvanced ? t('jobs.hideAdvanced') : t('jobs.showAdvanced')}
+            </button>
+            {showAdvanced ? (
+              <div className="ops-advanced muted">
+                <p>ID: {selected.id}</p>
+                <p>
+                  {t('jobs.account')}:{' '}
+                  {selected.progress?.accountId ?? selected.pinnedAccountId ?? '—'}
+                </p>
+                <p>
+                  {t('jobs.status')}: {selected.state} · attempts {selected.attemptCount}
+                </p>
+                {selected.progress?.packMode ? (
+                  <p>packMode: {selected.progress.packMode}</p>
+                ) : null}
+                {selected.progress?.providerType ? (
+                  <p>provider: {selected.progress.providerType}</p>
+                ) : null}
+                {attempts.length > 0 ? (
+                  <ul style={{ paddingLeft: '1.1rem' }}>
+                    {attempts.slice(0, 8).map((a) => (
+                      <li key={a.id}>
+                        #{a.attemptNumber} {a.state}
+                        {a.error ? ` — ${a.error.slice(0, 80)}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
             ) : null}
-
-            <SectionHeader title={t('logs.activity')} />
-            {attempts.length === 0 ? (
-              selected.error ? (
-                <div>
-                  <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>
-                    {friendlyError(selected.error).title}
-                  </p>
-                  <p className="muted" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                    {selected.error}
-                  </p>
-                  <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.9em' }}>
-                    {friendlyError(selected.error).description}
-                  </p>
-                </div>
-              ) : (
-                <p className="muted">{t('common.noData')}</p>
-              )
-            ) : (
-              <ol style={{ paddingLeft: '1.1rem', margin: 0 }}>
-                {attempts.map((attempt) => {
-                  const detail = formatJobAttemptDetail(attempt);
-                  return (
-                    <li key={attempt.id} style={{ marginBottom: '0.65rem' }}>
-                      <strong>{formatJobAttemptHeadline(attempt)}</strong>
-                      {attempt.inputRef ? (
-                        <div className="muted" style={{ fontSize: '0.85em' }}>
-                          {t('logs.attemptInput', { ref: attempt.inputRef })}
-                        </div>
-                      ) : null}
-                      {detail ? (
-                        <div style={{ fontSize: '0.9em', marginTop: '0.15rem' }}>{detail}</div>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </>
+          </div>
         ) : null}
       </Drawer>
-
-      <Dialog
-        open={cancelTarget !== null}
-        title={t('actions.cancel')}
-        description={
-          cancelTarget
-            ? `${projectTitle(cancelTarget.projectId)} · ${statusLabel(cancelTarget.state)}`
-            : undefined
-        }
-        confirmLabel={t('actions.cancel')}
-        cancelLabel={t('actions.close')}
-        danger
-        busy={busy}
-        onConfirm={() => {
-          if (!cancelTarget) return;
-          const id = cancelTarget.id;
-          setCancelTarget(null);
-          void runControl(() => window.novelTrans.jobs.cancel(id));
-        }}
-        onCancel={() => { setCancelTarget(null); }}
-      />
-
-      <Dialog
-        open={bulkConfirm !== null}
-        title={
-          bulkConfirm === 'delete'
-            ? t('jobs.bulkDelete')
-            : bulkConfirm === 'retry'
-              ? t('jobs.bulkRetry')
-              : t('jobs.bulkCancel')
-        }
-        description={bulkConfirmCopy}
-        confirmLabel={
-          bulkConfirm === 'delete'
-            ? t('jobs.bulkDelete')
-            : bulkConfirm === 'retry'
-              ? t('jobs.bulkRetry')
-              : t('jobs.bulkCancel')
-        }
-        cancelLabel={t('actions.close')}
-        danger={bulkConfirm === 'cancel' || bulkConfirm === 'delete'}
-        busy={busy}
-        onConfirm={() => {
-          if (!bulkConfirm) return;
-          void runBulk(bulkConfirm);
-        }}
-        onCancel={() => { setBulkConfirm(null); }}
-      />
     </div>
   );
 }

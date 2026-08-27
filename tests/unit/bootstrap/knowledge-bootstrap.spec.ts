@@ -70,6 +70,8 @@ describe('bootstrap prompt', () => {
   it('includes DO NOT TRANSLATE and known terms', () => {
     const prep: BootstrapLocalPrepResult = {
       projectId: 'p',
+      sourceLanguage: 'zh-Hans',
+      targetLanguage: 'vi',
       bookProfile: '# Book',
       translationRules: '# Rules',
       knownTerms: [{ source: '筑基', target: 'Trúc Cơ', scope: 'GLOBAL' }],
@@ -83,6 +85,9 @@ describe('bootstrap prompt', () => {
     const prompt = buildBootstrapAnalysisPrompt(prep);
     expect(prompt).toMatch(/DO NOT TRANSLATE/i);
     expect(prompt).toContain('筑基 → Trúc Cơ');
+    expect(prompt).toContain('SOURCE_LANGUAGE:');
+    expect(prompt).toContain('preferred_target');
+    expect(prompt).not.toMatch(/preferred_vi/);
     expect(prompt).not.toMatch(/Return EXACTLY these sections/);
   });
 });
@@ -109,8 +114,10 @@ describe('bootstrap JSON parse', () => {
     });
     const parsed = parseBootstrapAnalysisOutput(raw);
     expect(parsed.characters).toHaveLength(1);
+    expect(parsed.characters[0]?.preferred_target).toBe('Vương Lâm');
     expect(parsed.relationships).toEqual([]);
     expect(parsed.terms[0]?.source).toBe('筑基');
+    expect(parsed.terms[0]?.preferred_target).toBe('Trúc Cơ');
   });
 
   it('allows empty relationships without fail', () => {

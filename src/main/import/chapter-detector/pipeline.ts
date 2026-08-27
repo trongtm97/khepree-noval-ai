@@ -2,7 +2,7 @@ import { sha256Text } from '../hash';
 import type { SegmentedParagraph } from '../paragraphs/segment';
 import { segmentParagraphs } from '../paragraphs/segment';
 import { normalizeNovelText } from '../paragraphs/normalize';
-import { DEFAULT_LINE_DETECTORS } from './detectors';
+import { DEFAULT_LINE_DETECTORS, lineDetectorsForLanguage } from './detectors';
 import type { LineDetector } from './utils';
 import type {
   ChapterBoundaryCandidate,
@@ -15,6 +15,8 @@ export interface ChapterDetectorOptions {
   /** Treat volume headings as chapter boundaries (default true). */
   includeVolumes?: boolean;
   minConfidence?: number;
+  /** Selects TextLanguageAdapter heading patterns when detectors omitted. */
+  sourceLanguage?: string | null;
 }
 
 /**
@@ -27,7 +29,11 @@ export function detectChapters(
 ): ChapterDetectionResult {
   const text = normalizeNovelText(rawText);
   const warnings: string[] = [];
-  const detectors = options.detectors ?? DEFAULT_LINE_DETECTORS;
+  const detectors =
+    options.detectors ??
+    (options.sourceLanguage != null
+      ? lineDetectorsForLanguage(options.sourceLanguage)
+      : DEFAULT_LINE_DETECTORS);
   const includeVolumes = options.includeVolumes ?? true;
   const minConfidence = options.minConfidence ?? 0.55;
 

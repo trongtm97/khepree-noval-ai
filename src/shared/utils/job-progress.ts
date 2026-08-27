@@ -29,12 +29,12 @@ export function isJobCompleted(state: string): boolean {
   return COMPLETED_JOB_STATES.has(state);
 }
 
-export type JobProgressMeasure = {
+export interface JobProgressMeasure {
   /** 0–100 when measurable; null → indeterminate. */
   percent: number | null;
   indeterminate: boolean;
   labelParts: string[];
-};
+}
 
 /** Real job.progress only — never attemptCount heuristics. */
 export function measureJobProgress(job: JobDto): JobProgressMeasure {
