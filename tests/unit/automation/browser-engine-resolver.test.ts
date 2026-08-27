@@ -4,6 +4,8 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   resolveBrowserEngine,
+  resolveLoginBrowserPreference,
+  LOGIN_SYSTEM_BROWSER_REQUIRED_MESSAGE,
   windowsChromeCandidates,
   windowsEdgeCandidates,
 } from '@main/automation/browser-runner/browser-engine-resolver';
@@ -16,7 +18,11 @@ import {
   launchNovelTransPersistentContext,
   writeBrowserEngineDiagnostics,
   toBrowserEngineDiagnosticsSnapshot,
+  playwrightLaunchAutomationOptions,
 } from '@main/automation/browser-runner/launch-persistent-context';
+import {
+  looksLikeInsecureBrowserInterstitial,
+} from '@main/automation/browser-runner/browser-session-controller';
 import { ProfileLockManager } from '@main/automation/browser-runner/profile-lock';
 
 describe('BrowserEngineResolver', () => {
@@ -130,6 +136,75 @@ describe('BrowserEngineResolver', () => {
     setBrowserEngineConfigOverride({ disableAutomationControlled: false });
     expect(getBrowserEngineConfig().disableAutomationControlled).toBe(false);
   });
+
+  it('resolveLoginBrowserPreference prefers Chrome then Edge; refuses Chromium-only', () => {
+    const env = {
+      ProgramFiles: 'C:\\PF',
+      'ProgramFiles(x86)': 'C:\\PF86',
+      LOCALAPPDATA: 'C:\\Local',
+    };
+    const chromePath = windowsChromeCandidates(env)[0];
+    const edgePath = windowsEdgeCandidates(env)[0];
+
+    expect(
+      resolveLoginBrowserPreference({
+        platform: 'win32',
+        env,
+        existsSync: (p) => p === chromePath || p === edgePath,
+      }),
+    ).toBe('CHROME');
+
+    expect(
+      resolveLoginBrowserPreference({
+        platform: 'win32',
+        env,
+        existsSync: (p) => p === edgePath,
+      }),
+    ).toBe('EDGE');
+
+    expect(() =>
+      resolveLoginBrowserPreference({
+        platform: 'win32',
+        env,
+        existsSync: () => false,
+        chromiumAvailable: true,
+        chromiumExecutablePath: 'C:\\pw\\chromium.exe',
+      }),
+    ).toThrow(LOGIN_SYSTEM_BROWSER_REQUIRED_MESSAGE);
+  });
+
+  it('loginCompat launch options ignore --enable-automation and disable AutomationControlled', () => {
+    expect(
+      playwrightLaunchAutomationOptions({
+        loginCompat: true,
+        disableAutomationControlled: true,
+      }),
+    ).toEqual({
+      args: ['--disable-blink-features=AutomationControlled'],
+      ignoreDefaultArgs: ['--enable-automation'],
+    });
+    expect(
+      playwrightLaunchAutomationOptions({
+        loginCompat: false,
+        disableAutomationControlled: false,
+      }),
+    ).toEqual({});
+  });
+
+  it('detects Google insecure-browser interstitial text', () => {
+    expect(
+      looksLikeInsecureBrowserInterstitial(
+        'https://accounts.google.com/v3/signin/rejected',
+        'This browser or app may not be secure. Try using a different browser.',
+      ),
+    ).toBe(true);
+    expect(
+      looksLikeInsecureBrowserInterstitial(
+        'https://gemini.google.com/app',
+        'Welcome to Gemini',
+      ),
+    ).toBe(false);
+  });
 });
 
 describe('launchNovelTransPersistentContext + profile lock', () => {
@@ -227,8 +302,10 @@ describe('launchNovelTransPersistentContext + profile lock', () => {
     const snap = toBrowserEngineDiagnosticsSnapshot(resolved, {
       headless: false,
       disableAutomationControlled: false,
+      loginCompat: true,
       profilePath: 'D:\\profiles\\x',
     });
+    expect(snap.loginCompat).toBe(true);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nts-snap-'));
     writeBrowserEngineDiagnostics(dir, snap);
     expect(fs.existsSync(path.join(dir, 'engine-info.json'))).toBe(true);

@@ -80,6 +80,7 @@ export const NotebookHealthDtoSchema = z.object({
   lastVerifiedAt: z.string().nullable(),
   lastDriveSyncAt: z.string().nullable(),
   lastError: z.string().nullable(),
+  instructionsReady: z.boolean(),
   files: z.array(NotebookHealthFileSchema),
   dirty: z.boolean(),
   usableForSlimPack: z.boolean(),

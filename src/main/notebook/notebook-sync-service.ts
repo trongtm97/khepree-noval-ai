@@ -46,6 +46,7 @@ export interface NotebookHealthDto {
   lastVerifiedAt: string | null;
   lastDriveSyncAt: string | null;
   lastError: string | null;
+  instructionsReady: boolean;
   files: {
     type: KnowledgeType;
     name: string;
@@ -249,6 +250,7 @@ export class NotebookSyncService {
         files,
         dirty: this.db.knowledgeFiles.anyDirty(projectId),
         usableForSlimPack: false,
+        instructionsReady: false,
       };
     }
 
@@ -264,6 +266,7 @@ export class NotebookSyncService {
       lastVerifiedAt: mapping.last_verified_at,
       lastDriveSyncAt: mapping.last_drive_sync_at,
       lastError: mapping.last_error,
+      instructionsReady: mapping.instructions_hash != null && mapping.instructions_hash.length > 0,
       files,
       dirty: this.db.knowledgeFiles.anyDirty(projectId),
       usableForSlimPack: status === 'ready' || status === 'sync_pending',

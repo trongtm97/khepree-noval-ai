@@ -1,5 +1,6 @@
 import type { QaIssue, QaResult, ParsedBatchResult } from '@shared/schemas/output-protocol';
 import type { QaVerdict } from '@shared/constants/output-protocol';
+import { isCorruptTranslationText } from './corrupt-translation';
 
 export interface LockedTermForQa {
   /** Chinese source present in batch paragraph source text. */
@@ -45,8 +46,12 @@ export function runLocalQa(input: QaCheckerInput): QaResult {
 
   const sourceIds = input.sourceParagraphIds;
   const sourceSet = new Set(sourceIds);
+  const sourceById = new Map(
+    (input.sourceParagraphs ?? []).map((p) => [p.paragraphId, p.sourceText]),
+  );
   const seen = new Map<string, number>();
   const translatedOrder: string[] = [];
+  const corruptParagraphIds: string[] = [];
 
   for (const line of input.parsed.translations) {
     const id = line.paragraphId;
@@ -67,6 +72,14 @@ export function runLocalQa(input: QaCheckerInput): QaResult {
         code: 'empty_translation',
         severity: 'error',
         message: `Empty translation for ${id}`,
+        paragraphId: id,
+      });
+    } else if (isCorruptTranslationText(line.text, sourceById.get(id))) {
+      corruptParagraphIds.push(id);
+      errors.push({
+        code: 'corrupt_translation',
+        severity: 'error',
+        message: `Corrupt / truncated translation for ${id}`,
         paragraphId: id,
       });
     }
@@ -152,6 +165,7 @@ export function runLocalQa(input: QaCheckerInput): QaResult {
     duplicateParagraphIds,
     unknownParagraphIds,
     emptyParagraphIds,
+    corruptParagraphIds,
     outOfOrder,
   };
 }
@@ -218,6 +232,7 @@ function resolveVerdict(input: {
 
   const hasMissing = input.missingParagraphIds.length > 0;
   const hasEmpty = input.errors.some((e) => e.code === 'empty_translation');
+  const hasCorrupt = input.errors.some((e) => e.code === 'corrupt_translation');
   const hasDup = input.errors.some((e) => e.code === 'duplicate_paragraph');
   const hasUnknown = input.errors.some((e) => e.code === 'unknown_paragraph');
   const hasLocked = input.errors.some(
@@ -225,7 +240,7 @@ function resolveVerdict(input: {
       e.code === 'locked_term_missing' || e.code === 'locked_term_forbidden_variant',
   );
 
-  if (hasMissing || hasEmpty) {
+  if (hasMissing || hasEmpty || hasCorrupt) {
     return 'REPAIR_REQUIRED';
   }
 

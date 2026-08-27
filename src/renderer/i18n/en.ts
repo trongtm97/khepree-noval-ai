@@ -348,6 +348,17 @@ export const en: LocaleMessages = {
     openAiMemory: 'AI Memory / Preprocess',
     knowledgeVersion: 'Memory v{local}/v{remote}',
     staleHint: 'Notebook pending sync — pack uses Hot Memory.',
+    localChangesHint: 'Local memory is ahead of Notebook — sync now.',
+    instructionsHint:
+      'Notebook is missing Custom instructions — open Configure chat → Custom, then Resume Notebook.',
+    syncNow: 'Sync now',
+    msgProvisioned: 'Notebook provisioned and verified.',
+    msgAssistedComplete: 'Assisted setup complete — notebook verified.',
+    msgMemoryReady: 'AI memory ready for translation.',
+    msgPrepareDone: 'AI memory prepared for translation.',
+    msgInstructionsAssisted:
+      'Sources are ready — finish Custom instructions in the browser, then Resume Notebook.',
+    msgNeedsAssisted: 'Notebook needs a browser action — click Resume Notebook.',
     translatePath: 'Translate path',
     translatePathUnknown: 'Not used this session yet',
   },
@@ -379,6 +390,9 @@ export const en: LocaleMessages = {
     deleteConfirmBody: 'Local browser profile for this account will be removed. This cannot be undone.',
     deleteAccount: 'Delete account',
     profileInUseBy: 'Profile in use by: {label}',
+    browserNotSecureHint:
+      'Google may block sign-in in automation browsers. Use installed Chrome or Edge, close old login windows, then Open browser again. Optional: set NTS_BROWSER_ENGINE=CHROME before starting the app.',
+    browserNotSecureStatus: 'Browser blocked by Google (not secure)',
   },
   jobs: {
     title: 'Jobs',
@@ -672,6 +686,19 @@ export const en: LocaleMessages = {
     jobFailed: 'Job could not complete',
     jobNeedsAttention: 'Job needs your attention',
     accountLogin: 'Google account needs sign-in again',
+    startupAiNotReady: 'Google AI / providers not ready',
+    startupGoogleNotReady: 'Gemini account not ready',
+    startupProvidersNotReady: 'AI providers not ready',
+    startupNoGoogleBody: 'No ready Google account. Open Accounts to sign in to Gemini.',
+    startupGoogleLoginBody: 'Google / Gemini needs sign-in again before translating.',
+    startupNoProviderBody: 'No AI provider enabled. Open Settings → AI Providers.',
+    startupWebApiBody:
+      'Gemini Web API is not READY (worker/cookies). Open Settings → AI Providers to fix.',
+    startupCheckFailedBody: 'Could not check AI status on startup. Retry or open Settings.',
+    startupBannerCtaAccounts: 'Accounts',
+    startupBannerCtaProviders: 'AI Providers',
+    startupBannerDismiss: 'Dismiss',
+    startupBannerRecheck: 'Recheck',
   },
   errors: {
     technicalDetails: 'Technical details',

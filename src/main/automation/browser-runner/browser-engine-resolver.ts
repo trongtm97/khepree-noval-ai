@@ -82,6 +82,31 @@ export const CHROMIUM_MISSING_MESSAGE =
 export const NO_SYSTEM_BROWSER_MESSAGE =
   'Không tìm thấy Microsoft Edge hoặc Google Chrome. Cài Edge hoặc Chrome để dùng Gemini Browser. Không cần Node.js hay lệnh cài thêm.';
 
+/** Google account login requires a real system browser — bundled Chromium is refused. */
+export const LOGIN_SYSTEM_BROWSER_REQUIRED_MESSAGE =
+  'Đăng nhập Google cần Microsoft Edge hoặc Google Chrome (không dùng Chromium Playwright). Cài Edge hoặc Chrome rồi mở lại trình duyệt đăng nhập.';
+
+/**
+ * Preference for interactive Google login: Chrome → Edge.
+ * Never returns PLAYWRIGHT_CHROMIUM (Google blocks it with "browser may not be secure").
+ */
+export function resolveLoginBrowserPreference(
+  deps: BrowserEngineResolverDeps = {},
+): Extract<BrowserEnginePreference, 'CHROME' | 'EDGE'> {
+  const platform = deps.platform ?? process.platform;
+  const env = deps.env ?? process.env;
+  const existsSync = deps.existsSync ?? fs.existsSync;
+
+  if (platform === 'win32') {
+    const chromePath = firstExisting(windowsChromeCandidates(env), existsSync);
+    if (chromePath) return 'CHROME';
+    const edgePath = firstExisting(windowsEdgeCandidates(env), existsSync);
+    if (edgePath) return 'EDGE';
+  }
+
+  throw new Error(LOGIN_SYSTEM_BROWSER_REQUIRED_MESSAGE);
+}
+
 function chromiumResolved(
   preference: BrowserEnginePreference,
   playwrightVersion: string,

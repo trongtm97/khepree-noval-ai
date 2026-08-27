@@ -57,6 +57,7 @@ export const QaResultSchema = z.object({
   duplicateParagraphIds: z.array(z.string()),
   unknownParagraphIds: z.array(z.string()),
   emptyParagraphIds: z.array(z.string()),
+  corruptParagraphIds: z.array(z.string()),
   outOfOrder: z.boolean(),
 });
 

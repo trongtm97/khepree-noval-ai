@@ -6,6 +6,7 @@ import {
   dedupeTranslationLines,
   findLastCompleteParagraphId,
   mergeTranslationsByParagraphId,
+  mergeRepairTranslations,
   runContinuationLoop,
   shouldUseContinuation,
   shouldUseRepairForMissing,
@@ -99,6 +100,20 @@ describe('continuation', () => {
     expect(merged).toHaveLength(2);
     expect(merged[0]?.text).toBe('Một.');
     expect(merged[1]?.text).toBe('Hai.');
+  });
+
+  it('mergeRepairTranslations lets repair override existing lines', () => {
+    const base = [
+      { paragraphId: IDS[0]!, text: '' },
+      { paragraphId: IDS[1]!, text: 'Cũ.' },
+      { paragraphId: IDS[2]!, text: 'Giữ.' },
+    ];
+    const extra = [
+      { paragraphId: IDS[0]!, text: 'Mới một.' },
+      { paragraphId: IDS[1]!, text: 'Mới hai.' },
+    ];
+    const merged = mergeRepairTranslations(base, extra, IDS);
+    expect(merged.map((l) => l.text)).toEqual(['Mới một.', 'Mới hai.', 'Giữ.']);
   });
 
   it('dedupeTranslationLines keeps first paragraph id', () => {

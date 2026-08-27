@@ -289,14 +289,22 @@ export class WorkerProcessManager {
       return this.getStatus();
     }
     if (this.isRunning()) {
-      return this.getStatus();
+      // Managed child may be stale while an orphan still owns the port with an old secret.
+      const healthy = await probeHealth(this.getBaseUrl(), this.secret, 1_500);
+      if (healthy) return this.getStatus();
+      logger.warn('Managed Gemini worker unhealthy — reclaiming port and restarting');
+      await this.stop();
     }
     await this.start();
     return this.getStatus();
   }
 
   async start(): Promise<void> {
-    if (this.isRunning()) return;
+    if (this.isRunning()) {
+      const healthy = await probeHealth(this.getBaseUrl(), this.secret, 1_500);
+      if (healthy) return;
+      await this.stop();
+    }
 
     const install = this.detectInstall();
     if (!install.ok || !install.pythonPath) {
@@ -304,8 +312,94 @@ export class WorkerProcessManager {
       throw new Error(install.message);
     }
 
+    // Orphan NovelTransGeminiWorker after app restart keeps port + old secret → HTTP 401.
+    await this.reclaimPort('before-start');
+
     this.intentionalStop = false;
     this.secret = randomBytes(24).toString('hex');
+
+    try {
+      await this.spawnWorker(install);
+      await this.waitUntilHealthyOrExit(
+        install.mode === 'bundled_exe' ? 45_000 : 20_000,
+      );
+      this.lastError = null;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      // Bind race / leftover listener: kill again and retry once with a fresh secret.
+      if (/HTTP 401|EADDRINUSE|10048|ECONNREFUSED|timeout|exited/i.test(message)) {
+        logger.warn('Gemini worker start failed — reclaim port and retry once', { message });
+        await this.stop();
+        await this.reclaimPort('retry-after-health-fail');
+        this.intentionalStop = false;
+        this.secret = randomBytes(24).toString('hex');
+        await this.spawnWorker(install);
+        await this.waitUntilHealthyOrExit(
+          install.mode === 'bundled_exe' ? 45_000 : 20_000,
+        );
+        this.lastError = null;
+        return;
+      }
+      this.lastError = message;
+      throw error;
+    }
+  }
+
+  private async waitUntilHealthyOrExit(timeoutMs: number): Promise<void> {
+    const child = this.child;
+    if (!child) {
+      throw new Error('Worker process missing after spawn');
+    }
+
+    let exitCode: number | null | undefined;
+    let exitSignal: NodeJS.Signals | null = null;
+    const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
+      exitCode = code;
+      exitSignal = signal;
+    };
+    child.once('exit', onExit);
+
+    const started = Date.now();
+    let lastErr = 'timeout';
+    try {
+      while (Date.now() - started < timeoutMs) {
+        if (exitCode !== undefined || this.child !== child) {
+          throw new Error(
+            `Worker exited before healthy (code=${exitCode ?? 'null'}, signal=${exitSignal})`,
+          );
+        }
+        try {
+          const res = await fetch(`${this.getBaseUrl()}/health`, {
+            headers: { 'X-NTS-Secret': this.secret },
+          });
+          if (res.ok) return;
+          lastErr = `HTTP ${res.status}`;
+          // Wrong secret on an orphan that outlived our child — fail fast to reclaim.
+          if (res.status === 401 && !this.isRunning()) {
+            throw new Error(`Worker health check failed: ${lastErr}`);
+          }
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            (error.message.startsWith('Worker exited') ||
+              error.message.startsWith('Worker health check failed'))
+          ) {
+            throw error;
+          }
+          lastErr = error instanceof Error ? error.message : String(error);
+        }
+        await sleep(400);
+      }
+      throw new Error(`Worker health check failed: ${lastErr}`);
+    } finally {
+      child.removeListener('exit', onExit);
+    }
+  }
+
+  private async spawnWorker(install: WorkerInstallStatus): Promise<void> {
+    if (!install.pythonPath) {
+      throw new Error(install.message || 'Worker binary missing');
+    }
 
     const env = {
       ...process.env,
@@ -324,8 +418,6 @@ export class WorkerProcessManager {
         windowsHide: true,
       });
       this.attachChild(child);
-      await waitForHealth(this.getBaseUrl(), this.secret, 45_000);
-      this.lastError = null;
       return;
     }
 
@@ -353,9 +445,20 @@ export class WorkerProcessManager {
       windowsHide: true,
     });
     this.attachChild(child);
+  }
 
-    await waitForHealth(this.getBaseUrl(), this.secret, 20_000);
-    this.lastError = null;
+  /** Kill leftover listeners on our port (orphans after crash / hot-reload). */
+  async reclaimPort(reason: string): Promise<void> {
+    const keepPid = this.child?.pid ?? null;
+    const killed = await killOrphanWorkersOnPort(this.port, keepPid);
+    if (killed.length > 0) {
+      logger.warn('Reclaimed Gemini Web API worker port', {
+        port: this.port,
+        reason,
+        killed,
+      });
+      await sleep(400);
+    }
   }
 
   private attachChild(child: ChildProcessWithoutNullStreams): void {
@@ -380,24 +483,31 @@ export class WorkerProcessManager {
 
   async stop(): Promise<void> {
     this.intentionalStop = true;
-    if (!this.child) return;
-    const child = this.child;
-    child.kill();
-    await new Promise<void>((resolve) => {
-      const t = setTimeout(() => {
-        try {
-          child.kill('SIGKILL');
-        } catch {
-          // ignore
-        }
-        resolve();
-      }, 3_000);
-      child.once('exit', () => {
-        clearTimeout(t);
-        resolve();
+    if (this.child) {
+      const child = this.child;
+      try {
+        child.kill();
+      } catch {
+        // ignore
+      }
+      await new Promise<void>((resolve) => {
+        const t = setTimeout(() => {
+          try {
+            child.kill('SIGKILL');
+          } catch {
+            // ignore
+          }
+          resolve();
+        }, 3_000);
+        child.once('exit', () => {
+          clearTimeout(t);
+          resolve();
+        });
       });
-    });
-    this.child = null;
+      this.child = null;
+    }
+    // Windows often leaves the .exe listening after Electron reloads — force free port.
+    await this.reclaimPort('stop');
   }
 
   async restart(): Promise<void> {
@@ -477,8 +587,128 @@ async function waitForHealth(baseUrl: string, secret: string, timeoutMs: number)
   throw new Error(`Worker health check failed: ${lastErr}`);
 }
 
+async function probeHealth(
+  baseUrl: string,
+  secret: string,
+  timeoutMs: number,
+): Promise<boolean> {
+  try {
+    await waitForHealth(baseUrl, secret, timeoutMs);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Parse `netstat -ano` LISTENING rows for a TCP port → PIDs. */
+export function parseWindowsNetstatListeningPids(
+  output: string,
+  port: number,
+): number[] {
+  const pids = new Set<number>();
+  for (const raw of output.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || !/LISTENING/i.test(line)) continue;
+    const parts = line.split(/\s+/).filter(Boolean);
+    // TCP  127.0.0.1:18765  0.0.0.0:0  LISTENING  26232
+    if (parts.length < 5) continue;
+    const local = parts[1]!;
+    const portText = local.includes(']:')
+      ? local.slice(local.lastIndexOf(']:') + 2)
+      : local.slice(local.lastIndexOf(':') + 1);
+    if (Number(portText) !== port) continue;
+    const pid = Number(parts[parts.length - 1]);
+    if (Number.isFinite(pid) && pid > 0) pids.add(pid);
+  }
+  return [...pids];
+}
+
+/** Parse `lsof -iTCP:port -sTCP:LISTEN -n -P -t` PID lines. */
+export function parseLsofListeningPids(output: string): number[] {
+  const pids = new Set<number>();
+  for (const raw of output.split(/\r?\n/)) {
+    const pid = Number(raw.trim());
+    if (Number.isFinite(pid) && pid > 0) pids.add(pid);
+  }
+  return [...pids];
+}
+
+async function listPidsListeningOnPort(port: number): Promise<number[]> {
+  if (process.platform === 'win32') {
+    const result = spawnSyncCapture('netstat', ['-ano', '-p', 'tcp']);
+    return parseWindowsNetstatListeningPids(result.stdout + result.stderr, port);
+  }
+  const result = spawnSyncCapture('lsof', [
+    `-iTCP:${port}`,
+    '-sTCP:LISTEN',
+    '-n',
+    '-P',
+    '-t',
+  ]);
+  return parseLsofListeningPids(result.stdout + result.stderr);
+}
+
+function forceKillPid(pid: number): boolean {
+  try {
+    if (process.platform === 'win32') {
+      const result = spawnSyncCapture('taskkill', ['/PID', String(pid), '/F', '/T']);
+      return result.ok;
+    }
+    process.kill(pid, 'SIGKILL');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function killBundledWorkerByImageName(keepPid: number | null): number[] {
+  if (process.platform !== 'win32') return [];
+  // tasklist CSV: "NovelTransGeminiWorker.exe","1234",...
+  const listed = spawnSyncCapture('tasklist', [
+    '/FI',
+    `IMAGENAME eq ${BUNDLED_WORKER_EXE_NAME}`,
+    '/FO',
+    'CSV',
+    '/NH',
+  ]);
+  const killed: number[] = [];
+  const blob = listed.stdout + listed.stderr;
+  for (const raw of blob.split(/\r?\n/)) {
+    const m = raw.match(/"([^"]+)","(\d+)"/);
+    if (!m) continue;
+    if (m[1]!.toLowerCase() !== BUNDLED_WORKER_EXE_NAME.toLowerCase()) continue;
+    const pid = Number(m[2]);
+    if (!Number.isFinite(pid) || pid <= 0) continue;
+    if (keepPid != null && pid === keepPid) continue;
+    if (forceKillPid(pid)) killed.push(pid);
+  }
+  return killed;
+}
+
+/**
+ * Free Gemini worker port held by orphans (not the currently managed child).
+ * Prefer port listeners; on Windows also sweep NovelTransGeminiWorker.exe.
+ */
+export async function killOrphanWorkersOnPort(
+  port: number,
+  keepPid: number | null = null,
+): Promise<number[]> {
+  const killed = new Set<number>();
+
+  for (const pid of await listPidsListeningOnPort(port)) {
+    if (keepPid != null && pid === keepPid) continue;
+    if (forceKillPid(pid)) killed.add(pid);
+  }
+
+  for (const pid of killBundledWorkerByImageName(keepPid)) {
+    killed.add(pid);
+  }
+
+  return [...killed];
 }
 
 export const workerProcessManager = new WorkerProcessManager();

@@ -79,14 +79,14 @@ describe('BrowserRuntimeManager', () => {
         context,
         resolved: {
           preference: 'AUTO',
-          engine: 'playwright-chromium',
-          channel: null,
+          engine: 'PLAYWRIGHT_CHROMIUM',
           executablePath: null,
           playwrightVersion: '0.0.0-test',
           displayName: 'test',
         },
         headless: true,
         disableAutomationControlled: false,
+        loginCompat: false,
       };
     };
 

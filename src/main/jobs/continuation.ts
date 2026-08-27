@@ -130,8 +130,27 @@ export function mergeTranslationsByParagraphId(
   extra: TranslationLine[],
   sourceOrder: string[],
 ): TranslationLine[] {
+  return mergeTranslationsByParagraphIdWithPreference(base, extra, sourceOrder, 'first');
+}
+
+/** Partial repair: newer lines override existing ones for the same paragraph ID. */
+export function mergeRepairTranslations(
+  base: TranslationLine[],
+  extra: TranslationLine[],
+  sourceOrder: string[],
+): TranslationLine[] {
+  return mergeTranslationsByParagraphIdWithPreference(base, extra, sourceOrder, 'last');
+}
+
+function mergeTranslationsByParagraphIdWithPreference(
+  base: TranslationLine[],
+  extra: TranslationLine[],
+  sourceOrder: string[],
+  prefer: 'first' | 'last',
+): TranslationLine[] {
+  const orderedLines = prefer === 'first' ? [...base, ...extra] : [...extra, ...base];
   const map = new Map<string, TranslationLine>();
-  for (const line of [...base, ...extra]) {
+  for (const line of orderedLines) {
     if (!line.text.trim()) continue;
     if (!map.has(line.paragraphId)) {
       map.set(line.paragraphId, line);

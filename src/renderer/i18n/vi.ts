@@ -354,6 +354,17 @@ export const vi = {
     openAiMemory: 'Bộ nhớ AI / Tiền xử lý',
     knowledgeVersion: 'Bộ nhớ v{local}/v{remote}',
     staleHint: 'Notebook chờ đồng bộ — pack dùng Hot Memory.',
+    localChangesHint: 'Bộ nhớ local mới hơn Notebook — bấm Đồng bộ ngay.',
+    instructionsHint:
+      'Notebook thiếu Custom instructions — mở Configure chat → Custom rồi Tiếp tục Notebook.',
+    syncNow: 'Đồng bộ ngay',
+    msgProvisioned: 'Notebook đã thiết lập và xác minh.',
+    msgAssistedComplete: 'Thiết lập assisted hoàn tất — Notebook đã xác minh.',
+    msgMemoryReady: 'Bộ nhớ AI sẵn sàng cho dịch.',
+    msgPrepareDone: 'Đã chuẩn bị bộ nhớ AI cho dịch.',
+    msgInstructionsAssisted:
+      'Nguồn đã sẵn sàng — hoàn tất Custom instructions trên trình duyệt rồi bấm Tiếp tục Notebook.',
+    msgNeedsAssisted: 'Notebook cần thao tác trên trình duyệt — bấm Tiếp tục Notebook.',
     translatePath: 'Đường dịch',
     translatePathUnknown: 'Chưa dùng trong phiên này',
   },
@@ -385,6 +396,9 @@ export const vi = {
     deleteConfirmBody: 'Hồ sơ trình duyệt cục bộ của tài khoản sẽ bị gỡ. Không thể hoàn tác.',
     deleteAccount: 'Xóa tài khoản',
     profileInUseBy: 'Profile đang được sử dụng bởi: {label}',
+    browserNotSecureHint:
+      'Google có thể chặn đăng nhập trên trình duyệt automation. Dùng Chrome hoặc Edge đã cài, đóng cửa sổ đăng nhập cũ, rồi Mở trình duyệt lại. Tuỳ chọn: đặt NTS_BROWSER_ENGINE=CHROME trước khi chạy app.',
+    browserNotSecureStatus: 'Google chặn trình duyệt (không an toàn)',
   },
   jobs: {
     title: 'Tiến trình',
@@ -676,6 +690,19 @@ export const vi = {
     jobFailed: 'Không thể hoàn thành tiến trình',
     jobNeedsAttention: 'Tiến trình cần bạn xử lý',
     accountLogin: 'Tài khoản Google cần đăng nhập lại',
+    startupAiNotReady: 'Google AI / nhà cung cấp chưa sẵn sàng',
+    startupGoogleNotReady: 'Tài khoản Gemini chưa sẵn sàng',
+    startupProvidersNotReady: 'Nhà cung cấp AI chưa sẵn sàng',
+    startupNoGoogleBody: 'Chưa có tài khoản Google sẵn sàng. Vào Tài khoản để đăng nhập Gemini.',
+    startupGoogleLoginBody: 'Cần đăng nhập lại Google / Gemini trước khi dịch.',
+    startupNoProviderBody: 'Chưa bật nhà cung cấp AI. Mở Cài đặt → Nhà cung cấp AI.',
+    startupWebApiBody:
+      'Gemini Web API chưa READY (worker/cookie). Mở Cài đặt → Nhà cung cấp AI để kiểm tra.',
+    startupCheckFailedBody: 'Không kiểm tra được trạng thái AI lúc mở app. Thử lại hoặc mở Cài đặt.',
+    startupBannerCtaAccounts: 'Tài khoản',
+    startupBannerCtaProviders: 'Nhà cung cấp AI',
+    startupBannerDismiss: 'Ẩn',
+    startupBannerRecheck: 'Kiểm tra lại',
   },
   errors: {
     technicalDetails: 'Chi tiết kỹ thuật',

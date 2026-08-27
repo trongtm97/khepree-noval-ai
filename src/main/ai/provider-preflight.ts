@@ -224,12 +224,27 @@ async function checkPlaywright(
     checks.profileLockOk = canNest;
     if (!canNest) {
       const owner = profileLockManager.getOwner(profilePath);
-      return {
-        providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
-        result: 'PROFILE_BUSY',
-        message: `Profile đang bị giữ bởi: ${owner ?? 'unknown'}`,
-        checks,
-      };
+      // Accounts/manual browser uses ownerId === accountId and blocks translate.
+      if (owner === input.accountId) {
+        await freeManualAccountBrowser(input.accountId, profilePath);
+        if (!profileLockManager.isLocked(profilePath)) {
+          checks.profileLockOk = true;
+        } else {
+          return {
+            providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+            result: 'PROFILE_BUSY',
+            message: `Profile đang bị giữ bởi: ${profileLockManager.getOwner(profilePath) ?? owner}`,
+            checks,
+          };
+        }
+      } else {
+        return {
+          providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+          result: 'PROFILE_BUSY',
+          message: `Profile đang bị giữ bởi: ${owner ?? 'unknown'}`,
+          checks,
+        };
+      }
     }
   } else {
     checks.profileLockOk = true;
@@ -315,6 +330,25 @@ async function checkPlaywright(
     message: 'Playwright / Gemini Notebook sẵn sàng.',
     checks,
   };
+}
+
+async function freeManualAccountBrowser(
+  accountId: string,
+  profilePath: string,
+): Promise<void> {
+  try {
+    const { getAccountWorkerService } = await import(
+      '../services/account-worker-singleton'
+    );
+    await getAccountWorkerService().closeBrowser(accountId);
+    logger.info('Closed Accounts browser before Playwright preflight', { accountId });
+  } catch (error) {
+    logger.warn('Could not close Accounts browser before Playwright preflight', {
+      accountId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  profileLockManager.recoverIfStale(profilePath);
 }
 
 async function deepPlaywrightProbe(

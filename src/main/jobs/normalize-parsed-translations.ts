@@ -54,8 +54,13 @@ export function qaErrorsAreOnlyIdNoise(qa: {
   errors: { code: string }[];
   missingParagraphIds: string[];
   emptyParagraphIds: string[];
+  corruptParagraphIds?: string[];
 }): boolean {
-  if (qa.missingParagraphIds.length > 0 || qa.emptyParagraphIds.length > 0) {
+  if (
+    qa.missingParagraphIds.length > 0 ||
+    qa.emptyParagraphIds.length > 0 ||
+    (qa.corruptParagraphIds?.length ?? 0) > 0
+  ) {
     return false;
   }
   if (qa.errors.length === 0) return false;

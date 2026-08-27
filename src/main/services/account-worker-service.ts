@@ -160,12 +160,16 @@ export class AccountWorkerService {
 
     if (!probe.usable) {
       const status: GoogleAccountStatus =
-        probe.reason === 'NEEDS_ATTENTION' ? 'NEEDS_ATTENTION' : 'LOGIN_REQUIRED';
+        probe.reason === 'NEEDS_ATTENTION' || probe.reason === 'BROWSER_NOT_SECURE'
+          ? 'NEEDS_ATTENTION'
+          : 'LOGIN_REQUIRED';
       this.accounts.update(accountId, { status });
       throw new Error(
-        probe.reason === 'NEEDS_ATTENTION'
-          ? 'Session cần chú ý (CAPTCHA / unusual traffic). Mở trình duyệt, xử lý xong rồi thử lại.'
-          : 'Chưa thấy session Google đã đăng nhập. Mở trình duyệt, đăng nhập, nhập email rồi bấm Đã đăng nhập.',
+        probe.reason === 'BROWSER_NOT_SECURE'
+          ? 'Google báo trình duyệt không an toàn. Cần Chrome hoặc Edge; đóng cửa sổ automation cũ rồi Mở trình duyệt lại.'
+          : probe.reason === 'NEEDS_ATTENTION'
+            ? 'Session cần chú ý (CAPTCHA / unusual traffic). Mở trình duyệt, xử lý xong rồi thử lại.'
+            : 'Chưa thấy session Google đã đăng nhập. Mở trình duyệt, đăng nhập, nhập email rồi bấm Đã đăng nhập.',
       );
     }
 
@@ -317,7 +321,10 @@ export class AccountWorkerService {
       if (email) {
         await this.autoProvisionGeminiWebApi(accountId, email, cookies);
       }
-    } else if (probe.reason === 'NEEDS_ATTENTION') {
+    } else if (
+      probe.reason === 'NEEDS_ATTENTION' ||
+      probe.reason === 'BROWSER_NOT_SECURE'
+    ) {
       this.accounts.update(accountId, { status: 'NEEDS_ATTENTION' });
     } else {
       this.accounts.update(accountId, { status: 'LOGIN_REQUIRED' });

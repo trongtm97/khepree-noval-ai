@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useT } from '../../i18n';
 import { statusLabel, statusTone } from '../../i18n/status';
 import { Button, Card } from '../ui';
 import { NOTEBOOK_CHANNEL_READY } from '@shared/constants/notebook';
+import {
+  mapNotebookServiceMessage,
+  needsNotebookSync,
+  resolveNotebookPanelHint,
+} from '../../utils/notebook-panel';
 
 interface AiStatusPanelProps {
   projectId?: string;
@@ -35,6 +40,19 @@ export function AiStatusPanel({
   const [localVersion, setLocalVersion] = useState(0);
   const [notebookVersion, setNotebookVersion] = useState(0);
   const [knowledgeDirty, setKnowledgeDirty] = useState(false);
+  const [instructionsReady, setInstructionsReady] = useState(true);
+
+  const refreshNotebookHealth = useCallback(async (pid: string, aid: string) => {
+    const [nb, healthRes] = await Promise.all([
+      window.novelTrans.notebook.get(pid, aid),
+      window.novelTrans.notebook.health({ projectId: pid, accountId: aid }),
+    ]);
+    setNotebookStatus(nb.mapping?.status ?? healthRes.status);
+    setLocalVersion(healthRes.localVersion);
+    setNotebookVersion(healthRes.notebookVersion);
+    setKnowledgeDirty(healthRes.dirty);
+    setInstructionsReady(healthRes.instructionsReady);
+  }, []);
 
   useEffect(() => {
     const cancelled = { current: false };
@@ -54,17 +72,11 @@ export function AiStatusPanel({
         setHealth(worker?.health ?? account?.status ?? 'DISCONNECTED');
         setAccountId(account?.id ?? null);
         if (projectId && account?.id) {
-          const [nb, healthRes] = await Promise.all([
-            window.novelTrans.notebook.get(projectId, account.id),
-            window.novelTrans.notebook.health({ projectId, accountId: account.id }),
-          ]);
-          if (cancelled.current) return;
-          setNotebookStatus(nb.mapping?.status ?? healthRes.status);
-          setLocalVersion(healthRes.localVersion);
-          setNotebookVersion(healthRes.notebookVersion);
-          setKnowledgeDirty(healthRes.dirty);
+          await refreshNotebookHealth(projectId, account.id);
         } else {
           setNotebookStatus(null);
+          setKnowledgeDirty(false);
+          setInstructionsReady(true);
         }
       } catch {
         // ignore
@@ -73,30 +85,66 @@ export function AiStatusPanel({
     return () => {
       cancelled.current = true;
     };
-  }, [projectId]);
+  }, [projectId, refreshNotebookHealth]);
 
   const tone = statusTone(health);
   const needsLogin = health === 'LOGIN_REQUIRED' || health === 'NEEDS_ATTENTION';
   const limited = health === 'LIMITED';
   const notebookReady = NOTEBOOK_CHANNEL_READY.has((notebookStatus ?? '').toLowerCase());
   const notebookAssisted = (notebookStatus ?? '').toLowerCase() === 'assisted_setup';
-  const notebookPending =
-    (notebookStatus ?? '').toLowerCase() === 'sync_pending' ||
-    (notebookStatus ?? '').toLowerCase() === 'stale' ||
-    knowledgeDirty;
+  const needsInstructionSetup = notebookReady && !instructionsReady;
+  const panelHint = resolveNotebookPanelHint({
+    status: notebookStatus,
+    dirty: knowledgeDirty,
+    instructionsReady,
+  });
+  const showSyncNow = Boolean(
+    projectId && accountId && needsNotebookSync({ status: notebookStatus, dirty: knowledgeDirty }),
+  );
+
+  const afterNotebookAction = useCallback(async () => {
+    if (projectId && accountId) {
+      await refreshNotebookHealth(projectId, accountId);
+    }
+    onNotebookChange?.();
+  }, [projectId, accountId, refreshNotebookHealth, onNotebookChange]);
 
   const runNotebook = async (mode: 'provision' | 'resume') => {
     if (!projectId || !accountId) return;
     setNotebookBusy(true);
     setNotebookMessage(null);
     try {
-      const result =
-        mode === 'provision'
-          ? await window.novelTrans.notebook.provision({ projectId, accountId })
-          : await window.novelTrans.notebook.resume({ projectId, accountId });
-      setNotebookStatus(result.mapping.status);
-      setNotebookMessage(result.message);
-      onNotebookChange?.();
+      if (mode === 'provision') {
+        const result = await window.novelTrans.notebook.prepareForTranslate({
+          projectId,
+          accountId,
+        });
+        setNotebookStatus(result.notebookStatus);
+        setNotebookMessage(mapNotebookServiceMessage(result.message, t));
+        if (result.needsAssisted) {
+          setNotebookStatus('assisted_setup');
+        }
+      } else {
+        const result = await window.novelTrans.notebook.resume({ projectId, accountId });
+        setNotebookStatus(result.mapping.status);
+        setNotebookMessage(mapNotebookServiceMessage(result.message, t));
+      }
+      await afterNotebookAction();
+    } catch (err: unknown) {
+      setNotebookMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setNotebookBusy(false);
+    }
+  };
+
+  const runSyncNow = async () => {
+    if (!projectId || !accountId) return;
+    setNotebookBusy(true);
+    setNotebookMessage(null);
+    try {
+      await window.novelTrans.notebook.syncNow({ projectId, accountId });
+      await afterNotebookAction();
+      setNotebookMessage(t('aiPanel.msgPrepareDone'));
     } catch (err: unknown) {
       setNotebookMessage(err instanceof Error ? err.message : String(err));
     } finally {
@@ -114,6 +162,15 @@ export function AiStatusPanel({
       setNotebookMessage(err instanceof Error ? err.message : String(err));
     }
   };
+
+  const hintMessage =
+    panelHint === 'stale'
+      ? t('aiPanel.staleHint')
+      : panelHint === 'localChanges'
+        ? t('aiPanel.localChangesHint')
+        : panelHint === 'instructions'
+          ? t('aiPanel.instructionsHint')
+          : null;
 
   return (
     <Card style={{ margin: '0.5rem', padding: '0.75rem' }}>
@@ -172,9 +229,9 @@ export function AiStatusPanel({
           </dd>
         </div>
       </dl>
-      {notebookPending ? (
+      {hintMessage ? (
         <p className="muted" style={{ fontSize: 'var(--font-small)' }}>
-          {t('aiPanel.staleHint')}
+          {hintMessage}
         </p>
       ) : null}
       {notebookMessage ? (
@@ -192,6 +249,11 @@ export function AiStatusPanel({
             }}
           >
             {t('aiPanel.openAiMemory')}
+          </Button>
+        ) : null}
+        {showSyncNow ? (
+          <Button size="sm" variant="secondary" loading={notebookBusy} onClick={() => void runSyncNow()}>
+            {t('aiPanel.syncNow')}
           </Button>
         ) : null}
         {needsLogin && accountId ? (
@@ -215,20 +277,24 @@ export function AiStatusPanel({
             {t('actions.pause')}
           </Button>
         ) : null}
-        {projectId && accountId && !notebookReady ? (
+        {projectId && accountId && (!notebookReady || notebookAssisted || needsInstructionSetup) ? (
           <>
             <Button size="sm" variant="secondary" onClick={() => void openNotebookBrowser()}>
               {t('aiPanel.openNotebookBrowser')}
             </Button>
             <Button
               size="sm"
-              variant={notebookAssisted ? 'secondary' : 'primary'}
+              variant={notebookAssisted || needsInstructionSetup ? 'secondary' : 'primary'}
               loading={notebookBusy}
               onClick={() => {
-                void runNotebook(notebookAssisted ? 'resume' : 'provision');
+                void runNotebook(
+                  notebookAssisted || needsInstructionSetup ? 'resume' : 'provision',
+                );
               }}
             >
-              {notebookAssisted ? t('aiPanel.resume') : t('aiPanel.provision')}
+              {notebookAssisted || needsInstructionSetup
+                ? t('aiPanel.resume')
+                : t('aiPanel.provision')}
             </Button>
           </>
         ) : null}

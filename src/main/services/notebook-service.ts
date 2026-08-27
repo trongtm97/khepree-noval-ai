@@ -332,7 +332,20 @@ export class NotebookService {
         instructionsApplied = true;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        logger.warn('Notebook instructions skipped after sources verified', { message });
+        logger.warn('Notebook instructions failed after sources verified', { message });
+        await context?.close().catch(() => undefined);
+        context = null;
+        releaseLock();
+        const userMessage = attachKnowledge
+          ? `Nguồn đã sẵn sàng; chưa đặt Custom instructions (Configure chat → Custom). ${message}`
+          : message;
+        return await this.enterAssisted(
+          mapping.id,
+          input,
+          'set_instructions',
+          userMessage,
+          notebookName,
+        );
       }
 
       const ready = this.db.notebooks.upsert({
@@ -343,13 +356,9 @@ export class NotebookService {
         notebook_id: mapping.notebook_id,
         resource_url: mapping.resource_url ?? page.url(),
         status: 'ready',
-        instructions_hash: instructionsApplied ? instructionsHash : null,
+        instructions_hash: instructionsHash,
         assisted_step: null,
-        last_error: instructionsApplied
-          ? null
-          : attachKnowledge
-            ? 'Sources ready; custom instructions not set (Configure chat → Custom)'
-            : 'Research notebook ready — corpus upload during FULL preprocess',
+        last_error: null,
         last_verified_at: new Date().toISOString(),
       });
       if (attachKnowledge) {
@@ -363,9 +372,7 @@ export class NotebookService {
       return {
         mapping: this.toDto(ready),
         assisted: false,
-        message: instructionsApplied
-          ? 'Notebook provisioned and verified'
-          : 'Notebook sources ready; set Custom instructions in Configure chat if needed',
+        message: 'Notebook đã thiết lập và xác minh.',
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -564,7 +571,20 @@ export class NotebookService {
         instructionsApplied = true;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        logger.warn('Notebook instructions skipped after sources verified', { message });
+        logger.warn('Notebook instructions failed after sources verified', { message });
+        await context?.close().catch(() => undefined);
+        context = null;
+        releaseLock();
+        const userMessage = attachKnowledge
+          ? `Nguồn đã sẵn sàng; chưa đặt Custom instructions (Configure chat → Custom). ${message}`
+          : message;
+        return await this.enterAssisted(
+          existing.id,
+          input,
+          'set_instructions',
+          userMessage,
+          notebookName,
+        );
       }
 
       const ready = this.db.notebooks.upsert({
@@ -576,14 +596,18 @@ export class NotebookService {
         resource_url: page.url(),
         status: 'ready',
         assisted_step: null,
-        last_error: instructionsApplied
-          ? null
-          : attachKnowledge
-            ? 'Sources ready; custom instructions not set (Configure chat → Custom)'
-            : 'Research notebook ready',
+        last_error: null,
         last_verified_at: new Date().toISOString(),
-        instructions_hash: instructionsApplied ? hashText(instructions) : null,
+        instructions_hash: hashText(instructions),
       });
+
+      if (attachKnowledge) {
+        getNotebookSyncService(this.db).markNotebookVerified(
+          input.projectId,
+          input.accountId,
+          notebookRole === 'SINGLE' ? 'SINGLE' : 'TRANSLATION',
+        );
+      }
 
       this.releaseAccountBusyForTranslate(input.accountId);
 
@@ -593,9 +617,7 @@ export class NotebookService {
       return {
         mapping: this.toDto(ready),
         assisted: false,
-        message: instructionsApplied
-          ? 'Assisted setup complete — notebook verified'
-          : 'Notebook sources ready; set Custom instructions in Configure chat if needed',
+        message: 'Notebook đã thiết lập và xác minh.',
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

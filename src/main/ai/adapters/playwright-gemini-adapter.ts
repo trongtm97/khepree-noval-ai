@@ -30,12 +30,109 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
   }
 
   async healthCheck(): Promise<AIProviderHealth> {
-    // Object existence ≠ READY. Require a real account-aware signal when possible.
+    const db = getDatabase();
+    const accounts = db.googleAccounts.list().filter((a) => {
+      const s = (a.status ?? '').toUpperCase();
+      return s !== 'DISABLED';
+    });
+    if (accounts.length === 0) {
+      return {
+        ok: false,
+        status: 'LOGIN_REQUIRED',
+        message: 'Chưa có tài khoản Google cho Gemini Browser.',
+      };
+    }
+
+    const usable = accounts.find((a) => {
+      const s = (a.status ?? '').toUpperCase();
+      return s === 'READY' || s === 'BUSY';
+    });
+    if (!usable) {
+      const login = accounts.find((a) => {
+        const s = (a.status ?? '').toUpperCase();
+        return s === 'LOGIN_REQUIRED' || s === 'NEEDS_ATTENTION';
+      });
+      return {
+        ok: false,
+        status: 'LOGIN_REQUIRED',
+        message: login
+          ? 'Google session cần đăng nhập lại trước khi dùng Gemini Browser.'
+          : 'Không có tài khoản Google sẵn sàng cho Gemini Browser.',
+        accountEmail: (login ?? accounts[0])?.email ?? null,
+      };
+    }
+
+    const profile = db.googleAccounts.getProfile(usable.id);
+    if (!profile?.profile_dir_name) {
+      return {
+        ok: false,
+        status: 'ERROR',
+        message: 'Browser profile chưa có — mở Tài khoản và đăng nhập Gemini.',
+        accountEmail: usable.email,
+      };
+    }
+
+    const { browserProfileManager } = await import(
+      '../../automation/browser-runner/profile-manager'
+    );
+    const { profileLockManager } = await import(
+      '../../automation/browser-runner/profile-lock'
+    );
+    const { assessBrowserDependencyHealth } = await import(
+      '../../automation/browser-runner/browser-dependency-health'
+    );
+
+    if (!browserProfileManager.profileExists(profile.profile_dir_name)) {
+      return {
+        ok: false,
+        status: 'ERROR',
+        message: 'Thư mục profile browser không tồn tại.',
+        accountEmail: usable.email,
+      };
+    }
+
+    const browserHealth = assessBrowserDependencyHealth('AUTO');
+    if (!browserHealth.browserUsable) {
+      return {
+        ok: false,
+        status: 'ERROR',
+        message: browserHealth.message,
+        accountEmail: usable.email,
+      };
+    }
+
+    const profilePath = browserProfileManager.resolveProfilePath(profile.profile_dir_name);
+    profileLockManager.recoverIfStale(profilePath);
+    if (profileLockManager.isLocked(profilePath)) {
+      const owner = profileLockManager.getOwner(profilePath);
+      // Manual Accounts browser for this account — close so health can pass.
+      if (owner === usable.id) {
+        try {
+          const { getAccountWorkerService } = await import(
+            '../../services/account-worker-singleton'
+          );
+          await getAccountWorkerService().closeBrowser(usable.id);
+          profileLockManager.recoverIfStale(profilePath);
+        } catch {
+          // fall through
+        }
+      }
+      if (profileLockManager.isLocked(profilePath)) {
+        return {
+          ok: false,
+          status: 'ERROR',
+          message: `Profile đang bị giữ (${owner ?? 'unknown'}). Đóng trình duyệt Accounts/Notebook rồi kiểm tra lại.`,
+          accountEmail: usable.email,
+        };
+      }
+    }
+
     return {
-      ok: false,
-      status: 'ERROR',
+      ok: true,
+      status: 'READY',
       message:
-        'Gọi checkProviderForJob(accountId, projectId) — healthCheck generic không đủ để chọn Playwright.',
+        'Gemini Browser sẵn sàng (khi dịch vẫn cần Notebook mapping READY cho dự án).',
+      accountEmail: usable.email,
     };
   }
 
@@ -175,12 +272,12 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
   }
 
   async getStatus(): Promise<AIProviderStatusSnapshot> {
-    await Promise.resolve();
+    const health = await this.healthCheck();
     return {
       providerId: this.providerId,
       type: this.providerType,
-      ready: false,
-      message: 'Cần checkProviderForJob theo account/project — không READY mặc định.',
+      ready: health.ok,
+      message: health.message,
     };
   }
 

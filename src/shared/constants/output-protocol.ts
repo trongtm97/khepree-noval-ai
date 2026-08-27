@@ -38,6 +38,7 @@ export const QA_ISSUE_CODES = [
   'duplicate_paragraph',
   'unknown_paragraph',
   'empty_translation',
+  'corrupt_translation',
   'out_of_order',
   'locked_term_forbidden_variant',
   'locked_term_missing',

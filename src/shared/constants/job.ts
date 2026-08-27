@@ -48,6 +48,7 @@ export const DEFAULT_QUOTA_COOLDOWN_MS = 30 * 60 * 1000;
 export const REPAIR_REASONS = [
   'MISSING_PARAGRAPH',
   'EMPTY_PARAGRAPH',
+  'CORRUPT_PARAGRAPH',
   'MALFORMED_OUTPUT',
   'TERM_VIOLATION',
   'MEMORY_JSON_INVALID',
@@ -112,6 +113,7 @@ export type AttentionAction = (typeof ATTENTION_ACTIONS)[number];
 export const REPAIR_PROMPT_MODES = [
   'translation_missing',
   'translation_empty',
+  'translation_corrupt',
   'malformed_full',
   'term_violation',
   'deltas_only',

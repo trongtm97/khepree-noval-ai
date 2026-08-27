@@ -46,7 +46,8 @@ export function classifyRepairReason(
       (hasMemWarn || hasTermWarn) &&
       parsed.translations.length > 0 &&
       qa.missingParagraphIds.length === 0 &&
-      qa.emptyParagraphIds.length === 0
+      qa.emptyParagraphIds.length === 0 &&
+      qa.corruptParagraphIds.length === 0
     ) {
       return 'MEMORY_JSON_INVALID';
     }
@@ -68,6 +69,10 @@ export function classifyRepairReason(
 
   if (qa.emptyParagraphIds.length > 0) {
     return 'EMPTY_PARAGRAPH';
+  }
+
+  if (qa.corruptParagraphIds.length > 0) {
+    return 'CORRUPT_PARAGRAPH';
   }
 
   if (qa.missingParagraphIds.length > 0) {
@@ -125,6 +130,33 @@ export const emptyParagraphStrategy: RepairStrategy = {
         pack.prompt,
       ].join('\n'),
       targetParagraphIds: [...ctx.qa.emptyParagraphIds],
+      retranslate: true,
+    };
+  },
+};
+
+export const corruptParagraphStrategy: RepairStrategy = {
+  reason: 'CORRUPT_PARAGRAPH',
+  builds(ctx) {
+    return ctx.qa.corruptParagraphIds.length > 0;
+  },
+  buildPlan(ctx) {
+    const pack = buildRepairPack({
+      missingParagraphIds: ctx.qa.corruptParagraphIds,
+      batchParagraphs: ctx.batchParagraphs,
+    });
+    return {
+      mode: 'translation_corrupt',
+      reason: 'CORRUPT_PARAGRAPH',
+      prompt: [
+        'Previous response had CORRUPT / truncated translations for these IDs.',
+        'Protocol tags (e.g. <TRANSLATION>) leaked into the body, or the line was cut short.',
+        'Re-translate ONLY these paragraphs. Text must be complete Vietnamese.',
+        'Do NOT put protocol tags inside translation lines. One line per ID.',
+        '',
+        pack.prompt,
+      ].join('\n'),
+      targetParagraphIds: [...ctx.qa.corruptParagraphIds],
       retranslate: true,
     };
   },
@@ -315,6 +347,7 @@ export const REPAIR_STRATEGIES: RepairStrategy[] = [
   memoryJsonInvalidStrategy,
   termViolationStrategy,
   emptyParagraphStrategy,
+  corruptParagraphStrategy,
   outputIncompleteStrategy,
   missingParagraphStrategy,
   malformedOutputStrategy,

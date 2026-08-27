@@ -68,6 +68,29 @@ describe('classifyRepairReason + strategies', () => {
     expect(plan.targetParagraphIds).toContain(P1);
   });
 
+  it('CORRUPT_PARAGRAPH strategy targets only leak IDs', () => {
+    const parsed = parse(
+      `<TRANSLATION>\n${P1} Đã tắt ng<TRANSLATION>\n${P2} Đoạn hai ổn.\n</TRANSLATION>\n<TERM_DELTA>[]</TERM_DELTA>\n<MEMORY_DELTA>[]</MEMORY_DELTA>`,
+    );
+    const qa = runLocalQa({
+      parsed,
+      sourceParagraphIds: [P1, P2],
+      sourceParagraphs: batch,
+    });
+    expect(classifyRepairReason(parsed, qa)).toBe('CORRUPT_PARAGRAPH');
+    const plan = buildRepairPlan({
+      reason: 'CORRUPT_PARAGRAPH',
+      qa,
+      parsed,
+      batchParagraphs: batch,
+    });
+    expect(plan.mode).toBe('translation_corrupt');
+    expect(plan.retranslate).toBe(true);
+    expect(plan.targetParagraphIds).toEqual([P1]);
+    expect(plan.prompt).toMatch(/CORRUPT|protocol tags/i);
+    expect(plan.prompt).toContain(P1);
+  });
+
   it('MALFORMED_OUTPUT when no tags', () => {
     const parsed = parse('hello world no protocol');
     const qa = runLocalQa({
@@ -173,6 +196,7 @@ describe('classifyRepairReason + strategies', () => {
         warnings: [],
         missingParagraphIds: [],
         emptyParagraphIds: [],
+        corruptParagraphIds: [],
         duplicateParagraphIds: [],
         unknownParagraphIds: [],
         outOfOrder: false,

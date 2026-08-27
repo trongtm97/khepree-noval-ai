@@ -27,6 +27,7 @@ import { useNotificationStore } from '../stores/notification-store';
 import { IconButton, Drawer, Button, WorkerStatus } from '../components/ui';
 import { ToastViewport } from '../components/shell/ToastViewport';
 import { useSystemStatusPoll } from '../hooks/useSystemStatusPoll';
+import { useStartupAiReadiness } from '../hooks/useStartupAiReadiness';
 import { useSourceFolderEvents } from '../hooks/useSourceFolderEvents';
 
 interface AppShellProps {
@@ -83,6 +84,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
   const remove = useNotificationStore((s) => s.remove);
   const [notifOpen, setNotifOpen] = useState(false);
   const status = useSystemStatusPoll();
+  const startupAi = useStartupAiReadiness();
   useSourceFolderEvents();
 
   useEffect(() => {
@@ -224,6 +226,51 @@ export function AppShell({ children, appInfo }: AppShellProps) {
       </header>
 
       <main className={flush ? 'main-content main-content--flush' : 'main-content'}>
+        {!startupAi.dismissed &&
+        startupAi.result &&
+        !startupAi.result.ok &&
+        !startupAi.checking &&
+        startupAi.title ? (
+          <div className="banner banner-error" style={{ margin: '0.75rem 1rem 0' }} role="status">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+              <span style={{ flex: '1 1 220px' }}>
+                <strong>{startupAi.title}</strong>
+                {startupAi.description ? ` — ${startupAi.description}` : ''}
+              </span>
+              <div className="btn-row">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    navigate('/accounts');
+                  }}
+                >
+                  {t('notifications.startupBannerCtaAccounts')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    navigate('/settings?tab=aiProviders');
+                  }}
+                >
+                  {t('notifications.startupBannerCtaProviders')}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    void startupAi.refresh();
+                  }}
+                >
+                  {t('notifications.startupBannerRecheck')}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={startupAi.dismiss}>
+                  {t('notifications.startupBannerDismiss')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {children}
       </main>
 

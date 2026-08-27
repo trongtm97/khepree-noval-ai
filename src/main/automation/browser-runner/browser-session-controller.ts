@@ -43,6 +43,10 @@ export interface BrowserSessionController {
 
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
 
+/** Google interstitial when automation / unsupported browser is detected. */
+const INSECURE_BROWSER_RE =
+  /may not be secure|try using a different browser|trình duyệt hoặc ứng dụng này có thể không an toàn|hãy dùng trình duyệt khác/i;
+
 export function extractEmailFromText(text: string): string | null {
   const match = EMAIL_REGEX.exec(text);
   return match ? match[0].toLowerCase() : null;
@@ -58,7 +62,7 @@ export function pickGeminiCookies(
   return { secure1psid, secure1psidts };
 }
 
-function looksLikeGoogleLoginPage(url: string, content: string): boolean {
+export function looksLikeGoogleLoginPage(url: string, content: string): boolean {
   if (!/accounts\.google\.com/i.test(url)) {
     return false;
   }
@@ -66,6 +70,14 @@ function looksLikeGoogleLoginPage(url: string, content: string): boolean {
     /signin|ServiceLogin|identifier|challenge/i.test(url) ||
     /identifierId|accountIdentifier/i.test(content)
   );
+}
+
+/** Detect Google "This browser or app may not be secure" interstitial. */
+export function looksLikeInsecureBrowserInterstitial(
+  _url: string,
+  bodyText: string,
+): boolean {
+  return INSECURE_BROWSER_RE.test(bodyText);
 }
 
 /**
@@ -77,10 +89,14 @@ export class PlaywrightBrowserSessionController implements BrowserSessionControl
     const { launchNovelTransPersistentContext } = await import(
       './launch-persistent-context'
     );
+    const { resolveLoginBrowserPreference } = await import('./browser-engine-resolver');
+    const enginePreference = resolveLoginBrowserPreference();
     const { context } = await launchNovelTransPersistentContext({
       profilePath: options.profilePath,
       headless: options.headless ?? false,
       headlessDefault: false,
+      enginePreference,
+      loginCompat: true,
     });
 
     let closed = false;
@@ -126,6 +142,15 @@ export class PlaywrightBrowserSessionController implements BrowserSessionControl
           const url = active.url();
           const content = await active.content();
           const bodyText = await active.locator('body').innerText().catch(() => '');
+
+          if (looksLikeInsecureBrowserInterstitial(url, bodyText)) {
+            return {
+              usable: false,
+              email: null,
+              displayName: null,
+              reason: 'BROWSER_NOT_SECURE',
+            };
+          }
 
           if (looksLikeGoogleLoginPage(url, content)) {
             return {

@@ -176,11 +176,28 @@ describe('NotebookSyncService hot memory', () => {
       google_account_id: accountId,
       notebook_name: '[NovelTrans] Test',
       status: 'sync_pending',
+      instructions_hash: 'abc123',
     });
     sync.markDirty(projectId, 'TERM_CHANGED', 'locked term');
     sync.markNotebookVerified(projectId, accountId);
     expect(sync.buildActiveHotMemoryText(projectId)).toBe('');
     expect(db.knowledgeFiles.anyDirty(projectId)).toBe(false);
+    const health = sync.getHealth(projectId, accountId);
+    expect(health.instructionsReady).toBe(true);
+    expect(health.status).toBe('ready');
+  });
+
+  it('reports instructionsReady false when hash missing', () => {
+    const sync = new NotebookSyncService(db);
+    db.notebooks.upsert({
+      project_id: projectId,
+      google_account_id: accountId,
+      notebook_name: '[NovelTrans] Test',
+      status: 'ready',
+      instructions_hash: null,
+    });
+    const health = sync.getHealth(projectId, accountId);
+    expect(health.instructionsReady).toBe(false);
   });
 });
 

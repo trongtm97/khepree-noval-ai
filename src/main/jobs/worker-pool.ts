@@ -56,11 +56,15 @@ export class WorkerPool {
           });
           return false;
         } else {
-          logger.info('Worker skipped — browser profile locked', {
-            accountId: w.google_account_id,
-            owner: lockOwner,
-          });
-          return false;
+          // Manual Accounts browser (ownerId === accountId) or unknown — try stale recover.
+          profileLockManager.recoverIfStale(profilePath);
+          if (profileLockManager.isLocked(profilePath)) {
+            logger.info('Worker skipped — browser profile locked', {
+              accountId: w.google_account_id,
+              owner: profileLockManager.getOwner(profilePath) ?? lockOwner,
+            });
+            return false;
+          }
         }
       }
       const runtime = getBrowserRuntimeManager().getRuntime(w.google_account_id);

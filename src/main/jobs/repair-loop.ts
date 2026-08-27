@@ -25,6 +25,7 @@ import {
 import {
   assessBatchCompleteness,
   mergeTranslationsByParagraphId,
+  mergeRepairTranslations,
 } from './continuation';
 import { buildMergedTranslationProtocol } from './translate-chunking';
 
@@ -205,6 +206,7 @@ export async function runRepairLoop(
         verdict: qa.verdict,
         missing: qa.missingParagraphIds,
         empty: qa.emptyParagraphIds,
+        corrupt: qa.corruptParagraphIds,
         ...readChannelFromProgress(deps.db, input.jobId),
       };
 
@@ -308,6 +310,7 @@ export async function runRepairLoop(
       const autoRepairable =
         reason === 'MISSING_PARAGRAPH' ||
         reason === 'EMPTY_PARAGRAPH' ||
+        reason === 'CORRUPT_PARAGRAPH' ||
         reason === 'MALFORMED_OUTPUT' ||
         reason === 'TERM_VIOLATION' ||
         reason === 'MEMORY_JSON_INVALID' ||
@@ -423,7 +426,27 @@ export async function runRepairLoop(
         });
         raw = sent.rawResponse;
         inputRef = sent.inputRef;
-        if (plan.mode === 'continuation' && lastParsed) {
+        if (lastParsed && shouldMergePartialRepair(plan, input.batchParagraphs.length)) {
+          const repairParsed = parser.parse(sent.rawResponse);
+          const mergedTranslations = mergeRepairTranslations(
+            lastParsed.translations,
+            repairParsed.translations,
+            input.sourceParagraphIds,
+          );
+          const termDeltas =
+            repairParsed.termDeltas.length > 0
+              ? repairParsed.termDeltas
+              : lastParsed.termDeltas;
+          const memoryDeltas =
+            repairParsed.memoryDeltas.length > 0
+              ? repairParsed.memoryDeltas
+              : lastParsed.memoryDeltas;
+          raw = buildMergedTranslationProtocol(
+            mergedTranslations,
+            termDeltas,
+            memoryDeltas,
+          );
+        } else if (plan.mode === 'continuation' && lastParsed) {
           const contParsed = parser.parse(sent.rawResponse);
           const mergedTranslations = mergeTranslationsByParagraphId(
             lastParsed.translations,
@@ -509,6 +532,27 @@ export async function runRepairLoop(
       };
     }
   }
+}
+
+export function shouldMergePartialRepair(
+  plan: RepairPromptPlan,
+  batchParagraphCount: number,
+): boolean {
+  if (plan.mode === 'deltas_only' || !plan.retranslate) return false;
+  if (plan.mode === 'continuation') return true;
+  if (
+    plan.mode === 'malformed_full' &&
+    plan.targetParagraphIds.length >= batchParagraphCount
+  ) {
+    return false;
+  }
+  return (
+    plan.mode === 'translation_empty' ||
+    plan.mode === 'translation_corrupt' ||
+    plan.mode === 'translation_missing' ||
+    plan.mode === 'term_violation' ||
+    plan.mode === 'malformed_full'
+  );
 }
 
 /** Mark RUNNING attempts without completed_at as CRASHED (process died mid-attempt). */

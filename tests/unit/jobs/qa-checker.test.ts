@@ -66,6 +66,37 @@ describe('runLocalQa', () => {
     expect(qa.verdict).toBe('REPAIR_REQUIRED');
   });
 
+  it('REPAIR_REQUIRED when translation leaks protocol tag', () => {
+    const parsed = parseOk([
+      `${P1} Hương khói đã tắt ng<TRANSLATION>`,
+      `${P2} Đoạn hai ổn.`,
+    ]);
+    const qa = runLocalQa({
+      parsed,
+      sourceParagraphIds: [P1, P2],
+      sourceParagraphs: [
+        { paragraphId: P1, sourceText: '香火已经熄灭了。' },
+        { paragraphId: P2, sourceText: '第二段。' },
+      ],
+    });
+    expect(qa.corruptParagraphIds).toEqual([P1]);
+    expect(qa.verdict).toBe('REPAIR_REQUIRED');
+    expect(qa.errors.some((e) => e.code === 'corrupt_translation')).toBe(true);
+  });
+
+  it('REPAIR_REQUIRED on truncated short fragment vs long source', () => {
+    const longSource =
+      '这是一段很长的中文原文用来测试翻译被截断时的质量检查逻辑是否能正确发现。';
+    const parsed = parseOk([`${P1} , vui vẻ hơn rất nhiều`]);
+    const qa = runLocalQa({
+      parsed,
+      sourceParagraphIds: [P1],
+      sourceParagraphs: [{ paragraphId: P1, sourceText: longSource }],
+    });
+    expect(qa.corruptParagraphIds).toContain(P1);
+    expect(qa.verdict).toBe('REPAIR_REQUIRED');
+  });
+
   it('MANUAL_REVIEW on duplicate IDs', () => {
     const parsed = parseOk([`${P1} A.`, `${P1} A2.`, `${P2} B.`]);
     const qa = runLocalQa({

@@ -25,6 +25,8 @@ const STATUS_KEY: Record<string, string> = {
   busy: 'status.running',
   LOGIN_REQUIRED: 'status.loginRequired',
   login_required: 'status.loginRequired',
+  BROWSER_NOT_SECURE: 'accounts.browserNotSecureStatus',
+  browser_not_secure: 'accounts.browserNotSecureStatus',
   NEW: 'status.new',
   new: 'status.new',
   CANCELLED: 'status.cancelled',
@@ -76,7 +78,7 @@ export function statusTone(
   ) {
     return 'running';
   }
-  if (s === 'NEEDS_ATTENTION' || s === 'LIMITED' || s === 'LOGIN_REQUIRED' || s === 'ACCEPTED_WITH_WARNINGS') {
+  if (s === 'NEEDS_ATTENTION' || s === 'LIMITED' || s === 'LOGIN_REQUIRED' || s === 'BROWSER_NOT_SECURE' || s === 'ACCEPTED_WITH_WARNINGS') {
     return 'warning';
   }
   if (s === 'FAILED') return 'error';

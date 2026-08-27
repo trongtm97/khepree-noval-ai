@@ -1055,6 +1055,7 @@ body {
   padding: 0.75rem;
   overflow: auto;
   max-height: 100%;
+  color: var(--text-primary);
 }
 
 .editor-context-tabs {
@@ -1070,6 +1071,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg-primary);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
@@ -1082,6 +1084,11 @@ body {
   margin: 0;
   padding-left: 1rem;
   font-size: 0.8125rem;
+  color: var(--text-primary);
+}
+
+.editor-context-list .muted {
+  color: var(--text-muted);
 }
 
 .editor-memory-snippet {
@@ -1089,6 +1096,11 @@ body {
   white-space: pre-wrap;
   max-height: 12rem;
   overflow: auto;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
 }
 
 .editor-versions {

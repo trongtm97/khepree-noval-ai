@@ -141,6 +141,10 @@ export function AccountsPage() {
         }
       />
 
+      <p className="muted accounts-login-hint" role="note">
+        {t('accounts.browserNotSecureHint')}
+      </p>
+
       {errInfo ? (
         <ErrorPanel
           title={errInfo.title}
@@ -286,6 +290,14 @@ export function AccountsPage() {
                             setError(msg.replace(/^PROFILE_BUSY:\s*/i, ''));
                             return;
                           }
+                          if (
+                            /BROWSER_NOT_SECURE|không an toàn|may not be secure|Chromium Playwright|NTS_BROWSER_ENGINE/i.test(
+                              msg,
+                            )
+                          ) {
+                            setError(`${msg}\n${t('accounts.browserNotSecureHint')}`);
+                            return;
+                          }
                           throw err;
                         }
                       });
@@ -300,6 +312,13 @@ export function AccountsPage() {
                     onClick={() => {
                       void run(account.id, async () => {
                         const result = await window.novelTrans.accounts.testSession(account.id);
+                        if (result.reason === 'BROWSER_NOT_SECURE') {
+                          setError(t('accounts.browserNotSecureHint'));
+                          setMessage(
+                            `${statusLabel('BROWSER_NOT_SECURE')}: BROWSER_NOT_SECURE`,
+                          );
+                          return;
+                        }
                         setMessage(
                           result.usable
                             ? `${t('accounts.ready')}${result.email ? ` (${result.email})` : ''}`

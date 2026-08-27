@@ -21,6 +21,11 @@ export interface LaunchPersistentContextInput {
   enginePreference?: BrowserEnginePreference;
   /** Override advanced anti-detect flag. Default from config (OFF). */
   disableAutomationControlled?: boolean;
+  /**
+   * Google account login compatibility: ignore Playwright `--enable-automation`
+   * and enable AutomationControlled blink disable. Account login opens only.
+   */
+  loginCompat?: boolean;
   /** When set, writes engine-info.json for diagnostics. */
   diagnosticsDir?: string;
 }
@@ -30,6 +35,7 @@ export interface LaunchPersistentContextResult {
   resolved: ResolvedBrowserEngine;
   headless: boolean;
   disableAutomationControlled: boolean;
+  loginCompat: boolean;
 }
 
 export interface BrowserEngineDiagnosticsSnapshot {
@@ -41,6 +47,7 @@ export interface BrowserEngineDiagnosticsSnapshot {
   displayName: string;
   headless: boolean;
   disableAutomationControlled: boolean;
+  loginCompat: boolean;
   profilePath: string;
   capturedAt: string;
 }
@@ -51,6 +58,7 @@ export function toBrowserEngineDiagnosticsSnapshot(
     headless: boolean;
     disableAutomationControlled: boolean;
     profilePath: string;
+    loginCompat?: boolean;
   },
 ): BrowserEngineDiagnosticsSnapshot {
   return {
@@ -62,6 +70,7 @@ export function toBrowserEngineDiagnosticsSnapshot(
     displayName: resolved.displayName,
     headless: options.headless,
     disableAutomationControlled: options.disableAutomationControlled,
+    loginCompat: options.loginCompat ?? false,
     profilePath: options.profilePath,
     capturedAt: new Date().toISOString(),
   };
@@ -75,6 +84,20 @@ export function writeBrowserEngineDiagnostics(
   const filePath = path.join(diagnosticsDir, 'engine-info.json');
   fs.writeFileSync(filePath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
   return filePath;
+}
+
+/** Playwright launch extras for automation / Google login compatibility. */
+export function playwrightLaunchAutomationOptions(options: {
+  loginCompat: boolean;
+  disableAutomationControlled: boolean;
+}): { args?: string[]; ignoreDefaultArgs?: string[] } {
+  const args = options.disableAutomationControlled
+    ? ['--disable-blink-features=AutomationControlled']
+    : [];
+  return {
+    ...(args.length > 0 ? { args } : {}),
+    ...(options.loginCompat ? { ignoreDefaultArgs: ['--enable-automation'] } : {}),
+  };
 }
 
 /**
@@ -92,12 +115,15 @@ export async function launchNovelTransPersistentContext(
   }
   const resolved = health.resolved;
   const headless = input.headless ?? input.headlessDefault ?? false;
+  const loginCompat = input.loginCompat === true;
   const disableAutomationControlled =
-    input.disableAutomationControlled ?? config.disableAutomationControlled;
+    input.disableAutomationControlled ??
+    (loginCompat || config.disableAutomationControlled);
 
-  const args = disableAutomationControlled
-    ? ['--disable-blink-features=AutomationControlled']
-    : [];
+  const automation = playwrightLaunchAutomationOptions({
+    loginCompat,
+    disableAutomationControlled,
+  });
 
   if (input.diagnosticsDir) {
     writeBrowserEngineDiagnostics(
@@ -105,6 +131,7 @@ export async function launchNovelTransPersistentContext(
       toBrowserEngineDiagnosticsSnapshot(resolved, {
         headless,
         disableAutomationControlled,
+        loginCompat,
         profilePath: input.profilePath,
       }),
     );
@@ -117,8 +144,8 @@ export async function launchNovelTransPersistentContext(
     ...(!resolved.channel && resolved.executablePath
       ? { executablePath: resolved.executablePath }
       : {}),
-    ...(args.length > 0 ? { args } : {}),
+    ...automation,
   });
 
-  return { context, resolved, headless, disableAutomationControlled };
+  return { context, resolved, headless, disableAutomationControlled, loginCompat };
 }

@@ -12,6 +12,18 @@
 - Diagnostics → Test Browser Profile.  
 - `LOGIN_REQUIRED` / `CAPTCHA` / `SESSION_EXPIRED` are non-retryable — fix in browser, then retry.
 
+### Google: "This browser or app may not be secure"
+
+Google blocks sign-in when Playwright’s bundled Chromium or automation flags are detected.
+
+1. Install **Google Chrome** or **Microsoft Edge** (Stable).  
+2. Close any leftover NovelTrans / Chromium login windows.  
+3. Accounts → **Open browser** again (app prefers Chrome → Edge with login-compat launch).  
+4. Optional: set `NTS_BROWSER_ENGINE=CHROME` before `npm run dev` / starting the app.  
+5. Do **not** use the OS default Chrome/Edge profile — NovelTrans keeps a dedicated profile under `%APPDATA%\NovelTrans\browser-profiles\`.  
+
+If Check session reports `BROWSER_NOT_SECURE`, fix the browser install / close old windows, then Open browser and retry sign-in.
+
 ## SELECTOR_NOT_FOUND
 
 UI changed. Use Diagnostics:
