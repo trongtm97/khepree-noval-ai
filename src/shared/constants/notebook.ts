@@ -23,10 +23,23 @@ export const NOTEBOOK_STATUSES = [
 
 export type NotebookStatus = (typeof NOTEBOOK_STATUSES)[number];
 
-/** Statuses where Gemini-in-Notebook may receive a slim pack (hot covers pending). */
+/**
+ * Statuses eligible for SLIM only when knowledge version is also verified
+ * and source grounding confirmed (see resolveTranslationPackMode).
+ * sync_pending / stale → HYBRID, never SLIM.
+ */
 export const NOTEBOOK_USABLE_FOR_SLIM_PACK: ReadonlySet<NotebookStatus> = new Set([
   'ready',
+]);
+
+/**
+ * Notebook exists and can still supply cold knowledge — local delta fills the gap.
+ * Includes ready (version mismatch / unverified → hybrid) plus sync_pending / stale.
+ */
+export const NOTEBOOK_USABLE_FOR_HYBRID_PACK: ReadonlySet<NotebookStatus> = new Set([
+  'ready',
   'sync_pending',
+  'stale',
 ]);
 
 /** Statuses that count as a live Notebook channel for preflight. */

@@ -1,4 +1,5 @@
 import type { AiProviderType } from '../constants/ai-provider';
+import { formatMemoryUsage } from '../constants/pack-mode';
 
 /**
  * Clear operator-facing channel label for AI panel / job progress.
@@ -10,13 +11,15 @@ export function formatTranslateChannel(input: {
 }): string | null {
   const provider = formatProviderChannel(input.providerType);
   if (!provider) return null;
-  // Pack mode is secondary — do not obscure the main channel statement.
+  // Primary channel statement for Notebook / Web API — memory usage is a separate line.
   if (input.providerType === 'PLAYWRIGHT_GEMINI' || input.providerType === 'GEMINI_WEB_API') {
     return provider;
   }
   const pack = formatPackMode(input.packMode);
   return pack ? `${provider} · ${pack}` : provider;
 }
+
+export { formatMemoryUsage };
 
 function formatProviderChannel(type?: string | null): string | null {
   if (!type) return null;
@@ -34,6 +37,7 @@ function formatProviderChannel(type?: string | null): string | null {
 
 function formatPackMode(mode?: string | null): string | null {
   if (mode === 'slim') return 'slim';
+  if (mode === 'hybrid') return 'hybrid';
   if (mode === 'fat') return 'fat-pack';
   return null;
 }

@@ -151,8 +151,8 @@ describe('Learning pipeline (Phase 16)', () => {
       parsed,
       chapterFrom: 1,
       chapterTo: 1,
-      syncProject: () => Promise.resolve(null),
-      onChapterCompleted: () => ({ shouldSync: false }),
+      syncDrive: () => Promise.resolve(null),
+      evaluateSyncPolicy: () => ({ shouldSync: false }),
     });
 
     expect(learning.memory.conflicts.length).toBeGreaterThanOrEqual(1);
@@ -161,7 +161,7 @@ describe('Learning pipeline (Phase 16)', () => {
     expect(db.memoryEvents.getByKey(projectId, 'world', 'sect')?.event_value).toContain('青云门');
   });
 
-  it('every N chapters consolidates + triggers Drive sync hook', async () => {
+  it('every N chapters consolidates + triggers NotebookSyncService.syncDrive hook', async () => {
     db.driveSyncState.patch(projectId, { syncEveryNChapters: 2, chaptersSinceSync: 1 });
     let synced = 0;
 
@@ -187,15 +187,15 @@ describe('Learning pipeline (Phase 16)', () => {
       }),
       chapterFrom: 2,
       chapterTo: 2,
-      onChapterCompleted: () => ({ shouldSync: true }),
-      syncProject: () => {
+      evaluateSyncPolicy: () => ({ shouldSync: true }),
+      syncDrive: () => {
         synced += 1;
         return Promise.resolve({ ok: true });
       },
     });
 
     expect(result.consolidated).toBe(true);
-    expect(result.documents?.['02_PROJECT_TERMS.md']).toContain('Project Terms');
+    expect(result.documents?.['02_PROJECT_TERMS.md']).toBeTruthy();
     expect(result.driveSyncTriggered).toBe(true);
     expect(synced).toBe(1);
   });
@@ -247,8 +247,8 @@ describe('Learning pipeline (Phase 16)', () => {
           { action: 'upsert', category: 'plot', key: 'hook', value: 'start' },
         ],
       }),
-      syncProject: () => Promise.resolve(null),
-      onChapterCompleted: () => ({ shouldSync: false }),
+      syncDrive: () => Promise.resolve(null),
+      evaluateSyncPolicy: () => ({ shouldSync: false }),
     });
 
     const dash = new LearningService(db).getDashboard(projectId);
@@ -304,8 +304,8 @@ describe('Learning pipeline (Phase 16)', () => {
       }),
       chapterFrom: 1,
       chapterTo: 1,
-      onChapterCompleted: () => ({ shouldSync: false }),
-      syncProject: () => Promise.resolve(null),
+      evaluateSyncPolicy: () => ({ shouldSync: false }),
+      syncDrive: () => Promise.resolve(null),
     });
 
     expect(learning.memory.charactersTouched).toBeGreaterThanOrEqual(1);

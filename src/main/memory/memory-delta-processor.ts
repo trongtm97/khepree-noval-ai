@@ -10,6 +10,7 @@ export interface MemoryDeltaApplyResult {
   charactersTouched: number;
   relationshipsTouched: number;
   storyTouched: number;
+  worldTouched: number;
 }
 
 function emptyApplyResult(
@@ -22,6 +23,7 @@ function emptyApplyResult(
     charactersTouched: 0,
     relationshipsTouched: 0,
     storyTouched: 0,
+    worldTouched: 0,
     ...partial,
   };
 }
@@ -37,6 +39,7 @@ function mergeApplyResults(
     charactersTouched: acc.charactersTouched + next.charactersTouched,
     relationshipsTouched: acc.relationshipsTouched + next.relationshipsTouched,
     storyTouched: acc.storyTouched + next.storyTouched,
+    worldTouched: acc.worldTouched + next.worldTouched,
   };
 }
 
@@ -197,7 +200,9 @@ function applyUpsert(
       ? 1
       : 0;
 
-  return emptyApplyResult({ applied: 1, conflicts, charactersTouched });
+  const worldTouched = item.category === 'world' ? 1 : 0;
+
+  return emptyApplyResult({ applied: 1, conflicts, charactersTouched, worldTouched });
 }
 
 function applyCharacterPatch(

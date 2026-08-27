@@ -17,6 +17,7 @@ export interface DriveResourceRow {
   remote_modified_time: string | null;
   sync_status: string;
   last_error: string | null;
+  mime_type: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +33,7 @@ export interface UpsertDriveResourceInput {
   remote_modified_time?: string | null;
   sync_status?: DriveSyncStatus;
   last_error?: string | null;
+  mime_type?: string | null;
 }
 
 export class DriveResourceRepository extends BaseRepository {
@@ -72,6 +74,7 @@ export class DriveResourceRepository extends BaseRepository {
             remote_modified_time = ?,
             sync_status = ?,
             last_error = ?,
+            mime_type = ?,
             last_synced_at = ?,
             updated_at = ?
           WHERE id = ?`,
@@ -85,6 +88,7 @@ export class DriveResourceRepository extends BaseRepository {
           input.remote_modified_time ?? existing.remote_modified_time,
           input.sync_status ?? 'synced',
           input.last_error ?? null,
+          input.mime_type !== undefined ? input.mime_type : existing.mime_type,
           ts.updated_at,
           ts.updated_at,
           existing.id,
@@ -103,8 +107,8 @@ export class DriveResourceRepository extends BaseRepository {
           id, project_id, drive_file_id, resource_type, local_path,
           remote_hash, local_hash, last_synced_at,
           google_account_id, resource_key, remote_modified_time,
-          sync_status, last_error, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          sync_status, last_error, mime_type, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -119,6 +123,7 @@ export class DriveResourceRepository extends BaseRepository {
         input.remote_modified_time ?? null,
         input.sync_status ?? 'synced',
         input.last_error ?? null,
+        input.mime_type ?? null,
         ts.created_at,
         ts.updated_at,
       );

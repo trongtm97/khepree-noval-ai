@@ -1,0 +1,184 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { DatabaseManager } from '@main/db/database-manager';
+import { NotebookSyncService } from '@main/notebook/notebook-sync-service';
+import {
+  applyVersionProbeResult,
+  runKnowledgeVersionProbe,
+} from '@main/notebook/notebook-version-probe';
+import { resolveTranslationPackMode } from '@main/prompt/pack-mode-resolver';
+import {
+  buildSyncStateManifestContent,
+  evaluateVersionProbeResponse,
+  parseSyncStateManifestContent,
+} from '@shared/constants/notebook-version-probe';
+
+describe('sync-state manifest + version probe', () => {
+  it('builds and parses manifest', () => {
+    const content = buildSyncStateManifestContent({
+      projectId: 'proj-1',
+      knowledgeVersion: 47,
+      syncNonce: '8F7A2C19',
+    });
+    expect(content).toContain('NOVELTRANS_KNOWLEDGE_VERSION=47');
+    expect(content).toContain('NOVELTRANS_SYNC_NONCE=8F7A2C19');
+    const parsed = parseSyncStateManifestContent(content);
+    expect(parsed).toEqual({
+      projectId: 'proj-1',
+      knowledgeVersion: 47,
+      syncNonce: '8F7A2C19',
+    });
+  });
+
+  it('evaluates matching / mismatch / unverified', () => {
+    const expected = { knowledgeVersion: 47, syncNonce: '8F7A2C19' };
+    expect(
+      evaluateVersionProbeResponse('NT_VERSION=47\nNT_NONCE=8F7A2C19', expected).status,
+    ).toBe('verified');
+    expect(
+      evaluateVersionProbeResponse('NT_VERSION=46\nNT_NONCE=8F7A2C19', expected).status,
+    ).toBe('mismatch');
+    expect(
+      evaluateVersionProbeResponse('I think the version is 47', expected).status,
+    ).toBe('unverified');
+  });
+});
+
+describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
+  let db: DatabaseManager;
+  let tmp: string;
+  let projectId: string;
+  let accountId: string;
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nt-ver-probe-'));
+    db = new DatabaseManager({ dataDir: tmp, backupsDir: path.join(tmp, 'bak') });
+    const project = db.projects.create({
+      title: 'Version Probe Novel',
+      source_language: 'zh',
+      target_language: 'vi',
+    });
+    projectId = project.id;
+    const account = db.googleAccounts.create({
+      label: 'Worker',
+      email: 'probe@test.com',
+      displayName: 'Worker',
+      profileDirName: 'profile-probe',
+      status: 'READY',
+    });
+    accountId = account.id;
+
+    db.notebooks.upsert({
+      project_id: projectId,
+      google_account_id: accountId,
+      notebook_name: '[NovelTrans] Probe',
+      notebook_role: 'TRANSLATION',
+      notebook_id: 'nb-probe',
+      resource_url: 'https://notebook.google.com/x',
+      status: 'sync_pending',
+    });
+    db.notebookSourceBindings.upsert({
+      projectId,
+      notebookId: 'nb-probe',
+      knowledgeType: 'sync_state',
+      sourceName: '08_SYNC_STATE',
+      bindingType: 'DRIVE_LIVE',
+      status: 'active',
+      driveFileId: 'drive-sync',
+    });
+    db.driveSyncState.patch(projectId, {
+      pendingKnowledgeVersion: 47,
+      pendingSyncNonce: '8F7A2C19',
+      versionProbeStatus: 'pending',
+    });
+  });
+
+  afterEach(() => {
+    db?.close();
+    if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('old Notebook version → HYBRID, not slim; hot not cleared', () => {
+    const sync = new NotebookSyncService(db);
+    sync.markDirty(projectId, 'TERM_CHANGED', '天逆珠 → Thiên Nghịch Châu [LOCKED]');
+    expect(db.notebookHotDeltas.listActive(projectId).length).toBeGreaterThan(0);
+
+    const result = applyVersionProbeResult(db, {
+      projectId,
+      accountId,
+      rawResponse: 'NT_VERSION=46\nNT_NONCE=8F7A2C19',
+    });
+    expect(result.status).toBe('mismatch');
+    expect(result.packHint).toBe('hybrid');
+    expect(db.notebookHotDeltas.listActive(projectId).length).toBeGreaterThan(0);
+
+    const mode = resolveTranslationPackMode(db, {
+      projectId,
+      accountId,
+      providerType: 'PLAYWRIGHT_GEMINI',
+    });
+    expect(mode.packMode).not.toBe('slim');
+  });
+
+  it('matching version+nonce → verified, clears hot, slim eligible', async () => {
+    const sync = new NotebookSyncService(db);
+    sync.markDirty(projectId, 'TERM_CHANGED', '天逆珠 → Thiên Nghịch Châu [LOCKED]');
+
+    const result = await runKnowledgeVersionProbe(db, {
+      projectId,
+      accountId,
+      capture: async () => 'NT_VERSION=47\nNT_NONCE=8F7A2C19',
+    });
+    expect(result.status).toBe('verified');
+    expect(db.notebookHotDeltas.listActive(projectId)).toHaveLength(0);
+
+    const state = db.driveSyncState.ensure(projectId);
+    expect(state.version_probe_status).toBe('verified');
+    expect(state.verified_knowledge_version).toBe(47);
+
+    const health = sync.getHealth(projectId, accountId);
+    expect(health.knowledgeVerified).toBe(true);
+    expect(health.usableForSlimPack).toBe(true);
+
+    const mode = resolveTranslationPackMode(db, {
+      projectId,
+      accountId,
+      providerType: 'PLAYWRIGHT_GEMINI',
+    });
+    expect(mode.packMode).toBe('slim');
+  });
+
+  it('fake source same name but old content → verification fail', async () => {
+    // Pending is 48/NEW — Notebook still answers with old 47/OLD (filename present, content stale).
+    db.driveSyncState.patch(projectId, {
+      pendingKnowledgeVersion: 48,
+      pendingSyncNonce: 'AABBCCDD',
+      versionProbeStatus: 'pending',
+    });
+
+    const result = await runKnowledgeVersionProbe(db, {
+      projectId,
+      accountId,
+      capture: async () => 'NT_VERSION=47\nNT_NONCE=8F7A2C19',
+    });
+    expect(result.status).toBe('mismatch');
+    expect(db.driveSyncState.ensure(projectId).version_probe_status).toBe('mismatch');
+
+    const mode = resolveTranslationPackMode(db, {
+      projectId,
+      accountId,
+      providerType: 'PLAYWRIGHT_GEMINI',
+    });
+    expect(mode.packMode).toBe('hybrid');
+  });
+
+  it('markNotebookVerified without probe does not clear hot', () => {
+    const sync = new NotebookSyncService(db);
+    sync.markDirty(projectId, 'TERM_CHANGED', '天逆珠 → Thiên Nghịch Châu [LOCKED]');
+    const before = db.notebookHotDeltas.listActive(projectId).length;
+    sync.markNotebookVerified(projectId, accountId);
+    expect(db.notebookHotDeltas.listActive(projectId)).toHaveLength(before);
+  });
+});

@@ -1,13 +1,20 @@
 export interface DriveFileRef {
   id: string;
   modifiedTime: string | null;
+  mimeType?: string | null;
 }
 
 export interface DriveClient {
   findFolder(name: string, parentId?: string): Promise<DriveFileRef | null>;
   createFolder(name: string, parentId?: string): Promise<DriveFileRef>;
+  /** Create plain/markdown binary file (legacy / RESEARCH corpus). */
   createFile(name: string, content: string, parentId: string): Promise<DriveFileRef>;
   updateFileContent(fileId: string, content: string): Promise<DriveFileRef>;
+  /** Import markdown/plain text as a Google Doc (preferred for Translation knowledge). */
+  createGoogleDoc(name: string, content: string, parentId: string): Promise<DriveFileRef>;
+  /** Replace Google Doc body text in place (same file id). */
+  updateGoogleDocContent(fileId: string, content: string): Promise<DriveFileRef>;
+  getFileMetadata(fileId: string): Promise<DriveFileRef | null>;
 }
 
 export class DriveAuthError extends Error {

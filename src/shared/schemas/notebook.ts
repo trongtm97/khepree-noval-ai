@@ -76,6 +76,12 @@ export const NotebookHealthDtoSchema = z.object({
   status: z.string(),
   localVersion: z.number().int(),
   notebookVersion: z.number().int(),
+  pendingKnowledgeVersion: z.number().int().nonnegative().optional().default(0),
+  verifiedKnowledgeVersion: z.number().int().nonnegative().optional().default(0),
+  versionProbeStatus: z
+    .enum(['verified', 'mismatch', 'unverified', 'pending'])
+    .optional()
+    .default('pending'),
   lastSyncAt: z.string().nullable(),
   lastVerifiedAt: z.string().nullable(),
   lastDriveSyncAt: z.string().nullable(),
@@ -84,6 +90,7 @@ export const NotebookHealthDtoSchema = z.object({
   files: z.array(NotebookHealthFileSchema),
   dirty: z.boolean(),
   usableForSlimPack: z.boolean(),
+  knowledgeVerified: z.boolean().optional().default(false),
 });
 
 export type NotebookHealthDto = z.infer<typeof NotebookHealthDtoSchema>;

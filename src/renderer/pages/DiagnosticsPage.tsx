@@ -4,6 +4,7 @@ import type { AutomationProviderId } from '@shared/constants/diagnostics';
 import type {
   ConnectionTestResponse,
   GoogleSmokeRunResponse,
+  NotebookGroundingSmokeRunResponse,
   HealthReport,
   LocatorSuggestion,
   ProviderStatus,
@@ -19,6 +20,8 @@ export function DiagnosticsPage() {
   const [testResult, setTestResult] = useState<ConnectionTestResponse | null>(null);
   const [smokeNotebookUrl, setSmokeNotebookUrl] = useState('');
   const [smokeResult, setSmokeResult] = useState<GoogleSmokeRunResponse | null>(null);
+  const [groundingResult, setGroundingResult] =
+    useState<NotebookGroundingSmokeRunResponse | null>(null);
   const [overridePath, setOverridePath] = useState('');
   const [overrideCount, setOverrideCount] = useState(0);
   const [providerId, setProviderId] = useState<AutomationProviderId>('google-gemini');
@@ -99,6 +102,33 @@ export function DiagnosticsPage() {
       setSmokeResult(result);
       setMessage(
         t('diagnostics.googleSmokeResult', {
+          overall: result.overall,
+          path: result.reportPath,
+        }),
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runNotebookGroundingSmoke = async () => {
+    if (!accountId || !smokeNotebookUrl.trim()) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    setGroundingResult(null);
+    try {
+      const result = await window.novelTrans.diagnostics.notebookGroundingSmoke({
+        accountId,
+        notebookUrl: smokeNotebookUrl.trim(),
+        smokeProjectLabel: 'NOVELTRANS_SMOKE',
+        headless: false,
+      });
+      setGroundingResult(result);
+      setMessage(
+        t('diagnostics.notebookGroundingResult', {
           overall: result.overall,
           path: result.reportPath,
         }),
@@ -350,6 +380,25 @@ export function DiagnosticsPage() {
         </div>
         {smokeResult ? (
           <pre className="code-block">{JSON.stringify(smokeResult, null, 2)}</pre>
+        ) : null}
+      </section>
+
+      <section className="panel">
+        <h3>{t('diagnostics.notebookGroundingTitle')}</h3>
+        <p className="muted">{t('diagnostics.notebookGroundingBody')}</p>
+        <p className="muted">{t('diagnostics.notebookGroundingUrlHint')}</p>
+        <div className="btn-row" style={{ marginTop: '0.5rem' }}>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={busy || !accountId || !smokeNotebookUrl.trim()}
+            onClick={() => void runNotebookGroundingSmoke()}
+          >
+            {t('diagnostics.notebookGroundingRun')}
+          </button>
+        </div>
+        {groundingResult ? (
+          <pre className="code-block">{JSON.stringify(groundingResult, null, 2)}</pre>
         ) : null}
       </section>
 

@@ -94,6 +94,47 @@ export const GoogleSmokeRunResponseSchema = z.object({
 
 export type GoogleSmokeRunResponse = z.infer<typeof GoogleSmokeRunResponseSchema>;
 
+export const NotebookGroundingSmokeRunRequestSchema = z.object({
+  accountId: z.string().uuid(),
+  notebookUrl: z.string().url(),
+  smokeProjectLabel: z.string().min(3).default('NOVELTRANS_SMOKE'),
+  headless: z.boolean().optional(),
+  tests: z.array(z.enum(['A', 'B', 'C', 'D'])).optional(),
+  groundingKnowledgeDriveFileId: z.string().min(5).optional(),
+  groundingSyncStateDriveFileId: z.string().min(5).optional(),
+});
+
+export const NotebookGroundingSmokeRunResponseSchema = z.object({
+  overall: z.enum(['PASS', 'FAIL', 'NOT_RUN']),
+  startedAt: z.string(),
+  finishedAt: z.string(),
+  reportPath: z.string(),
+  artifactsDir: z.string(),
+  knowledgeKey: z.string().nullable(),
+  notebookName: z.string().nullable(),
+  results: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      status: z.enum(['PASS', 'FAIL', 'SKIP']),
+      durationMs: z.number(),
+      localVersion: z.number().nullable(),
+      notebookVersion: z.number().nullable(),
+      bindingType: z.enum(['STATIC', 'DRIVE_LIVE', 'UNKNOWN']).nullable(),
+      driveFileId: z.string().nullable(),
+      notebookName: z.string().nullable(),
+      packMode: z.enum(['SLIM', 'HYBRID', 'FAT', 'N/A']).nullable(),
+      response: z.string().nullable(),
+      message: z.string(),
+      screenshotPath: z.string().nullable(),
+    }),
+  ),
+});
+
+export type NotebookGroundingSmokeRunResponse = z.infer<
+  typeof NotebookGroundingSmokeRunResponseSchema
+>;
+
 export const ConnectionTestRequestSchema = z.object({
   kind: ConnectionTestKindSchema,
   accountId: z.string().uuid(),

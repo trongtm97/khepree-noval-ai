@@ -217,6 +217,97 @@ export class DiagnosticsService {
     };
   }
 
+  async runNotebookGroundingSmoke(input: {
+    accountId: string;
+    notebookUrl: string;
+    smokeProjectLabel?: string;
+    headless?: boolean;
+    tests?: Array<'A' | 'B' | 'C' | 'D'>;
+    groundingKnowledgeDriveFileId?: string;
+    groundingSyncStateDriveFileId?: string;
+  }) {
+    const profile = this.getDb().googleAccounts.getProfile(input.accountId);
+    if (!profile) throw new Error('Browser profile missing for account');
+    const profilePath = browserProfileManager.resolveProfilePath(profile.profile_dir_name);
+    const {
+      parseNotebookGroundingSmokeConfig,
+      runNotebookGroundingSmoke,
+    } = await import('../notebook-grounding-smoke');
+    const artifactsDir = path.join(
+      pathsService.getPath('cache'),
+      'automation',
+      input.accountId,
+      'notebook-grounding-smoke',
+    );
+    const reportPath = path.join(process.cwd(), 'docs', 'REAL_NOTEBOOK_GROUNDING_REPORT.md');
+
+    let driveClient = null as import('../drive/drive-client').DriveClient | null;
+    try {
+      const { DriveOAuthService } = await import('../drive/drive-oauth-service');
+      const { getSecretStorage } = await import('../security');
+      driveClient = await new DriveOAuthService(getSecretStorage()).createDriveClient(
+        input.accountId,
+      );
+    } catch (error) {
+      logger.warn('Notebook grounding smoke: Drive client unavailable', {
+        accountId: input.accountId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    const config = parseNotebookGroundingSmokeConfig({
+      enabled: true,
+      profilePath,
+      notebookUrl: input.notebookUrl,
+      headless: input.headless ?? false,
+      smokeProjectLabel: input.smokeProjectLabel ?? 'NOVELTRANS_SMOKE',
+      tests: input.tests,
+      reportMarkdownPath: reportPath,
+      artifactsDir,
+      allowNonSmokeNotebook: false,
+      accountId: input.accountId,
+      groundingKnowledgeDriveFileId: input.groundingKnowledgeDriveFileId,
+      groundingSyncStateDriveFileId: input.groundingSyncStateDriveFileId,
+    });
+
+    logger.info('Real Notebook grounding smoke starting from Diagnostics UI', {
+      accountId: input.accountId,
+      notebookUrl: input.notebookUrl,
+      driveAvailable: Boolean(driveClient),
+    });
+
+    const report = await runNotebookGroundingSmoke({
+      config,
+      driveClient,
+      db: this.getDb(),
+    });
+
+    return {
+      overall: report.overall,
+      startedAt: report.startedAt,
+      finishedAt: report.finishedAt,
+      reportPath,
+      artifactsDir: report.artifactsDir,
+      knowledgeKey: report.knowledgeKey,
+      notebookName: report.notebookName,
+      results: report.results.map((r) => ({
+        id: r.id,
+        name: r.name,
+        status: r.status,
+        durationMs: r.durationMs,
+        localVersion: r.localVersion,
+        notebookVersion: r.notebookVersion,
+        bindingType: r.bindingType === 'UNKNOWN' ? null : r.bindingType,
+        driveFileId: r.driveFileId,
+        notebookName: r.notebookName,
+        packMode: r.packMode,
+        response: r.response,
+        message: r.message,
+        screenshotPath: r.screenshotPath,
+      })),
+    };
+  }
+
   async runConnectionTest(input: {
     kind: ConnectionTestKind;
     accountId: string;

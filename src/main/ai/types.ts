@@ -48,6 +48,15 @@ export interface SendPromptOptions {
   jobId?: string | null;
   maxTimeoutMs?: number;
   headless?: boolean;
+  /**
+   * When true, WebAPI FAT rebuild must KEEP the repair/continuation prompt
+   * and only prepend local SQLite memory (never claim Notebook).
+   */
+  preserveRepairPrompt?: boolean;
+  /** Preferred Translation Notebook id from initial send (Playwright). */
+  notebookId?: string | null;
+  /** Thread ref from initial send when still valid. */
+  threadRef?: string | null;
 }
 
 export type AIStreamChunk = {

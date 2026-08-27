@@ -682,9 +682,27 @@ export class JobService {
     const providerType =
       typeof progress.providerType === 'string' ? progress.providerType : undefined;
     const packMode =
-      progress.packMode === 'slim' || progress.packMode === 'fat'
+      progress.packMode === 'slim' ||
+      progress.packMode === 'hybrid' ||
+      progress.packMode === 'fat'
         ? progress.packMode
         : undefined;
+    const notebookId =
+      typeof progress.notebookId === 'string'
+        ? progress.notebookId
+        : progress.notebookId === null
+          ? null
+          : undefined;
+    const localKnowledgeVersion =
+      typeof progress.localKnowledgeVersion === 'number'
+        ? progress.localKnowledgeVersion
+        : undefined;
+    const notebookVerifiedVersion =
+      typeof progress.notebookVerifiedVersion === 'number'
+        ? progress.notebookVerifiedVersion
+        : undefined;
+    const hotDeltaCount =
+      typeof progress.hotDeltaCount === 'number' ? progress.hotDeltaCount : undefined;
     const learningRaw =
       progress.learning && typeof progress.learning === 'object'
         ? (progress.learning as Record<string, unknown>)
@@ -713,6 +731,45 @@ export class JobService {
               : undefined,
         }
       : undefined;
+    const notebookName =
+      typeof progress.notebookName === 'string' ? progress.notebookName : undefined;
+    const notebookRole =
+      progress.notebookRole === 'TRANSLATION' ||
+      progress.notebookRole === 'RESEARCH' ||
+      progress.notebookRole === 'SINGLE'
+        ? progress.notebookRole
+        : undefined;
+    const notebookGroundingVerified =
+      typeof progress.notebookGroundingVerified === 'boolean'
+        ? progress.notebookGroundingVerified
+        : undefined;
+    const notebookKnowledgeVersion =
+      typeof progress.notebookKnowledgeVersion === 'number'
+        ? progress.notebookKnowledgeVersion
+        : notebookVerifiedVersion;
+    const knowledgeSourceMode =
+      progress.knowledgeSourceMode === 'DRIVE_LIVE' ||
+      progress.knowledgeSourceMode === 'STATIC' ||
+      progress.knowledgeSourceMode === 'LOCAL_ONLY'
+        ? progress.knowledgeSourceMode
+        : undefined;
+    const timeline = Array.isArray(progress.timeline)
+      ? (progress.timeline as Array<{ at: string; event: string; message?: string }>)
+          .filter((e) => e && typeof e.at === 'string' && typeof e.event === 'string')
+          .slice(-40)
+      : undefined;
+    const accountIdProgress =
+      typeof progress.accountId === 'string' ? progress.accountId : undefined;
+    const threadRef =
+      typeof progress.threadRef === 'string'
+        ? progress.threadRef
+        : progress.threadRef === null
+          ? null
+          : undefined;
+    const knowledgeVersion =
+      typeof progress.knowledgeVersion === 'number'
+        ? progress.knowledgeVersion
+        : undefined;
     const hasProgress =
       phase != null ||
       chunkIndex != null ||
@@ -721,6 +778,19 @@ export class JobService {
       paragraphsTotal != null ||
       providerType != null ||
       packMode != null ||
+      notebookId !== undefined ||
+      notebookName != null ||
+      notebookRole != null ||
+      notebookGroundingVerified != null ||
+      accountIdProgress != null ||
+      threadRef !== undefined ||
+      knowledgeVersion != null ||
+      localKnowledgeVersion != null ||
+      notebookVerifiedVersion != null ||
+      notebookKnowledgeVersion != null ||
+      hotDeltaCount != null ||
+      knowledgeSourceMode != null ||
+      (timeline != null && timeline.length > 0) ||
       learning != null;
 
     return {
@@ -751,6 +821,19 @@ export class JobService {
             paragraphsTotal,
             providerType,
             packMode,
+            notebookId,
+            notebookName,
+            notebookRole,
+            notebookGroundingVerified,
+            accountId: accountIdProgress,
+            threadRef,
+            knowledgeVersion,
+            localKnowledgeVersion,
+            notebookKnowledgeVersion,
+            notebookVerifiedVersion,
+            hotDeltaCount,
+            knowledgeSourceMode,
+            timeline,
             learning,
           }
         : null,
@@ -763,6 +846,10 @@ export class JobService {
 }
 
 function toAttemptDto(row: JobAttemptRow): JobAttemptDto {
+  const packMode =
+    row.pack_mode === 'slim' || row.pack_mode === 'hybrid' || row.pack_mode === 'fat'
+      ? row.pack_mode
+      : null;
   return {
     id: row.id,
     jobId: row.job_id,
@@ -773,6 +860,12 @@ function toAttemptDto(row: JobAttemptRow): JobAttemptDto {
     output: row.output,
     result: row.result,
     error: row.error,
+    providerType: row.provider_type ?? null,
+    accountId: row.account_id ?? null,
+    notebookId: row.notebook_id ?? null,
+    threadRef: row.thread_ref ?? null,
+    packMode,
+    knowledgeVersion: row.knowledge_version ?? null,
     startedAt: row.started_at,
     completedAt: row.completed_at,
   };

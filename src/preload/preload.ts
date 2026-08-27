@@ -286,6 +286,8 @@ const api: NovelTransApi = {
     aiBrowserProbe: (input) =>
       invokeChannel(IPC_CHANNELS.DIAGNOSTICS_AI_BROWSER_PROBE, input),
     googleSmoke: (input) => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_GOOGLE_SMOKE, input),
+    notebookGroundingSmoke: (input) =>
+      invokeChannel(IPC_CHANNELS.DIAGNOSTICS_NOTEBOOK_GROUNDING_SMOKE, input),
     getOverrides: () => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_GET_OVERRIDES),
     loadOverrides: (input) =>
       invokeChannel(IPC_CHANNELS.DIAGNOSTICS_LOAD_OVERRIDES, input ?? {}),

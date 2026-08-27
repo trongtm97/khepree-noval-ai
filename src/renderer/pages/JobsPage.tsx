@@ -3,7 +3,15 @@ import { Users } from 'lucide-react';
 import type { JobAttemptDto, JobDto } from '@shared/schemas/job';
 import type { AttentionAction } from '@shared/constants/job';
 import type { ProjectDto } from '@shared/schemas/import';
-import { formatTranslateChannel } from '@shared/utils/translate-channel';
+import { formatMemoryUsage, formatTranslateChannel } from '@shared/utils/translate-channel';
+import {
+  formatDiagnosticsAiChannel,
+  formatDiagnosticsContextMode,
+  formatDiagnosticsGroundingWarning,
+  formatDiagnosticsKnowledgeVersions,
+  formatDiagnosticsMemorySurface,
+  readDiagnosticsFromProgress,
+} from '@shared/constants/translation-context';
 import { useT } from '../i18n';
 import { friendlyError } from '../i18n/errors';
 import {
@@ -605,16 +613,117 @@ export function JobsPage() {
                 ? ` · ${selected.pinnedAccountId.slice(0, 8)}…`
                 : ''}
             </p>
-            {formatTranslateChannel({
-              providerType: selected.progress?.providerType,
-              packMode: selected.progress?.packMode,
-            }) ? (
-              <p className="muted">
-                {t('jobs.channel')}:{' '}
-                {formatTranslateChannel({
+            {(() => {
+              const diag = readDiagnosticsFromProgress(
+                selected.progress as Record<string, unknown> | null | undefined,
+              );
+              if (!diag) {
+                return formatTranslateChannel({
                   providerType: selected.progress?.providerType,
                   packMode: selected.progress?.packMode,
-                })}
+                }) ? (
+                  <p className="muted">
+                    {t('jobs.channel')}:{' '}
+                    {formatTranslateChannel({
+                      providerType: selected.progress?.providerType,
+                      packMode: selected.progress?.packMode,
+                    })}
+                  </p>
+                ) : null;
+              }
+              const ai = formatDiagnosticsAiChannel(diag.providerType);
+              const memory = formatDiagnosticsMemorySurface(diag);
+              const knowledge = formatDiagnosticsKnowledgeVersions(diag);
+              const mode = formatDiagnosticsContextMode(diag);
+              const warning = formatDiagnosticsGroundingWarning(diag);
+              return (
+                <div className="job-context-diagnostics" style={{ marginTop: '0.5rem' }}>
+                  {ai ? (
+                    <p className="muted" style={{ margin: '0.15rem 0' }}>
+                      {t('jobs.diagAiChannel')}: <strong>{ai}</strong>
+                    </p>
+                  ) : null}
+                  <p className="muted" style={{ margin: '0.15rem 0' }}>
+                    {t('jobs.diagMemory')}: <strong>{memory}</strong>
+                  </p>
+                  {diag.notebookName ? (
+                    <p className="muted" style={{ margin: '0.15rem 0' }}>
+                      {t('jobs.diagNotebook')}: <strong>{diag.notebookName}</strong>
+                    </p>
+                  ) : null}
+                  {knowledge ? (
+                    <p className="muted" style={{ margin: '0.15rem 0' }}>
+                      {t('jobs.diagKnowledge')}: <strong>{knowledge}</strong>
+                    </p>
+                  ) : null}
+                  <p className="muted" style={{ margin: '0.15rem 0' }}>
+                    {t('jobs.diagContextMode')}: <strong>{mode}</strong>
+                  </p>
+                  {diag.knowledgeSourceMode ? (
+                    <p className="muted" style={{ margin: '0.15rem 0' }}>
+                      {t('jobs.diagSourceMode')}: {diag.knowledgeSourceMode}
+                      {typeof diag.hotDeltaCount === 'number' && diag.hotDeltaCount > 0
+                        ? ` · delta ${diag.hotDeltaCount}`
+                        : ''}
+                    </p>
+                  ) : null}
+                  {warning ? (
+                    <p
+                      className="banner"
+                      style={{
+                        marginTop: '0.4rem',
+                        fontSize: '0.9em',
+                        background: 'var(--warning-bg, #fff3cd)',
+                        padding: '0.4rem 0.6rem',
+                      }}
+                    >
+                      {warning}
+                    </p>
+                  ) : null}
+                  {selected.progress?.timeline && selected.progress.timeline.length > 0 ? (
+                    <div style={{ marginTop: '0.6rem' }}>
+                      <p className="muted" style={{ marginBottom: '0.25rem' }}>
+                        {t('jobs.diagTimeline')}
+                      </p>
+                      <ul
+                        style={{
+                          listStyle: 'none',
+                          padding: 0,
+                          margin: 0,
+                          fontSize: '0.85em',
+                          maxHeight: '10rem',
+                          overflow: 'auto',
+                        }}
+                      >
+                        {selected.progress.timeline.map((entry, i) => (
+                          <li
+                            key={`${entry.at}-${entry.event}-${i}`}
+                            className="muted"
+                            style={{ marginBottom: '0.2rem' }}
+                          >
+                            <code>{entry.event}</code>
+                            {entry.message ? ` — ${entry.message}` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })()}
+            {selected.progress?.packMode &&
+            !readDiagnosticsFromProgress(
+              selected.progress as Record<string, unknown> | null | undefined,
+            ) ? (
+              <p className="muted">
+                {formatMemoryUsage(selected.progress.packMode)}
+                {typeof selected.progress.hotDeltaCount === 'number'
+                  ? ` · delta ${selected.progress.hotDeltaCount}`
+                  : ''}
+                {typeof selected.progress.localKnowledgeVersion === 'number' &&
+                typeof selected.progress.notebookVerifiedVersion === 'number'
+                  ? ` · v${selected.progress.localKnowledgeVersion}/v${selected.progress.notebookVerifiedVersion}`
+                  : ''}
               </p>
             ) : null}
             {selected.progress?.learning ? (

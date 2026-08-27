@@ -301,4 +301,15 @@ export class GeminiRequestRepository extends BaseRepository {
       errorMessage: 'Process crashed before SENT_CONFIRMED — safe to create a new request',
     });
   }
+
+  /** Latest Gemini request for a job (thread / notebook inheritance for repair). */
+  findLatestByJob(jobId: string): GeminiRequestRow | null {
+    return (
+      (this.db
+        .prepare(
+          `SELECT * FROM gemini_requests WHERE job_id = ? ORDER BY created_at DESC LIMIT 1`,
+        )
+        .get(jobId) as GeminiRequestRow | undefined) ?? null
+    );
+  }
 }

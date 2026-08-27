@@ -86,20 +86,22 @@ describe('DriveSyncService', () => {
     const status = service.getStatus(projectId);
     expect(status.syncStatus).toBe('synced');
     expect(status.resources.length).toBeGreaterThanOrEqual(7);
-    expect(mockClient.createFileCalls).toBeGreaterThanOrEqual(5);
+    expect(mockClient.createGoogleDocCalls).toBeGreaterThanOrEqual(5);
   });
 
   it('skips Drive update when local content hash unchanged', async () => {
     await service.provisionProject(projectId);
     mockClient.updateCalls = 0;
+    mockClient.updateGoogleDocCalls = 0;
 
     const first = await service.syncProject(projectId);
     expect(first.updated).toBe(0);
     expect(first.skipped).toBeGreaterThan(0);
     expect(mockClient.updateCalls).toBe(0);
+    expect(mockClient.updateGoogleDocCalls).toBe(0);
   });
 
-  it('updates Drive file when content hash changes', async () => {
+  it('updates Drive Google Doc when content hash changes', async () => {
     await service.provisionProject(projectId);
 
     const row = db.driveResources.getByProjectAndKey(
@@ -113,15 +115,16 @@ describe('DriveSyncService', () => {
       project_id: projectId,
       google_account_id: row.google_account_id,
       resource_key: DRIVE_RESOURCE_KEYS.RULES_MD,
-      resource_type: 'file',
+      resource_type: 'google_doc',
       drive_file_id: row.drive_file_id,
       local_hash: 'stale-hash',
+      mime_type: row.mime_type,
     });
 
-    mockClient.updateCalls = 0;
+    mockClient.updateGoogleDocCalls = 0;
     const result = await service.syncProject(projectId);
     expect(result.updated).toBeGreaterThan(0);
-    expect(mockClient.updateCalls).toBeGreaterThan(0);
+    expect(mockClient.updateGoogleDocCalls).toBeGreaterThan(0);
   });
 
   it('schedules sync every N chapters or on critical change', () => {

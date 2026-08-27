@@ -8,6 +8,7 @@ import {
   hashKnowledgeContent,
 } from '../../../src/main/notebook/knowledge-builder';
 import { NotebookSyncService } from '../../../src/main/notebook/notebook-sync-service';
+import { runKnowledgeVersionProbe } from '../../../src/main/notebook/notebook-version-probe';
 import { NotebookBootstrapService } from '../../../src/main/notebook/notebook-bootstrap-service';
 import { assemblePackSections } from '../../../src/main/prompt/translation-pack-builder';
 import { KNOWLEDGE_TYPES, KNOWLEDGE_SIZE_CAPS } from '@shared/constants/knowledge';
@@ -84,15 +85,16 @@ describe('NotebookKnowledgeBuilder', () => {
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
-  it('builds all 8 knowledge files deterministically', () => {
+  it('builds all 9 knowledge files deterministically', () => {
     const builder = new NotebookKnowledgeBuilder(db);
     const a = builder.buildAll(projectId);
     const b = builder.buildAll(projectId);
-    expect(Object.keys(a)).toHaveLength(8);
+    expect(Object.keys(a)).toHaveLength(9);
     expect(a['00_BOOK_PROFILE.md']).toContain('Tiên Nghịch');
     expect(a['01_TRANSLATION_RULES.md']).toContain('LOCKED PROJECT TERM');
     expect(a['06_WORLD_KNOWLEDGE.md']).toBeTruthy();
     expect(a['07_RECENT_CONTEXT.md']).toBeTruthy();
+    expect(a['08_SYNC_STATE.md']).toContain('NOVELTRANS_PROJECT_ID=');
     expect(hashKnowledgeContent(a['00_BOOK_PROFILE.md'])).toBe(
       hashKnowledgeContent(b['00_BOOK_PROFILE.md']),
     );
@@ -161,15 +163,48 @@ describe('NotebookSyncService hot memory', () => {
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
-  it('marks dirty and builds hot memory text', () => {
+  it('marks dirty and builds hot memory text from SQLite', async () => {
     const sync = new NotebookSyncService(db);
-    sync.markDirty(projectId, 'STORY_STATE_CHANGED', '王林 đột phá Nguyên Anh');
+    db.notebooks.upsert({
+      project_id: projectId,
+      google_account_id: accountId,
+      notebook_name: '[NovelTrans] Test',
+      status: 'ready',
+      instructions_hash: 'abc123',
+    });
+    db.driveSyncState.patch(projectId, {
+      pendingKnowledgeVersion: 1,
+      pendingSyncNonce: 'A11CE001',
+      versionProbeStatus: 'pending',
+    });
+    await runKnowledgeVersionProbe(db, {
+      projectId,
+      accountId,
+      capture: async () => 'NT_VERSION=1\nNT_NONCE=A11CE001',
+    });
+    db.getConnection()
+      .prepare(`UPDATE notebook_resources SET last_verified_at = ? WHERE project_id = ?`)
+      .run('2020-01-01T00:00:00.000Z', projectId);
+    db.getConnection()
+      .prepare(`UPDATE knowledge_files SET last_verified_at = ? WHERE project_id = ?`)
+      .run('2020-01-01T00:00:00.000Z', projectId);
+    // Ensure story update is strictly after verify watermark
+    const afterVerify = new Date(Date.now() + 5).toISOString();
+    db.storyStates.patch(projectId, {
+      summaryText: '王林 đột phá Nguyên Anh',
+      cultivationState: { realm: 'Nguyên Anh' },
+    });
+    db.getConnection()
+      .prepare(`UPDATE story_states SET updated_at = ? WHERE project_id = ?`)
+      .run(afterVerify, projectId);
+    sync.markDirty(projectId, 'STORY_STATE_CHANGED');
     const hot = sync.buildActiveHotMemoryText(projectId);
     expect(hot).toContain('Nguyên Anh');
+    expect(hot).not.toMatch(/delta after job/i);
     expect(db.knowledgeFiles.anyDirty(projectId)).toBe(true);
   });
 
-  it('clears hot deltas on verify', () => {
+  it('clears hot deltas on version probe verify', async () => {
     const sync = new NotebookSyncService(db);
     db.notebooks.upsert({
       project_id: projectId,
@@ -178,13 +213,61 @@ describe('NotebookSyncService hot memory', () => {
       status: 'sync_pending',
       instructions_hash: 'abc123',
     });
-    sync.markDirty(projectId, 'TERM_CHANGED', 'locked term');
+    db.driveSyncState.patch(projectId, {
+      pendingKnowledgeVersion: 1,
+      pendingSyncNonce: 'A11CE002',
+      versionProbeStatus: 'pending',
+    });
+    await runKnowledgeVersionProbe(db, {
+      projectId,
+      accountId,
+      capture: async () => 'NT_VERSION=1\nNT_NONCE=A11CE002',
+    });
+    db.getConnection()
+      .prepare(`UPDATE notebook_resources SET last_verified_at = ? WHERE project_id = ?`)
+      .run('2020-01-01T00:00:00.000Z', projectId);
+    db.getConnection()
+      .prepare(`UPDATE knowledge_files SET last_verified_at = ? WHERE project_id = ?`)
+      .run('2020-01-01T00:00:00.000Z', projectId);
+
+    db.terms.create({
+      source_simplified: '锁词',
+      preferred_translation: 'locked',
+      scope: 'PROJECT',
+      scope_ref: projectId,
+      status: 'LOCKED',
+      locked: true,
+    });
+    const termRow = db.terms.findBySource('锁词', projectId)!;
+    db.terms.linkToProject(projectId, termRow.id, 'LOCKED');
+    sync.markDirty(projectId, 'TERM_CHANGED');
+    const afterDirty = new Date(Date.now() + 10).toISOString();
+    db.getConnection()
+      .prepare(`UPDATE terms SET updated_at = ? WHERE id = ?`)
+      .run(afterDirty, termRow.id);
+    expect(sync.buildActiveHotMemoryText(projectId)).toContain('锁词');
+
+    // Name-only path must not clear
     sync.markNotebookVerified(projectId, accountId);
-    expect(sync.buildActiveHotMemoryText(projectId)).toBe('');
+    expect(sync.buildActiveHotMemoryText(projectId)).toContain('锁词');
+
+    db.driveSyncState.patch(projectId, {
+      pendingKnowledgeVersion: 2,
+      pendingSyncNonce: 'A11CE003',
+      versionProbeStatus: 'pending',
+    });
+    await runKnowledgeVersionProbe(db, {
+      projectId,
+      accountId,
+      capture: async () => 'NT_VERSION=2\nNT_NONCE=A11CE003',
+    });
+    expect(db.notebookHotDeltas.listActive(projectId)).toHaveLength(0);
     expect(db.knowledgeFiles.anyDirty(projectId)).toBe(false);
     const health = sync.getHealth(projectId, accountId);
     expect(health.instructionsReady).toBe(true);
+    expect(health.knowledgeVerified).toBe(true);
     expect(health.status).toBe('ready');
+    expect(sync.buildActiveHotMemoryText(projectId)).toBe('');
   });
 
   it('reports instructionsReady false when hash missing', () => {
@@ -201,7 +284,7 @@ describe('NotebookSyncService hot memory', () => {
   });
 });
 
-describe('slim vs fat TranslationPack', () => {
+describe('slim vs hybrid vs fat TranslationPack', () => {
   it('slim pack omits full story dump and prefers locked overrides', () => {
     const slim = assemblePackSections({
       style: 'balanced',
@@ -217,6 +300,20 @@ describe('slim vs fat TranslationPack', () => {
     expect(slim.prompt).toContain('王林');
     expect(slim.prompt).not.toContain('Should not appear in slim pack body dump');
     expect(slim.sections.activeProjectTerms).toContain('LOCKED');
+  });
+
+  it('hybrid pack includes local delta story/chars without mem dump', () => {
+    const hybrid = assemblePackSections({
+      style: 'balanced',
+      chapterNumbers: [1],
+      criticalRules: ['rule-should-not-be-in-slim'],
+      context: FIXED_CONTEXT,
+      sourceLines: ['[C000001:P000001] 王林走了。'],
+      packMode: 'hybrid',
+    });
+    expect(hybrid.prompt).toContain('Local Knowledge Delta');
+    expect(hybrid.prompt).toContain('Should not appear in slim pack body dump');
+    expect(hybrid.sections.activeProjectTerms).toContain('LOCKED');
   });
 
   it('fat pack includes story snapshot', () => {

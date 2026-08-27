@@ -1238,6 +1238,16 @@ export const IPC_CHANNEL_AUDIT: readonly IpcChannelAudit[] = [
     notes: 'Opt-in Real Google smoke A–H; smoke notebook only; writes REAL_GOOGLE_TEST_REPORT.md',
   },
   {
+    channel: IPC_CHANNELS.DIAGNOSTICS_NOTEBOOK_GROUNDING_SMOKE,
+    permission: 'manage_diagnostics',
+    allowsFilesystem: true,
+    allowsShell: false,
+    allowsDbQuery: true,
+    allowsSecrets: noSecrets,
+    notes:
+      'Opt-in Real Notebook grounding A–D; smoke notebook only; writes REAL_NOTEBOOK_GROUNDING_REPORT.md; no cookies/tokens in report',
+  },
+  {
     channel: IPC_CHANNELS.DIAGNOSTICS_GET_OVERRIDES,
     permission: 'manage_diagnostics',
     allowsFilesystem: true,

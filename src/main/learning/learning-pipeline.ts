@@ -12,10 +12,19 @@ export interface LearningPipelineInput {
   parsed: ParsedBatchResult;
   chapterFrom?: number | null;
   chapterTo?: number | null;
+  /**
+   * Explicit count of chapters successfully translated in this PASS.
+   * Prefer over chapterFrom/To when available.
+   */
+  chaptersCompleted?: number | null;
   sourceContextByParagraph?: Record<string, string>;
-  /** Injected for tests / optional Drive wiring. */
-  onChapterCompleted?: (projectId: string) => { shouldSync: boolean };
-  syncProject?: (projectId: string) => Promise<unknown>;
+  /** Test inject: override sync policy evaluation. */
+  evaluateSyncPolicy?: (
+    projectId: string,
+    input: { chapterCount: number; critical?: boolean },
+  ) => { shouldSync: boolean };
+  /** Test inject: NotebookSyncService.syncDrive only — never DriveSyncService. */
+  syncDrive?: (projectId: string) => Promise<unknown>;
 }
 
 export interface LearningPipelineResult {
@@ -24,12 +33,55 @@ export interface LearningPipelineResult {
   compact: CompactMemoryResult;
   consolidated: boolean;
   driveSyncTriggered: boolean;
+  chapterCount: number;
+  critical: boolean;
   documents?: ReturnType<typeof buildProjectDriveDocuments>;
 }
 
 /**
- * Post-PASS learning: TERM_DELTA → candidates, MEMORY_DELTA → apply/conflict,
- * compact archives, every N chapters consolidate markdown + Drive sync.
+ * Count chapters covered by a successful translate batch.
+ * Job 101–103 → 3 (not 1).
+ */
+export function countCompletedChapters(input: {
+  chapterFrom?: number | null;
+  chapterTo?: number | null;
+  chaptersCompleted?: number | null;
+}): number {
+  if (
+    input.chaptersCompleted != null &&
+    Number.isFinite(input.chaptersCompleted) &&
+    input.chaptersCompleted > 0
+  ) {
+    return Math.floor(input.chaptersCompleted);
+  }
+  const from = input.chapterFrom;
+  const to = input.chapterTo;
+  if (from != null && to != null && Number.isFinite(from) && Number.isFinite(to)) {
+    return Math.max(0, Math.floor(to) - Math.floor(from) + 1);
+  }
+  if (from != null || to != null) return 1;
+  return 0;
+}
+
+/** Critical knowledge changes may force early Notebook Drive sync. */
+export function isCriticalLearningChange(
+  terms: TermDeltaApplyResult,
+  memory: MemoryDeltaApplyResult,
+): boolean {
+  return (
+    terms.lockedTouched > 0 ||
+    memory.conflicts.length > 0 ||
+    memory.charactersTouched > 0 ||
+    memory.relationshipsTouched > 0 ||
+    memory.storyTouched > 0 ||
+    memory.worldTouched > 0
+  );
+}
+
+/**
+ * Post-PASS learning lifecycle (single Notebook sync path):
+ * Learning → SQLite → markDirty → rebuild → sync policy →
+ * NotebookSyncService.syncDrive → DRIVE_SYNC_COMPLETED → NOTEBOOK_SYNC_PENDING → verify → READY
  */
 export async function runLearningPipeline(
   db: DatabaseManager,
@@ -72,13 +124,18 @@ export async function runLearningPipeline(
         charactersTouched: memory.charactersTouched,
         relationshipsTouched: memory.relationshipsTouched,
         storyTouched: memory.storyTouched,
+        worldTouched: memory.worldTouched,
       },
     });
   }
 
   const termActivity =
-    terms.candidatesCreated > 0 || terms.candidatesMerged > 0 || terms.confirms > 0;
+    terms.candidatesCreated > 0 ||
+    terms.candidatesMerged > 0 ||
+    terms.confirms > 0 ||
+    terms.lockedTouched > 0;
   const memoryActivity = memory.applied > 0;
+  const critical = isCriticalLearningChange(terms, memory);
 
   try {
     const { getNotebookSyncService } = await import(
@@ -86,43 +143,27 @@ export async function runLearningPipeline(
     );
     const sync = getNotebookSyncService(db);
     if (memory.charactersTouched > 0) {
-      sync.markDirty(
-        input.projectId,
-        'CHARACTER_CHANGED',
-        `Character delta after job ${input.jobId} (ch.${chapterNumber ?? '?'})`,
-      );
+      sync.markDirty(input.projectId, 'CHARACTER_CHANGED');
     }
     if (memory.relationshipsTouched > 0) {
-      sync.markDirty(
-        input.projectId,
-        'RELATIONSHIP_CHANGED',
-        `Relationship delta after job ${input.jobId} (ch.${chapterNumber ?? '?'})`,
-      );
+      sync.markDirty(input.projectId, 'RELATIONSHIP_CHANGED');
     }
     if (memory.storyTouched > 0 || memoryActivity) {
-      sync.markDirty(
-        input.projectId,
-        'STORY_STATE_CHANGED',
-        `Memory delta applied after job ${input.jobId} (ch.${chapterNumber ?? '?'})`,
-      );
+      sync.markDirty(input.projectId, 'STORY_STATE_CHANGED');
+    }
+    if (memory.worldTouched > 0) {
+      sync.markDirty(input.projectId, 'WORLD_KNOWLEDGE_CHANGED');
     }
     if (termActivity) {
-      sync.markDirty(
-        input.projectId,
-        'TERM_CHANGED',
-        `Term delta: ${terms.candidatesCreated} created, ${terms.confirms} confirms`,
-      );
+      sync.markDirty(input.projectId, 'TERM_CHANGED');
     }
     if (memoryActivity || termActivity) {
-      sync.markDirty(
-        input.projectId,
-        'RECENT_CONTEXT_CHANGED',
-        `Recent context after job ${input.jobId} (ch.${chapterNumber ?? '?'})`,
-      );
+      sync.markDirty(input.projectId, 'RECENT_CONTEXT_CHANGED');
     }
   } catch {
     // sync service optional in tests
   }
+
   for (const conflict of memory.conflicts) {
     db.learningEvents.create({
       project_id: input.projectId,
@@ -140,23 +181,43 @@ export async function runLearningPipeline(
     currentChapter: chapterNumber,
   });
 
+  const chapterCount = countCompletedChapters(input);
+
+  // Every PASS: refresh local knowledge from SQLite (fat-pack / next chapter).
+  try {
+    const { getNotebookSyncService } = await import(
+      '../notebook/notebook-sync-service-singleton'
+    );
+    getNotebookSyncService(db).rebuildKnowledge(input.projectId);
+  } catch {
+    // sync service optional in tests
+  }
+
+  let shouldSync = false;
+  try {
+    if (input.evaluateSyncPolicy) {
+      shouldSync = input.evaluateSyncPolicy(input.projectId, {
+        chapterCount,
+        critical,
+      }).shouldSync;
+    } else {
+      const { getNotebookSyncService } = await import(
+        '../notebook/notebook-sync-service-singleton'
+      );
+      shouldSync = getNotebookSyncService(db).evaluateSyncPolicy(input.projectId, {
+        chapterCount,
+        critical,
+      }).shouldSync;
+    }
+  } catch {
+    // fall through — no sync when sync service unavailable
+  }
+
   let consolidated = false;
   let driveSyncTriggered = false;
   let documents: ReturnType<typeof buildProjectDriveDocuments> | undefined;
 
-  const { shouldSync } = advanceChapterCounter(db, input.projectId, input.onChapterCompleted);
-
-  const forceConsolidate =
-    shouldSync || memory.conflicts.length > 0 || terms.confirms > 0;
-
-  if (forceConsolidate) {
-    if (!shouldSync && (memory.conflicts.length > 0 || terms.confirms > 0)) {
-      db.driveSyncState.patch(input.projectId, {
-        criticalChangePending: true,
-        syncStatus: 'pending',
-      });
-    }
-
+  if (shouldSync || critical) {
     documents = buildProjectDriveDocuments(db, input.projectId);
     consolidated = true;
     db.learningEvents.create({
@@ -173,40 +234,32 @@ export async function runLearningPipeline(
           recent: documents['07_RECENT_CONTEXT.md']?.length ?? 0,
         },
         shouldSync,
+        critical,
+        chapterCount,
       },
     });
-  }
-
-  // Every PASS: refresh local knowledge files from SQLite so the next chapter's
-  // fat-pack sees updated story/terms (Drive → NotebookLM still follows sync_every_n).
-  try {
-    const { getNotebookSyncService } = await import(
-      '../notebook/notebook-sync-service-singleton'
-    );
-    getNotebookSyncService(db).rebuildKnowledge(input.projectId);
-  } catch {
-    // sync service optional in tests
   }
 
   if (shouldSync) {
     driveSyncTriggered = true;
     try {
-      if (input.syncProject) {
-        await input.syncProject(input.projectId);
+      if (input.syncDrive) {
+        await input.syncDrive(input.projectId);
       } else {
-        const { getDriveSyncService } = await import(
-          '../services/drive-sync-service-singleton'
+        const { getNotebookSyncService } = await import(
+          '../notebook/notebook-sync-service-singleton'
         );
-        await getDriveSyncService().syncProject(input.projectId);
+        await getNotebookSyncService(db).syncDrive(input.projectId);
       }
       db.learningEvents.create({
         project_id: input.projectId,
         event_type: 'drive_sync',
         job_id: input.jobId,
-        payload: { ok: true },
+        payload: { ok: true, via: 'NotebookSyncService.syncDrive' },
       });
     } catch (error) {
-      logger.warn('Drive sync failed after consolidate', {
+      // Drive failure: keep knowledge dirty; do not mark ready / sync_pending.
+      logger.warn('Notebook Drive sync failed after learning', {
         projectId: input.projectId,
         message: error instanceof Error ? error.message : String(error),
       });
@@ -228,27 +281,10 @@ export async function runLearningPipeline(
     compact,
     consolidated,
     driveSyncTriggered,
+    chapterCount,
+    critical,
     documents,
   };
-}
-
-function advanceChapterCounter(
-  db: DatabaseManager,
-  projectId: string,
-  injected?: (projectId: string) => { shouldSync: boolean },
-): { shouldSync: boolean } {
-  if (injected) return injected(projectId);
-
-  const state = db.driveSyncState.ensure(projectId);
-  const next = state.chapters_since_sync + 1;
-  const shouldSync =
-    state.critical_change_pending === 1 || next >= state.sync_every_n_chapters;
-  db.driveSyncState.patch(projectId, {
-    chaptersSinceSync: shouldSync ? 0 : next,
-    criticalChangePending: shouldSync ? false : state.critical_change_pending === 1,
-    syncStatus: shouldSync ? 'pending' : undefined,
-  });
-  return { shouldSync };
 }
 
 function pickSourceContext(map?: Record<string, string>): string | null {

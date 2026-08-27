@@ -1,0 +1,112 @@
+/**
+ * Knowledge version probe — prove Notebook reads current sync-state content,
+ * not merely that a source card with the right name exists.
+ */
+export const SYNC_STATE_SOURCE_NAME = '08_SYNC_STATE';
+export const SYNC_STATE_SOURCE_ALIAS = '_NOVELTRANS_STATE';
+
+export const VERSION_PROBE_PROMPT = [
+  'From the NovelTrans sync-state source,',
+  'return ONLY:',
+  '',
+  'NT_VERSION=<value>',
+  'NT_NONCE=<value>',
+  '',
+  'Do not infer or guess.',
+].join('\n');
+
+export type VersionProbeStatus =
+  | 'verified'
+  | 'mismatch'
+  | 'unverified'
+  | 'pending';
+
+export interface SyncStateManifest {
+  projectId: string;
+  knowledgeVersion: number;
+  syncNonce: string;
+}
+
+export interface VersionProbeEvaluation {
+  status: 'verified' | 'mismatch' | 'unverified';
+  parsedVersion: number | null;
+  parsedNonce: string | null;
+  reason: string;
+}
+
+export function generateSyncNonce(): string {
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+}
+
+export function buildSyncStateManifestContent(manifest: SyncStateManifest): string {
+  return [
+    '# NovelTrans sync state',
+    '# Machine-readable — do not paraphrase.',
+    `NOVELTRANS_PROJECT_ID=${manifest.projectId}`,
+    `NOVELTRANS_KNOWLEDGE_VERSION=${manifest.knowledgeVersion}`,
+    `NOVELTRANS_SYNC_NONCE=${manifest.syncNonce}`,
+  ].join('\n');
+}
+
+export function parseSyncStateManifestContent(
+  content: string,
+): SyncStateManifest | null {
+  const projectId = content.match(/NOVELTRANS_PROJECT_ID=(\S+)/)?.[1] ?? null;
+  const versionRaw = content.match(/NOVELTRANS_KNOWLEDGE_VERSION=(\d+)/)?.[1] ?? null;
+  const syncNonce = content.match(/NOVELTRANS_SYNC_NONCE=([A-Fa-f0-9]+)/)?.[1] ?? null;
+  if (!projectId || !versionRaw || !syncNonce) return null;
+  return {
+    projectId,
+    knowledgeVersion: Number(versionRaw),
+    syncNonce: syncNonce.toUpperCase(),
+  };
+}
+
+/** Parse Notebook probe reply for NT_VERSION / NT_NONCE. */
+export function parseVersionProbeResponse(raw: string): {
+  version: number | null;
+  nonce: string | null;
+} {
+  const versionMatch = raw.match(/NT_VERSION\s*=\s*(\d+)/i);
+  const nonceMatch = raw.match(/NT_NONCE\s*=\s*([A-Fa-f0-9]+)/i);
+  return {
+    version: versionMatch ? Number(versionMatch[1]) : null,
+    nonce: nonceMatch ? nonceMatch[1]!.toUpperCase() : null,
+  };
+}
+
+export function evaluateVersionProbeResponse(
+  raw: string,
+  expected: { knowledgeVersion: number; syncNonce: string },
+): VersionProbeEvaluation {
+  const parsed = parseVersionProbeResponse(raw);
+  if (parsed.version == null || !parsed.nonce) {
+    return {
+      status: 'unverified',
+      parsedVersion: parsed.version,
+      parsedNonce: parsed.nonce,
+      reason: 'NOTEBOOK_GROUNDING_UNVERIFIED',
+    };
+  }
+  if (
+    parsed.version === expected.knowledgeVersion &&
+    parsed.nonce === expected.syncNonce.toUpperCase()
+  ) {
+    return {
+      status: 'verified',
+      parsedVersion: parsed.version,
+      parsedNonce: parsed.nonce,
+      reason: 'NOTEBOOK_VERSION_VERIFIED',
+    };
+  }
+  return {
+    status: 'mismatch',
+    parsedVersion: parsed.version,
+    parsedNonce: parsed.nonce,
+    reason: 'NOTEBOOK_VERSION_MISMATCH',
+  };
+}

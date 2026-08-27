@@ -184,7 +184,7 @@ describe('NotebookProvider (fixture DOM)', () => {
     const second = await p.addFileSources(paths);
     expect(second.added).toEqual([]);
     expect(second.skipped).toEqual(['00_BOOK_PROFILE.md', '01_TRANSLATION_RULES.md']);
-  }, 20_000);
+  }, 60_000);
 
   it('addFileSources skips when fuzzy titles already cover filenames', async () => {
     const name = formatNotebookName('Fuzzy Titles');

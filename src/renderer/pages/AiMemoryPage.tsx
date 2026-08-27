@@ -423,8 +423,24 @@ export function AiMemoryPage() {
               {statusLabel(health.status, t)}
             </div>
             <div>
-              <strong>{t('aiMemory.versions')}:</strong> local v{health.localVersion}{' '}
-              / notebook v{health.notebookVersion}
+              <strong>{t('aiMemory.versions')}:</strong>{' '}
+              {t('aiMemory.localVersionLabel', {
+                n: String(health.pendingKnowledgeVersion || health.localVersion),
+              })}{' '}
+              ·{' '}
+              {t('aiMemory.notebookVersionLabel', {
+                n: String(health.verifiedKnowledgeVersion || health.notebookVersion),
+              })}
+            </div>
+            <div className={health.knowledgeVerified ? undefined : 'muted'}>
+              {health.knowledgeVerified
+                ? t('aiMemory.versionVerified')
+                : health.pendingKnowledgeVersion > health.verifiedKnowledgeVersion
+                  ? `${t('aiMemory.localAhead', {
+                      local: String(health.pendingKnowledgeVersion),
+                      notebook: String(health.verifiedKnowledgeVersion),
+                    })} — ${t('aiMemory.versionWaiting')}`
+                  : t('aiMemory.versionWaiting')}
             </div>
           </div>
           <h3 style={{ marginTop: '1.25rem' }}>{t('aiMemory.knowledgeFiles')}</h3>

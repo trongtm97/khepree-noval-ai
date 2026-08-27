@@ -28,6 +28,12 @@ import {
   mergeRepairTranslations,
 } from './continuation';
 import { buildMergedTranslationProtocol } from './translate-chunking';
+import {
+  channelSnapshotForAttempt,
+  readRepairChannelFromProgress,
+  type RepairChannelContext,
+} from './repair-channel-context';
+import type { PackMode } from '@shared/constants/pack-mode';
 
 export interface RepairSendRequest {
   jobId: string;
@@ -36,11 +42,15 @@ export interface RepairSendRequest {
   plan: RepairPromptPlan | null;
   /** Full initial prompt when plan is null (first send). */
   initialPrompt?: string;
+  /** Inherited from initial translation; sender must honor unless WebAPI failover. */
+  channel?: RepairChannelContext;
 }
 
 export interface RepairSendResult {
   rawResponse: string;
   inputRef: string;
+  /** Actual channel used for this send (after possible failover). */
+  channel?: RepairChannelContext;
 }
 
 export type RepairSender = (request: RepairSendRequest) => Promise<RepairSendResult>;
@@ -283,6 +293,33 @@ export async function runRepairLoop(
               emptyDeltas,
             },
           });
+          deps.db.knowledgeSyncEvents.insert({
+            projectId: input.projectId,
+            eventType: 'LEARNING_APPLIED',
+            message: emptyDeltas
+              ? 'Learning applied (empty deltas).'
+              : `Learning applied: +${learning.terms.candidatesCreated} candidates, +${learning.memory.applied} memory.`,
+            metadata: { jobId: input.jobId },
+          });
+          // Append LEARNING_APPLIED to job timeline
+          const jobAfterLearning = deps.db.jobs.getById(input.jobId);
+          if (jobAfterLearning?.progress) {
+            try {
+              const prog = JSON.parse(jobAfterLearning.progress) as Record<string, unknown>;
+              const timeline = Array.isArray(prog.timeline) ? [...prog.timeline] : [];
+              timeline.push({
+                at: new Date().toISOString(),
+                event: 'LEARNING_APPLIED',
+                message: emptyDeltas ? 'empty deltas' : 'ok',
+              });
+              deps.db.jobs.updateProgress(
+                input.jobId,
+                JSON.stringify({ ...prog, timeline: timeline.slice(-40) }),
+              );
+            } catch {
+              // ignore
+            }
+          }
         } catch (error) {
           logger.warn('Learning pipeline failed after PASS', {
             jobId: input.jobId,
@@ -409,12 +446,21 @@ export async function runRepairLoop(
       });
 
       const repairAttemptNumber = nextAttemptNumber(deps.db, input.jobId);
+      const inherited = readRepairChannelFromProgress(
+        deps.db.jobs.getById(input.jobId)?.progress,
+      );
       const repairAttempt = deps.db.jobs.startAttempt({
         job_id: input.jobId,
         attempt_number: repairAttemptNumber,
         reason,
         input_ref: null,
         state: 'RUNNING',
+        provider_type: inherited.providerType,
+        account_id: inherited.accountId,
+        notebook_id: inherited.notebookId,
+        thread_ref: inherited.threadRef,
+        pack_mode: inherited.packMode,
+        knowledge_version: inherited.knowledgeVersion,
       });
 
       try {
@@ -423,9 +469,11 @@ export async function runRepairLoop(
           attemptNumber: repairAttemptNumber,
           reason,
           plan,
+          channel: inherited,
         });
         raw = sent.rawResponse;
         inputRef = sent.inputRef;
+        const usedChannel = sent.channel ?? inherited;
         if (lastParsed && shouldMergePartialRepair(plan, input.batchParagraphs.length)) {
           const repairParsed = parser.parse(sent.rawResponse);
           const mergedTranslations = mergeRepairTranslations(
@@ -492,7 +540,23 @@ export async function runRepairLoop(
           state: 'SUCCEEDED',
           input_ref: inputRef,
           output: truncateOutput(raw),
-          result: JSON.stringify({ phase: 'repair_send', reason, mode: plan.mode }),
+          result: JSON.stringify({
+            phase: 'repair_send',
+            reason,
+            mode: plan.mode,
+            ...channelSnapshotForAttempt(usedChannel),
+          }),
+          provider_type: usedChannel.providerType,
+          account_id: usedChannel.accountId,
+          notebook_id: usedChannel.notebookId,
+          thread_ref: usedChannel.threadRef,
+          pack_mode: usedChannel.packMode,
+          knowledge_version: usedChannel.knowledgeVersion,
+        });
+        persistProgress(deps.db, input.jobId, {
+          ...channelSnapshotForAttempt(usedChannel),
+          phase: plan.mode === 'continuation' ? 'continuation' : 'repairing',
+          repairRound,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -604,7 +668,9 @@ function readChannelFromProgress(
     providerType:
       typeof progress.providerType === 'string' ? progress.providerType : undefined,
     packMode:
-      progress.packMode === 'slim' || progress.packMode === 'fat'
+      progress.packMode === 'slim' ||
+      progress.packMode === 'hybrid' ||
+      progress.packMode === 'fat'
         ? progress.packMode
         : undefined,
   };
@@ -625,9 +691,19 @@ function toAttemptDto(row: {
   output: string | null;
   result: string | null;
   error: string | null;
+  provider_type?: string | null;
+  account_id?: string | null;
+  notebook_id?: string | null;
+  thread_ref?: string | null;
+  pack_mode?: string | null;
+  knowledge_version?: number | null;
   started_at: string | null;
   completed_at: string | null;
 }): JobAttemptDto {
+  const packMode =
+    row.pack_mode === 'slim' || row.pack_mode === 'hybrid' || row.pack_mode === 'fat'
+      ? (row.pack_mode as PackMode)
+      : null;
   return {
     id: row.id,
     jobId: row.job_id,
@@ -638,6 +714,12 @@ function toAttemptDto(row: {
     output: row.output,
     result: row.result,
     error: row.error,
+    providerType: row.provider_type ?? null,
+    accountId: row.account_id ?? null,
+    notebookId: row.notebook_id ?? null,
+    threadRef: row.thread_ref ?? null,
+    packMode,
+    knowledgeVersion: row.knowledge_version ?? null,
     startedAt: row.started_at,
     completedAt: row.completed_at,
   };

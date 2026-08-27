@@ -75,6 +75,7 @@ import type {
   ConnectionTestResponseSchema,
   AiBrowserProbeResponseSchema,
   GoogleSmokeRunResponseSchema,
+  NotebookGroundingSmokeRunResponseSchema,
   ExportDiagnosticsResponseSchema,
   GetHealthReportResponseSchema,
   InteractiveRepairApplyResponseSchema,
@@ -878,6 +879,15 @@ export interface NovelTransApi {
       headless?: boolean;
       scenarios?: Array<'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H'>;
     }) => Promise<z.infer<typeof GoogleSmokeRunResponseSchema>>;
+    notebookGroundingSmoke: (input: {
+      accountId: string;
+      notebookUrl: string;
+      smokeProjectLabel?: string;
+      headless?: boolean;
+      tests?: Array<'A' | 'B' | 'C' | 'D'>;
+      groundingKnowledgeDriveFileId?: string;
+      groundingSyncStateDriveFileId?: string;
+    }) => Promise<z.infer<typeof NotebookGroundingSmokeRunResponseSchema>>;
     getOverrides: () => Promise<z.infer<typeof GetSelectorOverridesResponseSchema>>;
     loadOverrides: (input?: {
       filePath?: string;

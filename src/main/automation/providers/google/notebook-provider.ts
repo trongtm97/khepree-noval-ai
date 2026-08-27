@@ -9,6 +9,7 @@ import {
 } from './selectors/google-notebook.selectors';
 import { NOTEBOOK_URL } from '@shared/constants/notebook';
 import { logger } from '../../../logging/logger';
+import { hasDriveLivePresence } from '../../../notebook/notebook-source-presence';
 
 export interface NotebookSummary {
   name: string;
@@ -818,15 +819,24 @@ export class NotebookProvider implements AutomationProvider {
   /**
    * Idempotent: skip sources already present in the notebook source list.
    * Fixture / Drive-picker path (data-testid drive files).
+   * When preferLiveOverStatic: only skip if a drive-like (non-.md) card exists.
    */
-  async addDriveSources(sourceNames: string[]): Promise<{ added: string[]; skipped: string[] }> {
+  async addDriveSources(
+    sourceNames: string[],
+    options?: { preferLiveOverStatic?: boolean },
+  ): Promise<{ added: string[]; skipped: string[] }> {
     const registry = this.requireSelectors();
     const existing = await this.readSourceNames();
     const added: string[] = [];
     const skipped: string[] = [];
+    const preferLive = options?.preferLiveOverStatic === true;
 
     for (const sourceName of sourceNames) {
-      if (this.sourceNamePresent(existing, sourceName)) {
+      const already =
+        preferLive
+          ? this.hasDriveLiveSource(existing, sourceName)
+          : this.sourceNamePresent(existing, sourceName);
+      if (already) {
         skipped.push(sourceName);
         continue;
       }
@@ -844,11 +854,26 @@ export class NotebookProvider implements AutomationProvider {
         await picker.first().waitFor({ state: 'visible', timeout: 3_000 });
         await picker.first().click();
       } catch {
-        throw await this.fail(
-          'SELECTOR_NOT_FOUND',
-          `Drive source picker item not found: ${sourceName}`,
-          'addDriveSources',
-        );
+        // Also try .md legacy title in picker (older Drive markdown files).
+        const legacyName = /\.md$/i.test(sourceName) ? null : `${sourceName}.md`;
+        if (!legacyName) {
+          throw await this.fail(
+            'SELECTOR_NOT_FOUND',
+            `Drive source picker item not found: ${sourceName}`,
+            'addDriveSources',
+          );
+        }
+        const legacy = registry.driveFileLocator(legacyName);
+        try {
+          await legacy.first().waitFor({ state: 'visible', timeout: 1_500 });
+          await legacy.first().click();
+        } catch {
+          throw await this.fail(
+            'SELECTOR_NOT_FOUND',
+            `Drive source picker item not found: ${sourceName}`,
+            'addDriveSources',
+          );
+        }
       }
 
       const confirm = await registry.resolve('confirmAddSource');
@@ -1102,6 +1127,84 @@ export class NotebookProvider implements AutomationProvider {
       }
       return false;
     });
+  }
+
+  /** Drive LIVE present = matching stem without .md / copy / (1) upload artifacts. */
+  private hasDriveLiveSource(present: string[], expected: string): boolean {
+    return hasDriveLivePresence(present, expected);
+  }
+
+  /**
+   * Best-effort remove of static duplicate source cards.
+   * Never throws — failed names returned for NEEDS_MIGRATION.
+   */
+  async removeSourcesByNames(
+    names: string[],
+  ): Promise<{ removed: string[]; failed: string[] }> {
+    const page = this.requirePage();
+    const removed: string[] = [];
+    const failed: string[] = [];
+
+    for (const name of names) {
+      try {
+        const items = this.requireSelectors().sourceItemLocators();
+        const count = await items.count();
+        let targetIndex = -1;
+        for (let i = 0; i < count; i += 1) {
+          const item = items.nth(i);
+          const label =
+            (await item.getAttribute('data-source-name')) ??
+            (await item.innerText()).trim();
+          if (label === name || this.sourceNamePresent([label], name)) {
+            // Prefer exact static name match when possible
+            if (label === name || /\.md$/i.test(label) || /\(\d+\)|copy/i.test(label)) {
+              targetIndex = i;
+              break;
+            }
+            if (targetIndex < 0) targetIndex = i;
+          }
+        }
+        if (targetIndex < 0) {
+          failed.push(name);
+          continue;
+        }
+
+        const item = items.nth(targetIndex);
+        await item.click({ button: 'right', timeout: 3_000 }).catch(async () => {
+          await item.click({ timeout: 3_000 });
+        });
+        await page.waitForTimeout(300);
+
+        const removeBtn = page.locator(
+          [
+            "button:has-text('Remove')",
+            "button:has-text('Delete')",
+            "button:has-text('Xóa')",
+            "[role='menuitem']:has-text('Remove')",
+            "[role='menuitem']:has-text('Xóa')",
+            "[data-testid='remove-source']",
+          ].join(', '),
+        );
+        if ((await removeBtn.count()) === 0) {
+          failed.push(name);
+          await page.keyboard.press('Escape').catch(() => undefined);
+          continue;
+        }
+        await removeBtn.first().click({ timeout: 5_000 });
+        await page.waitForTimeout(500);
+        const confirm = page.locator(
+          "button:has-text('Remove'), button:has-text('Delete'), button:has-text('Xóa')",
+        );
+        if ((await confirm.count()) > 0) {
+          await confirm.first().click({ timeout: 3_000 }).catch(() => undefined);
+        }
+        removed.push(name);
+      } catch {
+        failed.push(name);
+      }
+    }
+
+    return { removed, failed };
   }
 
   private async dismissBlockingOverlays(): Promise<void> {

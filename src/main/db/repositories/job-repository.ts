@@ -38,6 +38,12 @@ export interface JobAttemptRow {
   input_ref: string | null;
   output: string | null;
   result: string | null;
+  provider_type: string | null;
+  account_id: string | null;
+  notebook_id: string | null;
+  thread_ref: string | null;
+  pack_mode: string | null;
+  knowledge_version: number | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -64,6 +70,12 @@ export interface StartAttemptInput {
   reason?: string | null;
   input_ref?: string | null;
   state?: JobAttemptState;
+  provider_type?: string | null;
+  account_id?: string | null;
+  notebook_id?: string | null;
+  thread_ref?: string | null;
+  pack_mode?: string | null;
+  knowledge_version?: number | null;
 }
 
 const ACTIVE_RUN_STATES = [
@@ -379,8 +391,9 @@ export class JobRepository extends BaseRepository {
       .prepare(
         `INSERT INTO job_attempts (
           id, job_id, attempt_number, state, error, reason, input_ref, output, result,
+          provider_type, account_id, notebook_id, thread_ref, pack_mode, knowledge_version,
           started_at, completed_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, NULL, ?, ?, NULL, NULL, ?, NULL, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, NULL, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
       )
       .run(
         id,
@@ -389,6 +402,12 @@ export class JobRepository extends BaseRepository {
         input.state ?? 'RUNNING',
         input.reason ?? null,
         input.input_ref ?? null,
+        input.provider_type ?? null,
+        input.account_id ?? null,
+        input.notebook_id ?? null,
+        input.thread_ref ?? null,
+        input.pack_mode ?? null,
+        input.knowledge_version ?? null,
         now,
         ts.created_at,
         ts.updated_at,
@@ -412,8 +431,16 @@ export class JobRepository extends BaseRepository {
       result?: string | null;
       error?: string | null;
       input_ref?: string | null;
+      provider_type?: string | null;
+      account_id?: string | null;
+      notebook_id?: string | null;
+      thread_ref?: string | null;
+      pack_mode?: string | null;
+      knowledge_version?: number | null;
     },
   ): JobAttemptRow | null {
+    const existing = this.getAttemptById(id);
+    if (!existing) return null;
     const now = utcNow();
     this.db
       .prepare(
@@ -423,6 +450,12 @@ export class JobRepository extends BaseRepository {
           result = COALESCE(?, result),
           error = COALESCE(?, error),
           input_ref = COALESCE(?, input_ref),
+          provider_type = ?,
+          account_id = ?,
+          notebook_id = ?,
+          thread_ref = ?,
+          pack_mode = ?,
+          knowledge_version = ?,
           completed_at = ?,
           updated_at = ?
         WHERE id = ?`,
@@ -433,6 +466,14 @@ export class JobRepository extends BaseRepository {
         patch.result ?? null,
         patch.error ?? null,
         patch.input_ref ?? null,
+        patch.provider_type !== undefined ? patch.provider_type : existing.provider_type,
+        patch.account_id !== undefined ? patch.account_id : existing.account_id,
+        patch.notebook_id !== undefined ? patch.notebook_id : existing.notebook_id,
+        patch.thread_ref !== undefined ? patch.thread_ref : existing.thread_ref,
+        patch.pack_mode !== undefined ? patch.pack_mode : existing.pack_mode,
+        patch.knowledge_version !== undefined
+          ? patch.knowledge_version
+          : existing.knowledge_version,
         now,
         now,
         id,

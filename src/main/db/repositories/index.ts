@@ -79,6 +79,11 @@ export { KnowledgeFileRepository } from './knowledge-file-repository';
 export type { KnowledgeFileRow } from './knowledge-file-repository';
 export { KnowledgeSyncEventRepository } from './knowledge-sync-event-repository';
 export type { KnowledgeSyncEventRow } from './knowledge-sync-event-repository';
+export { NotebookSourceBindingRepository } from './notebook-source-binding-repository';
+export type {
+  NotebookSourceBindingRow,
+  UpsertNotebookSourceBindingInput,
+} from './notebook-source-binding-repository';
 export { NotebookHotDeltaRepository } from './notebook-hot-delta-repository';
 export type { NotebookHotDeltaRow } from './notebook-hot-delta-repository';
 export { FullNovelPreprocessRepository } from './full-novel-preprocess-repository';

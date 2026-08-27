@@ -26,7 +26,7 @@ import {
   runEnsureTranslateReady,
   type EnsureCta,
 } from '../utils/ensure-translate-ready';
-import { formatTranslateChannel } from '@shared/utils/translate-channel';
+import { formatMemoryUsage, formatTranslateChannel } from '@shared/utils/translate-channel';
 
 function chapterRef(ch: ChapterSummaryDto): number {
   return ch.chapterNumber ?? ch.sequenceOrder;
@@ -324,7 +324,10 @@ export function TranslationEditorPage() {
           providerType: job.progress?.providerType,
           packMode: job.progress?.packMode,
         });
-        if (channel) setTranslatePath(channel);
+        const memory = formatMemoryUsage(job.progress?.packMode);
+        if (channel || memory) {
+          setTranslatePath([channel, memory].filter(Boolean).join(' · '));
+        }
         const candidates = job.progress?.learning?.candidatesCreated ?? 0;
         if (candidates > 0) {
           setLearningHint(
@@ -350,8 +353,13 @@ export function TranslationEditorPage() {
         providerType: p?.providerType,
         packMode: p?.packMode,
       });
-      if (channel) setTranslatePath(channel);
-      const channelSuffix = channel ? ` · ${channel}` : '';
+      const memory = formatMemoryUsage(p?.packMode);
+      if (channel || memory) {
+        setTranslatePath([channel, memory].filter(Boolean).join(' · '));
+      }
+      const channelSuffix = channel || memory
+        ? ` · ${[channel, memory].filter(Boolean).join(' · ')}`
+        : '';
       const longWait = isJobWatchTimedOut(stallPolls, stallHintAfterPolls, lastState);
       if (p?.phase === 'continuation') {
         setJobWatchMessage(t('jobs.continuationReceiving'));

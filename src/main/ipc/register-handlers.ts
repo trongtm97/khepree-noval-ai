@@ -249,6 +249,8 @@ import {
   AiBrowserProbeResponseSchema,
   GoogleSmokeRunRequestSchema,
   GoogleSmokeRunResponseSchema,
+  NotebookGroundingSmokeRunRequestSchema,
+  NotebookGroundingSmokeRunResponseSchema,
   ConnectionTestRequestSchema,
   ConnectionTestResponseSchema,
   ExportDiagnosticsRequestSchema,
@@ -1393,14 +1395,7 @@ export function registerIpcHandlers(): void {
       const sync = getNotebookSyncService();
       await sync.syncDrive(request.projectId);
       if (request.accountId) {
-        // Drive uploaded — pending verify until user provisions/resume or health check
-        const mapping = getNotebookService().getMapping(
-          request.projectId,
-          request.accountId,
-        );
-        if (mapping?.status === 'ready' || mapping?.status === 'sync_pending') {
-          // Keep sync_pending until verify; health reflects it
-        }
+        sync.scheduleBackgroundVersionProbe(request.projectId, request.accountId);
       }
       const health = sync.getHealth(request.projectId, request.accountId);
       return NotebookHealthDtoSchema.parse(health);
@@ -2040,6 +2035,14 @@ export function registerIpcHandlers(): void {
     createIpcHandler(GoogleSmokeRunRequestSchema, async (request) => {
       const result = await getDiagnosticsService().runGoogleSmoke(request);
       return GoogleSmokeRunResponseSchema.parse(result);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.DIAGNOSTICS_NOTEBOOK_GROUNDING_SMOKE,
+    createIpcHandler(NotebookGroundingSmokeRunRequestSchema, async (request) => {
+      const result = await getDiagnosticsService().runNotebookGroundingSmoke(request);
+      return NotebookGroundingSmokeRunResponseSchema.parse(result);
     }),
   );
 

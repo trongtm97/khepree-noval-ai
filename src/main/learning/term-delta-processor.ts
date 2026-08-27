@@ -27,6 +27,8 @@ export interface TermDeltaApplyResult {
   confirms: number;
   updates: number;
   skipped: number;
+  /** Locked / LOCKED vault terms touched (update proposal or confirm bump). */
+  lockedTouched: number;
 }
 
 /**
@@ -48,6 +50,7 @@ export function applyTermDelta(
     confirms: 0,
     updates: 0,
     skipped: 0,
+    lockedTouched: 0,
   };
 
   withTransaction(db.getConnection(), () => {
@@ -171,7 +174,7 @@ function applyUpdate(
 ): void {
   const existing = db.terms.findBySource(item.source, ctx.projectId);
   if (existing) {
-    if (existing.locked === 1 || existing.status === 'GLOBAL_VERIFIED') {
+    if (existing.locked === 1 || existing.status === 'GLOBAL_VERIFIED' || existing.status === 'LOCKED') {
       // Never auto-mutate locked / global — leave as candidate suggestion only
       db.termCandidates.upsertCandidate({
         project_id: ctx.projectId,
@@ -186,6 +189,9 @@ function applyUpdate(
         notes: `Update proposed for ${existing.status} term`,
       });
       result.skipped += 1;
+      if (existing.locked === 1 || existing.status === 'LOCKED') {
+        result.lockedTouched += 1;
+      }
       return;
     }
     recordOccurrence(db, existing.id, ctx);
@@ -281,6 +287,9 @@ function applyConfirm(
   recordOccurrence(db, id, ctx);
   result.occurrencesRecorded += 1;
   result.confirms += 1;
+  if (term.locked === 1 || term.status === 'LOCKED') {
+    result.lockedTouched += 1;
+  }
 
   const refreshed = db.terms.getById(id);
   if (refreshed) {

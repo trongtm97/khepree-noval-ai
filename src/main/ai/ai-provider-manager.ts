@@ -21,9 +21,11 @@ import { newId } from '../db/utils/uuid';
 import type { JobExecuteContext, InitialSendResult } from '../jobs/batch-executor';
 import type { RepairSendRequest, RepairSendResult } from '../jobs/repair-loop';
 import { getTranslationPackService } from '../services/translation-pack-service-singleton';
+import { resolveTranslationPackMode } from '../prompt/pack-mode-resolver';
 import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
+import type { PackMode } from '@shared/constants/pack-mode';
 import { parseJobConfig } from '../jobs/batch-executor';
-import type { TranslationPackDto as Pack } from '@shared/schemas/translation-pack';
+import type { TranslationPackBuildResult } from '../services/translation-pack-service';
 import { ResponseParser } from '../jobs/response-parser';
 import {
   buildMergedTranslationProtocol,
@@ -46,6 +48,19 @@ import {
   assessBatchCompleteness,
 } from '../jobs/continuation';
 import type { RepairParagraph } from '../jobs/repair-strategies';
+import {
+  channelSnapshotForAttempt,
+  readRepairChannelFromProgress,
+  wrapRepairPromptWithChannelContext,
+  type RepairChannelContext,
+} from '../jobs/repair-channel-context';
+import { getNotebookSyncService } from '../notebook/notebook-sync-service-singleton';
+import {
+  buildTranslationContextDiagnostics,
+  logJobKnowledgeEvent,
+  mergeJobProgressDiagnostics,
+} from '../jobs/translation-context-diagnostics';
+import type { TranslationContextDiagnostics } from '@shared/constants/translation-context';
 import {
   checkProviderForJob,
   filterProvidersByPreflight,
@@ -204,7 +219,9 @@ export class AiProviderManager {
       );
       return Boolean(
         mapping &&
-          (mapping.status === 'ready' || mapping.status === 'sync_pending'),
+          (mapping.status === 'ready' ||
+            mapping.status === 'sync_pending' ||
+            mapping.status === 'stale'),
       );
     })();
 
@@ -492,19 +509,30 @@ export class AiProviderManager {
       firstProvider: ordered[0]?.providerType ?? null,
     });
 
-    const packMode = this.resolvePackMode(ctx, ordered[0]?.providerType);
+    const firstProviderType = ordered[0]?.providerType;
+    const packMode = this.resolvePackMode(ctx, firstProviderType);
 
     if (chunks.length <= 1) {
-      const pack = this.buildPackForJob(ctx, config.sourceParagraphIds, packMode);
-      this.db.jobs.updateState(ctx.job.id, 'SENDING');
-      this.writeSendProgress(ctx, {
-        phase: 'sending',
-        chunkIndex: 1,
-        chunkTotal: 1,
-        paragraphsDone: 0,
-        paragraphsTotal: totalParas,
+      const pack = this.buildPackForJob(
+        ctx,
+        config.sourceParagraphIds,
         packMode,
-      });
+        firstProviderType,
+      );
+      const telemetry = this.packTelemetryFields(pack);
+      this.db.jobs.updateState(ctx.job.id, 'SENDING');
+      const diagnostics = this.recordPackDiagnostics(
+        ctx,
+        pack,
+        firstProviderType ?? null,
+        {
+          phase: 'sending',
+          chunkIndex: 1,
+          chunkTotal: 1,
+          paragraphsDone: 0,
+          paragraphsTotal: totalParas,
+        },
+      );
       this.db.jobs.updateState(ctx.job.id, 'WAITING_AI');
       this.writeSendProgress(ctx, {
         phase: 'waiting_ai',
@@ -512,7 +540,9 @@ export class AiProviderManager {
         chunkTotal: 1,
         paragraphsDone: 0,
         paragraphsTotal: totalParas,
-        packMode,
+        ...telemetry,
+        providerType: firstProviderType,
+        diagnostics,
       });
       const response = await this.sendWithFallback(pack, {
         projectId: ctx.job.project_id,
@@ -528,6 +558,20 @@ export class AiProviderManager {
           response.status;
         throw new Error(`${response.status}: ${msg}`);
       }
+      mergeJobProgressDiagnostics(this.db, ctx.job.id, {
+        ...diagnostics,
+        providerType: response.providerType ?? diagnostics.providerType,
+      }, {
+        event: 'RESPONSE_CAPTURED',
+        message: `corr:${response.requestId}`,
+      });
+      logJobKnowledgeEvent(this.db, {
+        projectId: ctx.job.project_id,
+        jobId: ctx.job.id,
+        eventType: 'RESPONSE_CAPTURED',
+        message: 'AI response captured',
+        diagnostics: { ...diagnostics, providerType: response.providerType ?? null },
+      });
       const finalized = await this.finalizeChunkWithContinuation(ctx, {
         raw: response.text,
         paragraphIds: config.sourceParagraphIds,
@@ -545,8 +589,12 @@ export class AiProviderManager {
         chunkTotal: 1,
         paragraphsDone: totalParas,
         paragraphsTotal: totalParas,
-        packMode,
+        ...telemetry,
         providerType: response.providerType,
+        diagnostics: {
+          ...diagnostics,
+          providerType: response.providerType ?? diagnostics.providerType,
+        },
       });
       return {
         rawResponse: finalized.raw,
@@ -560,6 +608,13 @@ export class AiProviderManager {
     const mergedMemoryDeltas: MemoryDeltaItem[][] = [];
     const requestIds: string[] = [];
     let lastProviderType: string | undefined;
+    let lastTelemetry = {
+      packMode,
+      notebookId: null as string | null,
+      localKnowledgeVersion: 0,
+      notebookVerifiedVersion: 0,
+      hotDeltaCount: 0,
+    };
 
     // Work queue so soft-error chunks can be split and re-queued.
     type Para = (typeof paragraphs)[number];
@@ -578,7 +633,7 @@ export class AiProviderManager {
         chunkTotal: progressTotal,
         paragraphsDone: merged.length,
         paragraphsTotal: totalParas,
-        packMode,
+        ...lastTelemetry,
         providerType: lastProviderType,
       });
 
@@ -599,11 +654,31 @@ export class AiProviderManager {
           chunkTotal: progressTotal,
           paragraphsDone: merged.length,
           paragraphsTotal: totalParas,
-          packMode,
+          ...lastTelemetry,
           providerType: lastProviderType,
         });
 
-        const pack = this.buildPackForJob(ctx, paragraphIds, packMode);
+        const pack = this.buildPackForJob(
+          ctx,
+          paragraphIds,
+          packMode,
+          lastProviderType ?? firstProviderType,
+        );
+        lastTelemetry = this.packTelemetryFields(pack);
+        if (sendOrdinal === 1 && attempt === 0) {
+          this.recordPackDiagnostics(
+            ctx,
+            pack,
+            lastProviderType ?? firstProviderType ?? null,
+            {
+              phase: 'sending',
+              chunkIndex: sendOrdinal,
+              chunkTotal: progressTotal,
+              paragraphsDone: merged.length,
+              paragraphsTotal: totalParas,
+            },
+          );
+        }
         this.db.jobs.updateState(ctx.job.id, 'WAITING_AI');
         this.writeSendProgress(ctx, {
           phase: 'waiting_ai',
@@ -611,7 +686,7 @@ export class AiProviderManager {
           chunkTotal: progressTotal,
           paragraphsDone: merged.length,
           paragraphsTotal: totalParas,
-          packMode,
+          ...lastTelemetry,
           providerType: lastProviderType,
         });
 
@@ -735,7 +810,7 @@ export class AiProviderManager {
         chunkTotal: progressTotal,
         paragraphsDone: merged.length,
         paragraphsTotal: totalParas,
-        packMode,
+        ...lastTelemetry,
         providerType: lastProviderType,
       });
 
@@ -754,7 +829,7 @@ export class AiProviderManager {
       chunkTotal: progressTotal,
       paragraphsDone: merged.length,
       paragraphsTotal: totalParas,
-      packMode,
+      ...lastTelemetry,
       providerType: lastProviderType,
     });
 
@@ -770,31 +845,22 @@ export class AiProviderManager {
 
   /**
    * Web API must never pretend Notebook cold sources exist — always SQLite fat pack.
-   * Playwright Translation Notebook may use slim (notebook knowledge).
+   * Playwright Translation Notebook → SLIM (verified) or HYBRID (pending/stale/mismatch).
    */
   private resolvePackMode(
     ctx: JobExecuteContext,
     providerType?: string,
-  ): 'slim' | 'fat' {
-    if (providerType === 'GEMINI_WEB_API') {
-      return 'fat';
-    }
-    if (providerType !== 'PLAYWRIGHT_GEMINI') {
-      return 'fat';
-    }
-    const mapping = resolveTranslationNotebook(
-      this.db,
-      ctx.job.project_id,
-      ctx.accountId,
-    );
-    const notebookOk =
-      mapping &&
-      (mapping.status === 'ready' || mapping.status === 'sync_pending');
-    return notebookOk ? 'slim' : 'fat';
+  ): PackMode {
+    return resolveTranslationPackMode(this.db, {
+      projectId: ctx.job.project_id,
+      accountId: ctx.accountId,
+      providerType,
+    }).packMode;
   }
 
   /**
    * Ensure pack matches provider context rules when falling back mid-flight.
+   * Repair/continuation: preserve repair prompt and prepend FAT SQLite memory.
    */
   private adaptPackForProvider(
     pack: TranslationPackDto,
@@ -804,21 +870,39 @@ export class AiProviderManager {
     if (provider.providerType !== 'GEMINI_WEB_API') {
       return pack;
     }
-    // Web API: rebuild fat from SQLite so we never claim Notebook context.
     const projectId = options?.projectId ?? pack.projectId;
     const accountId = options?.googleAccountId ?? undefined;
     if (!projectId || pack.chapterIds.length === 0) {
       return pack;
     }
     try {
-      return getTranslationPackService().build({
+      const fat = getTranslationPackService().build({
         projectId,
         chapterIds: pack.chapterIds,
         paragraphIds: undefined,
         googleAccountId: accountId ?? undefined,
+        providerType: 'GEMINI_WEB_API',
         packMode: 'fat',
         forceFatPack: true,
       });
+      if (options?.preserveRepairPrompt) {
+        const prompt = wrapRepairPromptWithChannelContext({
+          repairBody: pack.prompt,
+          packMode: 'fat',
+          webApiFat: true,
+          fatSections: {
+            criticalRules: fat.sections.criticalRules,
+            hotMemoryDelta: fat.sections.hotMemoryDelta,
+            activeProjectTerms: fat.sections.activeProjectTerms,
+          },
+        });
+        return {
+          ...fat,
+          prompt,
+          promptHash: `repair-fat:${pack.promptHash}`,
+        };
+      }
+      return fat;
     } catch (error) {
       logger.warn('Failed to rebuild fat pack for Web API — using original', {
         message: error instanceof Error ? error.message : String(error),
@@ -833,7 +917,7 @@ export class AiProviderManager {
       raw: string;
       paragraphIds: string[];
       batchParagraphs: RepairParagraph[];
-      packMode: 'slim' | 'fat';
+      packMode: PackMode;
       chunkIndex: number;
       chunkTotal: number;
       paragraphsDone: number;
@@ -870,6 +954,10 @@ export class AiProviderManager {
     const chunkParagraphs = input.batchParagraphs.filter((p) =>
       input.paragraphIds.includes(p.paragraphId),
     );
+    const channel = this.resolveRepairChannel(ctx.job.id, ctx.accountId, {
+      providerType: input.providerType ?? null,
+      packMode: input.packMode,
+    });
     const result = await runContinuationLoop({
       batchParagraphs: chunkParagraphs,
       sourceParagraphIds: input.paragraphIds,
@@ -884,24 +972,40 @@ export class AiProviderManager {
           chunkTotal: input.chunkTotal,
           paragraphsDone: input.paragraphsDone,
           paragraphsTotal: input.paragraphsTotal,
-          packMode: input.packMode,
-          providerType: input.providerType,
+          packMode: channel.packMode ?? input.packMode,
+          providerType: channel.providerType ?? input.providerType,
+          notebookId: channel.notebookId,
           continuationRound: p.continuationRound,
           lastCompletedParagraphId: p.lastCompletedParagraphId,
         }),
       sendContinuation: async (prompt, requestId) => {
-        const pack = this.buildMinimalPack(ctx.job.project_id, prompt, ctx.job);
-        const response = await this.sendWithFallback(pack, {
-          projectId: ctx.job.project_id,
-          googleAccountId: ctx.accountId,
-          jobId: ctx.job.id,
-          requestId,
-        });
-        return {
-          text: response.text,
-          requestId: response.requestId,
-          status: response.status,
-        };
+        try {
+          const sent = await this.sendRepairOrContinuation({
+            jobId: ctx.job.id,
+            projectId: ctx.job.project_id,
+            accountId: ctx.accountId,
+            repairBody: prompt,
+            channel,
+            requestId,
+            lockedTerms: config.lockedTerms,
+            targetParagraphIds: input.paragraphIds,
+          });
+          return {
+            text: sent.rawResponse,
+            requestId: sent.inputRef.replace(/^corr:/, ''),
+            status: 'SUCCESS' as const,
+          };
+        } catch (error) {
+          logger.warn('Continuation send failed', {
+            jobId: ctx.job.id,
+            message: error instanceof Error ? error.message : String(error),
+          });
+          return {
+            text: '',
+            requestId,
+            status: 'ERROR',
+          };
+        }
       },
     });
 
@@ -947,91 +1051,571 @@ export class AiProviderManager {
       chunkTotal: number;
       paragraphsDone: number;
       paragraphsTotal: number;
-      packMode?: 'slim' | 'fat';
+      packMode?: PackMode;
       providerType?: string;
       continuationRound?: number;
       lastCompletedParagraphId?: string | null;
+      notebookId?: string | null;
+      localKnowledgeVersion?: number;
+      notebookVerifiedVersion?: number;
+      hotDeltaCount?: number;
+      diagnostics?: TranslationContextDiagnostics | null;
+      timelineEvent?: { event: string; message?: string };
     },
   ): void {
+    const job = this.db.jobs.getById(ctx.job.id);
+    let existing: Record<string, unknown> = {};
+    if (job?.progress) {
+      try {
+        existing = JSON.parse(job.progress) as Record<string, unknown>;
+      } catch {
+        existing = {};
+      }
+    }
+
+    const diagnostics =
+      progress.diagnostics ??
+      (progress.packMode
+        ? buildTranslationContextDiagnostics(this.db, {
+            projectId: ctx.job.project_id,
+            accountId: ctx.accountId,
+            providerType: progress.providerType ?? null,
+            packDecision: {
+              packMode: progress.packMode,
+              notebookId: progress.notebookId ?? null,
+              localKnowledgeVersion: progress.localKnowledgeVersion ?? 0,
+              notebookVerifiedVersion: progress.notebookVerifiedVersion ?? 0,
+              sourceGroundingConfirmed: progress.packMode === 'slim',
+              reason: progress.packMode === 'slim' ? 'ready_verified' : progress.packMode,
+              hotDeltaCount: progress.hotDeltaCount ?? 0,
+            },
+            threadRef:
+              typeof existing.threadRef === 'string' ? existing.threadRef : null,
+          })
+        : null);
+
+    const { diagnostics: _d, timelineEvent, ...rest } = progress;
+    void _d;
+
+    if (diagnostics) {
+      mergeJobProgressDiagnostics(
+        this.db,
+        ctx.job.id,
+        diagnostics,
+        timelineEvent,
+      );
+      // Re-merge phase/chunk fields after diagnostics write
+      const refreshed = this.db.jobs.getById(ctx.job.id);
+      let base: Record<string, unknown> = {};
+      if (refreshed?.progress) {
+        try {
+          base = JSON.parse(refreshed.progress) as Record<string, unknown>;
+        } catch {
+          base = {};
+        }
+      }
+      this.db.jobs.updateProgress(
+        ctx.job.id,
+        JSON.stringify({
+          ...base,
+          ...rest,
+          accountId: ctx.accountId,
+          ...diagnostics,
+          notebookVerifiedVersion: diagnostics.notebookKnowledgeVersion,
+        }),
+      );
+      return;
+    }
+
     this.db.jobs.updateProgress(
       ctx.job.id,
       JSON.stringify({
-        ...progress,
+        ...existing,
+        ...rest,
         accountId: ctx.accountId,
       }),
     );
+  }
+
+  private packTelemetryFields(pack: TranslationPackBuildResult): {
+    packMode: PackMode;
+    notebookId: string | null;
+    localKnowledgeVersion: number;
+    notebookVerifiedVersion: number;
+    hotDeltaCount: number;
+  } {
+    return {
+      packMode: pack.packMode,
+      notebookId: pack.packTelemetry.notebookId,
+      localKnowledgeVersion: pack.packTelemetry.localKnowledgeVersion,
+      notebookVerifiedVersion: pack.packTelemetry.notebookVerifiedVersion,
+      hotDeltaCount: pack.packTelemetry.hotDeltaCount,
+    };
+  }
+
+  /** Emit diagnostics + PACK_MODE_SELECTED / grounding events for a pack send. */
+  private recordPackDiagnostics(
+    ctx: JobExecuteContext,
+    pack: TranslationPackBuildResult,
+    providerType: string | null,
+    phaseProgress: {
+      phase: string;
+      chunkIndex: number;
+      chunkTotal: number;
+      paragraphsDone: number;
+      paragraphsTotal: number;
+    },
+  ): TranslationContextDiagnostics {
+    const diagnostics = buildTranslationContextDiagnostics(this.db, {
+      projectId: ctx.job.project_id,
+      accountId: ctx.accountId,
+      providerType,
+      packDecision: {
+        ...pack.packTelemetry,
+        packMode: pack.packMode,
+        hotDeltaCount: pack.packTelemetry.hotDeltaCount,
+      },
+    });
+
+    mergeJobProgressDiagnostics(this.db, ctx.job.id, diagnostics, {
+      event: 'PACK_MODE_SELECTED',
+      message: `${diagnostics.packMode?.toUpperCase() ?? '?'} — ${diagnostics.knowledgeSourceMode}`,
+    });
+    logJobKnowledgeEvent(this.db, {
+      projectId: ctx.job.project_id,
+      jobId: ctx.job.id,
+      eventType: 'PACK_MODE_SELECTED',
+      message: `Pack mode ${diagnostics.packMode} (${diagnostics.knowledgeSourceMode})`,
+      diagnostics,
+    });
+
+    if (diagnostics.notebookId && diagnostics.providerType === 'PLAYWRIGHT_GEMINI') {
+      mergeJobProgressDiagnostics(this.db, ctx.job.id, diagnostics, {
+        event: 'TRANSLATION_NOTEBOOK_OPENED',
+        message: diagnostics.notebookName ?? diagnostics.notebookId,
+      });
+      logJobKnowledgeEvent(this.db, {
+        projectId: ctx.job.project_id,
+        jobId: ctx.job.id,
+        eventType: 'TRANSLATION_NOTEBOOK_OPENED',
+        message: diagnostics.notebookName ?? 'Translation Notebook',
+        diagnostics,
+      });
+    }
+
+    if (diagnostics.notebookGroundingVerified) {
+      mergeJobProgressDiagnostics(this.db, ctx.job.id, diagnostics, {
+        event: 'NOTEBOOK_GROUNDING_VERIFIED',
+        message: `v${diagnostics.notebookKnowledgeVersion}`,
+      });
+      logJobKnowledgeEvent(this.db, {
+        projectId: ctx.job.project_id,
+        jobId: ctx.job.id,
+        eventType: 'NOTEBOOK_GROUNDING_VERIFIED',
+        message: 'Notebook grounding verified for this job',
+        diagnostics,
+      });
+    }
+
+    this.writeSendProgress(ctx, {
+      ...phaseProgress,
+      ...this.packTelemetryFields(pack),
+      providerType: providerType ?? undefined,
+      diagnostics,
+      timelineEvent: { event: 'PROMPT_SENT', message: phaseProgress.phase },
+    });
+    logJobKnowledgeEvent(this.db, {
+      projectId: ctx.job.project_id,
+      jobId: ctx.job.id,
+      eventType: 'PROMPT_SENT',
+      message: `Prompt sent (${diagnostics.packMode})`,
+      diagnostics,
+    });
+
+    return diagnostics;
   }
 
   async sendRepair(request: RepairSendRequest): Promise<RepairSendResult> {
     const job = this.db.jobs.getById(request.jobId);
     if (!job) throw new Error(`Job not found: ${request.jobId}`);
 
-    const prompt = request.plan?.prompt ?? request.initialPrompt ?? '';
-    if (!prompt) throw new Error('Repair send missing prompt');
+    const repairBody = request.plan?.prompt ?? request.initialPrompt ?? '';
+    if (!repairBody) throw new Error('Repair send missing prompt');
 
-    const pack = this.buildMinimalPack(job.project_id, prompt, job);
-    const accountId =
-      job.pinned_account_id ??
-      this.resolveAccountFromProgress(job.id) ??
-      undefined;
+    const channel = this.resolveRepairChannel(
+      request.jobId,
+      request.channel?.accountId ?? job.pinned_account_id,
+      request.channel,
+    );
+    const config = parseJobConfig(job.config);
+    const targetIds =
+      request.plan?.targetParagraphIds?.length
+        ? request.plan.targetParagraphIds
+        : config.sourceParagraphIds;
 
-    const response = await this.sendWithFallback(pack, {
-      projectId: job.project_id,
-      googleAccountId: accountId,
+    return this.sendRepairOrContinuation({
       jobId: job.id,
-      requestId: newId(),
+      projectId: job.project_id,
+      accountId: channel.accountId ?? job.pinned_account_id,
+      repairBody,
+      channel,
+      lockedTerms: config.lockedTerms,
+      targetParagraphIds: targetIds,
+    });
+  }
+
+  /**
+   * Shared send path for repair + continuation: same account / notebook / provider,
+   * WebAPI failover rebuilds FAT local memory around the repair body.
+   */
+  private async sendRepairOrContinuation(input: {
+    jobId: string;
+    projectId: string;
+    accountId: string | null;
+    repairBody: string;
+    channel: RepairChannelContext;
+    requestId?: string;
+    lockedTerms?: { source: string; preferred: string; paragraphIds?: string[] }[];
+    targetParagraphIds?: string[];
+  }): Promise<RepairSendResult> {
+    const preferredType = input.channel.providerType ?? 'PLAYWRIGHT_GEMINI';
+    const preferPlaywright = preferredType === 'PLAYWRIGHT_GEMINI';
+
+    const locked = (input.lockedTerms ?? []).map((t) => ({
+      source: t.source,
+      preferred: t.preferred,
+    }));
+    const hotMemory = this.buildHotMemoryForRepair(input.projectId, input.accountId);
+
+    const notebookPack = this.buildChannelRepairPack({
+      projectId: input.projectId,
+      jobId: input.jobId,
+      repairBody: input.repairBody,
+      channel: input.channel,
+      lockedTerms: locked,
+      hotMemoryText: hotMemory,
+      webApiFat: false,
+      targetParagraphIds: input.targetParagraphIds,
     });
 
-    if (response.status !== 'SUCCESS') {
+    if (preferPlaywright) {
+      const playwrightResponse = await this.sendWithFallback(notebookPack, {
+        projectId: input.projectId,
+        googleAccountId: input.accountId,
+        jobId: input.jobId,
+        requestId: input.requestId ?? newId(),
+        pinnedProviderId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+        preserveRepairPrompt: true,
+        notebookId: input.channel.notebookId,
+        threadRef: input.channel.threadRef,
+      });
+
+      if (playwrightResponse.status === 'SUCCESS' && playwrightResponse.text.trim()) {
+        const used: RepairChannelContext = {
+          ...input.channel,
+          providerType: 'PLAYWRIGHT_GEMINI',
+          accountId: input.accountId,
+          packMode: input.channel.packMode ?? 'slim',
+        };
+        this.persistChannelOnJobProgress(input.jobId, used);
+        return {
+          rawResponse: playwrightResponse.text,
+          inputRef: `corr:${playwrightResponse.requestId}`,
+          channel: used,
+        };
+      }
+
+      // Soft retry once on same channel
       const soft =
-        response.errorCode === 'GEMINI_SOFT_ERROR' ||
-        isGeminiSoftErrorText(response.errorMessage) ||
+        playwrightResponse.errorCode === 'GEMINI_SOFT_ERROR' ||
+        isGeminiSoftErrorText(playwrightResponse.errorMessage) ||
         /something went wrong|hard time fulfilling/i.test(
-          response.errorMessage ?? '',
+          playwrightResponse.errorMessage ?? '',
         );
       if (soft) {
-        // One cooldown retry — repair prompts often trip Gemini soft errors.
         await new Promise((r) => setTimeout(r, 5_000));
-        const retry = await this.sendWithFallback(pack, {
-          projectId: job.project_id,
-          googleAccountId: accountId,
-          jobId: job.id,
+        const retry = await this.sendWithFallback(notebookPack, {
+          projectId: input.projectId,
+          googleAccountId: input.accountId,
+          jobId: input.jobId,
           requestId: newId(),
+          pinnedProviderId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+          preserveRepairPrompt: true,
+          notebookId: input.channel.notebookId,
+          threadRef: input.channel.threadRef,
         });
         if (retry.status === 'SUCCESS' && retry.text.trim()) {
+          const used: RepairChannelContext = {
+            ...input.channel,
+            providerType: 'PLAYWRIGHT_GEMINI',
+            accountId: input.accountId,
+          };
+          this.persistChannelOnJobProgress(input.jobId, used);
           return {
             rawResponse: retry.text,
             inputRef: `corr:${retry.requestId}`,
+            channel: used,
           };
         }
       }
+
+      if (!this.isFallbackEnabled()) {
+        throw new Error(
+          playwrightResponse.errorMessage ??
+            userMessageForStatus(playwrightResponse.status),
+        );
+      }
+
+      logger.info('Repair failover Playwright → WebAPI FAT', {
+        jobId: input.jobId,
+        status: playwrightResponse.status,
+      });
+    }
+
+    // WebAPI (initial or failover): FAT local memory — never assume Notebook.
+    const fatPack = this.buildChannelRepairPack({
+      projectId: input.projectId,
+      jobId: input.jobId,
+      repairBody: input.repairBody,
+      channel: { ...input.channel, packMode: 'fat', providerType: 'GEMINI_WEB_API' },
+      lockedTerms: locked,
+      hotMemoryText: hotMemory,
+      webApiFat: true,
+      targetParagraphIds: input.targetParagraphIds,
+    });
+    const webResponse = await this.sendWithFallback(fatPack, {
+      projectId: input.projectId,
+      googleAccountId: input.accountId,
+      jobId: input.jobId,
+      requestId: input.requestId ?? newId(),
+      pinnedProviderId: AI_PROVIDER_IDS.GEMINI_WEB_API,
+      preserveRepairPrompt: true,
+    });
+    if (webResponse.status !== 'SUCCESS' || !webResponse.text.trim()) {
       throw new Error(
-        response.errorMessage ?? userMessageForStatus(response.status),
+        webResponse.errorMessage ?? userMessageForStatus(webResponse.status),
       );
+    }
+    const used: RepairChannelContext = {
+      providerType: 'GEMINI_WEB_API',
+      accountId: input.accountId,
+      notebookId: null,
+      threadRef: null,
+      packMode: 'fat',
+      knowledgeVersion: input.channel.knowledgeVersion,
+    };
+    this.persistChannelOnJobProgress(input.jobId, used);
+    return {
+      rawResponse: webResponse.text,
+      inputRef: `corr:${webResponse.requestId}`,
+      channel: used,
+    };
+  }
+
+  private resolveRepairChannel(
+    jobId: string,
+    accountId: string | null | undefined,
+    override?: Partial<RepairChannelContext> | null,
+  ): RepairChannelContext {
+    const job = this.db.jobs.getById(jobId);
+    const fromProgress = readRepairChannelFromProgress(job?.progress);
+    const latestReq = this.db.geminiRequests.findLatestByJob(jobId);
+    const mapping =
+      accountId || fromProgress.accountId
+        ? resolveTranslationNotebook(
+            this.db,
+            job?.project_id ?? '',
+            accountId ?? fromProgress.accountId!,
+          )
+        : null;
+
+    return {
+      providerType:
+        override?.providerType ??
+        fromProgress.providerType ??
+        'PLAYWRIGHT_GEMINI',
+      accountId:
+        override?.accountId ??
+        fromProgress.accountId ??
+        accountId ??
+        job?.pinned_account_id ??
+        null,
+      notebookId:
+        override?.notebookId ??
+        fromProgress.notebookId ??
+        latestReq?.notebook_id ??
+        mapping?.notebook_id ??
+        mapping?.id ??
+        null,
+      threadRef:
+        override?.threadRef ??
+        fromProgress.threadRef ??
+        latestReq?.thread_ref ??
+        latestReq?.correlation_id ??
+        null,
+      packMode: override?.packMode ?? fromProgress.packMode ?? 'slim',
+      knowledgeVersion:
+        override?.knowledgeVersion ??
+        fromProgress.knowledgeVersion ??
+        mapping?.knowledge_version ??
+        null,
+    };
+  }
+
+  private persistChannelOnJobProgress(
+    jobId: string,
+    channel: RepairChannelContext,
+  ): void {
+    const job = this.db.jobs.getById(jobId);
+    let existing: Record<string, unknown> = {};
+    if (job?.progress) {
+      try {
+        existing = JSON.parse(job.progress) as Record<string, unknown>;
+      } catch {
+        existing = {};
+      }
+    }
+    this.db.jobs.updateProgress(
+      jobId,
+      JSON.stringify({
+        ...existing,
+        ...channelSnapshotForAttempt(channel),
+        localKnowledgeVersion:
+          channel.knowledgeVersion ?? existing.localKnowledgeVersion,
+      }),
+    );
+  }
+
+  private buildHotMemoryForRepair(
+    projectId: string,
+    accountId: string | null,
+  ): string {
+    try {
+      const sync = getNotebookSyncService(this.db);
+      return sync.buildActiveHotMemoryText(projectId) || '';
+    } catch {
+      return '';
+    }
+  }
+
+  private buildChannelRepairPack(input: {
+    projectId: string;
+    jobId: string;
+    repairBody: string;
+    channel: RepairChannelContext;
+    lockedTerms: { source: string; preferred: string }[];
+    hotMemoryText: string;
+    webApiFat: boolean;
+    targetParagraphIds?: string[];
+  }): TranslationPackDto {
+    const job = this.db.jobs.getById(input.jobId);
+    const chapterIds = this.resolveJobChapterIds(input.projectId, job);
+    let fatSections: {
+      criticalRules?: string;
+      hotMemoryDelta?: string;
+      activeProjectTerms?: string;
+    } | null = null;
+
+    if (input.webApiFat && chapterIds.length > 0) {
+      try {
+        const fat = getTranslationPackService().build({
+          projectId: input.projectId,
+          chapterIds,
+          paragraphIds: input.targetParagraphIds,
+          googleAccountId: input.channel.accountId ?? undefined,
+          providerType: 'GEMINI_WEB_API',
+          packMode: 'fat',
+          forceFatPack: true,
+        });
+        fatSections = {
+          criticalRules: fat.sections.criticalRules,
+          hotMemoryDelta: fat.sections.hotMemoryDelta,
+          activeProjectTerms: fat.sections.activeProjectTerms,
+        };
+      } catch (error) {
+        logger.warn('FAT repair context build failed', {
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    const prompt = wrapRepairPromptWithChannelContext({
+      repairBody: input.repairBody,
+      packMode: input.webApiFat ? 'fat' : input.channel.packMode,
+      lockedTerms: input.lockedTerms,
+      hotMemoryText: input.webApiFat ? null : input.hotMemoryText,
+      notebookId: input.webApiFat ? null : input.channel.notebookId,
+      fatSections,
+      webApiFat: input.webApiFat,
+    });
+
+    const base =
+      chapterIds.length > 0
+        ? this.buildMinimalPack(input.projectId, prompt, job ?? { chapter_from: null, chapter_to: null })
+        : null;
+
+    if (base) {
+      return { ...base, prompt, promptHash: `repair:${base.promptHash}` };
     }
 
     return {
-      rawResponse: response.text,
-      inputRef: `corr:${response.requestId}`,
+      projectId: input.projectId,
+      chapterIds: chapterIds.length ? chapterIds : [newId()],
+      chapterNumbers: [],
+      style: 'balanced',
+      prompt,
+      sections: {
+        taskHeader: '',
+        criticalRules: '',
+        hotMemoryDelta: '',
+        activeProjectTerms: '',
+        sourceParagraphs: '',
+        outputProtocol: '',
+      },
+      size: {
+        sourceChars: prompt.length,
+        contextChars: 0,
+        totalChars: prompt.length,
+        estimatedTokens: Math.ceil(prompt.length / 4),
+        activeTermCount: 0,
+        activeCharacterCount: 0,
+        relationshipCount: 0,
+        recentMemoryCount: 0,
+        paragraphCount: 0,
+        chapterCount: 1,
+      },
+      promptHash: newId().slice(0, 16),
     };
+  }
+
+  private resolveJobChapterIds(
+    projectId: string,
+    job: { chapter_from: number | null; chapter_to: number | null } | null | undefined,
+  ): string[] {
+    const chapters = this.db.chapters.listByProject(projectId);
+    if (job?.chapter_from != null && job?.chapter_to != null) {
+      return chapters
+        .filter((c) => {
+          const n = c.chapter_number ?? c.sequence_order;
+          return n >= job.chapter_from! && n <= job.chapter_to!;
+        })
+        .map((c) => c.id)
+        .slice(0, DEFAULT_MAX_CHAPTERS_PER_JOB);
+    }
+    return chapters[0] ? [chapters[0].id] : [];
   }
 
   private resolveAccountFromProgress(jobId: string): string | null {
     const job = this.db.jobs.getById(jobId);
-    if (!job?.progress) return null;
-    try {
-      const parsed = JSON.parse(job.progress) as { accountId?: string };
-      return parsed.accountId ?? null;
-    } catch {
-      return null;
-    }
+    return readRepairChannelFromProgress(job?.progress).accountId;
   }
 
   private buildPackForJob(
     ctx: JobExecuteContext,
     paragraphIds?: string[],
-    packMode: 'slim' | 'fat' = 'fat',
-  ): Pack {
+    packMode: PackMode = 'fat',
+    providerType?: string,
+  ): TranslationPackBuildResult {
     const config = parseJobConfig(ctx.job.config);
     let chapterIds = config.chapterIds ?? [];
 
@@ -1066,15 +1650,15 @@ export class AiProviderManager {
     }
 
     const limited = chapterIds.slice(0, DEFAULT_MAX_CHAPTERS_PER_JOB);
-    const useFat = packMode === 'fat';
 
     return getTranslationPackService().build({
       projectId: ctx.job.project_id,
       chapterIds: limited,
       paragraphIds: ids.length > 0 ? ids : undefined,
       googleAccountId: ctx.accountId,
-      packMode: useFat ? 'fat' : 'slim',
-      forceFatPack: useFat,
+      providerType,
+      packMode,
+      forceFatPack: packMode === 'fat',
     });
   }
 

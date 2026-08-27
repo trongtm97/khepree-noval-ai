@@ -23,6 +23,9 @@ import { MIGRATION_020_FULL_NOVEL_PREPROCESS } from './020-full-novel-preprocess
 import { MIGRATION_021_NOTEBOOK_ROLE } from './021-notebook-role';
 import { MIGRATION_022_BATCH_SIZE_DECISIONS } from './022-batch-size-decisions';
 import { MIGRATION_023_GEMINI_REQUEST_LIFECYCLE } from './023-gemini-request-lifecycle';
+import { MIGRATION_024_NOTEBOOK_SOURCE_BINDINGS } from './024-notebook-source-bindings';
+import { MIGRATION_025_KNOWLEDGE_VERSION_PROBE } from './025-knowledge-version-probe';
+import { MIGRATION_026_REPAIR_CHANNEL_CONTEXT } from './026-repair-channel-context';
 
 export const MIGRATIONS: MigrationDefinition[] = [
   {
@@ -139,6 +142,21 @@ export const MIGRATIONS: MigrationDefinition[] = [
     version: 23,
     name: 'gemini_request_lifecycle',
     sql: MIGRATION_023_GEMINI_REQUEST_LIFECYCLE,
+  },
+  {
+    version: 24,
+    name: 'notebook_source_bindings',
+    sql: MIGRATION_024_NOTEBOOK_SOURCE_BINDINGS,
+  },
+  {
+    version: 25,
+    name: 'knowledge_version_probe',
+    sql: MIGRATION_025_KNOWLEDGE_VERSION_PROBE,
+  },
+  {
+    version: 26,
+    name: 'repair_channel_context',
+    sql: MIGRATION_026_REPAIR_CHANNEL_CONTEXT,
   },
 ];
 

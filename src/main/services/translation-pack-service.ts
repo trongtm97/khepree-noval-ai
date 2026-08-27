@@ -3,18 +3,30 @@ import {
   MIN_PACK_CHAPTERS,
   type TranslationStyle,
 } from '@shared/constants/translation-pack';
-import { NOTEBOOK_USABLE_FOR_SLIM_PACK, type NotebookStatus } from '@shared/constants/notebook';
+import { isPackMode, type PackMode } from '@shared/constants/pack-mode';
 import { DEFAULT_NOTEBOOK_SETTINGS } from '@shared/constants/knowledge';
 import type {
   ChapterSummaryDto,
   TranslationPackDto,
 } from '@shared/schemas/translation-pack';
 import { getDatabase } from '../db/connection';
-import { buildTranslationPack } from '../prompt/translation-pack-builder';
+import {
+  buildTranslationPack,
+  countHotDeltaLines,
+} from '../prompt/translation-pack-builder';
+import {
+  resolveTranslationPackMode,
+  type PackModeDecision,
+} from '../prompt/pack-mode-resolver';
 import { getMemoryService } from './memory-service-singleton';
 import { getNotebookSyncService } from '../notebook/notebook-sync-service-singleton';
 import { loadNotebookSettings } from '../notebook/knowledge-builder';
 import { logger } from '../logging/logger';
+
+export interface TranslationPackBuildResult extends TranslationPackDto {
+  packMode: PackMode;
+  packTelemetry: PackModeDecision & { hotDeltaCount: number };
+}
 
 export class TranslationPackService {
   listChapters(projectId: string): ChapterSummaryDto[] {
@@ -48,12 +60,13 @@ export class TranslationPackService {
     recentWindow?: number;
     extraRules?: string[];
     paragraphIds?: string[];
-    /** Force slim/fat; otherwise inferred from Notebook health. */
-    packMode?: 'slim' | 'fat';
+    /** Force slim/hybrid/fat; otherwise inferred from Notebook health + provider. */
+    packMode?: PackMode;
     googleAccountId?: string | null;
+    providerType?: string | null;
     /** When true, force fat pack (Web API / no notebook). */
     forceFatPack?: boolean;
-  }): TranslationPackDto {
+  }): TranslationPackBuildResult {
     if (
       input.chapterIds.length < MIN_PACK_CHAPTERS ||
       input.chapterIds.length > MAX_PACK_CHAPTERS
@@ -70,18 +83,23 @@ export class TranslationPackService {
     }
 
     const settings = loadNotebookSettings(db, input.projectId);
-    const health = getNotebookSyncService(db).getHealth(
-      input.projectId,
-      input.googleAccountId,
-    );
-    const notebookStatus = health.status as NotebookStatus;
-    const canSlim =
-      !input.forceFatPack &&
-      NOTEBOOK_USABLE_FOR_SLIM_PACK.has(notebookStatus);
+    const decision = resolveTranslationPackMode(db, {
+      projectId: input.projectId,
+      accountId: input.googleAccountId,
+      providerType: input.providerType,
+      forceFatPack: input.forceFatPack,
+    });
 
-    const packMode: 'slim' | 'fat' = input.packMode ?? (canSlim ? 'slim' : 'fat');
+    const packMode: PackMode =
+      input.packMode && isPackMode(input.packMode) ? input.packMode : decision.packMode;
 
-    if (packMode === 'fat' && !canSlim) {
+    if (
+      packMode === 'fat' &&
+      decision.packMode === 'fat' &&
+      decision.reason !== 'webapi_always_fat' &&
+      decision.reason !== 'force_fat' &&
+      decision.reason !== 'non_playwright_provider'
+    ) {
       if (settings.fallbackPolicy === 'STRICT_NOTEBOOK') {
         throw new Error(
           'STRICT_NOTEBOOK: Notebook chưa sẵn sàng — tạm dừng dịch.',
@@ -89,7 +107,7 @@ export class TranslationPackService {
       }
       logger.warn('Notebook không khả dụng. NovelTrans đang sử dụng bộ nhớ cục bộ.', {
         projectId: input.projectId,
-        notebookStatus,
+        reason: decision.reason,
         event: 'NOTEBOOK_HOT_FALLBACK',
       });
       db.knowledgeSyncEvents.insert({
@@ -99,21 +117,30 @@ export class TranslationPackService {
       });
     }
 
+    const tokenBudget =
+      packMode === 'slim'
+        ? Math.min(input.tokenBudget ?? 1500, 2000)
+        : packMode === 'hybrid'
+          ? Math.min(input.tokenBudget ?? 4000, 6000)
+          : input.tokenBudget;
+
     const context = getMemoryService().buildContext({
       projectId: input.projectId,
       chapterIds: input.chapterIds,
-      tokenBudget:
-        packMode === 'slim'
-          ? Math.min(input.tokenBudget ?? 1500, 2000)
-          : input.tokenBudget,
+      tokenBudget,
       recentWindow: input.recentWindow ?? settings.recentContextChapters,
     });
 
     const hotOverride = getNotebookSyncService(db).buildActiveHotMemoryText(
       input.projectId,
+      {
+        anchorChapter: context.anchorChapter,
+        // Hybrid always wants delta-since-verified even if dirty flags lag.
+        force: packMode === 'hybrid',
+      },
     );
 
-    return buildTranslationPack(db, {
+    const pack = buildTranslationPack(db, {
       projectId: input.projectId,
       chapterIds: input.chapterIds,
       style: input.style ?? 'balanced',
@@ -123,6 +150,20 @@ export class TranslationPackService {
       packMode,
       hotMemoryOverride: hotOverride || undefined,
     });
+
+    const hotDeltaCount = countHotDeltaLines(
+      pack.sections.hotMemoryDelta,
+    );
+
+    return {
+      ...pack,
+      packMode,
+      packTelemetry: {
+        ...decision,
+        packMode,
+        hotDeltaCount,
+      },
+    };
   }
 }
 

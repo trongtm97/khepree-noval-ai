@@ -2,11 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const rebuildKnowledge = vi.fn();
 const markDirty = vi.fn();
+const evaluateSyncPolicy = vi.fn(() => ({ shouldSync: false, chaptersSinceSync: 0 }));
+const syncDrive = vi.fn(async () => ({ updated: true }));
 
 vi.mock('@main/notebook/notebook-sync-service-singleton', () => ({
   getNotebookSyncService: () => ({
     rebuildKnowledge,
     markDirty,
+    evaluateSyncPolicy,
+    syncDrive,
   }),
 }));
 
@@ -16,6 +20,10 @@ vi.mock('@main/learning/term-delta-processor', () => ({
     candidatesMerged: 0,
     confirms: 0,
     rejected: 0,
+    updates: 0,
+    skipped: 0,
+    occurrencesRecorded: 0,
+    lockedTouched: 0,
   }),
 }));
 
@@ -26,6 +34,7 @@ vi.mock('@main/memory/memory-delta-processor', () => ({
     charactersTouched: 0,
     relationshipsTouched: 0,
     storyTouched: 0,
+    worldTouched: 0,
     conflicts: [],
   }),
 }));
@@ -85,6 +94,9 @@ describe('learning pipeline rebuildKnowledge every PASS', () => {
   beforeEach(() => {
     rebuildKnowledge.mockClear();
     markDirty.mockClear();
+    evaluateSyncPolicy.mockClear();
+    syncDrive.mockClear();
+    evaluateSyncPolicy.mockReturnValue({ shouldSync: false, chaptersSinceSync: 0 });
   });
 
   it('rebuilds local knowledge even when shouldSync is false', async () => {
@@ -94,23 +106,24 @@ describe('learning pipeline rebuildKnowledge every PASS', () => {
       chapterFrom: 1,
       chapterTo: 1,
       parsed: emptyParsed(),
-      onChapterCompleted: () => ({ shouldSync: false }),
     });
 
     expect(rebuildKnowledge).toHaveBeenCalledWith(PROJECT);
+    expect(syncDrive).not.toHaveBeenCalled();
   });
 
-  it('rebuilds even when consolidating for Drive sync', async () => {
+  it('rebuilds then calls syncDrive when policy says sync', async () => {
+    evaluateSyncPolicy.mockReturnValue({ shouldSync: true, chaptersSinceSync: 0 });
     await runLearningPipeline(mockDb(), {
       projectId: PROJECT,
       jobId: '33333333-3333-3333-3333-333333333334',
       chapterFrom: 2,
       chapterTo: 2,
       parsed: emptyParsed(),
-      onChapterCompleted: () => ({ shouldSync: true }),
-      syncProject: vi.fn(async () => undefined),
     });
 
     expect(rebuildKnowledge).toHaveBeenCalledWith(PROJECT);
+    expect(syncDrive).toHaveBeenCalledTimes(1);
+    expect(syncDrive).toHaveBeenCalledWith(PROJECT);
   });
 });

@@ -38,6 +38,12 @@ export const JobAttemptDtoSchema = z.object({
   output: z.string().nullable(),
   result: z.string().nullable(),
   error: z.string().nullable(),
+  providerType: z.string().nullable().optional(),
+  accountId: z.string().nullable().optional(),
+  notebookId: z.string().nullable().optional(),
+  threadRef: z.string().nullable().optional(),
+  packMode: z.enum(['slim', 'hybrid', 'fat']).nullable().optional(),
+  knowledgeVersion: z.number().int().nonnegative().nullable().optional(),
   startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
 });
@@ -73,10 +79,35 @@ export const JobDtoSchema = z.object({
       paragraphsTotal: z.number().int().nonnegative().optional(),
       /** Winning AI channel for this send (Web API vs Playwright Notebook). */
       providerType: z.string().optional(),
-      /** slim = Notebook cold knowledge; fat = full local memory in prompt. */
-      packMode: z.enum(['slim', 'fat']).optional(),
+      /**
+       * slim = Notebook cold verified;
+       * hybrid = Notebook + local delta;
+       * fat = full SQLite (WebAPI / no notebook).
+       */
+      packMode: z.enum(['slim', 'hybrid', 'fat']).optional(),
+      notebookId: z.string().nullable().optional(),
+      notebookName: z.string().nullable().optional(),
+      notebookRole: z.enum(['TRANSLATION', 'RESEARCH', 'SINGLE']).nullable().optional(),
+      notebookGroundingVerified: z.boolean().optional(),
+      accountId: z.string().optional(),
+      threadRef: z.string().nullable().optional(),
+      knowledgeVersion: z.number().int().nonnegative().optional(),
+      localKnowledgeVersion: z.number().int().nonnegative().optional(),
+      notebookKnowledgeVersion: z.number().int().nonnegative().optional(),
+      notebookVerifiedVersion: z.number().int().nonnegative().optional(),
+      hotDeltaCount: z.number().int().nonnegative().optional(),
+      knowledgeSourceMode: z.enum(['DRIVE_LIVE', 'STATIC', 'LOCAL_ONLY']).optional(),
       continuationRound: z.number().int().nonnegative().optional(),
       lastCompletedParagraphId: z.string().nullable().optional(),
+      timeline: z
+        .array(
+          z.object({
+            at: z.string(),
+            event: z.string(),
+            message: z.string().optional(),
+          }),
+        )
+        .optional(),
       learning: z
         .object({
           candidatesCreated: z.number().int().nonnegative().optional(),

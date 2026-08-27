@@ -35,6 +35,7 @@ import {
   AiModelRepository,
   KnowledgeFileRepository,
   KnowledgeSyncEventRepository,
+  NotebookSourceBindingRepository,
   NotebookHotDeltaRepository,
   FullNovelPreprocessRepository,
   BatchSizeRepository,
@@ -80,6 +81,7 @@ export class DatabaseManager {
   readonly aiModels: AiModelRepository;
   readonly knowledgeFiles: KnowledgeFileRepository;
   readonly knowledgeSyncEvents: KnowledgeSyncEventRepository;
+  readonly notebookSourceBindings: NotebookSourceBindingRepository;
   readonly notebookHotDeltas: NotebookHotDeltaRepository;
   readonly fullNovelPreprocess: FullNovelPreprocessRepository;
   readonly batchSize: BatchSizeRepository;
@@ -137,6 +139,7 @@ export class DatabaseManager {
     this.aiModels = new AiModelRepository(this.db);
     this.knowledgeFiles = new KnowledgeFileRepository(this.db);
     this.knowledgeSyncEvents = new KnowledgeSyncEventRepository(this.db);
+    this.notebookSourceBindings = new NotebookSourceBindingRepository(this.db);
     this.notebookHotDeltas = new NotebookHotDeltaRepository(this.db);
     this.fullNovelPreprocess = new FullNovelPreprocessRepository(this.db);
     this.batchSize = new BatchSizeRepository(this.db);

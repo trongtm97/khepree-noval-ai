@@ -8,6 +8,7 @@ export const KNOWLEDGE_TYPES = [
   'story_state',
   'world_knowledge',
   'recent_context',
+  'sync_state',
 ] as const;
 
 export type KnowledgeType = (typeof KNOWLEDGE_TYPES)[number];
@@ -21,6 +22,7 @@ export const KNOWLEDGE_FILE_NAMES: Record<KnowledgeType, string> = {
   story_state: '05_STORY_STATE.md',
   world_knowledge: '06_WORLD_KNOWLEDGE.md',
   recent_context: '07_RECENT_CONTEXT.md',
+  sync_state: '08_SYNC_STATE.md',
 };
 
 /** Per-file char budgets — semantic builder adds whole records until near cap. */
@@ -33,6 +35,7 @@ export const KNOWLEDGE_SIZE_CAPS = {
   story_state: 6_000,
   world_knowledge: 10_000,
   recent_context: 12_000,
+  sync_state: 1_000,
 } as const;
 
 export const NOTEBOOK_FALLBACK_POLICIES = [
@@ -63,14 +66,27 @@ export const KNOWLEDGE_SYNC_EVENT_TYPES = [
   'KNOWLEDGE_FILE_CHANGED',
   'DRIVE_SYNC_STARTED',
   'DRIVE_SYNC_COMPLETED',
+  'DRIVE_SYNCED',
   'NOTEBOOK_SYNC_PENDING',
   'NOTEBOOK_SYNC_VERIFIED',
+  'NOTEBOOK_SOURCE_PRESENT',
+  'NOTEBOOK_VERSION_PROBE_STARTED',
+  'NOTEBOOK_VERSION_MISMATCH',
+  'NOTEBOOK_VERSION_VERIFIED',
+  'NOTEBOOK_GROUNDING_VERIFIED',
+  'NOTEBOOK_GROUNDING_UNVERIFIED',
   'NOTEBOOK_STALE',
   'NOTEBOOK_HEALTH_FAILED',
   'NOTEBOOK_HOT_FALLBACK',
   'NOTEBOOK_SEED_STARTED',
   'NOTEBOOK_SEED_COMPLETED',
   'NOTEBOOK_PREPARE_FOR_TRANSLATE',
+  'PACK_MODE_SELECTED',
+  'TRANSLATION_NOTEBOOK_OPENED',
+  'PROMPT_SENT',
+  'RESPONSE_CAPTURED',
+  'LEARNING_APPLIED',
+  'KNOWLEDGE_DIRTY',
   'LEARNING_EMPTY_DELTAS',
   'BOOTSTRAP_STARTED',
   'BOOTSTRAP_LOCAL_PREPARED',

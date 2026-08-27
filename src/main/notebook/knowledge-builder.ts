@@ -7,6 +7,10 @@ import {
   KNOWLEDGE_TYPES,
   type KnowledgeType,
 } from '@shared/constants/knowledge';
+import {
+  buildSyncStateManifestContent,
+  generateSyncNonce,
+} from '@shared/constants/notebook-version-probe';
 import { DRIVE_RESOURCE_KEYS } from '@shared/constants/drive';
 import { OUTPUT_PROTOCOL_BLOCK } from '@shared/constants/translation-pack';
 import type { TermRow } from '../db/repositories/term-repository';
@@ -132,6 +136,7 @@ export type ProjectKnowledgeDocuments = Record<
     | 'STORY_STATE_MD'
     | 'WORLD_KNOWLEDGE_MD'
     | 'RECENT_CONTEXT_MD'
+    | 'SYNC_STATE_MD'
   ],
   string
 >;
@@ -451,6 +456,17 @@ export class NotebookKnowledgeBuilder {
     }).content;
   }
 
+  buildSyncState(projectId: string): string {
+    const state = this.db.driveSyncState.ensure(projectId);
+    const version = Math.max(1, state.pending_knowledge_version || 0);
+    const nonce = state.pending_sync_nonce || generateSyncNonce();
+    return buildSyncStateManifestContent({
+      projectId,
+      knowledgeVersion: version,
+      syncNonce: nonce,
+    });
+  }
+
   buildByType(projectId: string, type: KnowledgeType): string {
     switch (type) {
       case 'book_profile':
@@ -469,6 +485,8 @@ export class NotebookKnowledgeBuilder {
         return this.buildWorldKnowledge(projectId);
       case 'recent_context':
         return this.buildRecentContext(projectId);
+      case 'sync_state':
+        return this.buildSyncState(projectId);
       default: {
         const _exhaustive: never = type;
         return _exhaustive;
@@ -486,23 +504,30 @@ export class NotebookKnowledgeBuilder {
       [DRIVE_RESOURCE_KEYS.STORY_STATE_MD]: this.buildStoryState(projectId),
       [DRIVE_RESOURCE_KEYS.WORLD_KNOWLEDGE_MD]: this.buildWorldKnowledge(projectId),
       [DRIVE_RESOURCE_KEYS.RECENT_CONTEXT_MD]: this.buildRecentContext(projectId),
+      [DRIVE_RESOURCE_KEYS.SYNC_STATE_MD]: this.buildSyncState(projectId),
     };
   }
 
-  /** Rebuild all files and update knowledge_files hash/version rows. */
+  /**
+   * Rebuild knowledge files. On content change: new pending version + nonce
+   * (CONTENT_CURRENT). sync_state is written last from pending manifest.
+   */
   rebuildAndTrack(projectId: string): ProjectKnowledgeDocuments {
     this.db.knowledgeSyncEvents.insert({
       projectId,
       eventType: 'KNOWLEDGE_BUILD_STARTED',
       message: `Đang xây bộ nhớ AI`,
     });
-    const docs = this.buildAll(projectId);
-    for (const type of KNOWLEDGE_TYPES) {
+
+    let anyChanged = false;
+    const contentTypes = KNOWLEDGE_TYPES.filter((t) => t !== 'sync_state');
+    for (const type of contentTypes) {
       const content = this.buildByType(projectId, type);
       const hash = hashKnowledgeContent(content);
       const before = this.db.knowledgeFiles.get(projectId, type);
       const after = this.db.knowledgeFiles.recordGenerated(projectId, type, hash);
       if (before?.content_hash !== after.content_hash) {
+        anyChanged = true;
         this.db.knowledgeSyncEvents.insert({
           projectId,
           eventType: 'KNOWLEDGE_FILE_CHANGED',
@@ -511,11 +536,49 @@ export class NotebookKnowledgeBuilder {
         });
       }
     }
+
+    const state = this.db.driveSyncState.ensure(projectId);
+    if (anyChanged || !state.pending_sync_nonce || state.pending_knowledge_version <= 0) {
+      const base = Math.max(
+        state.pending_knowledge_version,
+        state.verified_knowledge_version,
+        this.db.knowledgeFiles.maxLocalVersion(projectId),
+      );
+      const version =
+        anyChanged || state.pending_knowledge_version <= 0 ? Math.max(1, base + 1) : base;
+      const nonce =
+        anyChanged || !state.pending_sync_nonce
+          ? generateSyncNonce()
+          : state.pending_sync_nonce;
+      this.db.driveSyncState.patch(projectId, {
+        pendingKnowledgeVersion: version,
+        pendingSyncNonce: nonce,
+        versionProbeStatus: 'pending',
+      });
+    }
+
+    const syncContent = this.buildSyncState(projectId);
+    const syncHash = hashKnowledgeContent(syncContent);
+    const syncBefore = this.db.knowledgeFiles.get(projectId, 'sync_state');
+    const syncAfter = this.db.knowledgeFiles.recordGenerated(
+      projectId,
+      'sync_state',
+      syncHash,
+    );
+    if (syncBefore?.content_hash !== syncAfter.content_hash) {
+      this.db.knowledgeSyncEvents.insert({
+        projectId,
+        eventType: 'KNOWLEDGE_FILE_CHANGED',
+        knowledgeType: 'sync_state',
+        message: `Đã cập nhật ${KNOWLEDGE_FILE_NAMES.sync_state}`,
+      });
+    }
+
     const localVersion = this.db.knowledgeFiles.maxLocalVersion(projectId);
     for (const mapping of this.db.notebooks.listByProject(projectId)) {
       this.db.notebooks.bumpLocalKnowledgeVersion(mapping.id, localVersion);
     }
-    return docs;
+    return this.buildAll(projectId);
   }
 }
 
@@ -531,4 +594,5 @@ export const KNOWLEDGE_TYPE_TO_DRIVE_KEY: Record<
   story_state: DRIVE_RESOURCE_KEYS.STORY_STATE_MD,
   world_knowledge: DRIVE_RESOURCE_KEYS.WORLD_KNOWLEDGE_MD,
   recent_context: DRIVE_RESOURCE_KEYS.RECENT_CONTEXT_MD,
+  sync_state: DRIVE_RESOURCE_KEYS.SYNC_STATE_MD,
 };

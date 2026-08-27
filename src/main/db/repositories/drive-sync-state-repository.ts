@@ -3,6 +3,7 @@ import { newId } from '../utils/uuid';
 import { touchTimestamps, utcNow } from '../utils/timestamps';
 import type { DriveSyncStatus } from '@shared/constants/drive';
 import { DEFAULT_DRIVE_SYNC_EVERY_N_CHAPTERS } from '@shared/constants/drive';
+import type { VersionProbeStatus } from '@shared/constants/notebook-version-probe';
 
 export interface DriveSyncStateRow {
   id: string;
@@ -15,6 +16,11 @@ export interface DriveSyncStateRow {
   last_sync_at: string | null;
   sync_status: string;
   last_error: string | null;
+  pending_knowledge_version: number;
+  pending_sync_nonce: string | null;
+  verified_knowledge_version: number;
+  verified_sync_nonce: string | null;
+  version_probe_status: string;
   created_at: string;
   updated_at: string;
 }
@@ -38,8 +44,11 @@ export class DriveSyncStateRepository extends BaseRepository {
         `INSERT INTO drive_sync_state (
           id, project_id, google_account_id, root_folder_id,
           sync_every_n_chapters, chapters_since_sync, critical_change_pending,
-          last_sync_at, sync_status, last_error, created_at, updated_at
-        ) VALUES (?, ?, NULL, NULL, ?, 0, 0, NULL, 'idle', NULL, ?, ?)`,
+          last_sync_at, sync_status, last_error,
+          pending_knowledge_version, pending_sync_nonce,
+          verified_knowledge_version, verified_sync_nonce, version_probe_status,
+          created_at, updated_at
+        ) VALUES (?, ?, NULL, NULL, ?, 0, 0, NULL, 'idle', NULL, 0, NULL, 0, NULL, 'pending', ?, ?)`,
       )
       .run(
         id,
@@ -80,6 +89,11 @@ export class DriveSyncStateRepository extends BaseRepository {
       lastSyncAt?: string | null;
       syncStatus?: DriveSyncStatus;
       lastError?: string | null;
+      pendingKnowledgeVersion?: number;
+      pendingSyncNonce?: string | null;
+      verifiedKnowledgeVersion?: number;
+      verifiedSyncNonce?: string | null;
+      versionProbeStatus?: VersionProbeStatus;
     },
   ): DriveSyncStateRow {
     const row = this.ensure(projectId);
@@ -92,6 +106,11 @@ export class DriveSyncStateRepository extends BaseRepository {
           last_sync_at = ?,
           sync_status = ?,
           last_error = ?,
+          pending_knowledge_version = ?,
+          pending_sync_nonce = ?,
+          verified_knowledge_version = ?,
+          verified_sync_nonce = ?,
+          version_probe_status = ?,
           updated_at = ?
         WHERE project_id = ?`,
       )
@@ -106,6 +125,15 @@ export class DriveSyncStateRepository extends BaseRepository {
         patch.lastSyncAt !== undefined ? patch.lastSyncAt : row.last_sync_at,
         patch.syncStatus ?? row.sync_status,
         patch.lastError !== undefined ? patch.lastError : row.last_error,
+        patch.pendingKnowledgeVersion ?? row.pending_knowledge_version,
+        patch.pendingSyncNonce !== undefined
+          ? patch.pendingSyncNonce
+          : row.pending_sync_nonce,
+        patch.verifiedKnowledgeVersion ?? row.verified_knowledge_version,
+        patch.verifiedSyncNonce !== undefined
+          ? patch.verifiedSyncNonce
+          : row.verified_sync_nonce,
+        patch.versionProbeStatus ?? row.version_probe_status,
         utcNow(),
         projectId,
       );

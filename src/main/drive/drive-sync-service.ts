@@ -7,17 +7,22 @@ import {
   type DriveResourceKey,
   type DriveSyncStatus,
 } from '@shared/constants/drive';
+import {
+  GOOGLE_DOC_MIME_TYPE,
+} from '@shared/constants/notebook-source-binding';
+import type { KnowledgeType } from '@shared/constants/knowledge';
 import type { DriveClient } from './drive-client';
 import { isDriveAuthError } from './drive-client';
 import type { DriveOAuthService } from './drive-oauth-service';
 import {
-  FILE_KEY_TO_NAME,
+  FILE_KEY_TO_DOC_TITLE,
+  FILE_KEY_TO_KNOWLEDGE_TYPE,
   OWNED_FILE_KEYS,
-  buildProjectDriveDocuments,
   hashContent,
   sanitizeProjectFolderName,
 } from './drive-content-builder';
-
+import { NotebookKnowledgeBuilder } from '../notebook/knowledge-builder';
+import { logger } from '../logging/logger';
 export interface DriveSyncResult {
   updated: number;
   skipped: number;
@@ -310,55 +315,126 @@ export class DriveSyncService {
       throw new Error('Project Drive folder not provisioned');
     }
 
-    const docs = buildProjectDriveDocuments(this.db, projectId);
+    const docs = new NotebookKnowledgeBuilder(this.db).buildAll(projectId);
     let updated = 0;
     let skipped = 0;
     const errors: string[] = [];
 
     for (const key of OWNED_FILE_KEYS) {
-      const fileName = FILE_KEY_TO_NAME[key];
+      const docTitle = FILE_KEY_TO_DOC_TITLE[key];
+      const knowledgeType = FILE_KEY_TO_KNOWLEDGE_TYPE[key];
       const content = docs[key];
       const localHash = hashContent(content);
 
       try {
         const row = this.db.driveResources.getByProjectAndKey(projectId, key);
-        if (!force && row?.local_hash === localHash) {
+        if (
+          !force &&
+          row?.local_hash === localHash &&
+          row.mime_type === GOOGLE_DOC_MIME_TYPE &&
+          row.drive_file_id
+        ) {
           this.db.driveResources.markSkipped(row.id, localHash);
+          this.db.knowledgeFiles.markDriveSynced(projectId, knowledgeType, {
+            driveFileId: row.drive_file_id,
+            mimeType: GOOGLE_DOC_MIME_TYPE,
+          });
+          this.upsertDriveLiveBinding(projectId, knowledgeType, docTitle, row.drive_file_id, localHash);
           skipped += 1;
           continue;
         }
 
         let fileId = row?.drive_file_id;
-        if (!fileId) {
-          const created = await client.createFile(fileName, content, projectFolder.drive_file_id);
+        let mimeType = row?.mime_type ?? null;
+
+        if (fileId && mimeType !== GOOGLE_DOC_MIME_TYPE) {
+          const meta = await client.getFileMetadata(fileId);
+          if (meta?.mimeType === GOOGLE_DOC_MIME_TYPE) {
+            mimeType = GOOGLE_DOC_MIME_TYPE;
+          }
+        }
+
+        // Legacy markdown → promote to Google Doc (new file id; keep binding updated).
+        const needsGoogleDoc = !fileId || mimeType !== GOOGLE_DOC_MIME_TYPE;
+
+        if (needsGoogleDoc) {
+          if (fileId && mimeType && mimeType !== GOOGLE_DOC_MIME_TYPE) {
+            logger.info('Promoting knowledge markdown to Google Doc', {
+              projectId,
+              knowledgeType,
+              previousFileId: fileId,
+            });
+          }
+          const created = await client.createGoogleDoc(
+            docTitle,
+            content,
+            projectFolder.drive_file_id,
+          );
           fileId = created.id;
+          mimeType = created.mimeType ?? GOOGLE_DOC_MIME_TYPE;
           this.db.driveResources.upsert({
             project_id: projectId,
             google_account_id: accountId,
             resource_key: key,
-            resource_type: 'file',
+            resource_type: 'google_doc',
             drive_file_id: fileId,
             local_hash: localHash,
             remote_hash: localHash,
             remote_modified_time: created.modifiedTime,
             sync_status: 'synced',
+            mime_type: mimeType,
           });
+          this.db.knowledgeFiles.markDriveSynced(projectId, knowledgeType, {
+            driveFileId: fileId,
+            mimeType,
+          });
+          this.upsertDriveLiveBinding(projectId, knowledgeType, docTitle, fileId, localHash);
           updated += 1;
           continue;
         }
 
-        const remote = await client.updateFileContent(fileId, content);
+        const liveFileId = fileId;
+
+        // Hash match after mime probe — skip update.
+        if (!force && row?.local_hash === localHash) {
+          this.db.driveResources.upsert({
+            project_id: projectId,
+            google_account_id: accountId,
+            resource_key: key,
+            resource_type: 'google_doc',
+            drive_file_id: liveFileId,
+            local_hash: localHash,
+            remote_hash: localHash,
+            sync_status: 'synced',
+            mime_type: GOOGLE_DOC_MIME_TYPE,
+          });
+          this.db.knowledgeFiles.markDriveSynced(projectId, knowledgeType, {
+            driveFileId: liveFileId,
+            mimeType: GOOGLE_DOC_MIME_TYPE,
+          });
+          this.upsertDriveLiveBinding(projectId, knowledgeType, docTitle, liveFileId, localHash);
+          skipped += 1;
+          continue;
+        }
+
+        const remote = await client.updateGoogleDocContent(liveFileId, content);
         this.db.driveResources.upsert({
           project_id: projectId,
           google_account_id: accountId,
           resource_key: key,
-          resource_type: 'file',
-          drive_file_id: fileId,
+          resource_type: 'google_doc',
+          drive_file_id: liveFileId,
           local_hash: localHash,
           remote_hash: localHash,
           remote_modified_time: remote.modifiedTime,
           sync_status: 'synced',
+          mime_type: GOOGLE_DOC_MIME_TYPE,
         });
+        this.db.knowledgeFiles.markDriveSynced(projectId, knowledgeType, {
+          driveFileId: liveFileId,
+          mimeType: GOOGLE_DOC_MIME_TYPE,
+        });
+        this.upsertDriveLiveBinding(projectId, knowledgeType, docTitle, liveFileId, localHash);
         updated += 1;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -370,5 +446,26 @@ export class DriveSyncService {
     }
 
     return { updated, skipped, errors };
+  }
+
+  private upsertDriveLiveBinding(
+    projectId: string,
+    knowledgeType: KnowledgeType,
+    sourceName: string,
+    driveFileId: string,
+    contentHash: string,
+  ): void {
+    const kf = this.db.knowledgeFiles.get(projectId, knowledgeType);
+    this.db.notebookSourceBindings.upsert({
+      projectId,
+      knowledgeType,
+      driveFileId,
+      sourceName,
+      bindingType: 'DRIVE_LIVE',
+      contentHash,
+      localVersion: kf?.local_version ?? 0,
+      remoteVersion: kf?.remote_version ?? 0,
+      status: 'active',
+    });
   }
 }

@@ -14,6 +14,8 @@ export interface KnowledgeFileRow {
   last_generated_at: string | null;
   last_drive_sync_at: string | null;
   last_verified_at: string | null;
+  drive_file_id: string | null;
+  mime_type: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -100,13 +102,43 @@ export class KnowledgeFileRepository extends BaseRepository {
     return this.assertRow(this.get(projectId, knowledgeType), 'knowledge_file', row.id);
   }
 
-  markDriveSynced(projectId: string, knowledgeType: KnowledgeType): void {
+  markDriveSynced(
+    projectId: string,
+    knowledgeType: KnowledgeType,
+    meta?: { driveFileId?: string | null; mimeType?: string | null },
+  ): void {
     const row = this.ensure(projectId, knowledgeType);
     this.db
       .prepare(
-        `UPDATE knowledge_files SET last_drive_sync_at = ?, updated_at = ? WHERE id = ?`,
+        `UPDATE knowledge_files SET
+          last_drive_sync_at = ?,
+          drive_file_id = COALESCE(?, drive_file_id),
+          mime_type = COALESCE(?, mime_type),
+          updated_at = ?
+        WHERE id = ?`,
       )
-      .run(utcNow(), utcNow(), row.id);
+      .run(
+        utcNow(),
+        meta?.driveFileId ?? null,
+        meta?.mimeType ?? null,
+        utcNow(),
+        row.id,
+      );
+  }
+
+  setDriveFile(
+    projectId: string,
+    knowledgeType: KnowledgeType,
+    driveFileId: string,
+    mimeType: string,
+  ): KnowledgeFileRow {
+    const row = this.ensure(projectId, knowledgeType);
+    this.db
+      .prepare(
+        `UPDATE knowledge_files SET drive_file_id = ?, mime_type = ?, updated_at = ? WHERE id = ?`,
+      )
+      .run(driveFileId, mimeType, utcNow(), row.id);
+    return this.assertRow(this.get(projectId, knowledgeType), 'knowledge_file', row.id);
   }
 
   markVerified(projectId: string, knowledgeType: KnowledgeType): void {

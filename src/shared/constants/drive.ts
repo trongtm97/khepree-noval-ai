@@ -30,6 +30,7 @@ export const DRIVE_PROJECT_FILES = [
   '05_STORY_STATE.md',
   '06_WORLD_KNOWLEDGE.md',
   '07_RECENT_CONTEXT.md',
+  '08_SYNC_STATE.md',
 ] as const;
 
 export type DriveProjectFileName = (typeof DRIVE_PROJECT_FILES)[number];
@@ -49,6 +50,7 @@ export const DRIVE_RESOURCE_KEYS = {
   STORY_STATE_MD: '05_STORY_STATE.md',
   WORLD_KNOWLEDGE_MD: '06_WORLD_KNOWLEDGE.md',
   RECENT_CONTEXT_MD: '07_RECENT_CONTEXT.md',
+  SYNC_STATE_MD: '08_SYNC_STATE.md',
 } as const;
 
 export type DriveResourceKey = (typeof DRIVE_RESOURCE_KEYS)[keyof typeof DRIVE_RESOURCE_KEYS];

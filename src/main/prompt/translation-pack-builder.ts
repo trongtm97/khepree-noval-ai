@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { PackMode } from '@shared/constants/pack-mode';
 import {
   OUTPUT_PROTOCOL_BLOCK,
   TRANSLATION_STYLE_RULES,
@@ -21,10 +22,11 @@ export interface BuildPackInput {
   /** When set, only these stable paragraph IDs are included in ## Source. */
   paragraphIds?: string[];
   /**
-   * slim = Notebook holds cold knowledge; pack = task + hot + locked overrides + source.
-   * fat = local fallback when Notebook unavailable.
+   * slim = Notebook cold; pack = task + tiny hot + locked overrides + source.
+   * hybrid = Notebook cold + local delta since last verified (not full DB).
+   * fat = full SQLite context when Notebook unavailable / WebAPI.
    */
-  packMode?: 'slim' | 'fat';
+  packMode?: PackMode;
   /** Unsynced hot deltas text (already formatted section body or empty). */
   hotMemoryOverride?: string;
 }
@@ -66,7 +68,7 @@ function buildKnowledgePriorityRules(): string {
 function buildTaskHeaderFromChapters(
   style: TranslationStyle,
   chapters: ChapterRow[],
-  packMode: 'slim' | 'fat',
+  packMode: PackMode,
 ): string {
   const labels = chapters.map(chapterLabel);
   const range =
@@ -76,7 +78,9 @@ function buildTaskHeaderFromChapters(
   const contextHint =
     packMode === 'slim'
       ? 'Follow Notebook knowledge for characters, terms, story state, and world. This pack only adds source + hot overrides.'
-      : 'Use ONLY active context below (local memory fallback). Do not invent terms, characters, or plot.';
+      : packMode === 'hybrid'
+        ? 'Notebook holds cold knowledge. Apply Local Knowledge Delta / Hot Memory for unsynced updates since last verified Notebook version. Do not invent beyond Notebook + delta.'
+        : 'Use ONLY active context below (local memory fallback). Do not invent terms, characters, or plot.';
   return [
     '## Task',
     `Translate Chinese → Vietnamese (${style}) for ${range}.`,
@@ -100,9 +104,53 @@ function buildCriticalRules(
   return ['## Critical Rules', ...unique.map((rule) => `- ${rule}`)].join('\n');
 }
 
+function buildHybridLocalDelta(context: MemoryContextDto): string {
+  /** Relevant story/characters only — not full DB dump. */
+  const lines: string[] = ['## Local Knowledge Delta (since last verified Notebook)'];
+
+  if (context.storyState) {
+    const hot: Record<string, unknown> = {};
+    if (context.storyState.summaryText) hot.summary = context.storyState.summaryText;
+    if (context.storyState.cultivationState) hot.cultivation = context.storyState.cultivationState;
+    if (context.storyState.locationState) hot.location = context.storyState.locationState;
+    if (context.storyState.importantItems?.length) hot.items = context.storyState.importantItems;
+    if (context.storyState.unresolvedPlotPoints?.length) {
+      hot.openPlots = context.storyState.unresolvedPlotPoints;
+    }
+    if (Object.keys(hot).length > 0) {
+      lines.push(`story: ${compactJson(hot)}`);
+    }
+  }
+
+  for (const character of context.activeCharacters.slice(0, 24)) {
+    const aliases =
+      character.aliases.length > 0 ? ` aliases=${character.aliases.join('|')}` : '';
+    lines.push(
+      `char: ${character.canonicalName}` +
+        (character.translatedName ? `=${character.translatedName}` : '') +
+        (character.role ? ` [${character.role}]` : '') +
+        aliases,
+    );
+  }
+
+  for (const rel of context.relationships.slice(0, 20)) {
+    lines.push(
+      `rel: ${rel.fromName}→${rel.toName} (${rel.relationshipType})` +
+        (rel.aCallsB || rel.bCallsA
+          ? ` calls=${rel.aCallsB ?? '?'}/${rel.bCallsA ?? '?'}`
+          : ''),
+    );
+  }
+
+  if (lines.length === 1) {
+    lines.push('(none)');
+  }
+  return lines.join('\n');
+}
+
 function buildHotMemory(
   context: MemoryContextDto,
-  packMode: 'slim' | 'fat',
+  packMode: PackMode,
   hotMemoryOverride?: string,
 ): string {
   if (hotMemoryOverride?.trim()) {
@@ -113,6 +161,10 @@ function buildHotMemory(
 
   if (packMode === 'slim') {
     return ['## Hot Memory', '(none — Notebook cold knowledge is authoritative)'].join('\n');
+  }
+
+  if (packMode === 'hybrid') {
+    return buildHybridLocalDelta(context);
   }
 
   const lines: string[] = ['## Hot Memory'];
@@ -163,22 +215,28 @@ function buildHotMemory(
   return lines.join('\n');
 }
 
-function buildActiveTerms(context: MemoryContextDto, packMode: 'slim' | 'fat'): string {
+function buildActiveTerms(context: MemoryContextDto, packMode: PackMode): string {
   const lines: string[] = [
-    packMode === 'slim' ? '## Active Overrides (locked / batch-matched)' : '## Active Project Terms',
-  ];
-  const terms =
-    packMode === 'slim'
-      ? context.activeTerms.filter((t) => t.locked)
-      : context.activeTerms;
-
-  // Slim still includes non-locked matched terms as soft overrides if few
-  const effective =
-    packMode === 'slim' && terms.length === 0
-      ? context.activeTerms.slice(0, 15)
+    packMode === 'fat'
+      ? '## Active Project Terms'
       : packMode === 'slim'
-        ? [...terms, ...context.activeTerms.filter((t) => !t.locked).slice(0, 10)]
-        : terms;
+        ? '## Active Overrides (LOCKED only — Notebook cold is authoritative)'
+        : '## Active Overrides (locked / local soft)',
+  ];
+
+  // SLIM = CONTENT_CURRENT: Notebook holds cold terms. Pack must NOT dump soft
+  // matches or grounding proof is invalid (term present in prompt, not Notebook).
+  // HYBRID: locked + limited soft as local delta. FAT: all active terms.
+  let effective = context.activeTerms;
+  if (packMode === 'slim') {
+    effective = context.activeTerms.filter((t) => t.locked);
+  } else if (packMode === 'hybrid') {
+    const locked = context.activeTerms.filter((t) => t.locked);
+    effective =
+      locked.length === 0
+        ? context.activeTerms.slice(0, 15)
+        : [...locked, ...context.activeTerms.filter((t) => !t.locked).slice(0, 10)];
+  }
 
   const seen = new Set<string>();
   const unique = effective.filter((t) => {
@@ -266,16 +324,19 @@ export function buildTranslationPack(
       ? new Set(input.paragraphIds)
       : undefined;
 
+  const projectRules =
+    packMode === 'slim'
+      ? []
+      : packMode === 'hybrid'
+        ? input.context.criticalProjectRules.slice(0, 8)
+        : input.context.criticalProjectRules;
+
   const sections: TranslationPackSections = {
     taskHeader: buildTaskHeaderFromChapters(input.style, chapters, packMode),
     criticalRules: [
       bookProfile,
       buildKnowledgePriorityRules(),
-      buildCriticalRules(
-        input.style,
-        packMode === 'slim' ? [] : input.context.criticalProjectRules,
-        input.extraRules,
-      ),
+      buildCriticalRules(input.style, projectRules, input.extraRules),
     ]
       .filter(Boolean)
       .join('\n\n'),
@@ -349,15 +410,21 @@ export function assemblePackSections(input: {
   extraRules?: string[];
   context: MemoryContextDto;
   sourceLines: string[];
-  packMode?: 'slim' | 'fat';
+  packMode?: PackMode;
   hotMemoryOverride?: string;
 }): { sections: TranslationPackSections; prompt: string } {
   const packMode = input.packMode ?? 'fat';
+  const rules =
+    packMode === 'slim'
+      ? []
+      : packMode === 'hybrid'
+        ? input.criticalRules.slice(0, 8)
+        : input.criticalRules;
   const sections: TranslationPackSections = {
     taskHeader: buildTaskHeader(input.style, input.chapterNumbers),
     criticalRules: [
       buildKnowledgePriorityRules(),
-      buildCriticalRules(input.style, input.criticalRules, input.extraRules),
+      buildCriticalRules(input.style, rules, input.extraRules),
     ].join('\n\n'),
     hotMemoryDelta: buildHotMemory(input.context, packMode, input.hotMemoryOverride),
     activeProjectTerms: buildActiveTerms(input.context, packMode),
@@ -365,4 +432,20 @@ export function assemblePackSections(input: {
     outputProtocol: OUTPUT_PROTOCOL_BLOCK,
   };
   return { sections, prompt: assemblePrompt(sections) };
+}
+
+/** Count structured hot/delta bullet lines for job telemetry. */
+export function countHotDeltaLines(hotMemoryText: string | null | undefined): number {
+  if (!hotMemoryText?.trim()) return 0;
+  return hotMemoryText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(
+      (l) =>
+        l.startsWith('- ') ||
+        l.startsWith('story:') ||
+        l.startsWith('char:') ||
+        l.startsWith('rel:') ||
+        l.startsWith('mem@'),
+    ).length;
 }

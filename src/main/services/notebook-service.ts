@@ -3,19 +3,22 @@ import path from 'node:path';
 import type { DatabaseManager } from '../db/database-manager';
 import { NotebookProvider } from '../automation/providers/google/notebook-provider';
 import { AutomationError } from '../automation/errors/automation-errors';
-import { formatNotebookName } from '@shared/constants/notebook';
+import { formatNotebookNameForRole, type NotebookRole } from '@shared/constants/notebook-role';
 import type { NotebookAssistedStep } from '@shared/constants/notebook';
+import { DRIVE_PROJECT_DOC_TITLES } from '@shared/constants/notebook-source-binding';
+import type { NotebookSourceBindingType } from '@shared/constants/notebook-source-binding';
 import {
-  formatNotebookNameForRole,
-  type NotebookRole,
-} from '@shared/constants/notebook-role';
-import { DRIVE_PROJECT_FILES } from '@shared/constants/drive';
+  KNOWLEDGE_FILE_NAMES,
+  KNOWLEDGE_TYPES,
+  type KnowledgeType,
+} from '@shared/constants/knowledge';
 import {
   FILE_KEY_TO_NAME,
   OWNED_FILE_KEYS,
   writeKnowledgeSourceFiles,
 } from '../drive/drive-content-builder';
 import { NotebookKnowledgeBuilder } from '../notebook/knowledge-builder';
+import { attachKnowledgeSources } from '../notebook/attach-knowledge-sources';
 import type { BrowserSessionController } from '../automation/browser-runner/browser-session-controller';
 import { PlaywrightBrowserSessionController } from '../automation/browser-runner/browser-session-controller';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
@@ -62,40 +65,58 @@ function buildKnowledgeSources(
   }));
 }
 
-/** File upload → Copied text → Drive picker. */
-async function attachKnowledgeSources(
-  provider: NotebookProvider,
-  knowledgeSources: { name: string; content: string }[],
-  sourceNames: string[],
-  filePaths: string[],
-): Promise<void> {
-  try {
-    await provider.addFileSources(filePaths);
-    return;
-  } catch (error) {
-    // Only fall back when upload UI is missing — NEVER on UNKNOWN_UI
-    // (upload may have succeeded; retrying paste duplicates sources).
-    if (!(error instanceof AutomationError) || error.code !== 'SELECTOR_NOT_FOUND') {
-      throw error;
-    }
-    logger.warn('Notebook file upload unavailable; falling back to Copied text', {
-      message: error.message,
+function recordSourceBindings(
+  db: DatabaseManager,
+  projectId: string,
+  notebookId: string | null,
+  bindingType: NotebookSourceBindingType,
+  needsMigration: string[],
+): void {
+  for (const type of KNOWLEDGE_TYPES) {
+    const fileName = KNOWLEDGE_FILE_NAMES[type];
+    const docTitle = fileName.replace(/\.md$/i, '');
+    const kf = db.knowledgeFiles.get(projectId, type);
+    const status =
+      bindingType === 'DRIVE_LIVE'
+        ? needsMigration.some((n) => n.includes(docTitle) || n.includes(type))
+          ? 'needs_migration'
+          : 'active'
+        : 'needs_migration';
+
+    db.notebookSourceBindings.upsert({
+      projectId,
+      notebookId,
+      knowledgeType: type,
+      driveFileId: kf?.drive_file_id ?? null,
+      sourceName: bindingType === 'DRIVE_LIVE' ? docTitle : fileName,
+      bindingType,
+      contentHash: kf?.content_hash ?? null,
+      localVersion: kf?.local_version ?? 0,
+      remoteVersion: kf?.remote_version ?? 0,
+      lastVerifiedVersion: status === 'active' ? (kf?.local_version ?? 0) : 0,
+      status,
     });
   }
+}
 
-  try {
-    await provider.addTextSources(knowledgeSources);
-    return;
-  } catch (error) {
-    if (!(error instanceof AutomationError) || error.code !== 'SELECTOR_NOT_FOUND') {
-      throw error;
-    }
-    logger.warn('Notebook Copied-text unavailable; falling back to Drive picker', {
-      message: error.message,
-    });
-  }
-
-  await provider.addDriveSources(sourceNames);
+/** Report whether Translation Notebook still has static / degraded bindings. */
+export function listStaticKnowledgeBindings(
+  db: DatabaseManager,
+  projectId: string,
+): { knowledgeType: KnowledgeType; bindingType: string; status: string; sourceName: string }[] {
+  return db.notebookSourceBindings
+    .listByProject(projectId)
+    .filter(
+      (row) =>
+        row.binding_type !== 'DRIVE_LIVE' ||
+        row.status === 'needs_migration',
+    )
+    .map((row) => ({
+      knowledgeType: row.knowledge_type as KnowledgeType,
+      bindingType: row.binding_type,
+      status: row.status,
+      sourceName: row.source_name,
+    }));
 }
 
 function loadNotebookInstructions(
@@ -193,7 +214,7 @@ export class NotebookService {
     const attachKnowledge = notebookRole !== 'RESEARCH';
     const instructions = loadNotebookInstructions(this.db, input.projectId, notebookRole);
     const instructionsHash = hashText(instructions);
-    const sourceNames = attachKnowledge ? [...DRIVE_PROJECT_FILES] : [];
+    const sourceNames = attachKnowledge ? [...DRIVE_PROJECT_DOC_TITLES] : [];
     const knowledgeSources = attachKnowledge
       ? buildKnowledgeSources(this.db, input.projectId)
       : [];
@@ -304,12 +325,27 @@ export class NotebookService {
 
       if (attachKnowledge) {
         try {
-          await attachKnowledgeSources(
+          const attachResult = await attachKnowledgeSources({
             provider,
+            driveSourceNames: sourceNames,
             knowledgeSources,
-            sourceNames,
-            knowledgeFilePaths,
+            filePaths: knowledgeFilePaths,
+            preferDriveLive: true,
+          });
+          recordSourceBindings(
+            this.db,
+            input.projectId,
+            notebook.id,
+            attachResult.bindingType,
+            attachResult.needsMigration,
           );
+          if (attachResult.migrationGuide) {
+            logger.warn('Notebook knowledge sources need migration', {
+              projectId: input.projectId,
+              guide: attachResult.migrationGuide,
+              staticRemaining: attachResult.staticRemaining,
+            });
+          }
         } catch (error) {
           if (error instanceof AutomationError) {
             return await handOffAssisted('add_sources', error.message);
@@ -318,6 +354,13 @@ export class NotebookService {
         }
 
         const verified = await provider.verifySources(sourceNames);
+        this.db.knowledgeSyncEvents.insert({
+          projectId: input.projectId,
+          eventType: 'NOTEBOOK_SOURCE_PRESENT',
+          message: verified.ok
+            ? `Sources present (${verified.present.length}).`
+            : `Sources partial; missing: ${verified.missing.join(', ')}`,
+        });
         if (!verified.ok && verified.present.length < sourceNames.length) {
           return await handOffAssisted(
             'verify',
@@ -326,10 +369,10 @@ export class NotebookService {
         }
       }
 
-      let instructionsApplied = false;
+      let _instructionsApplied = false;
       try {
         await provider.setInstructions(instructions);
-        instructionsApplied = true;
+        _instructionsApplied = true;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         logger.warn('Notebook instructions failed after sources verified', { message });
@@ -347,7 +390,9 @@ export class NotebookService {
           notebookName,
         );
       }
+      void _instructionsApplied;
 
+      // SOURCE_PRESENT ≠ CONTENT_CURRENT — stay sync_pending until version probe.
       const ready = this.db.notebooks.upsert({
         project_id: input.projectId,
         google_account_id: input.accountId,
@@ -355,24 +400,25 @@ export class NotebookService {
         notebook_role: notebookRole,
         notebook_id: mapping.notebook_id,
         resource_url: mapping.resource_url ?? page.url(),
-        status: 'ready',
+        status: attachKnowledge ? 'sync_pending' : 'ready',
         instructions_hash: instructionsHash,
         assisted_step: null,
         last_error: null,
-        last_verified_at: new Date().toISOString(),
+        last_verified_at: attachKnowledge ? null : new Date().toISOString(),
       });
       if (attachKnowledge) {
-        getNotebookSyncService(this.db).markNotebookVerified(
+        getNotebookSyncService(this.db).scheduleBackgroundVersionProbe(
           input.projectId,
           input.accountId,
-          notebookRole === 'SINGLE' ? 'SINGLE' : 'TRANSLATION',
         );
       }
       this.releaseAccountBusyForTranslate(input.accountId);
       return {
         mapping: this.toDto(ready),
         assisted: false,
-        message: 'Notebook đã thiết lập và xác minh.',
+        message: attachKnowledge
+          ? 'Notebook đã thiết lập; đang chờ xác minh knowledge version.'
+          : 'Notebook đã thiết lập và xác minh.',
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -429,7 +475,7 @@ export class NotebookService {
     const notebookName =
       existing.notebook_name ?? formatNotebookNameForRole(project.title, notebookRole);
     const attachKnowledge = notebookRole !== 'RESEARCH';
-    const sourceNames = attachKnowledge ? [...DRIVE_PROJECT_FILES] : [];
+    const sourceNames = attachKnowledge ? [...DRIVE_PROJECT_DOC_TITLES] : [];
     const knowledgeSources = attachKnowledge
       ? buildKnowledgeSources(this.db, input.projectId)
       : [];
@@ -541,12 +587,27 @@ export class NotebookService {
 
       if (attachKnowledge) {
         try {
-          await attachKnowledgeSources(
+          const attachResult = await attachKnowledgeSources({
             provider,
+            driveSourceNames: sourceNames,
             knowledgeSources,
-            sourceNames,
-            knowledgeFilePaths,
+            filePaths: knowledgeFilePaths,
+            preferDriveLive: true,
+          });
+          recordSourceBindings(
+            this.db,
+            input.projectId,
+            found.id,
+            attachResult.bindingType,
+            attachResult.needsMigration,
           );
+          if (attachResult.migrationGuide) {
+            logger.warn('Notebook knowledge sources need migration', {
+              projectId: input.projectId,
+              guide: attachResult.migrationGuide,
+              staticRemaining: attachResult.staticRemaining,
+            });
+          }
         } catch (error) {
           if (error instanceof AutomationError) {
             return await handOffAssisted('add_sources', error.message);
@@ -555,20 +616,27 @@ export class NotebookService {
         }
 
         const verified = await provider.verifySources(sourceNames);
+        this.db.knowledgeSyncEvents.insert({
+          projectId: input.projectId,
+          eventType: 'NOTEBOOK_SOURCE_PRESENT',
+          message: verified.ok
+            ? `Sources present (${verified.present.length}).`
+            : `Sources partial; missing: ${verified.missing.join(', ')}`,
+        });
         if (!verified.ok && verified.present.length < sourceNames.length) {
           return await handOffAssisted(
             'add_sources',
             `Missing sources: ${verified.missing.join(', ')}. ` +
               `Present: ${verified.present.join(', ') || '(none)'}. ` +
-              `Upload 00_…05_.md (or Copied text), then Resume`,
+              `Add Drive Docs 00_…08_ (or resume after Drive sync), then Resume`,
           );
         }
       }
 
-      let instructionsApplied = false;
+      let _instructionsApplied = false;
       try {
         await provider.setInstructions(instructions);
-        instructionsApplied = true;
+        _instructionsApplied = true;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         logger.warn('Notebook instructions failed after sources verified', { message });
@@ -586,6 +654,7 @@ export class NotebookService {
           notebookName,
         );
       }
+      void _instructionsApplied;
 
       const ready = this.db.notebooks.upsert({
         project_id: input.projectId,
@@ -594,18 +663,17 @@ export class NotebookService {
         notebook_role: notebookRole,
         notebook_id: found.id,
         resource_url: page.url(),
-        status: 'ready',
+        status: attachKnowledge ? 'sync_pending' : 'ready',
         assisted_step: null,
         last_error: null,
-        last_verified_at: new Date().toISOString(),
+        last_verified_at: attachKnowledge ? null : new Date().toISOString(),
         instructions_hash: hashText(instructions),
       });
 
       if (attachKnowledge) {
-        getNotebookSyncService(this.db).markNotebookVerified(
+        getNotebookSyncService(this.db).scheduleBackgroundVersionProbe(
           input.projectId,
           input.accountId,
-          notebookRole === 'SINGLE' ? 'SINGLE' : 'TRANSLATION',
         );
       }
 
@@ -617,7 +685,9 @@ export class NotebookService {
       return {
         mapping: this.toDto(ready),
         assisted: false,
-        message: 'Notebook đã thiết lập và xác minh.',
+        message: attachKnowledge
+          ? 'Notebook đã thiết lập; đang chờ xác minh knowledge version.'
+          : 'Notebook đã thiết lập và xác minh.',
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

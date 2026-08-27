@@ -21,6 +21,18 @@ import {
   resolveTranslationNotebook,
 } from './notebook-resolver';
 import type { NotebookLayout } from '@shared/constants/notebook-role';
+import type { VersionProbeStatus } from '@shared/constants/notebook-version-probe';
+import {
+  runKnowledgeVersionProbe,
+  type VersionProbeCapture,
+} from './notebook-version-probe';
+import { buildActiveHotMemoryText as buildHotMemoryFromSqlite } from './hot-memory-builder';
+
+function looksLikeStatusMessage(text: string): boolean {
+  return /delta after job|memory delta applied|term delta:|recent context after|world fact after/i.test(
+    text,
+  );
+}
 
 const TYPE_BY_EVENT: Record<string, KnowledgeType[]> = {
   PROJECT_METADATA_CHANGED: ['book_profile'],
@@ -42,6 +54,9 @@ export interface NotebookHealthDto {
   status: string;
   localVersion: number;
   notebookVersion: number;
+  pendingKnowledgeVersion: number;
+  verifiedKnowledgeVersion: number;
+  versionProbeStatus: VersionProbeStatus;
   lastSyncAt: string | null;
   lastVerifiedAt: string | null;
   lastDriveSyncAt: string | null;
@@ -57,6 +72,7 @@ export interface NotebookHealthDto {
   }[];
   dirty: boolean;
   usableForSlimPack: boolean;
+  knowledgeVerified: boolean;
 }
 
 export interface NotebookRoleHealthDto {
@@ -88,6 +104,11 @@ export class NotebookSyncService {
     this.builder = new NotebookKnowledgeBuilder(db);
   }
 
+  /**
+   * Mark knowledge dirty. Do NOT pass status messages as hotPayload —
+   * Hot Memory is built from SQLite deltas since Notebook verified (see hot-memory-builder).
+   * Optional hotPayload kept only for rare structured overrides / tests.
+   */
   markDirty(projectId: string, event: KnowledgeDirtyEvent, hotPayload?: string): void {
     const types = TYPE_BY_EVENT[event] ?? [...KNOWLEDGE_TYPES];
     this.db.knowledgeFiles.markAllDirty(projectId, types);
@@ -98,10 +119,19 @@ export class NotebookSyncService {
         this.db.notebooks.setStatus(mapping.id, 'stale');
       }
     }
-    if (hotPayload) {
-      this.db.notebookHotDeltas.insert(projectId, event, hotPayload);
+    this.db.driveSyncState.patch(projectId, {
+      versionProbeStatus: 'pending',
+    });
+    if (hotPayload?.trim() && !looksLikeStatusMessage(hotPayload)) {
+      this.db.notebookHotDeltas.insert(projectId, event, hotPayload.trim());
     }
     logger.info('Knowledge marked dirty', { projectId, event, types });
+    this.db.knowledgeSyncEvents.insert({
+      projectId,
+      eventType: 'KNOWLEDGE_DIRTY',
+      message: `Knowledge dirty: ${event}`,
+      metadata: { event, types },
+    });
   }
 
   rebuildKnowledge(projectId: string): ReturnType<NotebookKnowledgeBuilder['buildAll']> {
@@ -125,7 +155,8 @@ export class NotebookSyncService {
   }
 
   /**
-   * Drive upload then mark sync_pending. Caller verifies Notebook sources separately.
+   * Drive upload then mark sync_pending. CONTENT_CURRENT requires version probe —
+   * do not clear Hot Memory here.
    */
   async syncDrive(projectId: string): Promise<{ updated: boolean }> {
     this.db.knowledgeSyncEvents.insert({
@@ -147,6 +178,10 @@ export class NotebookSyncService {
       this.db.notebooks.markDriveSynced(mapping.id);
     }
 
+    this.db.driveSyncState.patch(projectId, {
+      versionProbeStatus: 'pending',
+    });
+
     this.db.knowledgeSyncEvents.insert({
       projectId,
       eventType: 'DRIVE_SYNC_COMPLETED',
@@ -154,35 +189,54 @@ export class NotebookSyncService {
     });
     this.db.knowledgeSyncEvents.insert({
       projectId,
+      eventType: 'DRIVE_SYNCED',
+      message: 'Drive sync completed.',
+    });
+    this.db.knowledgeSyncEvents.insert({
+      projectId,
       eventType: 'NOTEBOOK_SYNC_PENDING',
-      message: 'Đang chờ Notebook cập nhật nguồn.',
+      message: 'Đang chờ Notebook cập nhật nguồn (version probe).',
     });
 
     return { updated: true };
   }
 
-  markNotebookVerified(
+  /**
+   * Advance chapters_since_sync by real translated chapter count (batch 101–103 → +3).
+   * Critical changes can force shouldSync early. Does not upload Drive.
+   */
+  evaluateSyncPolicy(
     projectId: string,
-    accountId: string,
-    role: 'TRANSLATION' | 'SINGLE' = 'TRANSLATION',
-  ): void {
-    const mapping =
-      role === 'SINGLE'
-        ? this.db.notebooks.getByProjectWorkerRole(projectId, accountId, 'SINGLE')
-        : resolveTranslationNotebook(this.db, projectId, accountId);
-    if (!mapping) return;
-    for (const type of KNOWLEDGE_TYPES) {
-      this.db.knowledgeFiles.markVerified(projectId, type);
+    input: { chapterCount: number; critical?: boolean },
+  ): { shouldSync: boolean; chaptersSinceSync: number } {
+    const delta = Math.max(0, Math.floor(input.chapterCount));
+
+    if (input.critical) {
+      this.db.driveSyncState.patch(projectId, {
+        criticalChangePending: true,
+        syncStatus: 'pending',
+      });
     }
-    this.db.notebooks.markVerified(mapping.id);
-    this.db.notebookHotDeltas.clearActive(projectId);
-    this.db.knowledgeSyncEvents.insert({
-      projectId,
-      eventType: 'NOTEBOOK_SYNC_VERIFIED',
-      message: 'Notebook đã cập nhật bộ nhớ.',
+
+    const refreshed = this.db.driveSyncState.ensure(projectId);
+    const next = refreshed.chapters_since_sync + delta;
+    const shouldSync =
+      refreshed.critical_change_pending === 1 ||
+      next >= refreshed.sync_every_n_chapters;
+
+    this.db.driveSyncState.patch(projectId, {
+      chaptersSinceSync: shouldSync ? 0 : next,
+      criticalChangePending: shouldSync ? false : refreshed.critical_change_pending === 1,
+      ...(shouldSync ? { syncStatus: 'pending' as const } : {}),
     });
+
+    return {
+      shouldSync,
+      chaptersSinceSync: shouldSync ? 0 : next,
+    };
   }
 
+  /** @deprecated Prefer evaluateSyncPolicy with explicit chapterCount. */
   maybeAutoSyncAfterChapter(projectId: string): { shouldSync: boolean } {
     const settings = loadNotebookSettings(this.db, projectId);
     const state = this.db.driveSyncState.ensure(projectId);
@@ -197,6 +251,156 @@ export class NotebookSyncService {
       ...(shouldSync ? { syncStatus: 'pending' as const } : {}),
     });
     return { shouldSync };
+  }
+
+  /**
+   * @deprecated Name-only verify is NOT CONTENT_CURRENT.
+   * Prefer verifyKnowledgeVersion after Drive sync.
+   */
+  markNotebookVerified(
+    projectId: string,
+    accountId: string,
+    _role: 'TRANSLATION' | 'SINGLE' = 'TRANSLATION',
+  ): void {
+    const state = this.db.driveSyncState.ensure(projectId);
+    if (
+      state.version_probe_status === 'verified' &&
+      state.verified_knowledge_version === state.pending_knowledge_version &&
+      state.verified_sync_nonce &&
+      state.verified_sync_nonce === state.pending_sync_nonce
+    ) {
+      const mapping = resolveTranslationNotebook(this.db, projectId, accountId);
+      if (!mapping) return;
+      for (const type of KNOWLEDGE_TYPES) {
+        this.db.knowledgeFiles.markVerified(projectId, type);
+      }
+      this.db.notebooks.markVerified(mapping.id);
+      this.db.notebookHotDeltas.clearActive(projectId);
+      return;
+    }
+    logger.warn(
+      'markNotebookVerified ignored — requires NOTEBOOK_VERSION_VERIFIED (version+nonce probe)',
+      { projectId, accountId },
+    );
+  }
+
+  /**
+   * Prove Notebook reads pending sync-state version+nonce. Clears hot only on match.
+   */
+  async verifyKnowledgeVersion(
+    projectId: string,
+    accountId: string,
+    capture?: VersionProbeCapture,
+  ): Promise<{ status: string; packHint: 'slim' | 'hybrid' }> {
+    const captureFn =
+      capture ?? (await this.createBrowserVersionCapture(projectId, accountId));
+    const result = await runKnowledgeVersionProbe(this.db, {
+      projectId,
+      accountId,
+      capture: captureFn,
+    });
+    return { status: result.status, packHint: result.packHint };
+  }
+
+  /** Fire-and-forget background retry — never blocks translation. */
+  scheduleBackgroundVersionProbe(projectId: string, accountId: string): void {
+    const delays = [5_000, 30_000, 120_000];
+    let attempt = 0;
+    const tick = () => {
+      const state = this.db.driveSyncState.ensure(projectId);
+      if (state.version_probe_status === 'verified') return;
+      void this.verifyKnowledgeVersion(projectId, accountId)
+        .then((r) => {
+          if (r.status === 'verified') return;
+          attempt += 1;
+          if (attempt < delays.length) {
+            setTimeout(tick, delays[attempt]!);
+          }
+        })
+        .catch(() => {
+          attempt += 1;
+          if (attempt < delays.length) {
+            setTimeout(tick, delays[attempt]!);
+          }
+        });
+    };
+    setTimeout(tick, delays[0]!);
+  }
+
+  private async createBrowserVersionCapture(
+    projectId: string,
+    accountId: string,
+  ): Promise<VersionProbeCapture> {
+    const { GeminiBrowserProvider } = await import(
+      '../automation/providers/google/gemini-browser-provider'
+    );
+    const { getBrowserRuntimeManager } = await import(
+      '../automation/browser-runner/browser-runtime-manager'
+    );
+    const { browserProfileManager } = await import(
+      '../automation/browser-runner/profile-manager'
+    );
+    const { newId } = await import('../db/utils/uuid');
+    const { pathsService } = await import('../services/paths-service');
+    const pathMod = await import('node:path');
+
+    const mapping = resolveTranslationNotebook(this.db, projectId, accountId);
+    if (!mapping?.resource_url) {
+      throw new Error('Translation Notebook URL missing for version probe');
+    }
+    const profile = this.db.googleAccounts.getProfile(accountId);
+    if (!profile) throw new Error('Browser profile missing for version probe');
+    const profilePath = browserProfileManager.resolveProfilePath(profile.profile_dir_name);
+    const diagnosticsDir = pathMod.join(
+      pathsService.getPath('cache'),
+      'automation',
+      accountId,
+      'notebook-version-probe',
+    );
+
+    return async (prompt: string) => {
+      const provider = new GeminiBrowserProvider({
+        diagnosticsDir,
+        maxTimeoutMs: 90_000,
+        expectedNotebookUrl: mapping.resource_url,
+      });
+      const runtimeManager = getBrowserRuntimeManager();
+      return runtimeManager.runExclusive(
+        {
+          accountId,
+          profilePath,
+          diagnosticsDir,
+          headless: true,
+        },
+        async ({ runtime, prepareNotebook }) => {
+          void runtime;
+          const page = await prepareNotebook({
+            projectId,
+            notebookUrl: mapping.resource_url ?? '',
+            openNotebook: async (p, url) => {
+              provider.attachPage(p);
+              await provider.openProjectNotebook(url || mapping.resource_url);
+            },
+            verifyReady: async (p) => {
+              provider.attachPage(p);
+              const ok = await provider.healthCheck();
+              if (!ok.ok) {
+                await provider.openProjectNotebook(mapping.resource_url);
+              }
+            },
+          });
+          provider.attachPage(page);
+          await provider.createOrOpenTranslationThread({ forceNew: false });
+          const correlationId = newId();
+          await provider.submitPlainPrompt(prompt, correlationId);
+          await provider.waitForGenerationStart();
+          await provider.waitForGenerationComplete(correlationId);
+          const raw = await provider.extractLatestResponse(correlationId);
+          await provider.detach();
+          return raw.text;
+        },
+      );
+    };
   }
 
   getHealth(
@@ -234,6 +438,17 @@ export class NotebookSyncService {
       };
     });
 
+    const driveState = this.db.driveSyncState.ensure(projectId);
+    const pendingKnowledgeVersion = driveState.pending_knowledge_version;
+    const verifiedKnowledgeVersion = driveState.verified_knowledge_version;
+    const versionProbeStatus = (driveState.version_probe_status ||
+      'pending') as VersionProbeStatus;
+    const knowledgeVerified =
+      versionProbeStatus === 'verified' &&
+      verifiedKnowledgeVersion === pendingKnowledgeVersion &&
+      Boolean(driveState.verified_sync_nonce) &&
+      driveState.verified_sync_nonce === driveState.pending_sync_nonce;
+
     const localVersion = this.db.knowledgeFiles.maxLocalVersion(projectId);
     if (!mapping) {
       return {
@@ -243,6 +458,9 @@ export class NotebookSyncService {
         status: 'pending',
         localVersion,
         notebookVersion: 0,
+        pendingKnowledgeVersion,
+        verifiedKnowledgeVersion,
+        versionProbeStatus,
         lastSyncAt: null,
         lastVerifiedAt: null,
         lastDriveSyncAt: null,
@@ -250,18 +468,37 @@ export class NotebookSyncService {
         files,
         dirty: this.db.knowledgeFiles.anyDirty(projectId),
         usableForSlimPack: false,
+        knowledgeVerified: false,
         instructionsReady: false,
       };
     }
 
     const status = mapping.status;
+    const bindings = mapping.notebook_id
+      ? this.db.notebookSourceBindings.listByNotebook(projectId, mapping.notebook_id)
+      : this.db.notebookSourceBindings.listByProject(projectId);
+    const grounding =
+      bindings.length === 0
+        ? knowledgeVerified
+        : bindings.some((b) => b.status === 'active') &&
+          !bindings.some((b) => b.status === 'needs_migration');
+    // SLIM only when CONTENT_CURRENT (version+nonce probe) — not SOURCE_PRESENT alone.
+    const usableForSlimPack =
+      status === 'ready' &&
+      knowledgeVerified &&
+      grounding &&
+      !this.db.knowledgeFiles.anyDirty(projectId);
+
     return {
       projectId,
       accountId: mapping.google_account_id,
       notebookName: mapping.notebook_name,
       status,
-      localVersion,
-      notebookVersion: mapping.knowledge_version,
+      localVersion: Math.max(localVersion, pendingKnowledgeVersion),
+      notebookVersion: verifiedKnowledgeVersion || mapping.knowledge_version,
+      pendingKnowledgeVersion,
+      verifiedKnowledgeVersion,
+      versionProbeStatus,
       lastSyncAt: mapping.last_sync_at,
       lastVerifiedAt: mapping.last_verified_at,
       lastDriveSyncAt: mapping.last_drive_sync_at,
@@ -269,7 +506,8 @@ export class NotebookSyncService {
       instructionsReady: mapping.instructions_hash != null && mapping.instructions_hash.length > 0,
       files,
       dirty: this.db.knowledgeFiles.anyDirty(projectId),
-      usableForSlimPack: status === 'ready' || status === 'sync_pending',
+      usableForSlimPack,
+      knowledgeVerified,
     };
   }
 
@@ -321,12 +559,10 @@ export class NotebookSyncService {
     return { projectId, layout, translation, research };
   }
 
-  buildActiveHotMemoryText(projectId: string): string {
-    const deltas = this.db.notebookHotDeltas.listActive(projectId);
-    if (deltas.length === 0) return '';
-    return [
-      '## Hot Memory (unsynced — overrides Notebook)',
-      ...deltas.map((d) => `- [${d.kind}] ${d.payload_text}`),
-    ].join('\n');
+  buildActiveHotMemoryText(
+    projectId: string,
+    options?: { anchorChapter?: number | null; maxLines?: number; force?: boolean },
+  ): string {
+    return buildHotMemoryFromSqlite(this.db, projectId, options);
   }
 }
