@@ -162,10 +162,10 @@ describe('job watch helpers', () => {
           chunkTotal: 4,
           paragraphsDone: 12,
           providerType: 'GEMINI_WEB_API',
-          packMode: 'fat',
+          packMode: 'local_context',
         },
       }),
-    ).toBe('WAITING_AI|waiting_ai|2|4|12||GEMINI_WEB_API|fat|');
+    ).toBe('WAITING_AI|waiting_ai|2|4|12||GEMINI_WEB_API|local_context|');
     expect(
       jobWatchProgressKey({
         state: 'WAITING_AI',

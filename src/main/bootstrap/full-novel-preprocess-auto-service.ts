@@ -107,7 +107,7 @@ export class FullNovelPreprocessAutoService {
 
     push('syncing', 'Đồng bộ Drive…', 'quick');
     try {
-      await getNotebookSyncService(this.db).syncDrive(projectId);
+      await getNotebookSyncService(this.db).syncLocalKnowledge(projectId);
     } catch (err) {
       logger.warn('Quick preprocess: Drive sync deferred', {
         err: err instanceof Error ? err.message : String(err),

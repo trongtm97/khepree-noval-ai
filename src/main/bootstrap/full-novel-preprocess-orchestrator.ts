@@ -25,7 +25,6 @@ import {
   clearAutoPreprocessProgress,
   setAutoPreprocessProgress,
 } from './auto-preprocess-progress';
-import { getNotebookSyncService } from '../notebook/notebook-sync-service-singleton';
 import type { AutoPreprocessResult } from './auto-preprocess-progress';
 import type { AutoPreprocessStep } from '@shared/constants/notebooklm-preprocess-auto';
 import type { FullNovelPreprocessProgressSnapshot } from '../db/repositories/full-novel-preprocess-repository';
@@ -34,7 +33,6 @@ import { findUserMessageWithMarker } from '../automation/providers/google/respon
 import {
   getNotebookLayout,
   resolveResearchNotebook,
-  resolveTranslationNotebook,
 } from '../notebook/notebook-resolver';
 
 export interface FullOrchestratorOptions {
@@ -345,16 +343,14 @@ export class FullNovelPreprocessOrchestrator {
     }
 
     run = repo.setStage(runId, 'KNOWLEDGE_IMPORTED');
-    push('KNOWLEDGE_IMPORTED', 'Đã import knowledge');
+    push('KNOWLEDGE_IMPORTED', 'Đã import knowledge vào SQLite');
 
-    push('KNOWLEDGE_IMPORTED', 'Đồng bộ Translation Notebook…');
-    try {
-      await this.ensureTranslationNotebook(projectId, accountId);
-      await getNotebookSyncService(this.db).syncDrive(projectId);
-    } catch (err) {
-      logger.warn('Full preprocess: Translation notebook sync deferred', {
-        err: err instanceof Error ? err.message : String(err),
-        projectId,
+    const research = resolveResearchNotebook(this.db, projectId, accountId);
+    if (research) {
+      const corpusVersion = this.db.knowledgeFiles.maxLocalVersion(projectId);
+      this.db.notebooks.recordResearchAnalysis(research.id, {
+        corpusVersion,
+        analyzedAt: new Date().toISOString(),
       });
     }
 
@@ -521,15 +517,24 @@ export class FullNovelPreprocessOrchestrator {
             const existingNames = await notebook.readSourceNames();
             const toUpload: string[] = [];
             for (const part of parts) {
+              if (
+                part.uploaded_hash === part.content_hash &&
+                (part.source_status === 'READY' ||
+                  part.source_status === 'SKIPPED' ||
+                  part.source_status === 'UPLOADED')
+              ) {
+                continue;
+              }
               const present = existingNames.some(
                 (n) =>
                   n.toLowerCase().includes(part.file_name.toLowerCase().replace(/\.[^.]+$/, '')) ||
                   n.toLowerCase().includes(part.file_name.toLowerCase()),
               );
-              if (present) {
+              if (present && part.uploaded_hash === part.content_hash) {
                 repo.updatePartStatus(part.id, 'UPLOADED', {
                   notebook_source_name: part.file_name,
                   last_error: null,
+                  uploaded_hash: part.content_hash,
                 });
                 continue;
               }
@@ -537,7 +542,7 @@ export class FullNovelPreprocessOrchestrator {
                 part.source_status === 'READY' ||
                 part.source_status === 'SKIPPED'
               ) {
-                continue;
+                if (part.uploaded_hash === part.content_hash) continue;
               }
               toUpload.push(part.file_path);
             }
@@ -555,6 +560,7 @@ export class FullNovelPreprocessOrchestrator {
                   repo.updatePartStatus(part.id, 'UPLOADED', {
                     notebook_source_name: name,
                     last_error: null,
+                    uploaded_hash: part.content_hash,
                   });
                 }
               }
@@ -563,6 +569,7 @@ export class FullNovelPreprocessOrchestrator {
                 if (part) {
                   repo.updatePartStatus(part.id, 'SKIPPED', {
                     notebook_source_name: name,
+                    uploaded_hash: part.content_hash,
                   });
                 }
               }
@@ -611,7 +618,10 @@ export class FullNovelPreprocessOrchestrator {
                     );
                   if (!part) continue;
                   if (st.status === 'READY') {
-                    repo.updatePartStatus(part.id, 'READY', { last_error: null });
+                    repo.updatePartStatus(part.id, 'READY', {
+                      last_error: null,
+                      uploaded_hash: part.content_hash,
+                    });
                   } else if (st.status === 'PROCESSING') {
                     repo.updatePartStatus(part.id, 'PROCESSING');
                   } else if (st.status === 'ERROR') {
@@ -785,36 +795,6 @@ export class FullNovelPreprocessOrchestrator {
       };
     }
     return { needsAssisted: false, message: result.message };
-  }
-
-  private async ensureTranslationNotebook(
-    projectId: string,
-    accountId: string,
-  ): Promise<void> {
-    const layout = getNotebookLayout(this.db, projectId, accountId);
-    if (layout === 'SINGLE') return;
-
-    const mapping = resolveTranslationNotebook(this.db, projectId, accountId);
-    const ready =
-      mapping &&
-      (mapping.status === 'ready' ||
-        mapping.status === 'sync_pending' ||
-        mapping.status === 'stale');
-    if (ready) return;
-
-    const { getNotebookService } = await import('../services/notebook-service-singleton');
-    const result = await getNotebookService().provision({
-      projectId,
-      accountId,
-      headless: false,
-      role: 'TRANSLATION',
-    });
-    if (result.assisted) {
-      logger.warn('Translation notebook needs assisted setup after FULL import', {
-        projectId,
-        message: result.message,
-      });
-    }
   }
 
   private resolveAccountId(

@@ -28,6 +28,7 @@ export interface FullNovelPreprocessPartRow {
   file_name: string;
   file_path: string;
   content_hash: string;
+  uploaded_hash: string | null;
   chapter_from: number | null;
   chapter_to: number | null;
   source_status: PreprocessPartSourceStatus;
@@ -65,6 +66,7 @@ export interface UpsertPreprocessPartInput {
   chapter_to?: number | null;
   source_status?: PreprocessPartSourceStatus;
   notebook_source_name?: string | null;
+  uploaded_hash?: string | null;
 }
 
 const ACTIVE_STAGES: FullNovelPreprocessStage[] = [
@@ -213,6 +215,10 @@ export class FullNovelPreprocessRepository extends BaseRepository {
 
     if (existing) {
       const hashMatch = existing.content_hash === input.content_hash;
+      const uploadedMatch =
+        hashMatch &&
+        (existing.uploaded_hash === input.content_hash ||
+          input.uploaded_hash === input.content_hash);
       const now = utcNow();
       this.db
         .prepare(
@@ -220,6 +226,7 @@ export class FullNovelPreprocessRepository extends BaseRepository {
             file_name = ?,
             file_path = ?,
             content_hash = ?,
+            uploaded_hash = ?,
             chapter_from = ?,
             chapter_to = ?,
             source_status = ?,
@@ -232,14 +239,15 @@ export class FullNovelPreprocessRepository extends BaseRepository {
           input.file_name,
           input.file_path,
           input.content_hash,
+          hashMatch ? (input.uploaded_hash ?? existing.uploaded_hash) : null,
           input.chapter_from ?? null,
           input.chapter_to ?? null,
-          hashMatch && existing.source_status === 'READY'
-            ? 'READY'
+          uploadedMatch &&
+            (existing.source_status === 'READY' || existing.source_status === 'SKIPPED')
+            ? existing.source_status
             : hashMatch &&
                 (existing.source_status === 'UPLOADED' ||
-                  existing.source_status === 'PROCESSING' ||
-                  existing.source_status === 'SKIPPED')
+                  existing.source_status === 'PROCESSING')
               ? existing.source_status
               : (input.source_status ?? 'PENDING'),
           input.notebook_source_name ?? existing.notebook_source_name ?? input.file_name,
@@ -255,10 +263,10 @@ export class FullNovelPreprocessRepository extends BaseRepository {
     this.db
       .prepare(
         `INSERT INTO full_novel_preprocess_parts (
-          id, run_id, part_index, file_name, file_path, content_hash,
+          id, run_id, part_index, file_name, file_path, content_hash, uploaded_hash,
           chapter_from, chapter_to, source_status, notebook_source_name, last_error,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
       )
       .run(
         id,
@@ -267,6 +275,7 @@ export class FullNovelPreprocessRepository extends BaseRepository {
         input.file_name,
         input.file_path,
         input.content_hash,
+        input.uploaded_hash ?? null,
         input.chapter_from ?? null,
         input.chapter_to ?? null,
         input.source_status ?? 'PENDING',
@@ -288,7 +297,11 @@ export class FullNovelPreprocessRepository extends BaseRepository {
   updatePartStatus(
     partId: string,
     sourceStatus: PreprocessPartSourceStatus,
-    patch?: { last_error?: string | null; notebook_source_name?: string | null },
+    patch?: {
+      last_error?: string | null;
+      notebook_source_name?: string | null;
+      uploaded_hash?: string | null;
+    },
   ): FullNovelPreprocessPartRow {
     const existing = this.assertRow(this.getPartById(partId), 'full_novel_preprocess_part', partId);
     const now = utcNow();
@@ -298,6 +311,7 @@ export class FullNovelPreprocessRepository extends BaseRepository {
           source_status = ?,
           last_error = ?,
           notebook_source_name = ?,
+          uploaded_hash = ?,
           updated_at = ?
          WHERE id = ?`,
       )
@@ -307,6 +321,7 @@ export class FullNovelPreprocessRepository extends BaseRepository {
         patch?.notebook_source_name !== undefined
           ? patch.notebook_source_name
           : existing.notebook_source_name,
+        patch?.uploaded_hash !== undefined ? patch.uploaded_hash : existing.uploaded_hash,
         now,
         partId,
       );
@@ -326,7 +341,11 @@ export class FullNovelPreprocessRepository extends BaseRepository {
 
   partsNeedingUpload(runId: string): FullNovelPreprocessPartRow[] {
     return this.listParts(runId).filter(
-      (p) => p.source_status === 'PENDING' || p.source_status === 'ERROR',
+      (p) =>
+        p.source_status === 'PENDING' ||
+        p.source_status === 'ERROR' ||
+        (p.uploaded_hash !== p.content_hash &&
+          p.source_status !== 'SKIPPED'),
     );
   }
 

@@ -6,6 +6,7 @@
 
 import { buildLanguageProfile } from './language-catalog-build';
 import type { AiSupportTier, RegionGroup } from './language-catalog-types';
+import { formatLanguagePairStackedFromProfiles } from './language-catalog-search';
 import { WORLD_LANGUAGE_CATALOG } from './world-language-catalog';
 
 export type { AiSupportTier, RegionGroup };
@@ -17,6 +18,7 @@ export {
 export {
   formatLanguagePickerLabel,
   formatLanguagePickerStacked,
+  formatLanguagePairStackedFromProfiles,
   searchLanguageProfiles,
   groupLanguageProfilesByRegion,
   REGION_GROUP_LABELS_VI,
@@ -145,6 +147,11 @@ export function listLanguageProfiles(): LanguageProfile[] {
   );
 }
 
+/** Canonical catalog codes (BCP-47), sorted — used by AI detect allow-list. */
+export function listLanguageCatalogCodes(): string[] {
+  return [...registry.keys()].sort((a, b) => a.localeCompare(b));
+}
+
 export function hasLanguageProfile(code: string): boolean {
   return registry.has(normalizeLanguageCode(code));
 }
@@ -233,6 +240,16 @@ export function formatLanguagePairLabel(
   targetCode: string,
 ): string {
   return `${languageCompactLabel(sourceCode)} → ${languageCompactLabel(targetCode)}`;
+}
+
+/** Stacked pair: intl names on line 1, native · code on line 2. */
+export function formatLanguagePairStacked(
+  sourceCode: string,
+  targetCode: string,
+): { internationalLine: string; nativeLine: string } {
+  const source = getLanguageProfile(sourceCode);
+  const target = getLanguageProfile(targetCode);
+  return formatLanguagePairStackedFromProfiles(source, target);
 }
 
 /**

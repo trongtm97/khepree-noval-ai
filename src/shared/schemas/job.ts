@@ -42,7 +42,7 @@ export const JobAttemptDtoSchema = z.object({
   accountId: z.string().nullable().optional(),
   notebookId: z.string().nullable().optional(),
   threadRef: z.string().nullable().optional(),
-  packMode: z.enum(['slim', 'hybrid', 'fat']).nullable().optional(),
+  packMode: z.enum(['local_context', 'notebook_assisted']).nullable().optional(),
   knowledgeVersion: z.number().int().nonnegative().nullable().optional(),
   startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
@@ -80,11 +80,10 @@ export const JobDtoSchema = z.object({
       /** Winning AI channel for this send (Web API vs Playwright Notebook). */
       providerType: z.string().optional(),
       /**
-       * slim = Notebook cold verified;
-       * hybrid = Notebook + local delta;
-       * fat = full SQLite (WebAPI / no notebook).
+       * local_context = default ContextSelector pack (provider-neutral);
+       * notebook_assisted = explicit opt-in future mode.
        */
-      packMode: z.enum(['slim', 'hybrid', 'fat']).optional(),
+      packMode: z.enum(['local_context', 'notebook_assisted']).optional(),
       notebookId: z.string().nullable().optional(),
       notebookName: z.string().nullable().optional(),
       notebookRole: z.enum(['TRANSLATION', 'RESEARCH', 'SINGLE']).nullable().optional(),
@@ -96,7 +95,7 @@ export const JobDtoSchema = z.object({
       notebookKnowledgeVersion: z.number().int().nonnegative().optional(),
       notebookVerifiedVersion: z.number().int().nonnegative().optional(),
       hotDeltaCount: z.number().int().nonnegative().optional(),
-      knowledgeSourceMode: z.enum(['DRIVE_LIVE', 'STATIC', 'LOCAL_ONLY']).optional(),
+      knowledgeSourceMode: z.enum(['STATIC', 'LOCAL_ONLY']).optional(),
       continuationRound: z.number().int().nonnegative().optional(),
       lastCompletedParagraphId: z.string().nullable().optional(),
       timeline: z
@@ -120,6 +119,10 @@ export const JobDtoSchema = z.object({
         .optional(),
     })
     .nullable(),
+  /** Local knowledge version frozen at first pack send for this job. */
+  knowledgeVersionAtStart: z.number().int().nonnegative().nullable().optional(),
+  /** Local knowledge version after post-PASS learning commit. */
+  knowledgeVersionAtCommit: z.number().int().nonnegative().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
   startedAt: z.string().nullable(),

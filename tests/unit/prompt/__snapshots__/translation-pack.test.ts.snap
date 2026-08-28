@@ -7,8 +7,10 @@ exports[`TranslationPackBuilder snapshots > includes only source IDs from batch,
 `;
 
 exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > active-terms 1`] = `
-"## Active Project Terms
+"## Locked Terms
 李逍遥 → Lý Tiêu Dao (PERSON) LOCKED
+
+## Relevant Terms
 青云门 → Thanh Vân Môn (SECT)"
 `;
 
@@ -16,11 +18,10 @@ exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable
 "## Knowledge Priority
 If conflict:
 1. This Translation Pack explicit instruction
-2. HOT MEMORY (unsynced overrides)
+2. HOT MEMORY (recent SQLite changes)
 3. LOCKED PROJECT TERM
-4. Current Project Memory in pack
-5. Notebook Knowledge sources
-6. Model general knowledge (lowest)
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
 Do not let general knowledge override locked project terms.
 
 ## Critical Rules
@@ -47,16 +48,15 @@ Translate:
 Style: balanced
 Range: chapter 451
 Preserve every paragraph ID from Source exactly.
-Use ONLY active context below. Do not invent terms, characters, or plot.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
 
 ## Knowledge Priority
 If conflict:
 1. This Translation Pack explicit instruction
-2. HOT MEMORY (unsynced overrides)
+2. HOT MEMORY (recent SQLite changes)
 3. LOCKED PROJECT TERM
-4. Current Project Memory in pack
-5. Notebook Knowledge sources
-6. Model general knowledge (lowest)
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
 Do not let general knowledge override locked project terms.
 
 ## Critical Rules
@@ -68,14 +68,26 @@ Do not let general knowledge override locked project terms.
 - Source is Simplified Chinese; do not invent Traditional variants in the target.
 - Keep locked names exact.
 
-## Hot Memory
-story: {"summary":"MC arrives at Qingyun.","location":{"place":"青云门"},"openPlots":["Who attacked the mountain?"]}
-char: 李逍遥=Lý Tiêu Dao [protagonist] aliases=逍遥
-rel: 李逍遥→赵灵儿 (friend) calls=灵儿/逍遥哥哥
-mem@450: plot.mc_realm=Foundation Establishment
+## Active Characters
+李逍遥 → Lý Tiêu Dao [protagonist] aliases=逍遥
 
-## Active Project Terms
+## Relevant Relationships
+李逍遥 → 赵灵儿 (friend) calls=灵儿/逍遥哥哥
+
+## Current Story State
+MC arrives at Qingyun.
+{"location":{"place":"青云门"},"openPlots":["Who attacked the mountain?"]}
+
+## Relevant World Facts
+(none)
+
+## Recent Context
+@450 plot.mc_realm=Foundation Establishment
+
+## Locked Terms
 李逍遥 → Lý Tiêu Dao (PERSON) LOCKED
+
+## Relevant Terms
 青云门 → Thanh Vân Môn (SECT)
 
 ## Source
@@ -109,11 +121,21 @@ Rules:
 `;
 
 exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > hot-memory 1`] = `
-"## Hot Memory
-story: {"summary":"MC arrives at Qingyun.","location":{"place":"青云门"},"openPlots":["Who attacked the mountain?"]}
-char: 李逍遥=Lý Tiêu Dao [protagonist] aliases=逍遥
-rel: 李逍遥→赵灵儿 (friend) calls=灵儿/逍遥哥哥
-mem@450: plot.mc_realm=Foundation Establishment"
+"## Active Characters
+李逍遥 → Lý Tiêu Dao [protagonist] aliases=逍遥
+
+## Relevant Relationships
+李逍遥 → 赵灵儿 (friend) calls=灵儿/逍遥哥哥
+
+## Current Story State
+MC arrives at Qingyun.
+{"location":{"place":"青云门"},"openPlots":["Who attacked the mountain?"]}
+
+## Relevant World Facts
+(none)
+
+## Recent Context
+@450 plot.mc_realm=Foundation Establishment"
 `;
 
 exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > task-header 1`] = `
@@ -130,5 +152,5 @@ Translate:
 Style: balanced
 Range: chapter 451
 Preserve every paragraph ID from Source exactly.
-Use ONLY active context below. Do not invent terms, characters, or plot."
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot."
 `;

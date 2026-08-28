@@ -100,8 +100,7 @@ const USABLE_NOTEBOOK_STATUSES = new Set([
 
 /**
  * Translation / Research Notebook mapped account (priority 2).
- * When several accounts have notebooks, prefer the Drive-assigned worker's mapping
- * so setWorker → assignWorker correctly rebinds the project.
+ * When several accounts have notebooks, prefer the project-assigned worker's mapping.
  */
 export function resolveNotebookMappedAccountId(
   db: DatabaseManager,
@@ -110,11 +109,11 @@ export function resolveNotebookMappedAccountId(
 ): string | null {
   const mappings = db.notebooks.listByProject(projectId);
   const preferRoles =
-    purpose === 'research'
+    purpose === 'research' || purpose === 'preprocess'
       ? (['RESEARCH', 'SINGLE'] as const)
-      : (['TRANSLATION', 'SINGLE'] as const);
-  const driveAccountId =
-    db.driveSyncState.getByProject(projectId)?.google_account_id ?? null;
+      : (['RESEARCH', 'SINGLE'] as const);
+  const pinnedAccountId =
+    db.knowledgeSyncState.getByProject(projectId)?.google_account_id ?? null;
 
   const pick = (accountFilter: string | null): string | null => {
     const scoped = accountFilter
@@ -141,23 +140,23 @@ export function resolveNotebookMappedAccountId(
     return any?.google_account_id ?? null;
   };
 
-  if (driveAccountId) {
-    const onDrive = pick(driveAccountId);
-    if (onDrive) return onDrive;
+  if (pinnedAccountId) {
+    const onPinned = pick(pinnedAccountId);
+    if (onPinned) return onPinned;
   }
   return pick(null);
 }
 
 /**
- * Drive-assigned worker or account.assigned_project_ids (priority 3).
+ * Project-assigned worker (knowledge sync state) or account.assigned_project_ids (priority 3).
  */
 export function resolveProjectAssignedAccountId(
   db: DatabaseManager,
   projectId: string,
 ): string | null {
-  const drive = db.driveSyncState.getByProject(projectId);
-  if (drive?.google_account_id && db.googleAccounts.getById(drive.google_account_id)) {
-    return drive.google_account_id;
+  const pinned = db.knowledgeSyncState.getByProject(projectId);
+  if (pinned?.google_account_id && db.googleAccounts.getById(pinned.google_account_id)) {
+    return pinned.google_account_id;
   }
 
   const accounts = db.googleAccounts.listDetails();
@@ -203,7 +202,7 @@ function resolveReadyFallbackAccountId(db: DatabaseManager): string | null {
  * Priority:
  * 1. pinned / current active job worker
  * 2. Translation Notebook mapped account (or Research for research purpose)
- * 3. project assigned worker (Drive + assigned_project_ids)
+ * 3. project assigned worker (knowledge sync pin + assigned_project_ids)
  * 4. explicit user preferredAccountId
  * 5. READY fallback — only when project has no binding
  */
@@ -267,7 +266,7 @@ export class ProjectWorkerResolver {
   }
 
   /**
-   * Persist project→worker binding and optionally ensure Translation Notebook.
+   * Persist project→worker binding and optionally prepare local knowledge.
    */
   async setWorker(input: {
     projectId: string;
@@ -285,7 +284,7 @@ export class ProjectWorkerResolver {
       throw new Error(`Project not found: ${input.projectId}`);
     }
 
-    this.db.driveSyncState.assignWorker(input.projectId, input.accountId);
+    this.db.knowledgeSyncState.assignWorker(input.projectId, input.accountId);
 
     let notebookStatus: string | null = null;
     let needsAssisted = false;

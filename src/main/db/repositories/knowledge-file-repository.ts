@@ -102,30 +102,28 @@ export class KnowledgeFileRepository extends BaseRepository {
     return this.assertRow(this.get(projectId, knowledgeType), 'knowledge_file', row.id);
   }
 
-  markDriveSynced(
+  markLocalSynced(
     projectId: string,
     knowledgeType: KnowledgeType,
-    meta?: { driveFileId?: string | null; mimeType?: string | null },
   ): void {
     const row = this.ensure(projectId, knowledgeType);
     this.db
       .prepare(
-        `UPDATE knowledge_files SET
-          last_drive_sync_at = ?,
-          drive_file_id = COALESCE(?, drive_file_id),
-          mime_type = COALESCE(?, mime_type),
-          updated_at = ?
-        WHERE id = ?`,
+        `UPDATE knowledge_files SET last_drive_sync_at = ?, updated_at = ? WHERE id = ?`,
       )
-      .run(
-        utcNow(),
-        meta?.driveFileId ?? null,
-        meta?.mimeType ?? null,
-        utcNow(),
-        row.id,
-      );
+      .run(utcNow(), utcNow(), row.id);
   }
 
+  /** @deprecated Use markLocalSynced — legacy name; does not write drive_file_id. */
+  markDriveSynced(
+    projectId: string,
+    knowledgeType: KnowledgeType,
+    _meta?: { driveFileId?: string | null; mimeType?: string | null },
+  ): void {
+    this.markLocalSynced(projectId, knowledgeType);
+  }
+
+  /** @deprecated Legacy Drive column — no production writes. */
   setDriveFile(
     projectId: string,
     knowledgeType: KnowledgeType,

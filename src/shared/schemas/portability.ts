@@ -67,11 +67,21 @@ export const PreviewRestoreRequestSchema = z.object({
   archivePath: z.string().min(1),
 });
 
+export const RestorePreviewSummarySchema = z.object({
+  projectTitle: z.string().nullable(),
+  sourceLanguage: z.string().nullable(),
+  targetLanguage: z.string().nullable(),
+  chapterCount: z.number().int().nonnegative().nullable(),
+  translationCount: z.number().int().nonnegative().nullable(),
+  backupDate: z.string(),
+});
+
 export const PreviewRestoreResponseSchema = z.object({
   manifest: BackupManifestSchema,
   compatible: z.boolean(),
   warnings: z.array(z.string()),
   requiresOverwrite: z.boolean(),
+  summary: RestorePreviewSummarySchema,
 });
 
 export const RestoreBackupRequestSchema = z.object({
@@ -89,6 +99,10 @@ export const RestoreBackupResponseSchema = z.object({
 export const AutoBackupConfigSchema = z.object({
   enabled: z.boolean(),
   intervalHours: z.number().int().positive(),
+  retentionDaily: z.number().int().positive(),
+  retentionWeekly: z.number().int().positive(),
+  retentionMonthly: z.number().int().positive(),
+  /** @deprecated Mirror of retentionDaily for legacy UI. */
   retentionCount: z.number().int().positive(),
   lastRunAt: z.string().nullable(),
 });
@@ -98,7 +112,23 @@ export type AutoBackupConfig = z.infer<typeof AutoBackupConfigSchema>;
 export const SetAutoBackupConfigRequestSchema = AutoBackupConfigSchema.pick({
   enabled: true,
   intervalHours: true,
-  retentionCount: true,
+  retentionDaily: true,
+  retentionWeekly: true,
+  retentionMonthly: true,
+});
+
+export const BackupDirectorySchema = z.object({
+  directory: z.string(),
+  isCustom: z.boolean(),
+});
+
+export const SetBackupDirectoryRequestSchema = z.object({
+  directory: z.string().nullable(),
+});
+
+export const SelectBackupDirectoryResponseSchema = z.object({
+  canceled: z.boolean(),
+  directory: z.string().nullable(),
 });
 
 export const BackupEntrySchema = z.object({
@@ -106,7 +136,7 @@ export const BackupEntrySchema = z.object({
   filePath: z.string(),
   createdAt: z.string(),
   sizeBytes: z.number().int(),
-  kind: z.enum(['auto', 'manual', 'migration']).optional(),
+  kind: z.enum(['auto', 'manual', 'migration', 'archive']).optional(),
 });
 
 export const ListBackupsResponseSchema = z.object({

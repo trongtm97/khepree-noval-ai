@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Check, AlertTriangle, Circle, ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { NotebookDualHealthDto, NotebookHealthDto } from '@shared/schemas/notebook';
 import { Button, Badge, ErrorPanel } from '../components/ui';
 import { useT } from '../i18n';
@@ -12,35 +12,21 @@ import { confirmDangerous } from '../utils/confirm-dangerous';
 
 type FriendlyStatus = 'ready' | 'pending' | 'stale' | 'error' | 'assisted' | 'unknown';
 
-function classifyStatus(health: NotebookHealthDto | null): FriendlyStatus {
-  if (!health) return 'unknown';
-  if (health.status === 'assisted_setup') return 'assisted';
-  if (health.status === 'error' || health.status === 'unavailable') return 'error';
+function classifyResearchStatus(
+  research: NotebookDualHealthDto['research'],
+): FriendlyStatus {
+  if (!research) return 'unknown';
+  if (research.status === 'assisted_setup') return 'assisted';
+  if (research.status === 'error' || research.status === 'unavailable') return 'error';
+  if (research.status === 'ready') return 'ready';
   if (
-    health.status === 'stale' ||
-    health.status === 'sync_pending' ||
-    health.status === 'syncing' ||
-    (health.pendingKnowledgeVersion > health.verifiedKnowledgeVersion &&
-      !health.knowledgeVerified)
+    research.status === 'stale' ||
+    research.status === 'sync_pending' ||
+    research.status === 'syncing'
   ) {
-    return health.status === 'stale' || !health.knowledgeVerified ? 'stale' : 'pending';
+    return 'pending';
   }
-  if (health.status === 'ready' && health.knowledgeVerified) return 'ready';
-  if (health.status === 'ready') return 'pending';
   return 'unknown';
-}
-
-function formatRelative(iso: string | null, t: (k: string, p?: Record<string, string>) => string): string {
-  if (!iso) return t('aiMemory.updatedNever');
-  const ms = Date.now() - new Date(iso).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return t('aiMemory.updatedNever');
-  const mins = Math.max(0, Math.round(ms / 60_000));
-  if (mins < 1) return t('aiMemory.updatedJustNow');
-  if (mins < 60) return t('aiMemory.updatedMinutes', { n: String(mins) });
-  const hours = Math.round(mins / 60);
-  if (hours < 48) return t('aiMemory.updatedHours', { n: String(hours) });
-  const days = Math.round(hours / 24);
-  return t('aiMemory.updatedDays', { n: String(days) });
 }
 
 export function AiMemoryPage() {
@@ -59,7 +45,9 @@ export function AiMemoryPage() {
     characterCount: number;
     relationshipCount: number;
     termCandidateCount: number;
+    hasLegacyDriveConfig?: boolean;
   } | null>(null);
+  const [legacyDriveDismissed, setLegacyDriveDismissed] = useState(false);
   const [summary, setSummary] = useState({
     characters: 0,
     terms: 0,
@@ -84,7 +72,8 @@ export function AiMemoryPage() {
     totalChapters: number;
   } | null>(null);
   const [importText, setImportText] = useState('');
-  const [syncAfterImport, setSyncAfterImport] = useState(true);
+  const [researchQuestion, setResearchQuestion] = useState('');
+  const [researchAnswer, setResearchAnswer] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
@@ -132,7 +121,7 @@ export function AiMemoryPage() {
       const result = await window.novelTrans.projects.setWorker({
         projectId,
         accountId: nextAccountId,
-        ensureNotebook: true,
+        ensureNotebook: false,
       });
       await refresh();
       setMessage(result.message);
@@ -143,6 +132,13 @@ export function AiMemoryPage() {
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    if (!projectId) return;
+    setLegacyDriveDismissed(
+      window.localStorage.getItem(`legacy-drive-notice:${projectId}`) === '1',
+    );
+  }, [projectId]);
 
   useEffect(() => {
     void refresh().catch((err: unknown) => {
@@ -177,27 +173,37 @@ export function AiMemoryPage() {
     }
   };
 
-  const syncNow = () => {
-    if (!projectId) return;
-    void run(
-      () =>
-        window.novelTrans.notebook.syncNow({
-          projectId,
-          accountId: accountId ?? undefined,
-        }),
-      t('aiMemory.msgSynced'),
-    );
-  };
-
   const openNotebook = async () => {
+    if (!projectId) return;
     if (!accountId) {
       navigate('/accounts');
       return;
     }
     try {
-      await window.novelTrans.accounts.openBrowser(accountId, 'notebook');
+      await window.novelTrans.notebook.openResearch({ projectId, accountId });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
+    }
+  };
+
+  const runResearchQuery = async () => {
+    if (!projectId || !researchQuestion.trim()) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    setResearchAnswer(null);
+    try {
+      const result = await window.novelTrans.notebook.researchQuery({
+        projectId,
+        accountId: accountId ?? undefined,
+        question: researchQuestion.trim(),
+      });
+      setResearchAnswer(`${result.answer}\n\n— ${result.disclaimer}`);
+      setMessage(t('aiMemory.researchQueryOk'));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -305,14 +311,8 @@ export function AiMemoryPage() {
         projectId,
         text: filePath ? undefined : importText,
         filePath: filePath ?? undefined,
-        syncDrive: syncAfterImport,
+        syncLocalKnowledge: true,
       });
-      if (syncAfterImport && accountId) {
-        await window.novelTrans.notebook.syncNow({
-          projectId,
-          accountId,
-        });
-      }
       await refresh();
       setMessage(
         t('aiMemory.importOk', {
@@ -330,21 +330,14 @@ export function AiMemoryPage() {
     }
   };
 
-  const friendly = classifyStatus(health);
-  const version =
-    health?.verifiedKnowledgeVersion ??
-    health?.notebookVersion ??
-    health?.pendingKnowledgeVersion ??
-    health?.localVersion ??
-    0;
-  const updatedAt =
-    health?.lastVerifiedAt ?? health?.lastDriveSyncAt ?? health?.lastSyncAt ?? null;
+  const friendly = classifyResearchStatus(dualHealth?.research ?? null);
 
   const researchOk =
     dualHealth?.research != null &&
     (dualHealth.research.status === 'ready' ||
       dualHealth.research.status === 'sync_pending' ||
-      dualHealth.research.status === 'syncing');
+      dualHealth.research.status === 'syncing' ||
+      dualHealth.research.status === 'stale');
   const researchDone =
     researchOk ||
     bootstrap?.status === 'COMPLETED' ||
@@ -352,11 +345,18 @@ export function AiMemoryPage() {
     bootstrap?.status === 'READY' ||
     (bootstrap?.throughChapter != null && bootstrap.throughChapter > 0);
 
-  const translationVerified = Boolean(health?.knowledgeVerified);
+  const localMemoryReady =
+    summary.characters > 0 ||
+    summary.terms > 0 ||
+    summary.relationships > 0 ||
+    (summary.throughChapter ?? 0) > 0 ||
+    bootstrap?.status === 'COMPLETED' ||
+    bootstrap?.status === 'COMPLETED_WITH_WARNINGS' ||
+    bootstrap?.status === 'READY';
 
   const errorCta =
     error || friendly === 'error' || friendly === 'assisted'
-      ? friendly === 'assisted' || health?.status === 'assisted_setup'
+      ? friendly === 'assisted' || dualHealth?.research?.status === 'assisted_setup'
         ? {
             label: t('aiMemory.ctaOpenNotebook'),
             onClick: () => {
@@ -370,7 +370,7 @@ export function AiMemoryPage() {
                 navigate('/accounts');
               },
             }
-          : !health || health.status === 'pending' || health.status === 'unavailable'
+          : !dualHealth?.research || dualHealth.research.status === 'pending' || dualHealth.research.status === 'unavailable'
             ? {
                 label: t('aiMemory.ctaInitMemory'),
                 onClick: () => {
@@ -378,10 +378,27 @@ export function AiMemoryPage() {
                 },
               }
             : {
-                label: t('aiMemory.syncNow'),
-                onClick: syncNow,
+                label: t('aiMemory.ctaInitMemory'),
+                onClick: () => {
+                  void initMemory(false);
+                },
               }
       : null;
+
+  const storyChapter = summary.throughChapter ?? bootstrap?.throughChapter ?? null;
+  const recentTo = storyChapter;
+  const recentFrom =
+    storyChapter != null ? Math.max(1, storyChapter - 19) : null;
+  const fullResearchChapter =
+    bootstrap?.throughChapter ?? bootstrap?.chapterCount ?? storyChapter;
+  const showLegacyDriveNotice =
+    Boolean(bootstrap?.hasLegacyDriveConfig) && !legacyDriveDismissed;
+
+  const dismissLegacyDriveNotice = () => {
+    if (!projectId) return;
+    window.localStorage.setItem(`legacy-drive-notice:${projectId}`, '1');
+    setLegacyDriveDismissed(true);
+  };
 
   if (!projectId) {
     return (
@@ -408,46 +425,24 @@ export function AiMemoryPage() {
         <HelpContextButton articleId="bootstrap-memory" />
       </header>
 
-      <div className="ai-memory-status-row">
-        {friendly === 'ready' ? (
-          <Badge tone="success">✓ {t('aiMemory.statusReady')}</Badge>
-        ) : friendly === 'stale' || friendly === 'pending' ? (
-          <Badge tone="warning">{t('aiMemory.statusPending')}</Badge>
-        ) : friendly === 'error' || friendly === 'assisted' ? (
-          <Badge tone="error">{statusLabelBadge(friendly, t)}</Badge>
-        ) : (
-          <Badge>{t('aiMemory.statusPending')}</Badge>
-        )}
-      </div>
-
-      {friendly === 'ready' ? (
-        <p className="ai-memory-lead">
-          {t('aiMemory.readyLead', { version: String(version) })}
-          <br />
-          <span className="muted">{formatRelative(updatedAt, t)}</span>
-        </p>
-      ) : null}
-
-      {friendly === 'stale' || friendly === 'pending' ? (
-        <div className="ai-memory-stale banner banner-info" role="status">
-          <p>
-            <strong>{t('aiMemory.staleTitle')}</strong>
-          </p>
-          <p className="muted u-mb-0">
-            {t('aiMemory.staleBody')}
-          </p>
+      {showLegacyDriveNotice ? (
+        <div className="banner banner-info ai-memory-legacy-drive" role="status">
+          <p>{t('aiMemory.legacyDriveNotice')}</p>
+          <Button size="sm" variant="ghost" onClick={dismissLegacyDriveNotice}>
+            {t('aiMemory.legacyDriveDismiss')}
+          </Button>
         </div>
       ) : null}
 
       {(error || friendly === 'error' || friendly === 'assisted') && errorCta ? (
         <ErrorPanel
-          title={friendlyError(error ?? health?.lastError).title}
+          title={friendlyError(error ?? dualHealth?.research?.lastError ?? health?.lastError).title}
           description={
             friendly === 'assisted'
               ? t('aiMemory.initNeedsAssisted')
-              : friendlyError(error ?? health?.lastError).description
+              : friendlyError(error ?? dualHealth?.research?.lastError ?? health?.lastError).description
           }
-          technical={error ?? health?.lastError}
+          technical={error ?? dualHealth?.research?.lastError ?? health?.lastError}
           tone={friendly === 'assisted' ? 'warning' : 'error'}
           actions={[
             {
@@ -463,6 +458,43 @@ export function AiMemoryPage() {
       {progressMsg && busy ? <p className="muted">{progressMsg}</p> : null}
 
       <section className="ai-memory-card">
+        <h2 className="ai-memory-section-title">{t('aiMemory.localMemorySection')}</h2>
+        {localMemoryReady ? (
+          <Badge tone="success">✓ {t('aiMemory.localMemoryActive')}</Badge>
+        ) : (
+          <Badge tone="warning">{t('aiMemory.localMemoryPending')}</Badge>
+        )}
+
+        <ul className="ai-memory-stats">
+          <li>{t('aiMemory.statTerms', { n: String(summary.terms) })}</li>
+          <li>{t('aiMemory.statCharacters', { n: String(summary.characters) })}</li>
+          <li>{t('aiMemory.statRelationships', { n: String(summary.relationships) })}</li>
+          <li>
+            {storyChapter != null
+              ? t('aiMemory.storyStateChapter', { n: String(storyChapter) })
+              : t('aiMemory.storyStateUnknown')}
+          </li>
+          <li>
+            {recentFrom != null && recentTo != null
+              ? t('aiMemory.recentContextRange', {
+                  from: String(recentFrom),
+                  to: String(recentTo),
+                })
+              : t('aiMemory.recentContextUnknown')}
+          </li>
+        </ul>
+      </section>
+
+      <section className="ai-memory-card">
+        <h2 className="ai-memory-section-title">{t('aiMemory.fullResearchSection')}</h2>
+        {researchDone && fullResearchChapter != null ? (
+          <p className="ai-memory-research-status">
+            ✓ {t('aiMemory.fullResearchDone', { n: String(fullResearchChapter) })}
+          </p>
+        ) : (
+          <p className="muted">{t('aiMemory.fullResearchPending')}</p>
+        )}
+
         <div className="ai-memory-meta">
           <div>
             <span className="muted">{t('aiMemory.accountLabel')}</span>
@@ -488,60 +520,41 @@ export function AiMemoryPage() {
           </div>
         </div>
 
-        <ul className="ai-memory-checklist">
-          <li className={researchDone ? 'is-ok' : ''}>
-            {researchDone ? <Check size={16} aria-hidden /> : <Circle size={16} aria-hidden />}
-            <div>
-              <strong>{t('aiMemory.researchLabel')}</strong>
-              <p className="muted">
-                {researchDone
-                  ? t('aiMemory.researchDone')
-                  : t('aiMemory.researchPending')}
-              </p>
-            </div>
-          </li>
-          <li className={translationVerified ? 'is-ok' : ''}>
-            {translationVerified ? (
-              <Check size={16} aria-hidden />
-            ) : (
-              <AlertTriangle size={16} aria-hidden />
-            )}
-            <div>
-              <strong>{t('aiMemory.translationMemoryLabel')}</strong>
-              <p className="muted">
-                {translationVerified
-                  ? t('aiMemory.translationMemoryVerified')
-                  : t('aiMemory.translationMemoryPending')}
-              </p>
-            </div>
-          </li>
-        </ul>
-
-        <div className="ai-memory-summary">
-          <h3>{t('aiMemory.knowledgeSummary')}</h3>
-          <ul>
-            <li>{t('aiMemory.summaryCharacters', { n: String(summary.characters) })}</li>
-            <li>{t('aiMemory.summaryTerms', { n: String(summary.terms) })}</li>
-            <li>{t('aiMemory.summaryRelationships', { n: String(summary.relationships) })}</li>
-            <li>
-              {summary.throughChapter != null
-                ? t('aiMemory.summaryThrough', { n: String(summary.throughChapter) })
-                : t('aiMemory.summaryThroughUnknown')}
-            </li>
-          </ul>
-        </div>
-
         <div className="ai-memory-actions">
-          <Button
-            variant={errorCta ? 'secondary' : 'primary'}
-            disabled={busy}
-            onClick={syncNow}
-          >
-            {t('aiMemory.syncNow')}
+          <Button variant="primary" disabled={busy} onClick={() => void initMemory(true)}>
+            {t('aiMemory.reanalyzeFull')}
           </Button>
           <Button variant="secondary" disabled={busy || !accountId} onClick={() => void openNotebook()}>
-            {t('aiMemory.openNotebook')}
+            {t('aiMemory.openResearchNotebook')}
           </Button>
+        </div>
+      </section>
+
+      <section className="ai-memory-card ai-memory-card--optional">
+        <h2 className="ai-memory-section-title">{t('aiMemory.lookupSection')}</h2>
+        <p className="muted">{t('aiMemory.lookupHint')}</p>
+        <div className="ai-memory-research-query">
+          <label htmlFor="research-query">{t('aiMemory.researchQueryLabel')}</label>
+          <textarea
+            id="research-query"
+            rows={2}
+            value={researchQuestion}
+            disabled={busy}
+            placeholder={t('aiMemory.researchQueryPlaceholder')}
+            onChange={(e) => {
+              setResearchQuestion(e.target.value);
+            }}
+          />
+          <Button
+            variant="secondary"
+            disabled={busy || !accountId || !researchQuestion.trim()}
+            onClick={() => void runResearchQuery()}
+          >
+            {t('aiMemory.researchLookup')}
+          </Button>
+          {researchAnswer ? (
+            <pre className="ai-memory-research-answer">{researchAnswer}</pre>
+          ) : null}
         </div>
       </section>
 
@@ -611,33 +624,15 @@ export function AiMemoryPage() {
                     : t('aiMemory.layoutSingle')}
                 </strong>
               </li>
-              <li>
-                <span>{t('aiMemory.translationNotebook')}</span>
-                <strong>{health?.notebookName ?? '—'}</strong>
-              </li>
               {dualHealth?.research ? (
                 <li>
                   <span>{t('aiMemory.researchNotebook')}</span>
                   <strong>{dualHealth.research.notebookName ?? '—'}</strong>
                 </li>
               ) : null}
-              {dualHealth?.research?.resourceUrl ? (
-                <li>
-                  <span>{t('aiMemory.driveUrl')}</span>
-                  <strong className="ai-memory-mono">{dualHealth.research.resourceUrl}</strong>
-                </li>
-              ) : null}
               <li>
                 <span>{t('aiMemory.localVersionLabel')}</span>
                 <strong>{String(health?.localVersion ?? 0)}</strong>
-              </li>
-              <li>
-                <span>{t('aiMemory.notebookVersionLabel')}</span>
-                <strong>{String(health?.notebookVersion ?? 0)}</strong>
-              </li>
-              <li>
-                <span>{t('aiMemory.probeStatus')}</span>
-                <strong>{health?.versionProbeStatus ?? 'pending'}</strong>
               </li>
             </ul>
 
@@ -649,59 +644,33 @@ export function AiMemoryPage() {
                     <li key={file.type}>
                       <span>{file.dirty ? '⚠' : '✓'}</span>
                       <span>{file.name}</span>
-                      <span className="muted">
-                        v{file.localVersion}/{file.remoteVersion}
-                      </span>
+                      <span className="muted">v{file.localVersion}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             ) : null}
 
-            {dualHealth?.layout === 'DUAL' ? (
-              <div className="btn-row">
-                <Button
-                  size="sm"
-                  disabled={busy || !accountId}
-                  variant="ghost"
-                  onClick={() => {
-                    if (!accountId) return;
-                    void run(
-                      () =>
-                        window.novelTrans.notebook.provision({
-                          projectId,
-                          accountId,
-                          role: 'TRANSLATION',
-                        }),
-                      t('aiMemory.msgProvisioned'),
-                    );
-                  }}
-                >
-                  {t('aiMemory.provisionTranslation')}
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={busy || !accountId}
-                  variant="ghost"
-                  onClick={() => {
-                    if (!accountId) return;
-                    void run(
-                      () =>
-                        window.novelTrans.notebook.provision({
-                          projectId,
-                          accountId,
-                          role: 'RESEARCH',
-                        }),
-                      t('aiMemory.msgResearchProvisioned'),
-                    );
-                  }}
-                >
-                  {t('aiMemory.provisionResearch')}
-                </Button>
-              </div>
-            ) : null}
-
             <div className="btn-row">
+              <Button
+                size="sm"
+                disabled={busy || !accountId}
+                variant="ghost"
+                onClick={() => {
+                  if (!accountId) return;
+                  void run(
+                    () =>
+                      window.novelTrans.notebook.provision({
+                        projectId,
+                        accountId,
+                        role: 'RESEARCH',
+                      }),
+                    t('aiMemory.msgResearchProvisioned'),
+                  );
+                }}
+              >
+                {t('aiMemory.provisionResearch')}
+              </Button>
               <Button size="sm" disabled={busy} onClick={() => void packCorpus()}>
                 {t('aiMemory.packCorpus')}
               </Button>
@@ -835,22 +804,13 @@ export function AiMemoryPage() {
                 disabled={busy}
               />
             </label>
-            <label className="ai-memory-check">
-              <input
-                type="checkbox"
-                checked={syncAfterImport}
-                onChange={(e) => {
-                  setSyncAfterImport(e.target.checked);
-                }}
-                disabled={busy}
-              />
-              {t('aiMemory.syncAfterImport')}
-            </label>
             <Button size="sm" disabled={busy} onClick={() => void importResult()}>
               {t('aiMemory.importResult')}
             </Button>
 
-            {health?.lastError ? (
+            {dualHealth?.research?.lastError ? (
+              <p className="muted u-mono">{dualHealth.research.lastError}</p>
+            ) : health?.lastError ? (
               <p className="muted u-mono">{health.lastError}</p>
             ) : null}
           </div>
@@ -858,13 +818,4 @@ export function AiMemoryPage() {
       </section>
     </div>
   );
-}
-
-function statusLabelBadge(
-  friendly: FriendlyStatus,
-  t: (k: string) => string,
-): string {
-  if (friendly === 'assisted') return t('aiMemory.statusAssisted');
-  if (friendly === 'error') return t('aiMemory.statusError');
-  return t('aiMemory.statusPending');
 }

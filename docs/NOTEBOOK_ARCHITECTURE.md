@@ -5,11 +5,12 @@
 | Layer | Role |
 |-------|------|
 | **SQLite** | Source of truth — chapters, translations, terms, characters, relationships, story state, jobs, QA |
-| **NotebookLM** | AI knowledge layer — compact markdown Gemini can read (not SoT) |
+| **Local knowledge cache** | Markdown `00–08` rebuilt from SQLite after every learning PASS |
+| **NotebookLM** | Optional AI knowledge layer — static file upload or copied text sources |
 | **Gemini** | Translation / reasoning engine — Notebook + TranslationPack |
-| **TranslationPack** | Current source + hot overrides only (slim when Notebook verified) |
+| **TranslationPack** | Current source + hot overrides (slim when Notebook grounding verified) |
 
-Flow: `SQLite → NotebookKnowledgeBuilder → Drive (00–07) → Notebook → Gemini → Parser/QA → SQLite → NotebookSyncService`
+Flow: `SQLite → NotebookKnowledgeBuilder → local cache → (optional) Notebook upload → Gemini → Parser/QA → SQLite → version bump`
 
 Notebook never writes SQLite directly. Chat history is not truth.
 
@@ -25,44 +26,46 @@ Notebook never writes SQLite directly. Chat history is not truth.
 | `05_STORY_STATE.md` | Current story state (not official summary) |
 | `06_WORLD_KNOWLEDGE.md` | Stable world facts |
 | `07_RECENT_CONTEXT.md` | Rolling hot window (default 20 chapters) |
+| `08_SYNC_STATE.md` | Local version + nonce for Notebook probe |
 
 ## Hot vs cold
 
-- **Cold:** files 00–06 in Notebook after verified sync
+- **Cold:** files 00–07 in Notebook after verified grounding
 - **Hot:** `notebook_hot_deltas` + slim pack overrides until Notebook verify clears them
 - Priority: Pack instruction > Hot Memory > Locked terms > Project memory > Notebook > model prior
 
-## Sync
+## Sync (local-first)
 
-- Dirty on term/character/story/metadata changes
-- Drive sync every N chapters (default 10), critical events, or manual
-- After Drive upload → `sync_pending` → verify sources → `ready` + clear hot deltas
-- Drive upload ≠ Notebook already sees new sources
+- **Learning PASS (default):** term/memory deltas → SQLite txn → `LOCAL_KNOWLEDGE_VERSION_BUMP` → rebuild local markdown — **no cloud upload**
+- **Optional Notebook refresh:** `NotebookSyncService.syncLocalKnowledge` rebuilds cache + marks mapping `sync_pending`; operator re-uploads sources in Notebook UI
+- **Version probe:** background prompt compares Notebook `08_SYNC_STATE` nonce vs local pending version
+- Legacy DB rows may still contain deprecated `DRIVE_LIVE` binding types — read-only detection via `legacy-db-values.ts`
 
 ## Translate channel
 
-- Prefer **Playwright Gemini-in-Notebook** when mapping `ready` / `sync_pending`
-- Web API / no Notebook → **fat pack** from local ContextSelector (`ALLOW_HOT_CONTEXT_FALLBACK` default)
+- Prefer **Playwright Gemini-in-Notebook** when mapping `ready` / `sync_pending` and grounding verified
+- Web API / no Notebook → **local_context pack** from SQLite (`ALLOW_HOT_CONTEXT_FALLBACK` default)
 - Thread rotation every N batches (default 30)
 
 ## Bootstrap
 
-Before first translate: `notebook:bootstrap` rebuilds 00–07 and seeds draft story/world from metadata + early chapters (not verified terms).
+Before first translate: `notebook:bootstrap` rebuilds 00–08 and seeds draft story/world from metadata + early chapters (not verified terms).
 
 ## Prepare at Start Translate
 
-`notebook:prepareForTranslate` runs **before** `jobs.enqueue` when user clicks Start Translate / Retranslate:
+`notebook:prepareForTranslate` runs **before** `jobs.enqueue`:
 
 1. Bootstrap if knowledge empty
-2. Rebuild knowledge files
-3. Drive sync when a worker/Drive assignment exists
-4. Best-effort `notebook.provision` only if mapping missing/`error`/`pending` and worker READY
-5. On assisted/fail → continue translate with fat-pack (`usedFallback: true`); do not hang UI
+2. Rebuild knowledge files from SQLite
+3. Best-effort `notebook.provision` only if mapping missing/`error`/`pending` and worker READY
+4. On assisted/fail → continue translate with local-context pack; do not hang UI
 
-Learning after QA PASS marks dirty by kind: `TERM_CHANGED`, `CHARACTER_CHANGED`, `RELATIONSHIP_CHANGED`, `STORY_STATE_CHANGED`, `RECENT_CONTEXT_CHANGED`.
+Learning after QA PASS bumps local version and rebuilds knowledge — effective for the **next** batch immediately.
 
 Clear / Retranslate chapter: delete unlocked AI translations (`human_locked` kept), then prepare + enqueue.
 
 ## UI
 
 Project → **Bộ nhớ AI** (`/projects/:id/ai-memory`): health, 8 files, versions, Provision / Bootstrap / Rebuild / Sync / Check.
+
+See also [MEMORY.md](./MEMORY.md), [LEARNING.md](./LEARNING.md), [PORTABILITY.md](./PORTABILITY.md).

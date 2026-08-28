@@ -1,7 +1,10 @@
 import { BaseRepository } from './base-repository';
 import { newId } from '../utils/uuid';
 import { touchTimestamps, utcNow } from '../utils/timestamps';
-import type { DriveResourceKey, DriveSyncStatus } from '@shared/constants/drive';
+import type {
+  KnowledgeResourceKey,
+  KnowledgeSyncStatus,
+} from '@shared/constants/knowledge';
 
 export interface DriveResourceRow {
   id: string;
@@ -25,13 +28,13 @@ export interface DriveResourceRow {
 export interface UpsertDriveResourceInput {
   project_id: string;
   google_account_id: string;
-  resource_key: DriveResourceKey;
+  resource_key: KnowledgeResourceKey;
   resource_type: string;
   drive_file_id: string;
   local_hash?: string | null;
   remote_hash?: string | null;
   remote_modified_time?: string | null;
-  sync_status?: DriveSyncStatus;
+  sync_status?: KnowledgeSyncStatus;
   last_error?: string | null;
   mime_type?: string | null;
 }

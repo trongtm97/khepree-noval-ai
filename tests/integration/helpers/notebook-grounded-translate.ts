@@ -1,7 +1,7 @@
 /**
  * Offline stand-in for Gemini Translation Notebook:
- * apply ONLY terms found in notebook knowledge docs (00–07), never pack soft terms.
- * If the SLIM pack already contains the probe mapping, the test is INVALID.
+ * apply ONLY terms found in notebook knowledge docs (00–07).
+ * Phase 4: local_context pack may also contain SQLite term mappings — that is expected.
  */
 
 const TERM_LINE =
@@ -14,46 +14,6 @@ export const GROUNDING_PROBE = {
   itemVi: 'Huyền Tinh Ngọc',
   itemViUpdated: 'Huyền Tinh Thạch',
 } as const;
-
-export class NotebookGroundingTestInvalidError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'NotebookGroundingTestInvalidError';
-  }
-}
-
-export function assertSlimPackDoesNotContainMapping(
-  packPrompt: string,
-  source: string,
-  expectedVi: string,
-): void {
-  const hay = packPrompt.replace(/\s+/g, ' ');
-  const arrowForms = [
-    `${source} → ${expectedVi}`,
-    `${source}->${expectedVi}`,
-    `${source} => ${expectedVi}`,
-  ];
-  for (const form of arrowForms) {
-    if (hay.includes(form.replace(/\s+/g, ' '))) {
-      throw new NotebookGroundingTestInvalidError(
-        `TEST INVALID: SLIM pack contains mapping "${form}" — cannot prove Notebook contributed.`,
-      );
-    }
-  }
-  // Also reject source+target adjacent in Active Overrides section
-  if (
-    /## Active Overrides[\s\S]*?## Source/.test(packPrompt) &&
-    packPrompt.includes(source) &&
-    packPrompt.includes(expectedVi)
-  ) {
-    const overrides = packPrompt.split('## Source')[0] ?? '';
-    if (overrides.includes(source) && overrides.includes(expectedVi)) {
-      throw new NotebookGroundingTestInvalidError(
-        `TEST INVALID: SLIM Active Overrides leak "${source}" / "${expectedVi}".`,
-      );
-    }
-  }
-}
 
 /** Parse term mappings from Notebook knowledge markdown (02 + character headers). */
 export function extractNotebookTermMap(
@@ -92,21 +52,13 @@ export function extractNotebookTermMap(
 
 /**
  * Simulate Translation Notebook reply: substitute notebook terms into source.
- * Does not read pack Active Overrides — only knowledge docs.
  */
 export function translateUsingNotebookKnowledge(input: {
   sourceParagraph: string;
   notebookKnowledgeDocs: Record<string, string>;
-  packPrompt: string;
   probeSource: string;
   probeExpectedVi: string;
 }): string {
-  assertSlimPackDoesNotContainMapping(
-    input.packPrompt,
-    input.probeSource,
-    input.probeExpectedVi,
-  );
-
   const map = extractNotebookTermMap(input.notebookKnowledgeDocs);
   const expected = map.get(input.probeSource);
   if (expected !== input.probeExpectedVi) {
@@ -123,4 +75,20 @@ export function translateUsingNotebookKnowledge(input: {
     out = out.split(source).join(vi);
   }
   return out;
+}
+
+/** Assert local_context pack includes SQLite-selected term mapping. */
+export function assertLocalPackContainsMapping(
+  packPrompt: string,
+  source: string,
+  expectedVi: string,
+): void {
+  const pattern = new RegExp(
+    `${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*(→|->|=>)\\s*${expectedVi.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+  );
+  if (!pattern.test(packPrompt)) {
+    throw new Error(
+      `Expected local_context pack to contain mapping ${source} → ${expectedVi}`,
+    );
+  }
 }

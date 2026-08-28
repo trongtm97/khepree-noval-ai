@@ -7,7 +7,7 @@ export const NotebookMappingDtoSchema = z.object({
   projectId: z.string().uuid(),
   accountId: z.string(),
   notebookName: z.string(),
-  notebookRole: z.enum(NOTEBOOK_ROLES).optional().default('TRANSLATION'),
+  notebookRole: z.enum(NOTEBOOK_ROLES).optional().default('RESEARCH'),
   notebookId: z.string().nullable(),
   resourceUrl: z.string().nullable(),
   status: z.string(),
@@ -195,6 +195,30 @@ export const NotebookBootstrapStatusResponseSchema = z.object({
   characterCount: z.number().int(),
   relationshipCount: z.number().int(),
   termCandidateCount: z.number().int(),
+  hasLegacyDriveConfig: z.boolean().optional().default(false),
+});
+
+export const NotebookResearchQueryRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  accountId: z.string().uuid().optional(),
+  question: z.string().min(1).max(4000),
+});
+
+export const NotebookResearchQueryResponseSchema = z.object({
+  status: z.literal('candidate'),
+  question: z.string(),
+  answer: z.string(),
+  disclaimer: z.string(),
+});
+
+export const NotebookOpenResearchRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  accountId: z.string().uuid().optional(),
+});
+
+export const NotebookOpenResearchResponseSchema = z.object({
+  ok: z.boolean(),
+  url: z.string().nullable(),
 });
 
 export const NotebookStatusEnumSchema = z.enum(NOTEBOOK_STATUSES);

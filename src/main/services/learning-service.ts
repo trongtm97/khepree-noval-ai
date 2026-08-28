@@ -104,7 +104,7 @@ export class LearningService {
       updatedAt: m.updated_at,
     }));
 
-    const sync = this.db.driveSyncState.ensure(projectId);
+    const sync = this.db.knowledgeSyncState.ensure(projectId);
 
     return {
       projectId,

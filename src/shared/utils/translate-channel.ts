@@ -1,5 +1,5 @@
 import type { AiProviderType } from '../constants/ai-provider';
-import { formatMemoryUsage } from '../constants/pack-mode';
+import { formatMemoryUsage, normalizePackMode } from '../constants/pack-mode';
 
 /**
  * Clear operator-facing channel label for AI panel / job progress.
@@ -36,8 +36,7 @@ function formatProviderChannel(type?: string | null): string | null {
 }
 
 function formatPackMode(mode?: string | null): string | null {
-  if (mode === 'slim') return 'bộ nhớ Notebook';
-  if (mode === 'hybrid') return 'bộ nhớ bổ sung khi dịch';
-  if (mode === 'fat') return 'bộ nhớ đầy đủ';
-  return null;
+  const normalized = normalizePackMode(mode);
+  if (normalized === 'notebook_assisted') return 'Notebook + ngữ cảnh cục bộ';
+  return 'ngữ cảnh cục bộ';
 }

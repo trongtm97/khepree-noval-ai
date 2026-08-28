@@ -142,6 +142,21 @@ export const MemoryContextDtoSchema = z.object({
     estimated: z.number().int().nonnegative(),
     dropped: z.number().int().nonnegative(),
   }),
+  worldKnowledge: z
+    .array(z.object({ key: z.string(), value: z.string() }))
+    .optional(),
+  fingerprint: z
+    .object({
+      contextVersion: z.number().int().nonnegative(),
+      contextHash: z.string(),
+      termCount: z.number().int().nonnegative(),
+      characterCount: z.number().int().nonnegative(),
+      relationshipCount: z.number().int().nonnegative(),
+      memoryCount: z.number().int().nonnegative(),
+      estimatedTokens: z.number().int().nonnegative(),
+      engineVersion: z.number().int().positive(),
+    })
+    .optional(),
 });
 
 export type MemoryContextDto = z.infer<typeof MemoryContextDtoSchema>;

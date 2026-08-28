@@ -79,6 +79,7 @@ export interface GeminiRequestRow {
   thread_ref: string | null;
   notebook_id: string | null;
   lifecycle_at: string | null;
+  context_fingerprint_json: string | null;
   raw_response_path: string | null;
   error_code: string | null;
   error_message: string | null;
@@ -99,6 +100,7 @@ export interface CreateGeminiRequestInput {
   marker?: string | null;
   lifecycle?: GeminiRequestLifecycle;
   status?: GeminiRequestStatus;
+  context_fingerprint_json?: string | null;
 }
 
 function parseLifecycleAt(raw: string | null): Record<string, string> {
@@ -128,9 +130,10 @@ export class GeminiRequestRepository extends BaseRepository {
         `INSERT INTO gemini_requests (
           id, correlation_id, project_id, google_account_id, job_id, pack_hash,
           status, lifecycle, marker, thread_ref, notebook_id, lifecycle_at,
+          context_fingerprint_json,
           raw_response_path, error_code, error_message,
           started_at, completed_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, NULL, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, NULL, ?, ?)`,
       )
       .run(
         id,
@@ -145,6 +148,7 @@ export class GeminiRequestRepository extends BaseRepository {
         input.thread_ref ?? null,
         input.notebook_id ?? null,
         lifecycleAt,
+        input.context_fingerprint_json ?? null,
         startedAt,
         ts.created_at,
         ts.updated_at,

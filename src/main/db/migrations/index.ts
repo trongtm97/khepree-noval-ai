@@ -40,6 +40,10 @@ import {
 } from './032-character-translations';
 import { MIGRATION_033_IMPORT_HISTORY } from './033-import-history';
 import { MIGRATION_034 } from './034-source-language-detection';
+import { MIGRATION_035_LEGACY_DRIVE_DEPRECATION } from './035-legacy-drive-deprecation';
+import { MIGRATION_036_CONTEXT_FINGERPRINT } from './036-context-fingerprint';
+import { MIGRATION_037_RESEARCH_NOTEBOOK } from './037-research-notebook-persistence';
+import { MIGRATION_038_LOCAL_LEARNING_LOOP } from './038-local-learning-loop';
 
 export const MIGRATIONS: MigrationDefinition[] = [
   {
@@ -210,6 +214,26 @@ export const MIGRATIONS: MigrationDefinition[] = [
     sql: MIGRATION_033_IMPORT_HISTORY,
   },
   MIGRATION_034,
+  {
+    version: 35,
+    name: 'legacy_drive_deprecation',
+    sql: MIGRATION_035_LEGACY_DRIVE_DEPRECATION,
+  },
+  {
+    version: 36,
+    name: 'context_fingerprint',
+    sql: MIGRATION_036_CONTEXT_FINGERPRINT,
+  },
+  {
+    version: 37,
+    name: 'research_notebook_persistence',
+    sql: MIGRATION_037_RESEARCH_NOTEBOOK,
+  },
+  {
+    version: 38,
+    name: 'local_learning_loop',
+    sql: MIGRATION_038_LOCAL_LEARNING_LOOP,
+  },
 ];
 
 export function migrationChecksum(sql: string): string {

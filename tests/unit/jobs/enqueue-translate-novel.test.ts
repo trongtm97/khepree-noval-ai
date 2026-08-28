@@ -146,6 +146,8 @@ function mockNovelDb(opts: {
           lease_expires_at: null,
           scheduled_at: null,
           edition_id: input.edition_id ?? DEFAULT_EDITION_ID,
+          knowledge_version_at_start: null,
+          knowledge_version_at_commit: null,
           created_at: '2026-01-01T00:00:00.000Z',
           updated_at: '2026-01-01T00:00:00.000Z',
           started_at: null,

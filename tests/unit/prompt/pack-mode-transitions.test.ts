@@ -6,7 +6,6 @@ import { DatabaseManager } from '@main/db/database-manager';
 import { resolveTranslationPackMode } from '@main/prompt/pack-mode-resolver';
 import { assemblePackSections } from '@main/prompt/translation-pack-builder';
 import { formatMemoryUsage } from '@shared/constants/pack-mode';
-import type { NotebookStatus } from '@shared/constants/notebook';
 import type { MemoryContextDto } from '@shared/schemas/memory';
 
 const FIXED_CONTEXT: MemoryContextDto = {
@@ -51,9 +50,9 @@ const FIXED_CONTEXT: MemoryContextDto = {
       chapterNumber: 1,
     },
   ],
-  criticalProjectRules: ['rule-should-not-be-in-slim'],
+  criticalProjectRules: ['Keep locked names exact.'],
   storyState: {
-    summaryText: 'Should not appear in slim pack body dump',
+    summaryText: 'MC arrives at town.',
     currentChapterNumber: 10,
   },
   anchorChapter: 10,
@@ -62,16 +61,23 @@ const FIXED_CONTEXT: MemoryContextDto = {
 };
 
 describe('formatMemoryUsage', () => {
-  it('labels slim / hybrid / fat', () => {
-    expect(formatMemoryUsage('slim')).toBe('Bộ nhớ sử dụng: Notebook');
-    expect(formatMemoryUsage('hybrid')).toBe(
-      'Bộ nhớ sử dụng: Notebook + cập nhật cục bộ',
+  it('labels local_context / notebook_assisted; legacy maps to local', () => {
+    expect(formatMemoryUsage('local_context')).toBe(
+      'Bộ nhớ sử dụng: ngữ cảnh cục bộ (Local Context)',
     );
-    expect(formatMemoryUsage('fat')).toBe('Bộ nhớ sử dụng: bộ nhớ cục bộ');
+    expect(formatMemoryUsage('notebook_assisted')).toBe(
+      'Bộ nhớ sử dụng: Notebook + ngữ cảnh cục bộ',
+    );
+    expect(formatMemoryUsage('slim')).toBe(
+      'Bộ nhớ sử dụng: ngữ cảnh cục bộ (Local Context)',
+    );
+    expect(formatMemoryUsage('fat')).toBe(
+      'Bộ nhớ sử dụng: ngữ cảnh cục bộ (Local Context)',
+    );
   });
 });
 
-describe('resolveTranslationPackMode transitions', () => {
+describe('resolveTranslationPackMode (Phase 4 local-first)', () => {
   let db: DatabaseManager;
   let tmp: string;
   let projectId: string;
@@ -101,172 +107,75 @@ describe('resolveTranslationPackMode transitions', () => {
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
-  function seedNotebook(opts: {
-    status: NotebookStatus;
-    knowledgeVersion?: number;
-    verify?: boolean;
-    withBinding?: boolean;
-    bindingStatus?: 'active' | 'needs_migration';
-  }) {
-    const mapping = db.notebooks.upsert({
+  it('default → local_context regardless of provider', () => {
+    const web = resolveTranslationPackMode(db, {
+      projectId,
+      accountId,
+      providerType: 'GEMINI_WEB_API',
+    });
+    expect(web.packMode).toBe('local_context');
+    expect(web.reason).toBe('local_context_default');
+
+    const browser = resolveTranslationPackMode(db, {
+      projectId,
+      accountId,
+      providerType: 'PLAYWRIGHT_GEMINI',
+    });
+    expect(browser.packMode).toBe('local_context');
+  });
+
+  it('preferNotebookPack → notebook_assisted (explicit opt-in only)', () => {
+    const d = resolveTranslationPackMode(db, {
+      projectId,
+      accountId,
+      providerType: 'PLAYWRIGHT_GEMINI',
+      preferNotebookPack: true,
+    });
+    expect(d.packMode).toBe('notebook_assisted');
+    expect(d.reason).toBe('notebook_assisted_explicit');
+  });
+
+  it('Notebook health / sync state does not change default pack mode', () => {
+    db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
       notebook_name: '[NovelTrans] Pack Mode',
       notebook_role: 'TRANSLATION',
       notebook_id: 'nb-pack-1',
       resource_url: 'https://notebook.google.com/x',
-      status: opts.status,
-    });
-    if (opts.knowledgeVersion != null) {
-      db.notebooks.bumpLocalKnowledgeVersion(mapping.id, opts.knowledgeVersion);
-    }
-    if (opts.verify !== false && opts.status !== 'pending') {
-      db.notebooks.markVerified(mapping.id);
-      if (opts.status !== 'ready') {
-        db.notebooks.setStatus(mapping.id, opts.status);
-      }
-    }
-    if (opts.withBinding !== false) {
-      db.notebookSourceBindings.upsert({
-        projectId,
-        notebookId: 'nb-pack-1',
-        knowledgeType: 'project_terms',
-        sourceName: '02_PROJECT_TERMS.md',
-        bindingType: 'DRIVE_LIVE',
-        status: opts.bindingStatus ?? 'active',
-        driveFileId: 'drive-1',
-      });
-    }
-    return mapping;
-  }
-
-  it('WebAPI → always FAT', () => {
-    seedNotebook({ status: 'ready', knowledgeVersion: 3 });
-    const d = resolveTranslationPackMode(db, {
-      projectId,
-      accountId,
-      providerType: 'GEMINI_WEB_API',
-    });
-    expect(d.packMode).toBe('fat');
-    expect(d.reason).toBe('webapi_always_fat');
-  });
-
-  it('mapping missing → FAT', () => {
-    const d = resolveTranslationPackMode(db, {
-      projectId,
-      accountId,
-      providerType: 'PLAYWRIGHT_GEMINI',
-    });
-    expect(d.packMode).toBe('fat');
-    expect(d.reason).toBe('mapping_missing');
-  });
-
-  it('grounding failed (needs_migration) → FAT', () => {
-    seedNotebook({
-      status: 'ready',
-      knowledgeVersion: 2,
-      bindingStatus: 'needs_migration',
+      status: 'stale',
     });
     const d = resolveTranslationPackMode(db, {
       projectId,
       accountId,
       providerType: 'PLAYWRIGHT_GEMINI',
     });
-    expect(d.packMode).toBe('fat');
-    expect(d.reason).toBe('grounding_failed');
+    expect(d.packMode).toBe('local_context');
+  });
+});
+
+describe('local_context TranslationPack content', () => {
+  it('includes ContextSelector slices + protocol, not full vault dump', () => {
+    const pack = assemblePackSections({
+      style: 'balanced',
+      chapterNumbers: [1],
+      criticalRules: FIXED_CONTEXT.criticalProjectRules,
+      context: FIXED_CONTEXT,
+      sourceLines: ['[C000001:P000001] 王林走了。'],
+      sourceLanguage: 'zh',
+      targetLanguage: 'vi',
+    });
+    expect(pack.prompt).toContain('Local Context');
+    expect(pack.prompt).toContain('王林');
+    expect(pack.prompt).toContain('LOCKED');
+    expect(pack.prompt).toContain('## Output Protocol');
+    expect(pack.prompt).not.toContain('mem@');
+    expect(pack.baseContext).toContain('Critical Rules');
+    expect(pack.baseContext).not.toContain('[C000001:P000001]');
   });
 
-  it('sync_pending without bindings → HYBRID (not FAT)', () => {
-    seedNotebook({
-      status: 'sync_pending',
-      knowledgeVersion: 1,
-      withBinding: false,
-      verify: false,
-    });
-    const d = resolveTranslationPackMode(db, {
-      projectId,
-      accountId,
-      providerType: 'PLAYWRIGHT_GEMINI',
-    });
-    expect(d.packMode).toBe('hybrid');
-    expect(d.reason).toBe('sync_pending');
-  });
-
-  it('sync_pending → HYBRID (not SLIM)', () => {
-    seedNotebook({ status: 'sync_pending', knowledgeVersion: 2 });
-    const d = resolveTranslationPackMode(db, {
-      projectId,
-      accountId,
-      providerType: 'PLAYWRIGHT_GEMINI',
-    });
-    expect(d.packMode).toBe('hybrid');
-    expect(d.reason).toBe('sync_pending');
-  });
-
-  it('stale → HYBRID', () => {
-    seedNotebook({ status: 'stale', knowledgeVersion: 1 });
-    const d = resolveTranslationPackMode(db, {
-      projectId,
-      accountId,
-      providerType: 'PLAYWRIGHT_GEMINI',
-    });
-    expect(d.packMode).toBe('hybrid');
-    expect(d.reason).toBe('stale');
-  });
-
-  it('ready + version mismatch → HYBRID', () => {
-    seedNotebook({ status: 'ready', knowledgeVersion: 1 });
-    db.knowledgeFiles.markDirty(projectId, 'project_terms');
-    db.knowledgeFiles.markDirty(projectId, 'project_terms');
-
-    const d = resolveTranslationPackMode(db, {
-      projectId,
-      accountId,
-      providerType: 'PLAYWRIGHT_GEMINI',
-    });
-    expect(d.packMode).toBe('hybrid');
-    expect(d.reason).toBe('version_unverified');
-    expect(d.localKnowledgeVersion).toBeGreaterThan(d.notebookVerifiedVersion);
-  });
-
-  it('ready + verified + grounded → SLIM', () => {
-    seedNotebook({ status: 'ready', knowledgeVersion: 5 });
-    db.driveSyncState.patch(projectId, {
-      pendingKnowledgeVersion: 5,
-      pendingSyncNonce: 'AABBCCDD',
-      verifiedKnowledgeVersion: 5,
-      verifiedSyncNonce: 'AABBCCDD',
-      versionProbeStatus: 'verified',
-    });
-    const d = resolveTranslationPackMode(db, {
-      projectId,
-      accountId,
-      providerType: 'PLAYWRIGHT_GEMINI',
-    });
-    expect(d.packMode).toBe('slim');
-    expect(d.reason).toBe('ready_verified');
-    expect(d.notebookId).toBe('nb-pack-1');
-    expect(d.sourceGroundingConfirmed).toBe(true);
-  });
-
-  it('actual character update appears in HYBRID pack (not status string)', () => {
-    seedNotebook({ status: 'sync_pending', knowledgeVersion: 2 });
-    db.driveSyncState.patch(projectId, {
-      pendingKnowledgeVersion: 3,
-      pendingSyncNonce: 'NEWNEW01',
-      verifiedKnowledgeVersion: 2,
-      verifiedSyncNonce: 'OLDOLD01',
-      versionProbeStatus: 'mismatch',
-    });
-
-    const mode = resolveTranslationPackMode(db, {
-      projectId,
-      accountId,
-      providerType: 'PLAYWRIGHT_GEMINI',
-    });
-    expect(mode.packMode).toBe('hybrid');
-
-    const hybrid = assemblePackSections({
+  it('character update appears in local context body', () => {
+    const pack = assemblePackSections({
       style: 'balanced',
       chapterNumbers: [10],
       criticalRules: [],
@@ -281,48 +190,12 @@ describe('resolveTranslationPackMode transitions', () => {
         ],
       },
       sourceLines: ['[C000010:P000001] 王林突破了。'],
-      packMode: 'hybrid',
       hotMemoryOverride: [
-        '## HOT MEMORY — overrides stale Notebook',
-        '- CHARACTER 王林 → Vương Lâm (updated); first_seen_chapter=10; valid_from_chapter=10',
+        '## Recent Context',
+        '- CHARACTER 王林 → Vương Lâm (updated); first_seen_chapter=10',
       ].join('\n'),
     });
-
-    expect(hybrid.prompt).toContain('CHARACTER 王林 → Vương Lâm (updated)');
-    expect(hybrid.prompt).toContain('first_seen_chapter=10');
-    expect(hybrid.prompt).not.toMatch(/Character delta after job/i);
-    expect(mode.packMode).not.toBe('slim');
-  });
-});
-
-describe('hybrid TranslationPack content', () => {
-  it('includes local delta + locked terms + protocol, not recent-memory dump', () => {
-    const hybrid = assemblePackSections({
-      style: 'balanced',
-      chapterNumbers: [1],
-      criticalRules: ['rule-should-not-be-in-slim'],
-      context: FIXED_CONTEXT,
-      sourceLines: ['[C000001:P000001] 王林走了。'],
-      packMode: 'hybrid',
-    });
-    expect(hybrid.prompt).toContain('Local Knowledge Delta');
-    expect(hybrid.prompt).toContain('王林');
-    expect(hybrid.prompt).toContain('Should not appear in slim pack body dump');
-    expect(hybrid.sections.activeProjectTerms).toContain('LOCKED');
-    expect(hybrid.prompt).toContain('## Output Protocol');
-    expect(hybrid.prompt).not.toContain('mem@');
-  });
-
-  it('slim still omits story dump when no hot override', () => {
-    const slim = assemblePackSections({
-      style: 'balanced',
-      chapterNumbers: [1],
-      criticalRules: [],
-      context: FIXED_CONTEXT,
-      sourceLines: ['[C000001:P000001] 王林走了。'],
-      packMode: 'slim',
-    });
-    expect(slim.prompt).not.toContain('Should not appear in slim pack body dump');
-    expect(slim.prompt).toContain('Notebook cold knowledge is authoritative');
+    expect(pack.prompt).toContain('Vương Lâm (updated)');
+    expect(pack.prompt).toContain('first_seen_chapter=10');
   });
 });

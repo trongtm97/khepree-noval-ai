@@ -342,9 +342,6 @@ export function DiagnosticsPage() {
           <button type="button" className="btn-secondary" disabled={busy || !accountId} onClick={() => void runTest('notebook')}>
             {t('diagnostics.testNotebook')}
           </button>
-          <button type="button" className="btn-secondary" disabled={busy || !accountId} onClick={() => void runTest('drive')}>
-            {t('diagnostics.testDrive')}
-          </button>
           <button type="button" className="btn-secondary" disabled={busy || !accountId} onClick={() => void runTest('browserProfile')}>
             {t('diagnostics.testBrowser')}
           </button>

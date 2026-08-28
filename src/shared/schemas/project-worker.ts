@@ -36,8 +36,8 @@ export type ProjectWorkerResolutionDto = z.infer<
 export const ProjectWorkerSetRequestSchema = z.object({
   projectId: z.string().uuid(),
   accountId: z.string().uuid(),
-  /** When true (default), prepare/provision Translation Notebook for the new worker. */
-  ensureNotebook: z.boolean().optional().default(true),
+  /** When true, prepare/provision Research Notebook for the new worker (optional). */
+  ensureNotebook: z.boolean().optional().default(false),
 });
 
 export type ProjectWorkerSetRequest = z.infer<typeof ProjectWorkerSetRequestSchema>;

@@ -1,13 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import {
-  formatLanguagePairLabel,
   formatLanguagePickerStacked,
   getLanguageProfile,
 } from '@shared/constants/language-profile';
 import type { LanguageProfileDto } from '@shared/schemas/language-profile';
 import { useT } from '../i18n';
 import { LanguagePicker } from './LanguagePicker';
+import { LanguagePairLabel } from './LanguagePairLabel';
 import {
   loadRecentLanguagePairs,
   saveRecentLanguagePair,
@@ -107,9 +107,12 @@ export function SwitchTranslationControl({
       </Button>
       {open ? (
         <div id={menuId} className="switch-translation-menu" role="dialog">
-          <p className="muted" style={{ margin: '0 0 0.5rem', fontSize: 'var(--font-small)' }}>
-            {formatLanguagePairLabel(sourceLanguage, targetLanguage)}
-          </p>
+          <div style={{ margin: '0 0 0.5rem' }}>
+            <LanguagePairLabel
+              sourceLanguage={sourceLanguage}
+              targetLanguage={targetLanguage}
+            />
+          </div>
           <label className="muted" style={{ display: 'block', marginBottom: '0.25rem' }}>
             {t('projectNav.sourceLanguage')}
           </label>

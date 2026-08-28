@@ -87,7 +87,6 @@ export function useHelpChecklist(): {
       const accounts = accountsRes.accounts;
       const hasAccount = accounts.length > 0;
       const geminiReady = accounts.some((a) => a.status === 'READY' && a.workerEnabled);
-      const driveConnected = accounts.some((a) => a.driveConnected);
       const hasProject = projectsRes.projects.length > 0;
       const notebookReady = setupRes.notebookReadyCount > 0;
       const hasCompletedJob = jobsRes.jobs.some((j) => j.state === 'COMPLETED');
@@ -110,13 +109,6 @@ export function useHelpChecklist(): {
           label: tr('help.check.geminiReady'),
           done: geminiReady,
           actionLabel: tr('help.check.actionAccount'),
-          actionTo: '/accounts',
-        },
-        {
-          id: 'drive',
-          label: tr('help.check.driveConnected'),
-          done: driveConnected,
-          actionLabel: tr('help.check.actionDrive'),
           actionTo: '/accounts',
         },
         {

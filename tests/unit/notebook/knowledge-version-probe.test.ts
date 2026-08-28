@@ -8,6 +8,7 @@ import {
   applyVersionProbeResult,
   runKnowledgeVersionProbe,
 } from '@main/notebook/notebook-version-probe';
+import { LEGACY_NOTEBOOK_BINDING_DRIVE_LIVE } from '@shared/constants/legacy-knowledge-events';
 import { resolveTranslationPackMode } from '@main/prompt/pack-mode-resolver';
 import {
   buildSyncStateManifestContent,
@@ -84,7 +85,7 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
       notebookId: 'nb-probe',
       knowledgeType: 'sync_state',
       sourceName: '08_SYNC_STATE',
-      bindingType: 'DRIVE_LIVE',
+      bindingType: LEGACY_NOTEBOOK_BINDING_DRIVE_LIVE,
       status: 'active',
       driveFileId: 'drive-sync',
     });
@@ -118,11 +119,12 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
       projectId,
       accountId,
       providerType: 'PLAYWRIGHT_GEMINI',
+      preferNotebookPack: true,
     });
-    expect(mode.packMode).not.toBe('slim');
+    expect(mode.packMode).toBe('notebook_assisted');
   });
 
-  it('matching version+nonce → verified, clears hot, slim eligible', async () => {
+  it('matching version+nonce → verified, clears hot; pack mode still notebook_assisted when explicit', async () => {
     const sync = new NotebookSyncService(db);
     sync.markDirty(projectId, 'TERM_CHANGED', '天逆珠 → Thiên Nghịch Châu [LOCKED]');
 
@@ -146,11 +148,12 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
       projectId,
       accountId,
       providerType: 'PLAYWRIGHT_GEMINI',
+      preferNotebookPack: true,
     });
-    expect(mode.packMode).toBe('slim');
+    expect(mode.packMode).toBe('notebook_assisted');
   });
 
-  it('fake source same name but old content → verification fail', async () => {
+  it('fake source same name but old content → verification fail; pack notebook_assisted when explicit', async () => {
     // Pending is 48/NEW — Notebook still answers with old 47/OLD (filename present, content stale).
     db.driveSyncState.patch(projectId, {
       pendingKnowledgeVersion: 48,
@@ -170,8 +173,9 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
       projectId,
       accountId,
       providerType: 'PLAYWRIGHT_GEMINI',
+      preferNotebookPack: true,
     });
-    expect(mode.packMode).toBe('hybrid');
+    expect(mode.packMode).toBe('notebook_assisted');
   });
 
   it('markNotebookVerified without probe does not clear hot', () => {

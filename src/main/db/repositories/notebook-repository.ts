@@ -3,6 +3,7 @@ import { newId } from '../utils/uuid';
 import { touchTimestamps, utcNow } from '../utils/timestamps';
 import type { NotebookAssistedStep, NotebookStatus } from '@shared/constants/notebook';
 import type { NotebookRole } from '@shared/constants/notebook-role';
+import { DEFAULT_NOTEBOOK_ROLE } from '@shared/constants/notebook-role';
 
 export interface NotebookResourceRow {
   id: string;
@@ -23,6 +24,9 @@ export interface NotebookResourceRow {
   local_knowledge_version: number;
   last_sync_at: string | null;
   last_drive_sync_at: string | null;
+  corpus_version: number;
+  last_full_analysis_at: string | null;
+  deprecated_at: string | null;
   batches_since_thread_rotate: number;
   created_at: string;
   updated_at: string;
@@ -117,7 +121,7 @@ export class NotebookRepository extends BaseRepository {
   }
 
   upsert(input: UpsertNotebookInput): NotebookResourceRow {
-    const role = input.notebook_role ?? 'TRANSLATION';
+    const role = input.notebook_role ?? DEFAULT_NOTEBOOK_ROLE;
     const editionId = role === 'RESEARCH' ? null : (input.edition_id ?? null);
     const existing = this.getByProjectWorkerRole(
       input.project_id,
@@ -254,7 +258,7 @@ export class NotebookRepository extends BaseRepository {
       .run(version, utcNow(), id);
   }
 
-  markDriveSynced(id: string): void {
+  markKnowledgeSynced(id: string): void {
     this.db
       .prepare(
         `UPDATE notebook_resources SET
@@ -264,6 +268,11 @@ export class NotebookRepository extends BaseRepository {
         WHERE id = ?`,
       )
       .run(utcNow(), utcNow(), id);
+  }
+
+  /** @deprecated Use markKnowledgeSynced */
+  markDriveSynced(id: string): void {
+    this.markKnowledgeSynced(id);
   }
 
   incrementBatchCounter(id: string): number {
@@ -309,5 +318,39 @@ export class NotebookRepository extends BaseRepository {
         | NotebookResourceRow
         | undefined) ?? null
     );
+  }
+
+  /** Phase 5: persist FULL analysis metadata on RESEARCH notebook. */
+  recordResearchAnalysis(
+    id: string,
+    input: { corpusVersion: number; analyzedAt?: string },
+  ): NotebookResourceRow | null {
+    this.db
+      .prepare(
+        `UPDATE notebook_resources SET
+          corpus_version = ?,
+          last_full_analysis_at = ?,
+          updated_at = ?
+        WHERE id = ?`,
+      )
+      .run(
+        input.corpusVersion,
+        input.analyzedAt ?? utcNow(),
+        utcNow(),
+        id,
+      );
+    return (
+      (this.db.prepare(`SELECT * FROM notebook_resources WHERE id = ?`).get(id) as
+        | NotebookResourceRow
+        | undefined) ?? null
+    );
+  }
+
+  markDeprecated(id: string): void {
+    this.db
+      .prepare(
+        `UPDATE notebook_resources SET deprecated_at = COALESCE(deprecated_at, ?), updated_at = ? WHERE id = ?`,
+      )
+      .run(utcNow(), utcNow(), id);
   }
 }

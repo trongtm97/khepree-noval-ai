@@ -25,7 +25,6 @@ import { PlaywrightBrowserSessionController } from '../automation/browser-runner
 import { logger } from '../logging/logger';
 
 const GEMINI_URL = 'https://gemini.google.com/app';
-const DRIVE_URL = 'https://drive.google.com';
 const NOTEBOOK_URL = 'https://notebook.google.com/';
 
 export interface AccountWorkerServiceDeps {
@@ -40,7 +39,6 @@ export interface AccountWorkerServiceDeps {
 export class AccountWorkerService {
   private readonly accounts: GoogleAccountRepository;
   private readonly auditLog: AuditLogService;
-  private readonly secretStorage: SecretStorageService;
   private readonly profiles: BrowserProfileManager;
   private readonly locks: ProfileLeaseLockManager;
   private readonly browser: BrowserSessionController;
@@ -50,7 +48,6 @@ export class AccountWorkerService {
   constructor(deps: AccountWorkerServiceDeps) {
     this.accounts = deps.accounts;
     this.auditLog = deps.auditLog;
-    this.secretStorage = deps.secretStorage;
     this.profiles = deps.profiles ?? browserProfileManager;
     this.locks = deps.locks ?? profileLockManager;
     this.browser = deps.browser ?? new PlaywrightBrowserSessionController();
@@ -217,15 +214,10 @@ export class AccountWorkerService {
 
   async openBrowser(
     accountId: string,
-    target: 'gemini' | 'drive' | 'notebook' = 'gemini',
+    target: 'gemini' | 'notebook' = 'gemini',
   ): Promise<GoogleAccountDetail> {
     this.requireAccount(accountId);
-    const url =
-      target === 'drive'
-        ? DRIVE_URL
-        : target === 'notebook'
-          ? NOTEBOOK_URL
-          : GEMINI_URL;
+    const url = target === 'notebook' ? NOTEBOOK_URL : GEMINI_URL;
     try {
       await this.openBrowserSession(accountId, url);
     } catch (error) {
@@ -261,7 +253,7 @@ export class AccountWorkerService {
     const account = this.requireAccount(accountId);
     if (account.status === 'BUSY') {
       this.accounts.update(accountId, {
-        status: account.drive_connected || account.email ? 'READY' : 'LOGIN_REQUIRED',
+        status: account.email ? 'READY' : 'LOGIN_REQUIRED',
       });
     }
     return this.assertDetail(accountId);
@@ -338,56 +330,6 @@ export class AccountWorkerService {
     };
   }
 
-  async connectDrive(accountId: string): Promise<GoogleAccountDetail> {
-    this.requireAccount(accountId);
-    const { getDriveSyncService } = await import('./drive-sync-service-singleton');
-    const result = await getDriveSyncService().connectDrive(accountId);
-    this.auditLog.credentialsChanged(
-      `oauth:drive:refresh:${accountId}`,
-      'oauth_refresh',
-      accountId,
-    );
-    if (result.email) {
-      this.accounts.update(accountId, { email: result.email });
-    }
-    this.markWorkerReadyIfIdle(accountId);
-    return this.assertDetail(accountId);
-  }
-
-  async connectDriveWithAuthPayload(
-    accountId: string,
-    authPayload: string,
-  ): Promise<GoogleAccountDetail> {
-    this.requireAccount(accountId);
-    const { getDriveSyncService } = await import('./drive-sync-service-singleton');
-    const result = await getDriveSyncService().connectDriveWithAuthPayload(
-      accountId,
-      authPayload,
-    );
-    this.auditLog.credentialsChanged(
-      `oauth:drive:refresh:${accountId}`,
-      'oauth_refresh',
-      accountId,
-    );
-    if (result.email) {
-      this.accounts.update(accountId, { email: result.email });
-    }
-    this.markWorkerReadyIfIdle(accountId);
-    return this.assertDetail(accountId);
-  }
-
-  async disconnectDrive(accountId: string): Promise<GoogleAccountDetail> {
-    this.requireAccount(accountId);
-    const { getDriveSyncService } = await import('./drive-sync-service-singleton');
-    await getDriveSyncService().disconnectDrive(accountId);
-    this.auditLog.credentialsChanged(
-      `oauth:drive:refresh:${accountId}`,
-      'oauth_refresh',
-      accountId,
-    );
-    return this.assertDetail(accountId);
-  }
-
   disableWorker(accountId: string): GoogleAccountDetail {
     this.requireAccount(accountId);
     this.accounts.setWorkerEnabled(accountId, false);
@@ -429,13 +371,6 @@ export class AccountWorkerService {
       }
     }
 
-    await this.secretStorage.delete(`drive:connected:${accountId}`);
-    try {
-      const { getDriveSyncService } = await import('./drive-sync-service-singleton');
-      await getDriveSyncService().disconnectDrive(accountId);
-    } catch {
-      // account row may already be gone; best-effort token cleanup above
-    }
     return { ok: true };
   }
 
@@ -510,7 +445,7 @@ export class AccountWorkerService {
           const account = this.accounts.getById(accountId);
           if (account?.status === 'BUSY') {
             this.accounts.update(accountId, {
-              status: account.drive_connected || account.email ? 'READY' : 'LOGIN_REQUIRED',
+              status: account.email ? 'READY' : 'LOGIN_REQUIRED',
             });
           }
         },

@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { NovelExportFormat } from '@shared/constants/portability';
 import type { AutoBackupConfig } from '@shared/schemas/portability';
 import type { DatabaseManager } from '../db/database-manager';
 import { pathsService } from './paths-service';
@@ -22,6 +21,11 @@ import {
   listBackupFiles,
   createManualDbBackup,
 } from '../portability/auto-backup';
+import {
+  getBackupDirectory,
+  resolveBackupDirectory,
+  setBackupDirectory,
+} from '../portability/backup-directory';
 
 export class PortabilityService {
   constructor(
@@ -29,9 +33,13 @@ export class PortabilityService {
     private readonly getDbPath: () => string,
   ) {}
 
+  private backupsDir(): string {
+    return resolveBackupDirectory(this.getDb(), pathsService.getPath('backups'));
+  }
+
   async exportNovel(input: {
     projectId: string;
-    format: NovelExportFormat;
+    format: import('@shared/constants/portability').NovelExportFormat;
     chapterFrom?: number;
     chapterTo?: number;
     translatedOnly?: boolean;
@@ -42,7 +50,7 @@ export class PortabilityService {
     filePath: string;
     chapterCount: number;
     paragraphCount: number;
-    format: NovelExportFormat;
+    format: import('@shared/constants/portability').NovelExportFormat;
   }> {
     const db = this.getDb();
     const data = loadNovelExportData(db, {
@@ -97,11 +105,12 @@ export class PortabilityService {
     includeCredentials?: boolean;
   }): Promise<{ filePath: string; kind: 'full' | 'project'; schemaVersion: number }> {
     const db = this.getDb();
+    const backupsDir = this.backupsDir();
     const result = await createBackupArchive({
       kind: input.kind,
       db,
       dbPath: this.getDbPath(),
-      backupsDir: pathsService.getPath('backups'),
+      backupsDir,
       outputPath: input.outputPath,
       projectId: input.projectId,
       includeCredentials: input.includeCredentials,
@@ -121,7 +130,7 @@ export class PortabilityService {
     return restoreBackupArchiveAsync({
       archivePath: input.archivePath,
       dbPath: this.getDbPath(),
-      backupsDir: pathsService.getPath('backups'),
+      backupsDir: this.backupsDir(),
       confirmOverwrite: input.confirmOverwrite,
       db: this.getDb(),
     });
@@ -134,20 +143,31 @@ export class PortabilityService {
   setAutoBackupConfig(patch: {
     enabled: boolean;
     intervalHours: number;
-    retentionCount: number;
+    retentionDaily: number;
+    retentionWeekly: number;
+    retentionMonthly: number;
   }): AutoBackupConfig {
     return setAutoBackupConfig(this.getDb(), patch);
   }
 
+  getBackupDirectory() {
+    return getBackupDirectory(this.getDb(), pathsService.getPath('backups'));
+  }
+
+  setBackupDirectory(directory: string | null) {
+    const resolved = setBackupDirectory(this.getDb(), directory);
+    return {
+      directory: resolved || pathsService.getPath('backups'),
+      isCustom: resolved.length > 0,
+    };
+  }
+
   listBackups() {
-    return { backups: listBackupFiles(pathsService.getPath('backups')) };
+    return { backups: listBackupFiles(this.backupsDir()) };
   }
 
   createManualBackup(): { filePath: string } {
-    const filePath = createManualDbBackup(
-      this.getDbPath(),
-      pathsService.getPath('backups'),
-    );
+    const filePath = createManualDbBackup(this.getDbPath(), this.backupsDir());
     return { filePath };
   }
 }

@@ -9,7 +9,7 @@ import {
   FILE_KEY_TO_NAME,
   OWNED_FILE_KEYS,
   writeKnowledgeSourceFiles,
-} from '../drive/drive-content-builder';
+} from './knowledge-source-files';
 import { logger } from '../logging/logger';
 import path from 'node:path';
 import { pathsService } from '../services/paths-service';
@@ -99,10 +99,7 @@ export interface NotebookDualHealthDto {
 export class NotebookSyncService {
   private readonly builder: NotebookKnowledgeBuilder;
 
-  constructor(
-    private readonly db: DatabaseManager,
-    private readonly syncProjectDrive?: (projectId: string) => Promise<unknown>,
-  ) {
+  constructor(private readonly db: DatabaseManager) {
     this.builder = new NotebookKnowledgeBuilder(db);
   }
 
@@ -121,7 +118,7 @@ export class NotebookSyncService {
         this.db.notebooks.setStatus(mapping.id, 'stale');
       }
     }
-    this.db.driveSyncState.patch(projectId, {
+    this.db.knowledgeSyncState.patch(projectId, {
       versionProbeStatus: 'pending',
     });
     if (hotPayload?.trim() && !looksLikeStatusMessage(hotPayload)) {
@@ -157,47 +154,35 @@ export class NotebookSyncService {
   }
 
   /**
-   * Drive upload then mark sync_pending. CONTENT_CURRENT requires version probe —
-   * do not clear Hot Memory here.
+   * Rebuild local knowledge files and mark Notebook sync pending.
+   * No Google Drive — SQLite + local cache only.
    */
-  async syncDrive(projectId: string): Promise<{ updated: boolean }> {
+  async syncLocalKnowledge(projectId: string): Promise<{ updated: boolean }> {
     this.db.knowledgeSyncEvents.insert({
       projectId,
-      eventType: 'DRIVE_SYNC_STARTED',
-      message: 'Đã gửi dữ liệu bộ nhớ lên Google Drive.',
+      eventType: 'KNOWLEDGE_BUILD_STARTED',
+      message: 'Đã xây lại bộ nhớ AI cục bộ.',
     });
     this.rebuildKnowledge(projectId);
 
-    if (this.syncProjectDrive) {
-      await this.syncProjectDrive(projectId);
-    }
-
     for (const type of KNOWLEDGE_TYPES) {
-      this.db.knowledgeFiles.markDriveSynced(projectId, type);
+      this.db.knowledgeFiles.markLocalSynced(projectId, type);
     }
 
     for (const mapping of listKnowledgeSyncMappings(this.db, projectId)) {
-      this.db.notebooks.markDriveSynced(mapping.id);
+      this.db.notebooks.markKnowledgeSynced(mapping.id);
     }
 
-    this.db.driveSyncState.patch(projectId, {
+    this.db.knowledgeSyncState.patch(projectId, {
       versionProbeStatus: 'pending',
+      syncStatus: 'pending',
+      lastSyncAt: new Date().toISOString(),
     });
 
     this.db.knowledgeSyncEvents.insert({
       projectId,
-      eventType: 'DRIVE_SYNC_COMPLETED',
-      message: 'Đã cập nhật dữ liệu trên Google Drive.',
-    });
-    this.db.knowledgeSyncEvents.insert({
-      projectId,
-      eventType: 'DRIVE_SYNCED',
-      message: 'Drive sync completed.',
-    });
-    this.db.knowledgeSyncEvents.insert({
-      projectId,
-      eventType: 'NOTEBOOK_SYNC_PENDING',
-      message: 'Đang chờ Notebook cập nhật nguồn (version probe).',
+      eventType: 'KNOWLEDGE_SYNC_PENDING',
+      message: 'Bộ nhớ cục bộ đã cập nhật — Notebook có thể cần đồng bộ lại.',
     });
 
     return { updated: true };
@@ -214,19 +199,19 @@ export class NotebookSyncService {
     const delta = Math.max(0, Math.floor(input.chapterCount));
 
     if (input.critical) {
-      this.db.driveSyncState.patch(projectId, {
+      this.db.knowledgeSyncState.patch(projectId, {
         criticalChangePending: true,
         syncStatus: 'pending',
       });
     }
 
-    const refreshed = this.db.driveSyncState.ensure(projectId);
+    const refreshed = this.db.knowledgeSyncState.ensure(projectId);
     const next = refreshed.chapters_since_sync + delta;
     const shouldSync =
       refreshed.critical_change_pending === 1 ||
       next >= refreshed.sync_every_n_chapters;
 
-    this.db.driveSyncState.patch(projectId, {
+    this.db.knowledgeSyncState.patch(projectId, {
       chaptersSinceSync: shouldSync ? 0 : next,
       criticalChangePending: shouldSync ? false : refreshed.critical_change_pending === 1,
       ...(shouldSync ? { syncStatus: 'pending' as const } : {}),
@@ -255,7 +240,7 @@ export class NotebookSyncService {
     accountId: string,
     _role: 'TRANSLATION' | 'SINGLE' = 'TRANSLATION',
   ): void {
-    const state = this.db.driveSyncState.ensure(projectId);
+    const state = this.db.knowledgeSyncState.ensure(projectId);
     if (
       state.version_probe_status === 'verified' &&
       state.verified_knowledge_version === state.pending_knowledge_version &&
@@ -300,7 +285,7 @@ export class NotebookSyncService {
     const delays = [5_000, 30_000, 120_000];
     let attempt = 0;
     const tick = () => {
-      const state = this.db.driveSyncState.ensure(projectId);
+      const state = this.db.knowledgeSyncState.ensure(projectId);
       if (state.version_probe_status === 'verified') return;
       void this.verifyKnowledgeVersion(projectId, accountId)
         .then((r) => {
@@ -438,7 +423,7 @@ export class NotebookSyncService {
       };
     });
 
-    const driveState = this.db.driveSyncState.ensure(projectId);
+    const driveState = this.db.knowledgeSyncState.ensure(projectId);
     const pendingKnowledgeVersion = driveState.pending_knowledge_version;
     const verifiedKnowledgeVersion = driveState.verified_knowledge_version;
     const versionProbeStatus = (driveState.version_probe_status ||

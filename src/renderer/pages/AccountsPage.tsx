@@ -35,7 +35,6 @@ export function AccountsPage() {
   const [removeTarget, setRemoveTarget] = useState<GoogleAccountDto | null>(null);
   const [renameTarget, setRenameTarget] = useState<GoogleAccountDto | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
-  const [driveAuthDraft, setDriveAuthDraft] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     const result = await window.novelTrans.accounts.list();
@@ -198,11 +197,6 @@ export function AccountsPage() {
                   <div className="account-badges btn-row">
                     <StatusBadge status={account.status} />
                     <Badge tone="accent">{account.plan}</Badge>
-                    {account.driveConnected ? (
-                      <Badge tone="success">{t('accounts.drive')}</Badge>
-                    ) : (
-                      <Badge>{t('status.disconnected')}</Badge>
-                    )}
                     {!account.workerEnabled ? (
                       <Badge tone="warning">{t('status.paused')}</Badge>
                     ) : (
@@ -213,25 +207,27 @@ export function AccountsPage() {
 
                 <dl className="account-meta">
                   <div>
-                    <dt>{t('accounts.gemini')}</dt>
+                    <dt>{t('accounts.geminiStatus')}</dt>
+                    <dd>{statusLabel(account.status)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('accounts.browserProfile')}</dt>
                     <dd title={account.browserProfilePath}>
                       <code>{account.browserProfilePath}</code>
                     </dd>
                   </div>
                   <div>
-                    <dt>{t('accounts.projects', { count: account.assignedProjects.length })}</dt>
+                    <dt>{t('aiPanel.plan')}</dt>
+                    <dd>{account.plan}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('accounts.workerState')}</dt>
                     <dd>
-                      {account.assignedProjects.length > 0
-                        ? account.assignedProjects.join(', ')
-                        : t('common.noData')}
+                      {account.workerEnabled ? t('accounts.ready') : t('status.paused')}
                     </dd>
                   </div>
                   <div>
-                    <dt>{t('jobs.started')}</dt>
-                    <dd>{account.lastSeenAt ?? '—'}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('jobs.duration')}</dt>
+                    <dt>{t('accounts.lastUsed')}</dt>
                     <dd>{account.lastUsedAt ?? '—'}</dd>
                   </div>
                 </dl>
@@ -374,81 +370,6 @@ export function AccountsPage() {
                       </Button>
                     ) : null}
                   </div>
-
-                  {account.driveConnected ? (
-                    <Button
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => {
-                        void run(account.id, async () => {
-                          await window.novelTrans.accounts.disconnectDrive(account.id);
-                          setMessage(`${t('accounts.drive')} · ${t('status.disconnected')}`);
-                        });
-                      }}
-                    >
-                      {t('accounts.disconnectDrive')}
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={busy}
-                      onClick={() => {
-                        void run(account.id, async () => {
-                          setMessage(t('accounts.driveOAuthPending'));
-                          await window.novelTrans.accounts.connectDrive(account.id);
-                          setMessage(`${t('accounts.drive')} · ${t('status.connected')}`);
-                        });
-                      }}
-                    >
-                      {t('accounts.connectDrive')}
-                    </Button>
-                  )}
-
-                  {!account.driveConnected ? (
-                    <details className="drive-oauth-fallback" style={{ width: '100%' }}>
-                      <summary className="muted" style={{ cursor: 'pointer' }}>
-                        {t('accounts.driveOAuthFallbackTitle')}
-                      </summary>
-                      <p className="muted" style={{ margin: '0.5rem 0' }}>
-                        {t('accounts.driveOAuthFallbackBody')}
-                      </p>
-                      <div className="btn-row" style={{ alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                        <label className="inline-field" style={{ flex: '1 1 280px' }}>
-                          URL OAuth
-                          <Input
-                            value={driveAuthDraft[account.id] ?? ''}
-                            disabled={busy}
-                            placeholder={t('accounts.driveOAuthFallbackPlaceholder')}
-                            onChange={(event) => {
-                              const value = event.target.value;
-                              setDriveAuthDraft((prev) => ({ ...prev, [account.id]: value }));
-                            }}
-                          />
-                        </label>
-                        <Button
-                          size="sm"
-                          disabled={busy || !(driveAuthDraft[account.id] ?? '').trim()}
-                          onClick={() => {
-                            const payload = (driveAuthDraft[account.id] ?? '').trim();
-                            void run(account.id, async () => {
-                              await window.novelTrans.accounts.connectDriveWithAuth(
-                                account.id,
-                                payload,
-                              );
-                              setDriveAuthDraft((prev) => {
-                                const { [account.id]: _removed, ...next } = prev;
-                                return next;
-                              });
-                              setMessage(t('accounts.driveOAuthFallbackSuccess'));
-                            });
-                          }}
-                        >
-                          {t('accounts.driveOAuthFallbackSubmit')}
-                        </Button>
-                      </div>
-                    </details>
-                  ) : null}
 
                   {account.workerEnabled ? (
                     <Button

@@ -2,6 +2,7 @@ import {
   DEFAULT_SOURCE_LANGUAGE,
   getLanguageProfile,
   hasLanguageProfile,
+  LANGUAGE_AUTO,
   normalizeLanguageCode,
   type LanguageProfile,
 } from '@shared/constants/language-profile';
@@ -9,9 +10,27 @@ import type { SourceDetectionMethod } from '@shared/constants/source-language';
 import type { LanguageDetectResponse } from '@shared/schemas/language-profile';
 import type { SourceLanguageDetection } from '@shared/schemas/source-language';
 import type { AiLanguageDetectFn } from './ai-language-detect';
+import { scoreLexicalEvidence } from './language-lexical';
+import { detectScript } from './script-detect';
 
-const HIGH_CONFIDENCE = 0.72;
+/** High confidence is allowed only when evidence identifies a LANGUAGE, not a script. */
+export const LANGUAGE_HIGH_CONFIDENCE = 0.72;
+const HIGH_CONFIDENCE = LANGUAGE_HIGH_CONFIDENCE;
 const MEDIUM_CONFIDENCE = 0.45;
+/** Script-only guesses stay below HIGH so AI fallback always runs. */
+export const SCRIPT_ONLY_MAX_CONFIDENCE = 0.61;
+const MIN_UNIQUE_SCRIPT_LETTERS = 8;
+
+const SCRIPT_FAMILY_FALLBACK: Record<string, string> = {
+  Cyrl: 'ru',
+  Arab: 'ar',
+  Latn: 'en',
+  Hebr: 'he',
+  Deva: 'hi',
+  Beng: 'bn',
+  Ethi: 'am',
+  Hani: 'zh-Hans',
+};
 
 export interface DetectLanguageInput {
   sampleText: string;
@@ -20,132 +39,12 @@ export interface DetectLanguageInput {
   aiDetect?: AiLanguageDetectFn;
 }
 
-function countKana(text: string): number {
-  let n = 0;
-  for (const ch of text) {
-    const code = ch.codePointAt(0);
-    if (code == null) continue;
-    if (
-      (code >= 0x3040 && code <= 0x309f) ||
-      (code >= 0x30a0 && code <= 0x30ff)
-    ) {
-      n += 1;
-    }
-  }
-  return n;
-}
-
-function countHangul(text: string): number {
-  let n = 0;
-  for (const ch of text) {
-    const code = ch.codePointAt(0);
-    if (code == null) continue;
-    if (
-      (code >= 0xac00 && code <= 0xd7af) ||
-      (code >= 0x1100 && code <= 0x11ff)
-    ) {
-      n += 1;
-    }
-  }
-  return n;
-}
-
-function countHan(text: string): number {
-  let n = 0;
-  for (const ch of text) {
-    const code = ch.codePointAt(0);
-    if (code != null && code >= 0x4e00 && code <= 0x9fff) n += 1;
-  }
-  return n;
-}
-
-function countLatinLetters(text: string): number {
-  return (text.match(/[A-Za-z]/g) ?? []).length;
-}
-
-function scoreScriptBuckets(text: string): Record<string, number> {
-  const scores: Record<string, number> = {
-    'zh-Hans': 0,
-    'zh-Hant': 0,
-    ja: 0,
-    ko: 0,
-    ru: 0,
-    ar: 0,
-    th: 0,
-    vi: 0,
-    en: 0,
-    es: 0,
-    fr: 0,
-    de: 0,
-    pt: 0,
-    id: 0,
-  };
-
-  const kana = countKana(text);
-  const hangul = countHangul(text);
-  const han = countHan(text);
-  const latin = countLatinLetters(text);
-
-  if (hangul > 0) scores.ko += hangul * 4;
-  if (kana > 0) {
-    scores.ja += kana * 5;
-    if (han > 0) scores.ja += Math.min(han, kana * 2);
-  }
-
-  const tradHits = (text.match(/[國語門東車馬龍風這會國發灣臺]/g) ?? []).length;
-  const simpHits = (text.match(/[这会国发湾台]/g) ?? []).length;
-  if (han > 0 && kana < 3 && hangul < 3) {
-    if (tradHits > simpHits) {
-      scores['zh-Hant'] += han * 2 + tradHits * 4;
-    } else if (simpHits > tradHits) {
-      scores['zh-Hans'] += han * 2 + simpHits * 4;
-    } else {
-      scores['zh-Hans'] += han * 2;
-      scores.ja += Math.floor(han * 0.15);
-    }
-  }
-
-  let total = 0;
-  for (const ch of text) {
-    const code = ch.codePointAt(0);
-    if (code == null || code <= 0x20) continue;
-    total += 1;
-
-    if (code >= 0x0e00 && code <= 0x0e7f) scores.th += 3;
-    if (code >= 0x0600 && code <= 0x06ff) scores.ar += 3;
-    if (code >= 0x0400 && code <= 0x04ff) scores.ru += 3;
-  }
-
-  const lower = text.toLowerCase();
-  const viHits = (lower.match(/[ăâêôơưđáàảãạéèẻẽẹíìỉĩịóòỏõọúùủũụýỳỷỹỵ]/gi) ?? []).length;
-  if (viHits > 0) scores.vi += viHits * 2;
-
-  const enHints = (lower.match(/\b(the|and|that|with|from|chapter|said)\b/g) ?? []).length;
-  scores.en += enHints * 2;
-  const esHints = (lower.match(/\b(el|la|los|las|que|capítulo)\b/g) ?? []).length;
-  scores.es += esHints;
-  const frHints = (lower.match(/\b(le|la|les|des|une|chapitre)\b/g) ?? []).length;
-  scores.fr += frHints;
-  const deHints = (lower.match(/\b(der|die|das|und|nicht|kapitel)\b/g) ?? []).length;
-  scores.de += deHints;
-  const ptHints = (lower.match(/\b(o|a|os|as|que|capítulo|não)\b/g) ?? []).length;
-  scores.pt += Math.floor(ptHints / 2);
-  const idHints = (lower.match(/\b(yang|dan|dari|untuk|bab)\b/g) ?? []).length;
-  scores.id += idHints;
-
-  if (latin > 30 && han < latin / 4 && kana < 5 && hangul < 5) {
-    scores.en += latin * 0.15;
-  }
-  if (han > latin * 3 && kana < 3) {
-    scores['zh-Hans'] += han * 0.5;
-    scores.en = Math.max(0, scores.en - latin * 0.1);
-  }
-
-  if (total === 0 && latin === 0) {
-    scores[DEFAULT_SOURCE_LANGUAGE] = 1;
-  }
-
-  return scores;
+export interface LocalLanguageDetection {
+  code: string;
+  confidence: number;
+  script: string;
+  /** True when evidence identifies a language, not merely a script. */
+  languageSpecific: boolean;
 }
 
 function pickBest(
@@ -172,6 +71,114 @@ function pickBest(
   const raw = best / sum;
   const confidence = Math.min(0.98, raw * 0.75 + (margin / (best + 1)) * 0.4);
   return { code: bestCode, confidence };
+}
+
+function addScore(scores: Record<string, number>, code: string, amount: number): void {
+  if (amount <= 0) return;
+  scores[code] = (scores[code] ?? 0) + amount;
+}
+
+function scoreChineseVariant(text: string, han: number, kana: number, hangul: number): {
+  scores: Record<string, number>;
+  languageSpecific: boolean;
+} {
+  const scores: Record<string, number> = {};
+  if (han <= 0 || kana >= 3 || hangul >= 3) {
+    return { scores, languageSpecific: false };
+  }
+  const tradHits = (text.match(/[國語門東車馬龍風這會國發灣臺]/g) ?? []).length;
+  const simpHits = (text.match(/[这会国发湾台]/g) ?? []).length;
+  if (tradHits > simpHits) {
+    addScore(scores, 'zh-Hant', han * 2 + tradHits * 4);
+  } else if (simpHits > tradHits) {
+    addScore(scores, 'zh-Hans', han * 2 + simpHits * 4);
+  } else {
+    addScore(scores, 'zh-Hans', han * 2);
+  }
+  return { scores, languageSpecific: true };
+}
+
+function registeredCode(raw: string): string | null {
+  const normalized = normalizeLanguageCode(raw);
+  if (normalized === LANGUAGE_AUTO) return null;
+  if (!hasLanguageProfile(normalized)) return null;
+  return normalized;
+}
+
+export function detectLanguageHeuristic(sampleText: string): LocalLanguageDetection {
+  const sample = sampleText.trim();
+  if (!sample) {
+    return {
+      code: DEFAULT_SOURCE_LANGUAGE,
+      confidence: 0.15,
+      script: 'Latn',
+      languageSpecific: false,
+    };
+  }
+
+  const script = detectScript(sample);
+  const lexical = scoreLexicalEvidence(sample);
+  const kana = script.counts.Hira + script.counts.Kana;
+  const hangul = script.counts.Hang;
+  const han = script.counts.Hani;
+  const scores: Record<string, number> = {};
+  let languageSpecific = false;
+
+  if (hangul >= 3) {
+    addScore(scores, 'ko', hangul * 4);
+    languageSpecific = true;
+  }
+  if (kana >= 3 || (kana >= 1 && han >= 1)) {
+    addScore(scores, 'ja', kana * 5 + Math.min(han, kana * 2));
+    languageSpecific = true;
+  }
+
+  const chinese = scoreChineseVariant(sample, han, kana, hangul);
+  for (const [code, score] of Object.entries(chinese.scores)) addScore(scores, code, score);
+  if (chinese.languageSpecific) languageSpecific = true;
+
+  if (
+    script.uniqueLanguage &&
+    script.letterCount >= MIN_UNIQUE_SCRIPT_LETTERS &&
+    script.catalogScript !== 'Jpan' &&
+    script.catalogScript !== 'Kore'
+  ) {
+    addScore(scores, script.uniqueLanguage, script.letterCount * 4);
+    languageSpecific = true;
+  }
+
+  for (const [code, score] of Object.entries(lexical.scores)) addScore(scores, code, score);
+  if (lexical.languageSpecific) languageSpecific = true;
+
+  let picked = pickBest(scores);
+  if (picked.confidence <= 0.2 && Object.keys(scores).length === 0) {
+    const fallback = SCRIPT_FAMILY_FALLBACK[script.catalogScript] ?? DEFAULT_SOURCE_LANGUAGE;
+    picked = { code: fallback, confidence: 0.28 };
+    languageSpecific = false;
+  }
+
+  if (!languageSpecific) {
+    if (!scores[picked.code] || picked.confidence > SCRIPT_ONLY_MAX_CONFIDENCE) {
+      const fallback = SCRIPT_FAMILY_FALLBACK[script.catalogScript] ?? picked.code;
+      picked = {
+        code: lexical.bestCode ?? fallback,
+        confidence: Math.min(picked.confidence, SCRIPT_ONLY_MAX_CONFIDENCE),
+      };
+    } else {
+      picked = {
+        code: picked.code,
+        confidence: Math.min(picked.confidence, SCRIPT_ONLY_MAX_CONFIDENCE),
+      };
+    }
+  }
+
+  const code = registeredCode(picked.code) ?? DEFAULT_SOURCE_LANGUAGE;
+  return {
+    code,
+    confidence: picked.confidence,
+    script: script.catalogScript,
+    languageSpecific,
+  };
 }
 
 function toProfileFields(code: string): {
@@ -204,25 +211,23 @@ function buildDetectionResult(params: {
     internationalName: profile.internationalName,
     nativeName: profile.nativeName,
     displayNameVi: profile.displayNameVi,
-    displayNameNative: profile.displayNameNative,
+    displayNameNative: profile.nativeName,
     hintCode: hintNorm,
     hintMismatch,
     mixedLanguage: params.mixedLanguage ?? false,
     secondaryLanguages: params.secondaryLanguages ?? [],
-    needsUserConfirm: params.confidence < HIGH_CONFIDENCE,
+    needsUserConfirm: params.confidence < HIGH_CONFIDENCE || profileMissing,
     profileMissing,
   };
 }
 
-export function detectLanguageHeuristic(sampleText: string): {
-  code: string;
-  confidence: number;
-} {
-  const sample = sampleText.trim();
-  if (!sample) {
-    return { code: DEFAULT_SOURCE_LANGUAGE, confidence: 0.15 };
-  }
-  return pickBest(scoreScriptBuckets(sample));
+function shouldCallAi(local: LocalLanguageDetection): boolean {
+  if (!local.languageSpecific) return true;
+  return local.confidence < HIGH_CONFIDENCE;
+}
+
+function acceptAiCode(raw: string): string | null {
+  return registeredCode(raw);
 }
 
 /**
@@ -253,12 +258,12 @@ export async function detectSourceLanguage(
   let mixedLanguage = false;
   let secondaryLanguages: string[] = [];
 
-  if (local.confidence < HIGH_CONFIDENCE && input.aiDetect) {
+  if (shouldCallAi(local) && input.aiDetect) {
     try {
       const ai = await input.aiDetect(sample);
-      if (ai && ai.confidence >= MEDIUM_CONFIDENCE) {
-        const aiCode = normalizeLanguageCode(ai.code);
-        if (aiCode === local.code && local.confidence >= MEDIUM_CONFIDENCE) {
+      const aiCode = ai ? acceptAiCode(ai.code) : null;
+      if (ai && aiCode && ai.confidence >= MEDIUM_CONFIDENCE) {
+        if (aiCode === local.code && local.confidence >= MEDIUM_CONFIDENCE && local.languageSpecific) {
           method = 'HYBRID';
           confidence = Math.min(0.98, (local.confidence + ai.confidence) / 2 + 0.1);
         } else {
@@ -267,7 +272,9 @@ export async function detectSourceLanguage(
           confidence = Math.min(0.98, ai.confidence);
         }
         mixedLanguage = ai.mixedLanguage ?? false;
-        secondaryLanguages = ai.secondaryLanguages ?? [];
+        secondaryLanguages = (ai.secondaryLanguages ?? [])
+          .map((c) => acceptAiCode(c))
+          .filter((c): c is string => c != null);
       }
     } catch {
       // fall through to local

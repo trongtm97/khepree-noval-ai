@@ -60,8 +60,8 @@ export const introArticles: HelpArticle[] = [
             body: 'Đi tới Tài khoản Google → Thêm tài khoản Google. Đăng nhập Gemini trong cửa sổ trình duyệt riêng. Trạng thái chuyển Sẵn sàng khi phiên hợp lệ.',
           },
           {
-            title: 'Kết nối Google Drive (tuỳ chọn nhưng khuyến nghị)',
-            body: 'Trên thẻ tài khoản, chọn Kết nối Drive. Drive dùng để đồng bộ file kiến thức phục vụ NotebookLM.',
+            title: 'Bộ nhớ AI cục bộ',
+            body: 'NovelTrans lưu nhân vật, thuật ngữ và ngữ cảnh trên máy (SQLite). NotebookLM Research là tùy chọn cho phân tích toàn truyện.',
           },
           {
             title: 'Nhập truyện',

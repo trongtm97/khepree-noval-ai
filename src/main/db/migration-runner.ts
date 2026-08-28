@@ -4,7 +4,6 @@ import { utcNow } from './utils/timestamps';
 import { withTransaction } from './transaction';
 import {
   backupDatabaseFile,
-  removeBackupFile,
   restoreDatabaseFromBackup,
 } from './backup';
 
@@ -67,7 +66,9 @@ export function runMigrations(
     let backupPath: string | null = null;
 
     if (currentVersion > 0 && fs.existsSync(options.dbPath)) {
-      backupPath = backupDatabaseFile(options.dbPath, options.backupsDir);
+      backupPath = backupDatabaseFile(options.dbPath, options.backupsDir, {
+        fileName: `noveltrans-migration-v${migration.version}-${new Date().toISOString().replace(/[:.]/g, '-')}.db`,
+      });
       lastBackupPath = backupPath;
     }
 
@@ -87,9 +88,9 @@ export function runMigrations(
       });
       applied.push(migration.version);
 
+      // Phase 8: retain migration backup (atomic snapshot) after successful apply.
       if (backupPath) {
-        removeBackupFile(backupPath);
-        lastBackupPath = null;
+        lastBackupPath = backupPath;
       }
     } catch (error) {
       if (backupPath) {

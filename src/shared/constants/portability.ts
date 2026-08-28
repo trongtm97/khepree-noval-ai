@@ -8,17 +8,27 @@ export const BACKUP_KINDS = ['full', 'project'] as const;
 export type BackupKind = (typeof BACKUP_KINDS)[number];
 
 /** Max schema version this app can restore. */
-export const PORTABILITY_MAX_SCHEMA_VERSION = 31;
+export const PORTABILITY_MAX_SCHEMA_VERSION = 38;
 
 export const AUTO_BACKUP_META_KEYS = {
   enabled: 'backup.auto.enabled',
   intervalHours: 'backup.auto.intervalHours',
+  /** @deprecated Use retentionDaily — kept for migration from flat count. */
   retentionCount: 'backup.auto.retentionCount',
+  retentionDaily: 'backup.auto.retentionDaily',
+  retentionWeekly: 'backup.auto.retentionWeekly',
+  retentionMonthly: 'backup.auto.retentionMonthly',
   lastRunAt: 'backup.auto.lastRunAt',
+  directory: 'backup.dir',
 } as const;
 
 export const DEFAULT_AUTO_BACKUP_INTERVAL_HOURS = 24;
+/** @deprecated Use DEFAULT_RETENTION_DAILY */
 export const DEFAULT_AUTO_BACKUP_RETENTION = 7;
+export const DEFAULT_RETENTION_DAILY = 7;
+export const DEFAULT_RETENTION_WEEKLY = 4;
+export const DEFAULT_RETENTION_MONTHLY = 3;
+export const DEFAULT_AUTO_BACKUP_ENABLED = true;
 
 export const BACKUP_ARCHIVE_EXTENSION = '.nts-backup.zip';
 export const PROJECT_BACKUP_EXTENSION = '.nts-project.zip';

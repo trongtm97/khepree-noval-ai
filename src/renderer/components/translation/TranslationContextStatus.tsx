@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { NOTEBOOK_CHANNEL_READY } from '@shared/constants/notebook';
 import { useT } from '../../i18n';
 
 interface TranslationContextStatusProps {
   projectId: string;
   /** Live packMode from active job — technical tooltip only. */
-  packMode?: 'slim' | 'hybrid' | 'fat' | null;
+  packMode?: 'local_context' | 'notebook_assisted' | null;
 }
 
 interface MemoryBadge {
@@ -16,8 +15,8 @@ interface MemoryBadge {
 }
 
 /**
- * Translator-facing memory status.
- * Never shows SLIM/HYBRID/FAT in the badge — those stay in tooltip.
+ * Translator-facing memory status — local SQLite only (Phase 5).
+ * Research Notebook is optional and never blocks translation.
  */
 export function TranslationContextStatus({
   projectId,
@@ -33,64 +32,25 @@ export function TranslationContextStatus({
       return;
     }
     try {
-      const resolved = await window.novelTrans.projects.resolveWorker({
-        projectId,
-        purpose: 'translation',
-      });
-      const accountId = resolved.accountId;
-      if (!accountId) {
-        setBadge({
-          label: t('translation.memoryLocal'),
-          ok: false,
-          tooltip: [t('translation.memoryTooltipLocal'), packModeTip(packMode, t)]
-            .filter(Boolean)
-            .join(' · '),
-        });
-        return;
-      }
-      const healthRes = await window.novelTrans.notebook.health({
-        projectId,
-        accountId,
-      });
-      const single = 'translation' in healthRes ? healthRes.translation : healthRes;
-      const status = single.status;
-      const local = single.localVersion;
-      const notebook = single.notebookVersion;
-      const channelOk = NOTEBOOK_CHANNEL_READY.has(status);
+      const boot = await window.novelTrans.notebook.getBootstrapStatus(projectId);
+      const localReady =
+        boot.characterCount > 0 ||
+        boot.termCandidateCount > 0 ||
+        boot.relationshipCount > 0 ||
+        (boot.throughChapter ?? 0) > 0 ||
+        boot.status === 'COMPLETED' ||
+        boot.status === 'COMPLETED_WITH_WARNINGS' ||
+        boot.status === 'READY';
 
-      if (channelOk && notebook > 0 && local > 0 && notebook === local) {
-        setBadge({
-          label: t('translation.memoryNotebookOk'),
-          ok: true,
-          tooltip: [
-            t('translation.memoryTooltipSynced', { version: String(notebook) }),
-            packModeTip(packMode, t),
-          ]
-            .filter(Boolean)
-            .join(' · '),
-        });
-        return;
-      }
-      if (channelOk && (notebook > 0 || local > 0)) {
-        setBadge({
-          label: t('translation.memoryNotebookMixed'),
-          ok: false,
-          tooltip: [
-            t('translation.memoryTooltipMixed', {
-              notebook: notebook > 0 ? String(notebook) : '—',
-              local: local > 0 ? String(local) : '—',
-            }),
-            packModeTip(packMode, t),
-          ]
-            .filter(Boolean)
-            .join(' · '),
-        });
-        return;
-      }
       setBadge({
         label: t('translation.memoryLocal'),
-        ok: local > 0,
-        tooltip: [t('translation.memoryTooltipLocal'), packModeTip(packMode, t)]
+        ok: localReady,
+        tooltip: [
+          localReady
+            ? t('translation.memoryTooltipLocalReady')
+            : t('translation.memoryTooltipLocal'),
+          packModeTip(packMode, t),
+        ]
           .filter(Boolean)
           .join(' · '),
       });
@@ -125,9 +85,11 @@ export function TranslationContextStatus({
 }
 
 function packModeTip(
-  packMode: 'slim' | 'hybrid' | 'fat' | null | undefined,
+  packMode: 'local_context' | 'notebook_assisted' | null | undefined,
   t: (key: string, vars?: Record<string, string>) => string,
 ): string {
   if (!packMode) return '';
-  return t('translation.memoryPackTooltip', { mode: packMode.toUpperCase() });
+  const label =
+    packMode === 'notebook_assisted' ? 'NOTEBOOK_ASSISTED' : 'LOCAL_CONTEXT';
+  return t('translation.memoryPackTooltip', { mode: label });
 }

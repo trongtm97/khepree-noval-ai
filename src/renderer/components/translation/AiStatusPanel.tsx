@@ -6,7 +6,6 @@ import { Button, Card } from '../ui';
 import { NOTEBOOK_CHANNEL_READY } from '@shared/constants/notebook';
 import {
   mapNotebookServiceMessage,
-  needsNotebookSync,
   resolveNotebookPanelHint,
 } from '../../utils/notebook-panel';
 
@@ -129,9 +128,8 @@ export function AiStatusPanel({
       const result = await window.novelTrans.projects.setWorker({
         projectId,
         accountId: nextAccountId,
-        ensureNotebook: true,
+        ensureNotebook: false,
       });
-      setNotebookStatus(result.notebookStatus);
       setNotebookMessage(mapNotebookServiceMessage(result.message, t));
       await refresh();
       onNotebookChange?.();
@@ -153,9 +151,7 @@ export function AiStatusPanel({
     dirty: knowledgeDirty,
     instructionsReady,
   });
-  const showSyncNow = Boolean(
-    projectId && accountId && needsNotebookSync({ status: notebookStatus, dirty: knowledgeDirty }),
-  );
+  const showSyncNow = false;
 
   const afterNotebookAction = useCallback(async () => {
     if (projectId && accountId) {
@@ -290,7 +286,7 @@ export function AiStatusPanel({
             {projectId
               ? ` · ${t('aiPanel.knowledgeVersion', {
                   local: String(localVersion),
-                  remote: String(notebookVersion),
+                  notebook: String(notebookVersion),
                 })}`
               : ''}
           </dd>

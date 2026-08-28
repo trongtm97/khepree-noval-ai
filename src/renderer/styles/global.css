@@ -269,6 +269,29 @@ body {
   letter-spacing: 0.01em;
 }
 
+.language-pair-label--stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.language-pair-intl {
+  font-weight: 500;
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+
+.language-pair-native {
+  font-size: var(--font-small);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.project-workspace-pair.language-pair-label--stacked .language-pair-intl {
+  color: var(--text-primary);
+}
+
 .project-workspace-pair {
   font-size: 1.05rem;
   color: var(--text-primary);

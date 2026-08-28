@@ -1,5 +1,6 @@
 import type { DatabaseManager } from '../db/database-manager';
 import type { PackMode } from '@shared/constants/pack-mode';
+import { isLocalContextPack } from '@shared/constants/pack-mode';
 import type {
   JobTimelineEntry,
   KnowledgeSourceMode,
@@ -9,6 +10,7 @@ import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
 import type { PackModeDecision } from '../prompt/pack-mode-resolver';
 import { utcNow } from '../db/utils/timestamps';
 import type { KnowledgeSyncEventType } from '@shared/constants/knowledge';
+import { LEGACY_BINDING_DRIVE_LIVE } from '../knowledge/legacy-db-values';
 
 export function resolveKnowledgeSourceMode(
   db: DatabaseManager,
@@ -16,12 +18,12 @@ export function resolveKnowledgeSourceMode(
   notebookId: string | null,
   packMode: PackMode,
 ): KnowledgeSourceMode {
-  if (packMode === 'fat' || !notebookId) return 'LOCAL_ONLY';
+  if (isLocalContextPack(packMode) || !notebookId) return 'LOCAL_ONLY';
   const bindings = notebookId
     ? db.notebookSourceBindings.listByNotebook(projectId, notebookId)
     : db.notebookSourceBindings.listByProject(projectId);
   const active = bindings.filter((b) => b.status === 'active');
-  if (active.some((b) => b.binding_type === 'DRIVE_LIVE')) return 'DRIVE_LIVE';
+  if (active.some((b) => b.binding_type === LEGACY_BINDING_DRIVE_LIVE)) return 'STATIC';
   if (
     active.some(
       (b) =>
@@ -53,10 +55,7 @@ export function buildTranslationContextDiagnostics(
       : null;
   const notebookId =
     input.packDecision.notebookId ?? mapping?.notebook_id ?? mapping?.id ?? null;
-  const groundingVerified =
-    packMode === 'slim' &&
-    input.packDecision.sourceGroundingConfirmed &&
-    input.packDecision.reason === 'ready_verified';
+  const groundingVerified = false;
 
   const knowledgeSourceMode = resolveKnowledgeSourceMode(
     db,
@@ -73,9 +72,9 @@ export function buildTranslationContextDiagnostics(
       mapping?.notebook_role === 'TRANSLATION' ||
       mapping?.notebook_role === 'SINGLE'
         ? mapping.notebook_role
-        : packMode === 'fat'
-          ? null
-          : 'TRANSLATION',
+        : packMode === 'notebook_assisted'
+          ? 'TRANSLATION'
+          : null,
     notebookId,
     notebookName: mapping?.notebook_name ?? null,
     notebookGroundingVerified: groundingVerified,

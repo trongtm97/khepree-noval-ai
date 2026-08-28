@@ -1,14 +1,21 @@
 import { BaseRepository } from './base-repository';
 import { newId } from '../utils/uuid';
 import { touchTimestamps, utcNow } from '../utils/timestamps';
-import type { DriveSyncStatus } from '@shared/constants/drive';
-import { DEFAULT_DRIVE_SYNC_EVERY_N_CHAPTERS } from '@shared/constants/drive';
+import {
+  DEFAULT_KNOWLEDGE_SYNC_EVERY_N_CHAPTERS,
+  type KnowledgeSyncStatus,
+} from '@shared/constants/knowledge';
 import type { VersionProbeStatus } from '@shared/constants/notebook-version-probe';
 
-export interface DriveSyncStateRow {
+/**
+ * Row from legacy table `drive_sync_state` (deprecated name — stores knowledge sync policy).
+ * Do not read `root_folder_id` in production; kept for DB backward compatibility only.
+ */
+export interface KnowledgeSyncStateRow {
   id: string;
   project_id: string;
   google_account_id: string | null;
+  /** @deprecated Legacy Drive folder id — do not read in production. */
   root_folder_id: string | null;
   sync_every_n_chapters: number;
   chapters_since_sync: number;
@@ -25,16 +32,16 @@ export interface DriveSyncStateRow {
   updated_at: string;
 }
 
-export class DriveSyncStateRepository extends BaseRepository {
-  getByProject(projectId: string): DriveSyncStateRow | null {
+export class KnowledgeSyncStateRepository extends BaseRepository {
+  getByProject(projectId: string): KnowledgeSyncStateRow | null {
     return (
       (this.db
         .prepare(`SELECT * FROM drive_sync_state WHERE project_id = ?`)
-        .get(projectId) as DriveSyncStateRow | undefined) ?? null
+        .get(projectId) as KnowledgeSyncStateRow | undefined) ?? null
     );
   }
 
-  ensure(projectId: string): DriveSyncStateRow {
+  ensure(projectId: string): KnowledgeSyncStateRow {
     const existing = this.getByProject(projectId);
     if (existing) return existing;
     const id = newId();
@@ -53,30 +60,20 @@ export class DriveSyncStateRepository extends BaseRepository {
       .run(
         id,
         projectId,
-        DEFAULT_DRIVE_SYNC_EVERY_N_CHAPTERS,
+        DEFAULT_KNOWLEDGE_SYNC_EVERY_N_CHAPTERS,
         ts.created_at,
         ts.updated_at,
       );
     return this.assertRow(this.getByProject(projectId), 'drive_sync_state', id);
   }
 
-  assignWorker(projectId: string, accountId: string): DriveSyncStateRow {
+  assignWorker(projectId: string, accountId: string): KnowledgeSyncStateRow {
     this.ensure(projectId);
     this.db
       .prepare(
         `UPDATE drive_sync_state SET google_account_id = ?, updated_at = ? WHERE project_id = ?`,
       )
       .run(accountId, utcNow(), projectId);
-    return this.assertRow(this.getByProject(projectId), 'drive_sync_state', projectId);
-  }
-
-  setRootFolder(projectId: string, folderId: string): DriveSyncStateRow {
-    this.ensure(projectId);
-    this.db
-      .prepare(
-        `UPDATE drive_sync_state SET root_folder_id = ?, updated_at = ? WHERE project_id = ?`,
-      )
-      .run(folderId, utcNow(), projectId);
     return this.assertRow(this.getByProject(projectId), 'drive_sync_state', projectId);
   }
 
@@ -87,7 +84,7 @@ export class DriveSyncStateRepository extends BaseRepository {
       chaptersSinceSync?: number;
       criticalChangePending?: boolean;
       lastSyncAt?: string | null;
-      syncStatus?: DriveSyncStatus;
+      syncStatus?: KnowledgeSyncStatus;
       lastError?: string | null;
       pendingKnowledgeVersion?: number;
       pendingSyncNonce?: string | null;
@@ -95,7 +92,7 @@ export class DriveSyncStateRepository extends BaseRepository {
       verifiedSyncNonce?: string | null;
       versionProbeStatus?: VersionProbeStatus;
     },
-  ): DriveSyncStateRow {
+  ): KnowledgeSyncStateRow {
     const row = this.ensure(projectId);
     this.db
       .prepare(

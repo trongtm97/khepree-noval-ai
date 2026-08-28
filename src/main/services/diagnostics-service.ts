@@ -44,7 +44,6 @@ import {
 } from '../automation/selectors/provider-status';
 import { pathsService } from './paths-service';
 import { getAccountWorkerService } from './account-worker-singleton';
-import { getDriveSyncService } from './drive-sync-service-singleton';
 import { logger } from '../logging/logger';
 
 const GEMINI_URL = 'https://gemini.google.com/app';
@@ -241,20 +240,6 @@ export class DiagnosticsService {
     );
     const reportPath = path.join(process.cwd(), 'docs', 'REAL_NOTEBOOK_GROUNDING_REPORT.md');
 
-    let driveClient = null as import('../drive/drive-client').DriveClient | null;
-    try {
-      const { DriveOAuthService } = await import('../drive/drive-oauth-service');
-      const { getSecretStorage } = await import('../security');
-      driveClient = await new DriveOAuthService(getSecretStorage()).createDriveClient(
-        input.accountId,
-      );
-    } catch (error) {
-      logger.warn('Notebook grounding smoke: Drive client unavailable', {
-        accountId: input.accountId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-
     const config = parseNotebookGroundingSmokeConfig({
       enabled: true,
       profilePath,
@@ -273,12 +258,10 @@ export class DiagnosticsService {
     logger.info('Real Notebook grounding smoke starting from Diagnostics UI', {
       accountId: input.accountId,
       notebookUrl: input.notebookUrl,
-      driveAvailable: Boolean(driveClient),
     });
 
     const report = await runNotebookGroundingSmoke({
       config,
-      driveClient,
       db: this.getDb(),
     });
 
@@ -298,7 +281,7 @@ export class DiagnosticsService {
         localVersion: r.localVersion,
         notebookVersion: r.notebookVersion,
         bindingType: r.bindingType === 'UNKNOWN' ? null : r.bindingType,
-        driveFileId: r.driveFileId,
+        remoteFileId: r.remoteFileId,
         notebookName: r.notebookName,
         packMode: r.packMode,
         response: r.response,
@@ -317,21 +300,17 @@ export class DiagnosticsService {
       switch (input.kind) {
         case 'browserProfile':
           return await this.testBrowserProfile(input.accountId, started);
-        case 'drive':
-          return await this.testDrive(input.accountId, started);
         case 'gemini':
           return await this.testGemini(input.accountId, started);
         case 'notebook':
           return await this.testNotebook(input.accountId, started);
-        default: {
-          const _exhaustive: never = input.kind;
+        default:
           return {
-            kind: _exhaustive,
+            kind: input.kind,
             ok: false,
-            message: 'Unknown test kind',
+            message: 'Unknown or unsupported test kind',
             durationMs: Date.now() - started,
           };
-        }
       }
     } catch (error) {
       return {
@@ -529,32 +508,6 @@ export class DiagnosticsService {
         : `Profile not usable: ${result.reason ?? 'unknown'}`,
       durationMs: Date.now() - started,
       details: { email: result.email, reason: result.reason ?? null },
-    };
-  }
-
-  private async testDrive(
-    accountId: string,
-    started: number,
-  ): Promise<ConnectionTestResponse> {
-    const account = this.getDb().googleAccounts.getById(accountId);
-    if (!account) throw new Error(`Account not found: ${accountId}`);
-    const oauthConfigured = await getDriveSyncService().getOAuthConfigured();
-    const connected = account.drive_connected === 1;
-    const ok = oauthConfigured && connected;
-    return {
-      kind: 'drive',
-      ok,
-      message: ok
-        ? 'Drive OAuth configured and account connected'
-        : !oauthConfigured
-          ? 'Drive OAuth client not configured'
-          : 'Account Drive not connected',
-      durationMs: Date.now() - started,
-      details: {
-        oauthConfigured,
-        driveConnected: connected,
-        // never include tokens
-      },
     };
   }
 

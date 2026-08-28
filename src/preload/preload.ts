@@ -24,8 +24,6 @@ const api: NovelTransApi = {
   getPaths: () => invokeChannel(IPC_CHANNELS.APP_GET_PATHS),
   openFolder: (pathKey: AppPathKey) =>
     invokeChannel(IPC_CHANNELS.APP_OPEN_FOLDER, { pathKey }),
-  openGuide: (guideId) =>
-    invokeChannel(IPC_CHANNELS.APP_OPEN_GUIDE, { guideId }),
   securityHealthCheck: () => invokeChannel(IPC_CHANNELS.SECURITY_HEALTH_CHECK),
   accounts: {
     list: () => invokeChannel(IPC_CHANNELS.ACCOUNT_LIST),
@@ -48,12 +46,6 @@ const api: NovelTransApi = {
         accountId,
         ...input,
       }),
-    connectDrive: (accountId) =>
-      invokeChannel(IPC_CHANNELS.ACCOUNT_CONNECT_DRIVE, { accountId }),
-    connectDriveWithAuth: (accountId, authPayload) =>
-      invokeChannel(IPC_CHANNELS.ACCOUNT_CONNECT_DRIVE_AUTH, { accountId, authPayload }),
-    disconnectDrive: (accountId) =>
-      invokeChannel(IPC_CHANNELS.ACCOUNT_DISCONNECT_DRIVE, { accountId }),
     disable: (accountId) =>
       invokeChannel(IPC_CHANNELS.ACCOUNT_DISABLE, { accountId }),
     enable: (accountId) =>
@@ -199,18 +191,6 @@ const api: NovelTransApi = {
       invokeChannel(IPC_CHANNELS.PACK_LIST_CHAPTERS, { projectId }),
     build: (input) => invokeChannel(IPC_CHANNELS.PACK_BUILD, input),
   },
-  drive: {
-    oauthStatus: () => invokeChannel(IPC_CHANNELS.DRIVE_OAUTH_STATUS),
-    setOAuthClient: (input) =>
-      invokeChannel(IPC_CHANNELS.DRIVE_SET_OAUTH_CLIENT, input),
-    getStatus: (projectId) =>
-      invokeChannel(IPC_CHANNELS.DRIVE_GET_STATUS, { projectId }),
-    assignWorker: (input) => invokeChannel(IPC_CHANNELS.DRIVE_ASSIGN_WORKER, input),
-    setSchedule: (input) => invokeChannel(IPC_CHANNELS.DRIVE_SET_SCHEDULE, input),
-    provision: (projectId) => invokeChannel(IPC_CHANNELS.DRIVE_PROVISION, { projectId }),
-    sync: (input) => invokeChannel(IPC_CHANNELS.DRIVE_SYNC, input),
-    retry: (projectId) => invokeChannel(IPC_CHANNELS.DRIVE_RETRY, { projectId }),
-  },
   notebook: {
     list: (projectId) =>
       invokeChannel(IPC_CHANNELS.NOTEBOOK_LIST, { projectId }),
@@ -244,6 +224,10 @@ const api: NovelTransApi = {
       invokeChannel(IPC_CHANNELS.NOTEBOOK_SKIP_BOOTSTRAP, { projectId }),
     getBootstrapStatus: (projectId) =>
       invokeChannel(IPC_CHANNELS.NOTEBOOK_GET_BOOTSTRAP_STATUS, { projectId }),
+    researchQuery: (input) =>
+      invokeChannel(IPC_CHANNELS.NOTEBOOK_RESEARCH_QUERY, input),
+    openResearch: (input) =>
+      invokeChannel(IPC_CHANNELS.NOTEBOOK_OPEN_RESEARCH, input),
     packNovelCorpus: (input) =>
       invokeChannel(IPC_CHANNELS.BOOTSTRAP_PACK_NOVEL_CORPUS, input),
     getPreprocessPrompt: (input) =>
@@ -317,6 +301,11 @@ const api: NovelTransApi = {
     listBackups: () => invokeChannel(IPC_CHANNELS.PORTABILITY_LIST_BACKUPS),
     createManualBackup: () => invokeChannel(IPC_CHANNELS.PORTABILITY_CREATE_MANUAL_BACKUP),
     selectBackupPath: () => invokeChannel(IPC_CHANNELS.PORTABILITY_SELECT_BACKUP_PATH),
+    getBackupDirectory: () => invokeChannel(IPC_CHANNELS.PORTABILITY_GET_BACKUP_DIRECTORY),
+    setBackupDirectory: (input) =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_SET_BACKUP_DIRECTORY, input),
+    selectBackupDirectory: () =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_SELECT_BACKUP_DIRECTORY),
   },
   diagnostics: {
     listProviders: () => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_LIST_PROVIDERS),
@@ -344,7 +333,6 @@ const api: NovelTransApi = {
   setup: {
     getStatus: () => invokeChannel(IPC_CHANNELS.SETUP_GET_STATUS),
     setStep: (input) => invokeChannel(IPC_CHANNELS.SETUP_SET_STEP, input),
-    skipDrive: (input) => invokeChannel(IPC_CHANNELS.SETUP_SKIP_DRIVE, input),
     explore: (input) => invokeChannel(IPC_CHANNELS.SETUP_EXPLORE, input),
     complete: (input) => invokeChannel(IPC_CHANNELS.SETUP_COMPLETE, input),
   },

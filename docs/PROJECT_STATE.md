@@ -1,6 +1,6 @@
 # NovelTrans Studio — Project State
 
-> Last updated: 2026-08-26
+> Last updated: 2026-08-28
 
 ## Completed
 
@@ -91,6 +91,33 @@
 - [x] Create Project wizard + Edition add pre-fill; duplicate edition warning
 - [x] Onboarding `defaultLanguage` step; help `default-target-language`
 - [x] `docs/LANGUAGE_CATALOG.md`, `docs/UI_UX.md` updates
+
+### Source language: script vs language (2026-08-28)
+- [x] Local script detection (Cyrl/Arab/Latn/Hebr) no longer high-confidence ru/ar/en
+- [x] High local confidence only with language-specific evidence; unique scripts ja/ko/th allowed
+- [x] Ambiguous script families call AI; AI codes validated against LanguageProfile catalog
+- [x] `docs/LANGUAGE_CATALOG.md` + help `source-language-detection`
+
+### Phase 7 — Local Learning Loop (2026-08-28)
+- [x] Migration **038** — `jobs.knowledge_version_at_start`, `jobs.knowledge_version_at_commit`
+- [x] `knowledge-version.ts` — monotonic local version bump after every PASS
+- [x] Learning pipeline local-only default — no Drive/Notebook sync on PASS
+- [x] Wave/repair jobs stamp knowledge snapshot for pack consistency
+- [x] Test: Ch100→Ch101 inter-chapter learning + restart persistence
+
+### Phase 8 — Local Backup & Portability (2026-08-28)
+- [x] Atomic backup via SQLite `VACUUM INTO`
+- [x] Daily auto-backup ZIP + tiered retention (7 daily / 4 weekly / 3 monthly)
+- [x] Custom backup directory IPC + Portability UI
+- [x] Rich restore preview; project export includes editions + memory events
+- [x] `docs/PORTABILITY.md` updates
+
+### Phase 9 — Drive Removal Cleanup (2026-08-28)
+- [x] Removed Drive services, IPC, UI, schemas, tests, `googleapis` dependency
+- [x] Kept legacy DB migrations + `drive_resources` reader for old databases
+- [x] Search guard: no `DriveSyncService`, `syncDrive`, `DRIVE_LIVE` in active code paths
+- [x] Docs rewrite: ARCHITECTURE, DATABASE, NOTEBOOK_ARCHITECTURE, HELP_SYSTEM, PROJECT_STATE
+- [x] Deleted obsolete `docs/DRIVE.md`; audit in `docs/DRIVE_REMOVAL_AUDIT.md`
 
 ## In Progress
 

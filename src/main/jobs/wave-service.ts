@@ -175,6 +175,8 @@ async function commitWaveJob(
     sourceContextByParagraph: payload.sourceContextByParagraph,
   });
 
+  db.jobs.setKnowledgeVersionAtCommit(jobId, learning.knowledgeVersionAtCommit);
+
   db.translationWaves.updateWaveJob(waveJobId, {
     commitStatus,
     provisionalPayload: null,

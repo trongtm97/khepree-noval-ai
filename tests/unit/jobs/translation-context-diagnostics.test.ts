@@ -21,74 +21,50 @@ describe('translation context diagnostics formatters', () => {
     expect(formatDiagnosticsAiChannel('GEMINI_WEB_API')).toBe('Gemini Web API');
   });
 
-  it('SLIM verified → Notebook memory + SLIM mode', () => {
+  it('local_context → SQLite local memory', () => {
     const d = {
-      packMode: 'slim' as const,
-      notebookGroundingVerified: true,
-      providerType: 'PLAYWRIGHT_GEMINI',
+      packMode: 'local_context' as const,
+      notebookGroundingVerified: false,
+      providerType: 'GEMINI_WEB_API',
       localKnowledgeVersion: 48,
-      notebookKnowledgeVersion: 48,
+      notebookKnowledgeVersion: 0,
     };
-    expect(formatDiagnosticsMemorySurface(d)).toBe('Translation Notebook');
-    expect(formatDiagnosticsContextMode(d)).toBe('✓ Notebook đã cập nhật');
-    expect(formatDiagnosticsPackModeTooltip(d)).toBe('SLIM — Notebook đã xác minh');
-    expect(formatDiagnosticsKnowledgeVersions(d)).toBe('v48 / v48 ✓');
+    expect(formatDiagnosticsMemorySurface(d)).toBe('SQLite local memory');
+    expect(formatDiagnosticsContextMode(d)).toBe('Bộ nhớ cục bộ (Local Context)');
+    expect(formatDiagnosticsPackModeTooltip(d)).toBe('LOCAL_CONTEXT — SQLite v48');
     expect(formatDiagnosticsGroundingWarning(d)).toBeNull();
   });
 
-  it('HYBRID shows version pair + warning', () => {
+  it('notebook_assisted shows version pair + warning when unverified', () => {
     const d = {
-      packMode: 'hybrid' as const,
+      packMode: 'notebook_assisted' as const,
       notebookGroundingVerified: false,
       providerType: 'PLAYWRIGHT_GEMINI',
       localKnowledgeVersion: 48,
       notebookKnowledgeVersion: 47,
     };
-    expect(formatDiagnosticsContextMode(d)).toBe('Notebook + cập nhật mới');
+    expect(formatDiagnosticsContextMode(d)).toBe('Notebook + ngữ cảnh cục bộ');
     expect(formatDiagnosticsPackModeTooltip(d)).toBe(
-      'HYBRID — Notebook v47 + cập nhật cục bộ v48',
+      'NOTEBOOK_ASSISTED — Notebook v47 + local v48',
     );
     expect(formatDiagnosticsGroundingWarning(d)).toBe(
-      'Notebook chưa xác minh — đang bổ sung bộ nhớ cục bộ.',
+      'Notebook chưa xác minh — đang dùng ngữ cảnh cục bộ.',
     );
     expect(formatDiagnosticsKnowledgeVersions(d)).toBe('v47 / v48');
   });
 
-  it('FAT is local only', () => {
-    const d = {
-      packMode: 'fat' as const,
-      notebookGroundingVerified: false,
-      localKnowledgeVersion: 1,
-      notebookKnowledgeVersion: 0,
-    };
-    expect(formatDiagnosticsContextMode(d)).toBe('Bộ nhớ cục bộ');
-    expect(formatDiagnosticsPackModeTooltip(d)).toBe('FAT — SQLite local memory');
-  });
-
-  it('never claims full Notebook when grounding false on Browser', () => {
-    const warn = formatDiagnosticsGroundingWarning({
-      providerType: 'PLAYWRIGHT_GEMINI',
-      notebookGroundingVerified: false,
-      packMode: 'slim',
-    });
-    expect(warn).toContain('chưa xác minh');
-    expect(warn).not.toMatch(/đầy đủ/i);
-  });
-
-  it('reads diagnostics from progress JSON', () => {
+  it('legacy slim in progress normalizes to local_context', () => {
     const d = readDiagnosticsFromProgress({
       providerType: 'PLAYWRIGHT_GEMINI',
       packMode: 'slim',
       notebookId: 'nb-1',
       notebookName: '[NovelTrans][Translation] Tiên Nghịch',
-      notebookGroundingVerified: true,
       localKnowledgeVersion: 48,
-      notebookKnowledgeVersion: 48,
-      knowledgeSourceMode: 'DRIVE_LIVE',
+      knowledgeSourceMode: 'LOCAL_ONLY',
       hotDeltaCount: 0,
     });
-    expect(d?.notebookName).toContain('Tiên Nghịch');
-    expect(d?.knowledgeSourceMode).toBe('DRIVE_LIVE');
+    expect(d?.packMode).toBe('local_context');
+    expect(d?.knowledgeSourceMode).toBe('LOCAL_ONLY');
   });
 });
 
@@ -126,44 +102,43 @@ describe('buildTranslationContextDiagnostics', () => {
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
-  it('SLIM ready_verified → grounding true + notebook name', () => {
+  it('local_context default → LOCAL_ONLY, no grounding claim', () => {
     const d = buildTranslationContextDiagnostics(db, {
       projectId,
       accountId,
       providerType: 'PLAYWRIGHT_GEMINI',
       packDecision: {
-        packMode: 'slim',
-        notebookId: 'nb-tien',
+        packMode: 'local_context',
+        notebookId: null,
         localKnowledgeVersion: 48,
-        notebookVerifiedVersion: 48,
-        sourceGroundingConfirmed: true,
-        reason: 'ready_verified',
+        notebookVerifiedVersion: 0,
+        sourceGroundingConfirmed: false,
+        reason: 'local_context_default',
         hotDeltaCount: 0,
       },
     });
-    expect(d.notebookGroundingVerified).toBe(true);
-    expect(d.notebookName).toContain('Tiên Nghịch');
-    expect(d.notebookRole).toBe('TRANSLATION');
-    expect(d.packMode).toBe('slim');
+    expect(d.notebookGroundingVerified).toBe(false);
+    expect(d.knowledgeSourceMode).toBe('LOCAL_ONLY');
+    expect(d.packMode).toBe('local_context');
   });
 
-  it('FAT → LOCAL_ONLY and no grounding', () => {
+  it('notebook_assisted → notebook role preserved', () => {
     const d = buildTranslationContextDiagnostics(db, {
       projectId,
       accountId,
-      providerType: 'GEMINI_WEB_API',
+      providerType: 'PLAYWRIGHT_GEMINI',
       packDecision: {
-        packMode: 'fat',
-        notebookId: null,
+        packMode: 'notebook_assisted',
+        notebookId: 'nb-tien',
         localKnowledgeVersion: 3,
         notebookVerifiedVersion: 0,
         sourceGroundingConfirmed: false,
-        reason: 'webapi_always_fat',
+        reason: 'notebook_assisted_explicit',
         hotDeltaCount: 2,
       },
     });
-    expect(d.knowledgeSourceMode).toBe('LOCAL_ONLY');
-    expect(d.notebookGroundingVerified).toBe(false);
+    expect(d.notebookName).toContain('Tiên Nghịch');
+    expect(d.notebookRole).toBe('TRANSLATION');
     expect(d.hotDeltaCount).toBe(2);
   });
 });

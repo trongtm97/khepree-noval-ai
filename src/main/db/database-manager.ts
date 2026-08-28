@@ -20,7 +20,7 @@ import {
   MemoryArchiveRepository,
   LearningEventRepository,
   DriveResourceRepository,
-  DriveSyncStateRepository,
+  KnowledgeSyncStateRepository,
   NotebookRepository,
   GeminiRequestRepository,
   AutomationEventRepository,
@@ -70,8 +70,13 @@ export class DatabaseManager {
   readonly memoryConflicts: MemoryConflictRepository;
   readonly memoryArchives: MemoryArchiveRepository;
   readonly learningEvents: LearningEventRepository;
+  /** @deprecated Legacy Drive table — no production reads. */
   readonly driveResources: DriveResourceRepository;
-  readonly driveSyncState: DriveSyncStateRepository;
+  readonly knowledgeSyncState: KnowledgeSyncStateRepository;
+  /** @deprecated Use knowledgeSyncState. */
+  get driveSyncState(): KnowledgeSyncStateRepository {
+    return this.knowledgeSyncState;
+  }
   readonly notebooks: NotebookRepository;
   readonly geminiRequests: GeminiRequestRepository;
   readonly automationEvents: AutomationEventRepository;
@@ -134,7 +139,7 @@ export class DatabaseManager {
     this.memoryArchives = new MemoryArchiveRepository(this.db);
     this.learningEvents = new LearningEventRepository(this.db);
     this.driveResources = new DriveResourceRepository(this.db);
-    this.driveSyncState = new DriveSyncStateRepository(this.db);
+    this.knowledgeSyncState = new KnowledgeSyncStateRepository(this.db);
     this.notebooks = new NotebookRepository(this.db);
     this.geminiRequests = new GeminiRequestRepository(this.db);
     this.automationEvents = new AutomationEventRepository(this.db);

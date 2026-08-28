@@ -3,11 +3,9 @@ import type {
   GetPathsResponse,
   GetVersionResponse,
   OpenFolderResponse,
-  OpenGuideResponse,
   PingResponse,
   SecurityHealthCheckResponse,
 } from '../schemas/ipc';
-import type { AppGuideId } from '../constants/guides';
 import type {
   GoogleAccountDto,
 } from '../schemas/account';
@@ -52,7 +50,6 @@ import type {
 } from '../schemas/translation-pack';
 import type { CharacterStatus } from '../constants/memory';
 import type { TranslationStyle } from '../constants/translation-pack';
-import type { DriveSyncStatusDto } from '../schemas/drive';
 import type { NotebookMappingDto } from '../schemas/notebook';
 import type { GeminiSendResponse } from '../schemas/gemini';
 import type { JobAttemptDto, JobDto } from '../schemas/job';
@@ -75,6 +72,7 @@ import type {
 import type { z } from 'zod';
 import type {
   AutoBackupConfigSchema,
+  BackupDirectorySchema,
   CreateBackupResponseSchema,
   ListBackupsResponseSchema,
   NovelExportResponseSchema,
@@ -128,13 +126,11 @@ export interface NovelTransApi {
   getInfo: () => Promise<GetInfoResponse>;
   getPaths: () => Promise<GetPathsResponse>;
   openFolder: (pathKey: AppPathKey) => Promise<OpenFolderResponse>;
-  openGuide: (guideId: AppGuideId) => Promise<OpenGuideResponse>;
   securityHealthCheck: () => Promise<SecurityHealthCheckResponse>;
   checkForUpdates: () => Promise<z.infer<typeof CheckForUpdatesResponseSchema>>;
   setup: {
     getStatus: () => Promise<z.infer<typeof SetupStatusSchema>>;
     setStep: (input: { step: SetupWizardStep }) => Promise<z.infer<typeof SetupStatusSchema>>;
-    skipDrive: (input: { skip: boolean }) => Promise<z.infer<typeof SetupStatusSchema>>;
     explore: (input: { confirm: true }) => Promise<z.infer<typeof SetupExploreResponseSchema>>;
     complete: (input: { confirm: true }) => Promise<z.infer<typeof SetupCompleteResponseSchema>>;
   };
@@ -164,7 +160,7 @@ export interface NovelTransApi {
     ) => Promise<{ account: GoogleAccountDto }>;
     openBrowser: (
       accountId: string,
-      target?: 'gemini' | 'drive' | 'notebook',
+      target?: 'gemini' | 'notebook',
     ) => Promise<{ account: GoogleAccountDto }>;
     closeBrowser: (accountId: string) => Promise<{ account: GoogleAccountDto }>;
     testSession: (accountId: string) => Promise<{
@@ -177,12 +173,6 @@ export interface NovelTransApi {
       accountId: string,
       input?: { email?: string; label?: string },
     ) => Promise<{ account: GoogleAccountDto }>;
-    connectDrive: (accountId: string) => Promise<{ account: GoogleAccountDto }>;
-    connectDriveWithAuth: (
-      accountId: string,
-      authPayload: string,
-    ) => Promise<{ account: GoogleAccountDto }>;
-    disconnectDrive: (accountId: string) => Promise<{ account: GoogleAccountDto }>;
     disable: (accountId: string) => Promise<{ account: GoogleAccountDto }>;
     enable: (accountId: string) => Promise<{ account: GoogleAccountDto }>;
     remove: (accountId: string) => Promise<{ ok: true }>;
@@ -652,39 +642,6 @@ export interface NovelTransApi {
       extraRules?: string[];
     }) => Promise<{ pack: TranslationPackDto }>;
   };
-  drive: {
-    oauthStatus: () =>
-      Promise<{
-        configured: boolean;
-        clientIdHint: string | null;
-        redirectUri: string;
-      }>;
-    setOAuthClient: (input: {
-      clientId: string;
-      clientSecret?: string;
-    }) => Promise<{ ok: true }>;
-    getStatus: (projectId: string) => Promise<{ status: DriveSyncStatusDto }>;
-    assignWorker: (input: {
-      projectId: string;
-      accountId: string;
-    }) => Promise<{ status: DriveSyncStatusDto }>;
-    setSchedule: (input: {
-      projectId: string;
-      everyNChapters: number;
-    }) => Promise<{ status: DriveSyncStatusDto }>;
-    provision: (projectId: string) => Promise<{ status: DriveSyncStatusDto }>;
-    sync: (input: {
-      projectId: string;
-      force?: boolean;
-    }) => Promise<{
-      result: { updated: number; skipped: number; errors: string[] };
-      status: DriveSyncStatusDto;
-    }>;
-    retry: (projectId: string) => Promise<{
-      result: { updated: number; skipped: number; errors: string[] };
-      status: DriveSyncStatusDto;
-    }>;
-  };
   notebook: {
     list: (projectId: string) => Promise<{ mappings: NotebookMappingDto[] }>;
     get: (
@@ -789,7 +746,22 @@ export interface NovelTransApi {
       characterCount: number;
       relationshipCount: number;
       termCandidateCount: number;
+      hasLegacyDriveConfig?: boolean;
     }>;
+    researchQuery: (input: {
+      projectId: string;
+      accountId?: string;
+      question: string;
+    }) => Promise<{
+      status: 'candidate';
+      question: string;
+      answer: string;
+      disclaimer: string;
+    }>;
+    openResearch: (input: {
+      projectId: string;
+      accountId?: string;
+    }) => Promise<{ ok: boolean; url: string | null }>;
     packNovelCorpus: (input: {
       projectId: string;
       outputDir?: string;
@@ -819,7 +791,7 @@ export interface NovelTransApi {
       projectId: string;
       text?: string;
       filePath?: string;
-      syncDrive?: boolean;
+      syncLocalKnowledge?: boolean;
     }) => Promise<{
       foundKeys: string[];
       missingKeys: string[];
@@ -1083,11 +1055,21 @@ export interface NovelTransApi {
     setAutoBackupConfig: (input: {
       enabled: boolean;
       intervalHours: number;
-      retentionCount: number;
+      retentionDaily: number;
+      retentionWeekly: number;
+      retentionMonthly: number;
     }) => Promise<z.infer<typeof AutoBackupConfigSchema>>;
     listBackups: () => Promise<z.infer<typeof ListBackupsResponseSchema>>;
     createManualBackup: () => Promise<{ filePath: string }>;
     selectBackupPath: () => Promise<{ canceled: boolean; filePath: string | null }>;
+    getBackupDirectory: () => Promise<z.infer<typeof BackupDirectorySchema>>;
+    setBackupDirectory: (input: {
+      directory: string | null;
+    }) => Promise<z.infer<typeof BackupDirectorySchema>>;
+    selectBackupDirectory: () => Promise<{
+      canceled: boolean;
+      directory: string | null;
+    }>;
   };
   diagnostics: {
     listProviders: () => Promise<z.infer<typeof ListProviderStatusResponseSchema>>;

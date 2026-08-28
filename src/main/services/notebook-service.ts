@@ -3,12 +3,13 @@ import path from 'node:path';
 import type { DatabaseManager } from '../db/database-manager';
 import { NotebookProvider } from '../automation/providers/google/notebook-provider';
 import { AutomationError } from '../automation/errors/automation-errors';
-import { formatNotebookNameForRole, type NotebookRole } from '@shared/constants/notebook-role';
+import { formatNotebookNameForRole, DEFAULT_NOTEBOOK_ROLE, type NotebookRole } from '@shared/constants/notebook-role';
 import { getActiveEdition } from './edition-service';
 import type { NotebookAssistedStep } from '@shared/constants/notebook';
 import { getLanguageProfile } from '@shared/constants/language-profile';
-import { DRIVE_PROJECT_DOC_TITLES } from '@shared/constants/notebook-source-binding';
+import { KNOWLEDGE_PROJECT_DOC_TITLES } from '@shared/constants/notebook-source-binding';
 import type { NotebookSourceBindingType } from '@shared/constants/notebook-source-binding';
+import { LEGACY_BINDING_DRIVE_LIVE } from '../knowledge/legacy-db-values';
 import {
   KNOWLEDGE_FILE_NAMES,
   KNOWLEDGE_TYPES,
@@ -18,9 +19,9 @@ import {
   FILE_KEY_TO_NAME,
   OWNED_FILE_KEYS,
   writeKnowledgeSourceFiles,
-} from '../drive/drive-content-builder';
+} from '../notebook/knowledge-source-files';
 import { NotebookKnowledgeBuilder } from '../notebook/knowledge-builder';
-import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
+import { resolveResearchNotebook, resolveTranslationNotebook } from '../notebook/notebook-resolver';
 import { attachKnowledgeSources } from '../notebook/attach-knowledge-sources';
 import type { BrowserSessionController } from '../automation/browser-runner/browser-session-controller';
 import { PlaywrightBrowserSessionController } from '../automation/browser-runner/browser-session-controller';
@@ -80,7 +81,7 @@ function recordSourceBindings(
     const docTitle = fileName.replace(/\.md$/i, '');
     const kf = db.knowledgeFiles.get(projectId, type);
     const status =
-      bindingType === 'DRIVE_LIVE'
+      bindingType === 'STATIC_UPLOAD' || bindingType === 'COPIED_TEXT'
         ? needsMigration.some((n) => n.includes(docTitle) || n.includes(type))
           ? 'needs_migration'
           : 'active'
@@ -91,7 +92,7 @@ function recordSourceBindings(
       notebookId,
       knowledgeType: type,
       driveFileId: kf?.drive_file_id ?? null,
-      sourceName: bindingType === 'DRIVE_LIVE' ? docTitle : fileName,
+      sourceName: fileName,
       bindingType,
       contentHash: kf?.content_hash ?? null,
       localVersion: kf?.local_version ?? 0,
@@ -111,7 +112,7 @@ export function listStaticKnowledgeBindings(
     .listByProject(projectId)
     .filter(
       (row) =>
-        row.binding_type !== 'DRIVE_LIVE' ||
+        row.binding_type === LEGACY_BINDING_DRIVE_LIVE ||
         row.status === 'needs_migration',
     )
     .map((row) => ({
@@ -207,6 +208,45 @@ export class NotebookService {
     return this.db.notebooks.listByProject(projectId).map((row) => this.toDto(row));
   }
 
+  /** Open Research Notebook URL in worker browser (optional feature). */
+  async openResearch(input: {
+    projectId: string;
+    accountId?: string;
+  }): Promise<{ ok: boolean; url: string | null }> {
+    const { resolveProjectWorker } = await import('./project-worker-resolver');
+    const accountId =
+      input.accountId ??
+      resolveProjectWorker(this.db, {
+        projectId: input.projectId,
+        purpose: 'research',
+      }).accountId;
+    if (!accountId) {
+      throw new Error('Chưa gắn tài khoản Google cho Research Notebook.');
+    }
+    const mapping = resolveResearchNotebook(this.db, input.projectId, accountId);
+    const url = mapping?.resource_url ?? 'https://notebook.google.com/';
+    const profile = this.db.googleAccounts.getProfile(accountId);
+    if (!profile) throw new Error('Browser profile missing');
+    const profilePath = browserProfileManager.resolveProfilePath(profile.profile_dir_name);
+    await this.freeProfileForNotebook(accountId, profilePath);
+    await this.browser.open({
+      accountId,
+      profilePath,
+      startUrl: url,
+      headless: false,
+    });
+    return { ok: true, url };
+  }
+
+  async researchQuery(input: {
+    projectId: string;
+    accountId?: string;
+    question: string;
+  }) {
+    const { queryResearchNotebook } = await import('../notebook/research-query-service');
+    return queryResearchNotebook(this.db, input);
+  }
+
   async provision(input: {
     projectId: string;
     accountId: string;
@@ -219,7 +259,7 @@ export class NotebookService {
     const account = this.db.googleAccounts.getById(input.accountId);
     if (!account) throw new Error(`Account not found: ${input.accountId}`);
 
-    const notebookRole = input.role ?? 'TRANSLATION';
+    const notebookRole = input.role ?? DEFAULT_NOTEBOOK_ROLE;
     const activeEdition =
       notebookRole === 'RESEARCH' ? null : getActiveEdition(this.db, input.projectId);
     const notebookName = formatNotebookNameForRole(project.title, notebookRole, {
@@ -229,7 +269,7 @@ export class NotebookService {
     const attachKnowledge = notebookRole !== 'RESEARCH';
     const instructions = loadNotebookInstructions(this.db, input.projectId, notebookRole);
     const instructionsHash = hashText(instructions);
-    const sourceNames = attachKnowledge ? [...DRIVE_PROJECT_DOC_TITLES] : [];
+    const sourceNames = attachKnowledge ? [...KNOWLEDGE_PROJECT_DOC_TITLES] : [];
     const knowledgeSources = attachKnowledge
       ? buildKnowledgeSources(this.db, input.projectId)
       : [];
@@ -343,10 +383,8 @@ export class NotebookService {
         try {
           const attachResult = await attachKnowledgeSources({
             provider,
-            driveSourceNames: sourceNames,
             knowledgeSources,
             filePaths: knowledgeFilePaths,
-            preferDriveLive: true,
           });
           recordSourceBindings(
             this.db,
@@ -476,7 +514,7 @@ export class NotebookService {
     baseUrl?: string;
     role?: NotebookRole;
   }): Promise<ProvisionNotebookResult> {
-    const notebookRole = input.role ?? 'TRANSLATION';
+    const notebookRole = input.role ?? DEFAULT_NOTEBOOK_ROLE;
     const existing = this.db.notebooks.getByProjectWorkerRole(
       input.projectId,
       input.accountId,
@@ -491,7 +529,7 @@ export class NotebookService {
     const notebookName =
       existing.notebook_name ?? formatNotebookNameForRole(project.title, notebookRole);
     const attachKnowledge = notebookRole !== 'RESEARCH';
-    const sourceNames = attachKnowledge ? [...DRIVE_PROJECT_DOC_TITLES] : [];
+    const sourceNames = attachKnowledge ? [...KNOWLEDGE_PROJECT_DOC_TITLES] : [];
     const knowledgeSources = attachKnowledge
       ? buildKnowledgeSources(this.db, input.projectId)
       : [];
@@ -605,10 +643,8 @@ export class NotebookService {
         try {
           const attachResult = await attachKnowledgeSources({
             provider,
-            driveSourceNames: sourceNames,
             knowledgeSources,
             filePaths: knowledgeFilePaths,
-            preferDriveLive: true,
           });
           recordSourceBindings(
             this.db,
@@ -644,7 +680,7 @@ export class NotebookService {
             'add_sources',
             `Missing sources: ${verified.missing.join(', ')}. ` +
               `Present: ${verified.present.join(', ') || '(none)'}. ` +
-              `Add Drive Docs 00_…08_ (or resume after Drive sync), then Resume`,
+              `Add knowledge files 00_…08_ (local upload), then Resume`,
           );
         }
       }
@@ -775,7 +811,7 @@ export class NotebookService {
    */
   private releaseAccountBusyForTranslate(accountId: string): void {
     const account = this.db.googleAccounts.getById(accountId);
-    if (account?.status === 'BUSY' && (account.email || account.drive_connected === 1)) {
+    if (account?.status === 'BUSY' && account.email) {
       this.db.googleAccounts.update(accountId, { status: 'READY' });
     }
     const worker = this.db.workerStates.getByAccountId(accountId);
@@ -894,7 +930,7 @@ export class NotebookService {
       projectId: row.project_id,
       accountId: row.google_account_id ?? '',
       notebookName: row.notebook_name ?? '',
-      notebookRole: row.notebook_role ?? 'TRANSLATION',
+      notebookRole: row.notebook_role ?? DEFAULT_NOTEBOOK_ROLE,
       notebookId: row.notebook_id,
       resourceUrl: row.resource_url,
       status: row.status,

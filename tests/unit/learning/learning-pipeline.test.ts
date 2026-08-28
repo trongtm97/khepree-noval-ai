@@ -151,8 +151,6 @@ describe('Learning pipeline (Phase 16)', () => {
       parsed,
       chapterFrom: 1,
       chapterTo: 1,
-      syncDrive: () => Promise.resolve(null),
-      evaluateSyncPolicy: () => ({ shouldSync: false }),
     });
 
     expect(learning.memory.conflicts.length).toBeGreaterThanOrEqual(1);
@@ -161,9 +159,11 @@ describe('Learning pipeline (Phase 16)', () => {
     expect(db.memoryEvents.getByKey(projectId, 'world', 'sect')?.event_value).toContain('青云门');
   });
 
-  it('every N chapters consolidates + triggers NotebookSyncService.syncDrive hook', async () => {
-    db.driveSyncState.patch(projectId, { syncEveryNChapters: 2, chaptersSinceSync: 1 });
-    let synced = 0;
+  it('rebuilds local knowledge markdown after learning deltas', async () => {
+    db.knowledgeSyncState.patch(projectId, {
+      syncEveryNChapters: 2,
+      chaptersSinceSync: 1,
+    });
 
     const job = db.jobs.create({
       project_id: projectId,
@@ -171,6 +171,8 @@ describe('Learning pipeline (Phase 16)', () => {
       chapter_from: 2,
       chapter_to: 2,
     });
+
+    const beforeVersion = db.knowledgeFiles.maxLocalVersion(projectId);
 
     const result = await runLearningPipeline(db, {
       projectId,
@@ -187,17 +189,10 @@ describe('Learning pipeline (Phase 16)', () => {
       }),
       chapterFrom: 2,
       chapterTo: 2,
-      evaluateSyncPolicy: () => ({ shouldSync: true }),
-      syncDrive: () => {
-        synced += 1;
-        return Promise.resolve({ ok: true });
-      },
     });
 
-    expect(result.consolidated).toBe(true);
-    expect(result.documents?.['02_PROJECT_TERMS.md']).toBeTruthy();
-    expect(result.driveSyncTriggered).toBe(true);
-    expect(synced).toBe(1);
+    expect(result.knowledgeVersionAtCommit).toBeGreaterThanOrEqual(beforeVersion);
+    expect(db.knowledgeFiles.get(projectId, 'project_terms')).toBeTruthy();
   });
 
   it('archives old memory so current state stays compact', () => {
@@ -247,8 +242,6 @@ describe('Learning pipeline (Phase 16)', () => {
           { action: 'upsert', category: 'plot', key: 'hook', value: 'start' },
         ],
       }),
-      syncDrive: () => Promise.resolve(null),
-      evaluateSyncPolicy: () => ({ shouldSync: false }),
     });
 
     const dash = new LearningService(db).getDashboard(projectId);
@@ -304,8 +297,6 @@ describe('Learning pipeline (Phase 16)', () => {
       }),
       chapterFrom: 1,
       chapterTo: 1,
-      evaluateSyncPolicy: () => ({ shouldSync: false }),
-      syncDrive: () => Promise.resolve(null),
     });
 
     expect(learning.memory.charactersTouched).toBeGreaterThanOrEqual(1);

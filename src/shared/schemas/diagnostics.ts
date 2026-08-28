@@ -120,7 +120,7 @@ export const NotebookGroundingSmokeRunResponseSchema = z.object({
       durationMs: z.number(),
       localVersion: z.number().nullable(),
       notebookVersion: z.number().nullable(),
-      bindingType: z.enum(['STATIC', 'DRIVE_LIVE', 'UNKNOWN']).nullable(),
+      bindingType: z.enum(['STATIC', 'UNKNOWN']).nullable(),
       driveFileId: z.string().nullable(),
       notebookName: z.string().nullable(),
       packMode: z.enum(['SLIM', 'HYBRID', 'FAT', 'N/A']).nullable(),

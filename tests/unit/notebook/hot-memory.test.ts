@@ -205,7 +205,7 @@ describe('Notebook Hot Memory (structured SQLite deltas)', () => {
       chapterIds: [chapter.id],
       style: 'balanced',
       context: emptyContext,
-      packMode: 'slim',
+      packMode: 'local_context',
       hotMemoryOverride: hot,
     });
     expect(pack.sections.hotMemoryDelta).toContain('王林 → Vương Lâm');

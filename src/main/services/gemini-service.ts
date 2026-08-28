@@ -19,6 +19,7 @@ import {
   startFailTrace,
 } from '../automation/playwright-tracing';
 import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
+import { GEMINI_WEB_CHAT_URL } from '@shared/constants/notebook-role';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
 import { profileLockManager } from '../automation/browser-runner/profile-lock';
 import { getBrowserRuntimeManager } from '../automation/browser-runner/browser-runtime-manager';
@@ -94,12 +95,18 @@ export class GeminiService {
       input.projectId,
       input.accountId,
     );
+    const notebookUrl = mapping?.resource_url?.startsWith('http')
+      ? mapping.resource_url
+      : GEMINI_WEB_CHAT_URL;
+    const notebookRowId = mapping?.id ?? null;
+
     if (
-      !mapping ||
-      (mapping.status !== 'ready' && mapping.status !== 'sync_pending')
+      mapping &&
+      mapping.status !== 'ready' &&
+      mapping.status !== 'sync_pending'
     ) {
       throw new Error(
-        'Translation Notebook not ready — provision Translation Notebook for this worker.',
+        'Legacy Translation Notebook not ready — use Gemini Web API or provision Research Notebook for FULL analysis only.',
       );
     }
 
@@ -120,9 +127,12 @@ export class GeminiService {
         google_account_id: input.accountId,
         pack_hash: input.pack.promptHash,
         job_id: input.jobId ?? null,
-        notebook_id: mapping.id,
+        notebook_id: notebookRowId,
         marker: formatCorrelationMarker(correlationId),
         lifecycle: 'CREATED',
+        context_fingerprint_json: input.pack.contextFingerprint
+          ? JSON.stringify(input.pack.contextFingerprint)
+          : null,
       });
 
     const profile = this.db.googleAccounts.getProfile(input.accountId);
@@ -154,7 +164,7 @@ export class GeminiService {
       stabilizationWindowMs:
         input.stabilizationWindowMs ?? DEFAULT_STABILIZATION_WINDOW_MS,
       onLifecycle: (lifecycle) => { persistLifecycle(lifecycle); },
-      expectedNotebookUrl: mapping.resource_url,
+      expectedNotebookUrl: notebookUrl,
     });
     provider.beginTimeline(correlationId);
 
@@ -178,17 +188,17 @@ export class GeminiService {
           runtime.setGenerationState('SENDING');
           const page = await prepareNotebook({
             projectId: input.projectId,
-            notebookUrl: mapping.resource_url ?? '',
+            notebookUrl,
             openNotebook: async (p, url) => {
               provider.attachPage(p);
-              await provider.openProjectNotebook(url || mapping.resource_url);
+              await provider.openProjectNotebook(url || notebookUrl);
             },
             verifyReady: async (p) => {
               provider.attachPage(p);
               const ok = await provider.healthCheck();
               if (!ok.ok) {
                 provider.attachPage(p);
-                await provider.openProjectNotebook(mapping.resource_url);
+                await provider.openProjectNotebook(notebookUrl);
               }
             },
           });
@@ -206,9 +216,11 @@ export class GeminiService {
 
           const { loadNotebookSettings } = await import('../notebook/knowledge-builder');
           const settings = loadNotebookSettings(this.db, input.projectId);
-          const batches = this.db.notebooks.incrementBatchCounter(mapping.id);
+          const batches = mapping
+            ? this.db.notebooks.incrementBatchCounter(mapping.id)
+            : 0;
           const forceNewThread = !resuming && batches >= settings.threadRotateEvery;
-          if (forceNewThread) {
+          if (forceNewThread && mapping) {
             this.db.notebooks.resetBatchCounter(mapping.id);
           }
           await provider.createOrOpenTranslationThread({ forceNew: forceNewThread });

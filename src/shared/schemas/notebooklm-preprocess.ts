@@ -37,7 +37,7 @@ export const ImportPreprocessResultRequestSchema = z.object({
   projectId: z.string().uuid(),
   text: z.string().optional(),
   filePath: z.string().min(1).optional(),
-  syncDrive: z.boolean().optional(),
+  syncLocalKnowledge: z.boolean().optional(),
 });
 
 export const ImportPreprocessResultResponseSchema = z.object({

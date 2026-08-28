@@ -13,7 +13,6 @@ import {
   TabPanel,
   Card,
   SectionHeader,
-  Input,
   ErrorPanel,
   Badge,
 } from '../components/ui';
@@ -28,7 +27,6 @@ type SettingsTab =
   | 'appearance'
   | 'language'
   | 'translation'
-  | 'googleAi'
   | 'aiProviders'
   | 'aiDiagnostics'
   | 'advanced';
@@ -37,7 +35,6 @@ const SETTINGS_TABS: SettingsTab[] = [
   'appearance',
   'language',
   'translation',
-  'googleAi',
   'aiProviders',
   'aiDiagnostics',
   'advanced',
@@ -61,31 +58,12 @@ export function SettingsPage() {
   const [tab, setTab] = useState<SettingsTab>(() =>
     parseSettingsTab(searchParams.get('tab')),
   );
-  const [oauthConfigured, setOauthConfigured] = useState(false);
-  const [clientIdHint, setClientIdHint] = useState<string | null>(null);
-  const [redirectUri, setRedirectUri] = useState('http://127.0.0.1:18766');
-  const [clientId, setClientId] = useState('');
-  const [clientSecret, setClientSecret] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setTab(parseSettingsTab(searchParams.get('tab')));
   }, [searchParams]);
-
-  useEffect(() => {
-    void window.novelTrans.drive
-      .oauthStatus()
-      .then((result) => {
-        setOauthConfigured(result.configured);
-        setClientIdHint(result.clientIdHint);
-        setRedirectUri(result.redirectUri);
-      })
-      .catch(() => {
-        setOauthConfigured(false);
-        setClientIdHint(null);
-      });
-  }, []);
 
   const errInfo = error ? friendlyError(error) : null;
 
@@ -102,7 +80,6 @@ export function SettingsPage() {
           { id: 'appearance', label: t('settings.appearance') },
           { id: 'language', label: t('settings.language') },
           { id: 'translation', label: t('settings.translation') },
-          { id: 'googleAi', label: t('settings.googleAi') },
           { id: 'aiProviders', label: t('settings.aiProviders') },
           { id: 'aiDiagnostics', label: t('settings.aiDiagnostics') },
           { id: 'advanced', label: t('settings.advanced') },
@@ -176,113 +153,6 @@ export function SettingsPage() {
 
       <TabPanel active={tab === 'translation'}>
         <TranslationSettingsPanel onMessage={setMessage} onError={setError} />
-      </TabPanel>
-
-      <TabPanel active={tab === 'googleAi'}>
-        <Card as="section" style={{ marginTop: '1rem' }}>
-          <SectionHeader title={t('settings.oauthTitle')} />
-          <p className="muted">{t('settings.oauthBody')}</p>
-          <div className="btn-row" style={{ marginBottom: '0.75rem' }}>
-            <Button
-              variant="primary"
-              onClick={() => {
-                setError(null);
-                void window.novelTrans
-                  .openGuide('drive-oauth-setup')
-                  .then(() => {
-                    setMessage(t('settings.oauthGuideOpened'));
-                  })
-                  .catch((err: unknown) => {
-                    setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
-                  });
-              }}
-            >
-              {t('settings.oauthOpenGuide')}
-            </Button>
-          </div>
-          <p>
-            <Badge tone={oauthConfigured ? 'success' : 'warning'}>
-              {oauthConfigured
-                ? t('settings.oauthConfigured')
-                : t('settings.oauthNotConfigured')}
-            </Badge>
-            {clientIdHint ? (
-              <span className="muted" style={{ marginLeft: '0.5rem' }}>
-                {t('settings.oauthSavedHint', { hint: clientIdHint })}
-              </span>
-            ) : null}
-          </p>
-          <div className="oauth-setup" style={{ margin: '0.75rem 0 1rem' }}>
-            <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>{t('settings.oauthStepsTitle')}</p>
-            <ol className="oauth-setup-steps muted">
-              <li>{t('settings.oauthStepShort1')}</li>
-              <li>{t('settings.oauthStepShort2')}</li>
-              <li>
-                {t('settings.oauthStepShort3')}{' '}
-                <code>{redirectUri}</code>
-              </li>
-              <li>{t('settings.oauthStepShort4')}</li>
-              <li>{t('settings.oauthStepShort5')}</li>
-            </ol>
-            <p className="muted" style={{ marginTop: '0.5rem' }}>
-              {t('settings.oauthGuideHint')}
-            </p>
-          </div>
-          <div className="toolbar" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-            <label>
-              {t('settings.clientId')}
-              <Input
-                type="text"
-                value={clientId}
-                onChange={(event) => {
-                  setClientId(event.target.value);
-                }}
-                placeholder={clientIdHint ?? 'xxxx.apps.googleusercontent.com'}
-              />
-            </label>
-            <label>
-              {t('settings.clientSecret')}
-              <Input
-                type="password"
-                value={clientSecret}
-                onChange={(event) => {
-                  setClientSecret(event.target.value);
-                }}
-              />
-            </label>
-            <Button
-              variant="primary"
-              disabled={!clientId.trim()}
-              onClick={() => {
-                setError(null);
-                setMessage(null);
-                const idToSave = clientId.trim();
-                if (!idToSave) {
-                  setError(t('settings.clientIdRequired'));
-                  return;
-                }
-                void window.novelTrans.drive
-                  .setOAuthClient({
-                    clientId: idToSave,
-                    clientSecret: clientSecret || undefined,
-                  })
-                  .then(() => window.novelTrans.drive.oauthStatus())
-                  .then((status) => {
-                    setOauthConfigured(status.configured);
-                    setClientIdHint(status.clientIdHint);
-                    setRedirectUri(status.redirectUri);
-                    setMessage(t('settings.oauthSaved'));
-                    setClientSecret('');
-                  })
-                  .catch((err: unknown) => {
-                    setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
-                  });
-              }}
-            >
-              {t('settings.saveOauth')}
-            </Button>
-          </div>
-        </Card>
       </TabPanel>
 
       <TabPanel active={tab === 'aiProviders'}>

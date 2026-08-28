@@ -1,7 +1,13 @@
 import { z } from 'zod';
+import { listLanguageCatalogCodes } from '@shared/constants/language-profile';
 import { AiLanguageDetectOutputSchema } from '@shared/schemas/source-language';
 
-const AI_DETECT_PROMPT = `You are a language identification system. Detect the PRIMARY language of the following novel text sample.
+function catalogAllowList(): string {
+  return listLanguageCatalogCodes().join(', ');
+}
+
+export function buildAiLanguageDetectPromptBody(): string {
+  return `You are a language identification system. Detect the PRIMARY language of the following novel text sample.
 Do NOT translate. Return ONLY valid JSON matching this schema:
 {
   "language_code": "ja",
@@ -12,12 +18,16 @@ Do NOT translate. Return ONLY valid JSON matching this schema:
   "secondary_languages": []
 }
 
-Use BCP-47 codes (en, ja, ko, zh-Hans, zh-Hant, vi, th, ar, ru, es, fr, de, pt, id).
-For Chinese distinguish zh-Hans vs zh-Hant when possible. Use "en" not en-US unless region matters.
-If text is mostly one language with foreign proper nouns, set mixed_language true and list secondary codes.
+language_code MUST be a BCP-47 code from the NovelTrans World Language Catalog:
+${catalogAllowList()}
+
+Do not invent codes outside this catalog. Distinguish zh-Hans vs zh-Hant when possible.
+Use sr-Cyrl / sr-Latn, pt-BR / pt-PT, az-Cyrl / az-Latn when script or region is clear.
+If text is mostly one language with foreign proper nouns, set mixed_language true and list secondary catalog codes.
 
 TEXT SAMPLE:
 `;
+}
 
 export function parseAiLanguageDetectResponse(raw: string): {
   code: string;
@@ -26,7 +36,7 @@ export function parseAiLanguageDetectResponse(raw: string): {
   secondaryLanguages: string[];
 } | null {
   const trimmed = raw.trim();
-  const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
+  const jsonMatch = /\{[\s\S]*\}/.exec(trimmed);
   if (!jsonMatch) return null;
   try {
     const parsed = AiLanguageDetectOutputSchema.parse(JSON.parse(jsonMatch[0]));
@@ -42,7 +52,7 @@ export function parseAiLanguageDetectResponse(raw: string): {
 }
 
 export function buildAiLanguageDetectPrompt(sample: string): string {
-  return `${AI_DETECT_PROMPT}${sample.slice(0, 8000)}`;
+  return `${buildAiLanguageDetectPromptBody()}${sample.slice(0, 8000)}`;
 }
 
 export type AiLanguageDetectFn = (

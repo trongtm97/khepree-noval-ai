@@ -1,4 +1,4 @@
-/** Knowledge file types synced SQLite → Drive → Notebook. */
+/** Knowledge file types synced SQLite → local cache → Notebook (optional). */
 export const KNOWLEDGE_TYPES = [
   'book_profile',
   'translation_rules',
@@ -64,10 +64,10 @@ export const KNOWLEDGE_SYNC_EVENT_TYPES = [
   'NOTEBOOK_CREATED',
   'KNOWLEDGE_BUILD_STARTED',
   'KNOWLEDGE_FILE_CHANGED',
-  'DRIVE_SYNC_STARTED',
-  'DRIVE_SYNC_COMPLETED',
-  'DRIVE_SYNCED',
-  'NOTEBOOK_SYNC_PENDING',
+  'KNOWLEDGE_SYNC_STARTED',
+  'KNOWLEDGE_SYNC_COMPLETED',
+  'KNOWLEDGE_SYNCED',
+  'KNOWLEDGE_SYNC_PENDING',
   'NOTEBOOK_SYNC_VERIFIED',
   'NOTEBOOK_SOURCE_PRESENT',
   'NOTEBOOK_VERSION_PROBE_STARTED',
@@ -86,6 +86,7 @@ export const KNOWLEDGE_SYNC_EVENT_TYPES = [
   'PROMPT_SENT',
   'RESPONSE_CAPTURED',
   'LEARNING_APPLIED',
+  'LOCAL_KNOWLEDGE_VERSION_BUMP',
   'WAVE_JOB_COMMITTED',
   'KNOWLEDGE_DIRTY',
   'LEARNING_EMPTY_DELTAS',
@@ -102,3 +103,48 @@ export const KNOWLEDGE_SYNC_EVENT_TYPES = [
 ] as const;
 
 export type KnowledgeSyncEventType = (typeof KNOWLEDGE_SYNC_EVENT_TYPES)[number];
+
+/** Owned markdown filenames under each project's knowledge cache. */
+export const KNOWLEDGE_PROJECT_FILES = [
+  '00_BOOK_PROFILE.md',
+  '01_TRANSLATION_RULES.md',
+  '02_PROJECT_TERMS.md',
+  '03_CHARACTERS.md',
+  '04_RELATIONSHIPS.md',
+  '05_STORY_STATE.md',
+  '06_WORLD_KNOWLEDGE.md',
+  '07_RECENT_CONTEXT.md',
+  '08_SYNC_STATE.md',
+] as const;
+
+export type KnowledgeProjectFileName = (typeof KNOWLEDGE_PROJECT_FILES)[number];
+
+/** Resource keys for local knowledge files (legacy drive_resources keys — file names only). */
+export const KNOWLEDGE_RESOURCE_KEYS = {
+  BOOK_PROFILE_MD: '00_BOOK_PROFILE.md',
+  RULES_MD: '01_TRANSLATION_RULES.md',
+  PROJECT_TERMS_MD: '02_PROJECT_TERMS.md',
+  CHARACTERS_MD: '03_CHARACTERS.md',
+  RELATIONSHIPS_MD: '04_RELATIONSHIPS.md',
+  STORY_STATE_MD: '05_STORY_STATE.md',
+  WORLD_KNOWLEDGE_MD: '06_WORLD_KNOWLEDGE.md',
+  RECENT_CONTEXT_MD: '07_RECENT_CONTEXT.md',
+  SYNC_STATE_MD: '08_SYNC_STATE.md',
+} as const;
+
+export type KnowledgeResourceKey =
+  (typeof KNOWLEDGE_RESOURCE_KEYS)[keyof typeof KNOWLEDGE_RESOURCE_KEYS];
+
+export const KNOWLEDGE_SYNC_STATUSES = [
+  'idle',
+  'syncing',
+  'synced',
+  'pending',
+  'error',
+  'auth_required',
+] as const;
+
+export type KnowledgeSyncStatus = (typeof KNOWLEDGE_SYNC_STATUSES)[number];
+
+/** Default memory sync interval (chapters). */
+export const DEFAULT_KNOWLEDGE_SYNC_EVERY_N_CHAPTERS = 10;

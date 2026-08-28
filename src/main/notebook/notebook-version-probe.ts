@@ -26,7 +26,7 @@ export function applyVersionProbeResult(
 ): VersionProbeEvaluation & {
   packHint: 'slim' | 'hybrid';
 } {
-  const state = db.driveSyncState.ensure(input.projectId);
+  const state = db.knowledgeSyncState.ensure(input.projectId);
   const expectedVersion = state.pending_knowledge_version;
   const expectedNonce = state.pending_sync_nonce ?? '';
 
@@ -38,7 +38,7 @@ export function applyVersionProbeResult(
   const mapping = resolveTranslationNotebook(db, input.projectId, input.accountId);
 
   if (evaluation.status === 'verified') {
-    db.driveSyncState.patch(input.projectId, {
+    db.knowledgeSyncState.patch(input.projectId, {
       verifiedKnowledgeVersion: expectedVersion,
       verifiedSyncNonce: expectedNonce,
       versionProbeStatus: 'verified',
@@ -73,7 +73,7 @@ export function applyVersionProbeResult(
   }
 
   if (evaluation.status === 'mismatch') {
-    db.driveSyncState.patch(input.projectId, {
+    db.knowledgeSyncState.patch(input.projectId, {
       versionProbeStatus: 'mismatch',
     });
     db.knowledgeSyncEvents.insert({
@@ -87,7 +87,7 @@ export function applyVersionProbeResult(
     return { ...evaluation, packHint: 'hybrid' };
   }
 
-  db.driveSyncState.patch(input.projectId, {
+  db.knowledgeSyncState.patch(input.projectId, {
     versionProbeStatus: 'unverified',
   });
   db.knowledgeSyncEvents.insert({
@@ -116,7 +116,7 @@ export async function runKnowledgeVersionProbe(
     capture: VersionProbeCapture;
   },
 ): Promise<VersionProbeEvaluation & { packHint: 'slim' | 'hybrid' }> {
-  const state = db.driveSyncState.ensure(input.projectId);
+  const state = db.knowledgeSyncState.ensure(input.projectId);
   if (!state.pending_sync_nonce || state.pending_knowledge_version <= 0) {
     logger.warn('Version probe skipped — no pending sync manifest', {
       projectId: input.projectId,
@@ -149,7 +149,7 @@ export async function runKnowledgeVersionProbe(
       projectId: input.projectId,
       message,
     });
-    db.driveSyncState.patch(input.projectId, { versionProbeStatus: 'unverified' });
+    db.knowledgeSyncState.patch(input.projectId, { versionProbeStatus: 'unverified' });
     db.knowledgeSyncEvents.insert({
       projectId: input.projectId,
       eventType: 'NOTEBOOK_GROUNDING_UNVERIFIED',

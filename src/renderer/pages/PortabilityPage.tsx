@@ -6,6 +6,20 @@ import type { NovelExportFormat } from '@shared/constants/portability';
 import { useT, t as i18nT } from '../i18n';
 import { useUiShellStore } from '../stores/ui-shell-store';
 
+type BackupEntry = {
+  fileName: string;
+  filePath: string;
+  createdAt: string;
+  sizeBytes: number;
+  kind?: 'auto' | 'manual' | 'migration' | 'archive';
+};
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function PortabilityPage() {
   const t = useT();
   const { projectId: routeProjectId } = useParams();
@@ -19,6 +33,9 @@ export function PortabilityPage() {
   const [includeTitles, setIncludeTitles] = useState(true);
   const [includeParagraphIds, setIncludeParagraphIds] = useState(false);
   const [autoBackup, setAutoBackup] = useState<AutoBackupConfig | null>(null);
+  const [backupDirectory, setBackupDirectory] = useState<string>('');
+  const [backupDirCustom, setBackupDirCustom] = useState(false);
+  const [backupList, setBackupList] = useState<BackupEntry[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,6 +47,11 @@ export function PortabilityPage() {
     compatible: boolean;
     warnings: string[];
     requiresOverwrite: boolean;
+    sourceLanguage: string | null;
+    targetLanguage: string | null;
+    chapterCount: number | null;
+    translationCount: number | null;
+    backupDate: string;
   } | null>(null);
 
   useEffect(() => {
@@ -37,10 +59,11 @@ export function PortabilityPage() {
   }, [routeProjectId]);
 
   const refresh = useCallback(async () => {
-    const [{ projects: list }, backupCfg, backups] = await Promise.all([
+    const [{ projects: list }, backupCfg, backups, dirInfo] = await Promise.all([
       window.novelTrans.projects.list(),
       window.novelTrans.portability.getAutoBackupConfig(),
       window.novelTrans.portability.listBackups(),
+      window.novelTrans.portability.getBackupDirectory(),
     ]);
     setProjects(list);
     if (routeProjectId) {
@@ -49,7 +72,9 @@ export function PortabilityPage() {
       setProjectId(list[0].id);
     }
     setAutoBackup(backupCfg);
-    void backups;
+    setBackupList(backups.backups);
+    setBackupDirectory(dirInfo.directory);
+    setBackupDirCustom(dirInfo.isCustom);
   }, [projectId, routeProjectId]);
 
   useEffect(() => {
@@ -103,6 +128,7 @@ export function PortabilityPage() {
         includeCredentials: false,
       });
       setMessage(t('portability.fullBackupOk', { path: result.filePath }));
+      await refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('portability.backupFailed'));
     } finally {
@@ -120,6 +146,7 @@ export function PortabilityPage() {
         projectId,
       });
       setMessage(t('portability.projectBackupOk', { path: result.filePath }));
+      await refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('portability.projectBackupFailed'));
     } finally {
@@ -134,12 +161,46 @@ export function PortabilityPage() {
       const next = await window.novelTrans.portability.setAutoBackupConfig({
         enabled: autoBackup.enabled,
         intervalHours: autoBackup.intervalHours,
-        retentionCount: autoBackup.retentionCount,
+        retentionDaily: autoBackup.retentionDaily,
+        retentionWeekly: autoBackup.retentionWeekly,
+        retentionMonthly: autoBackup.retentionMonthly,
       });
       setAutoBackup(next);
       setMessage(t('portability.autoBackupSaved'));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('portability.autoBackupSaveFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pickBackupDirectory = async () => {
+    setError(null);
+    try {
+      const pick = await window.novelTrans.portability.selectBackupDirectory();
+      if (pick.canceled || !pick.directory) return;
+      const next = await window.novelTrans.portability.setBackupDirectory({
+        directory: pick.directory,
+      });
+      setBackupDirectory(next.directory);
+      setBackupDirCustom(next.isCustom);
+      setMessage(t('portability.backupDirSaved', { path: next.directory }));
+      await refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('portability.backupDirFailed'));
+    }
+  };
+
+  const resetBackupDirectory = async () => {
+    setBusy(true);
+    try {
+      const next = await window.novelTrans.portability.setBackupDirectory({ directory: null });
+      setBackupDirectory(next.directory);
+      setBackupDirCustom(next.isCustom);
+      setMessage(t('portability.backupDirReset'));
+      await refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('portability.backupDirFailed'));
     } finally {
       setBusy(false);
     }
@@ -158,23 +219,18 @@ export function PortabilityPage() {
       });
       setPreview({
         kind: p.manifest.kind,
-        projectTitle: p.manifest.projectTitle,
+        projectTitle: p.summary.projectTitle ?? p.manifest.projectTitle,
         schemaVersion: p.manifest.schemaVersion,
         compatible: p.compatible,
         warnings: p.warnings,
         requiresOverwrite: p.requiresOverwrite,
+        sourceLanguage: p.summary.sourceLanguage,
+        targetLanguage: p.summary.targetLanguage,
+        chapterCount: p.summary.chapterCount,
+        translationCount: p.summary.translationCount,
+        backupDate: p.summary.backupDate,
       });
-      setMessage(
-        t('portability.restorePreviewOk', {
-          kind: p.manifest.kind,
-          title: p.manifest.projectTitle ?? '—',
-          schema: p.manifest.schemaVersion,
-          ok: p.compatible ? 'yes' : 'no',
-        }),
-      );
-      if (p.warnings.length > 0) {
-        setError(t('portability.restoreWarnings', { warnings: p.warnings.join('; ') }));
-      }
+      setMessage(t('portability.restorePreviewOk'));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('portability.restoreFailed'));
     }
@@ -265,16 +321,19 @@ export function PortabilityPage() {
       <section className="card" style={{ marginBottom: '1rem' }}>
         <h3>{t('portability.backup')}</h3>
         <p className="muted">{t('portability.backupHint')}</p>
-        <div className="toolbar" style={{ gap: '0.5rem', flexWrap: 'wrap' }}>
+        <p className="muted" style={{ fontSize: '0.9rem' }}>
+          {t('portability.backupDirLabel')}: {backupDirectory}
+          {backupDirCustom ? ` (${t('portability.backupDirCustom')})` : ''}
+        </p>
+        <div className="toolbar" style={{ gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
           <button type="button" disabled={busy} onClick={() => void createFullBackup()}>{t('portability.fullBackup')}</button>
-          <button type="button" disabled={busy || !projectId} onClick={() => void createProjectBackup()}>{t('portability.projectBackup')}</button>
           <button type="button" disabled={busy || !projectId} onClick={() => void createProjectBackup()}>{t('portability.exportProject')}</button>
           <button
             type="button"
             disabled={busy}
             onClick={() =>
               void window.novelTrans.portability.createManualBackup()
-                .then((r) => { setMessage(t('portability.manualBackupOk', { path: r.filePath })); })
+                .then((r) => { setMessage(t('portability.manualBackupOk', { path: r.filePath })); return refresh(); })
                 .catch((err: unknown) => {
                   setError(err instanceof Error ? err.message : t('portability.manualBackupFailed'));
                 })
@@ -282,7 +341,39 @@ export function PortabilityPage() {
           >
             {t('portability.manualSnapshot')}
           </button>
+          <button type="button" disabled={busy} onClick={() => void pickBackupDirectory()}>
+            {t('portability.chooseBackupDir')}
+          </button>
+          {backupDirCustom ? (
+            <button type="button" disabled={busy} onClick={() => void resetBackupDirectory()}>
+              {t('portability.resetBackupDir')}
+            </button>
+          ) : null}
         </div>
+        {backupList.length > 0 ? (
+          <table style={{ width: '100%', fontSize: '0.85rem' }}>
+            <thead>
+              <tr>
+                <th align="left">{t('portability.backupFile')}</th>
+                <th align="left">{t('portability.backupKind')}</th>
+                <th align="right">{t('portability.backupSize')}</th>
+                <th align="left">{t('portability.backupDate')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {backupList.slice(0, 12).map((entry) => (
+                <tr key={entry.filePath}>
+                  <td>{entry.fileName}</td>
+                  <td>{entry.kind ?? 'archive'}</td>
+                  <td align="right">{formatBytes(entry.sizeBytes)}</td>
+                  <td>{new Date(entry.createdAt).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted">{t('portability.noBackupsYet')}</p>
+        )}
       </section>
 
       <section className="card" style={{ marginBottom: '1rem' }}>
@@ -304,8 +395,14 @@ export function PortabilityPage() {
         {backupPath ? <p className="muted" style={{ marginTop: '0.5rem' }}>{backupPath}</p> : null}
         {preview ? (
           <ul style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
-            <li>{preview.kind} · {preview.projectTitle ?? '—'} · schema v{preview.schemaVersion}</li>
-            <li>compatible: {preview.compatible ? 'yes' : 'no'} · overwrite: {preview.requiresOverwrite ? 'yes' : 'no'}</li>
+            <li><strong>{preview.projectTitle ?? '—'}</strong> · {preview.kind}</li>
+            <li>{t('portability.previewLanguages')}: {preview.sourceLanguage ?? '—'} → {preview.targetLanguage ?? '—'}</li>
+            <li>{t('portability.previewCounts')}: {preview.chapterCount ?? '—'} {t('portability.chapters')} · {preview.translationCount ?? '—'} {t('portability.translations')}</li>
+            <li>{t('portability.previewDate')}: {new Date(preview.backupDate).toLocaleString()}</li>
+            <li>schema v{preview.schemaVersion} · compatible: {preview.compatible ? 'yes' : 'no'} · overwrite: {preview.requiresOverwrite ? 'yes' : 'no'}</li>
+            {preview.warnings.length > 0 ? (
+              <li>{t('portability.restoreWarnings', { warnings: preview.warnings.join('; ') })}</li>
+            ) : null}
           </ul>
         ) : null}
       </section>
@@ -313,6 +410,7 @@ export function PortabilityPage() {
       {autoBackup ? (
         <section className="card">
           <h3>{t('portability.autoBackup')}</h3>
+          <p className="muted">{t('portability.autoBackupHint')}</p>
           <div className="toolbar" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
             <label>
               <input
@@ -333,13 +431,33 @@ export function PortabilityPage() {
               />
             </label>
             <label>
-              {t('portability.retain')}{' '}
+              {t('portability.retainDaily')}{' '}
               <input
                 type="number"
                 min={1}
-                value={autoBackup.retentionCount}
-                onChange={(e) => { setAutoBackup({ ...autoBackup, retentionCount: Number(e.target.value) }); }}
-                style={{ width: '4rem' }}
+                value={autoBackup.retentionDaily}
+                onChange={(e) => { setAutoBackup({ ...autoBackup, retentionDaily: Number(e.target.value) }); }}
+                style={{ width: '3rem' }}
+              />
+            </label>
+            <label>
+              {t('portability.retainWeekly')}{' '}
+              <input
+                type="number"
+                min={1}
+                value={autoBackup.retentionWeekly}
+                onChange={(e) => { setAutoBackup({ ...autoBackup, retentionWeekly: Number(e.target.value) }); }}
+                style={{ width: '3rem' }}
+              />
+            </label>
+            <label>
+              {t('portability.retainMonthly')}{' '}
+              <input
+                type="number"
+                min={1}
+                value={autoBackup.retentionMonthly}
+                onChange={(e) => { setAutoBackup({ ...autoBackup, retentionMonthly: Number(e.target.value) }); }}
+                style={{ width: '3rem' }}
               />
             </label>
             <button type="button" disabled={busy} onClick={() => void saveAutoBackup()}>{t('actions.save')}</button>

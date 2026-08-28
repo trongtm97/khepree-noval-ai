@@ -11,7 +11,7 @@ import {
   buildSyncStateManifestContent,
   generateSyncNonce,
 } from '@shared/constants/notebook-version-probe';
-import { DRIVE_RESOURCE_KEYS } from '@shared/constants/drive';
+import { KNOWLEDGE_RESOURCE_KEYS } from '@shared/constants/knowledge';
 import { getLanguageProfile } from '@shared/constants/language-profile';
 import { OUTPUT_PROTOCOL_BLOCK } from '@shared/constants/translation-pack';
 import type { TermRow } from '../db/repositories/term-repository';
@@ -141,7 +141,7 @@ function relationshipRecord(
 }
 
 export type ProjectKnowledgeDocuments = Record<
-  (typeof DRIVE_RESOURCE_KEYS)[
+  (typeof KNOWLEDGE_RESOURCE_KEYS)[
     | 'BOOK_PROFILE_MD'
     | 'RULES_MD'
     | 'PROJECT_TERMS_MD'
@@ -517,13 +517,13 @@ export class NotebookKnowledgeBuilder {
   }
 
   buildSyncState(projectId: string): string {
-    const state = this.db.driveSyncState.ensure(projectId);
+    const state = this.db.knowledgeSyncState.ensure(projectId);
     const version = Math.max(1, state.pending_knowledge_version || 0);
     let nonce = state.pending_sync_nonce;
     // Persist generated nonce so Drive hash stays stable across syncOwnedFiles calls.
     if (!nonce || state.pending_knowledge_version <= 0) {
       nonce = nonce ?? generateSyncNonce();
-      this.db.driveSyncState.patch(projectId, {
+      this.db.knowledgeSyncState.patch(projectId, {
         pendingKnowledgeVersion: version,
         pendingSyncNonce: nonce,
         ...(state.version_probe_status === 'verified'
@@ -567,15 +567,15 @@ export class NotebookKnowledgeBuilder {
 
   buildAll(projectId: string): ProjectKnowledgeDocuments {
     return {
-      [DRIVE_RESOURCE_KEYS.BOOK_PROFILE_MD]: this.buildBookProfile(projectId),
-      [DRIVE_RESOURCE_KEYS.RULES_MD]: this.buildTranslationRules(projectId),
-      [DRIVE_RESOURCE_KEYS.PROJECT_TERMS_MD]: this.buildProjectTerms(projectId),
-      [DRIVE_RESOURCE_KEYS.CHARACTERS_MD]: this.buildCharacters(projectId),
-      [DRIVE_RESOURCE_KEYS.RELATIONSHIPS_MD]: this.buildRelationships(projectId),
-      [DRIVE_RESOURCE_KEYS.STORY_STATE_MD]: this.buildStoryState(projectId),
-      [DRIVE_RESOURCE_KEYS.WORLD_KNOWLEDGE_MD]: this.buildWorldKnowledge(projectId),
-      [DRIVE_RESOURCE_KEYS.RECENT_CONTEXT_MD]: this.buildRecentContext(projectId),
-      [DRIVE_RESOURCE_KEYS.SYNC_STATE_MD]: this.buildSyncState(projectId),
+      [KNOWLEDGE_RESOURCE_KEYS.BOOK_PROFILE_MD]: this.buildBookProfile(projectId),
+      [KNOWLEDGE_RESOURCE_KEYS.RULES_MD]: this.buildTranslationRules(projectId),
+      [KNOWLEDGE_RESOURCE_KEYS.PROJECT_TERMS_MD]: this.buildProjectTerms(projectId),
+      [KNOWLEDGE_RESOURCE_KEYS.CHARACTERS_MD]: this.buildCharacters(projectId),
+      [KNOWLEDGE_RESOURCE_KEYS.RELATIONSHIPS_MD]: this.buildRelationships(projectId),
+      [KNOWLEDGE_RESOURCE_KEYS.STORY_STATE_MD]: this.buildStoryState(projectId),
+      [KNOWLEDGE_RESOURCE_KEYS.WORLD_KNOWLEDGE_MD]: this.buildWorldKnowledge(projectId),
+      [KNOWLEDGE_RESOURCE_KEYS.RECENT_CONTEXT_MD]: this.buildRecentContext(projectId),
+      [KNOWLEDGE_RESOURCE_KEYS.SYNC_STATE_MD]: this.buildSyncState(projectId),
     };
   }
 
@@ -608,7 +608,7 @@ export class NotebookKnowledgeBuilder {
       }
     }
 
-    const state = this.db.driveSyncState.ensure(projectId);
+    const state = this.db.knowledgeSyncState.ensure(projectId);
     if (anyChanged || !state.pending_sync_nonce || state.pending_knowledge_version <= 0) {
       const base = Math.max(
         state.pending_knowledge_version,
@@ -621,7 +621,7 @@ export class NotebookKnowledgeBuilder {
         anyChanged || !state.pending_sync_nonce
           ? generateSyncNonce()
           : state.pending_sync_nonce;
-      this.db.driveSyncState.patch(projectId, {
+      this.db.knowledgeSyncState.patch(projectId, {
         pendingKnowledgeVersion: version,
         pendingSyncNonce: nonce,
         versionProbeStatus: 'pending',
@@ -657,13 +657,13 @@ export const KNOWLEDGE_TYPE_TO_DRIVE_KEY: Record<
   KnowledgeType,
   keyof ProjectKnowledgeDocuments
 > = {
-  book_profile: DRIVE_RESOURCE_KEYS.BOOK_PROFILE_MD,
-  translation_rules: DRIVE_RESOURCE_KEYS.RULES_MD,
-  project_terms: DRIVE_RESOURCE_KEYS.PROJECT_TERMS_MD,
-  characters: DRIVE_RESOURCE_KEYS.CHARACTERS_MD,
-  relationships: DRIVE_RESOURCE_KEYS.RELATIONSHIPS_MD,
-  story_state: DRIVE_RESOURCE_KEYS.STORY_STATE_MD,
-  world_knowledge: DRIVE_RESOURCE_KEYS.WORLD_KNOWLEDGE_MD,
-  recent_context: DRIVE_RESOURCE_KEYS.RECENT_CONTEXT_MD,
-  sync_state: DRIVE_RESOURCE_KEYS.SYNC_STATE_MD,
+  book_profile: KNOWLEDGE_RESOURCE_KEYS.BOOK_PROFILE_MD,
+  translation_rules: KNOWLEDGE_RESOURCE_KEYS.RULES_MD,
+  project_terms: KNOWLEDGE_RESOURCE_KEYS.PROJECT_TERMS_MD,
+  characters: KNOWLEDGE_RESOURCE_KEYS.CHARACTERS_MD,
+  relationships: KNOWLEDGE_RESOURCE_KEYS.RELATIONSHIPS_MD,
+  story_state: KNOWLEDGE_RESOURCE_KEYS.STORY_STATE_MD,
+  world_knowledge: KNOWLEDGE_RESOURCE_KEYS.WORLD_KNOWLEDGE_MD,
+  recent_context: KNOWLEDGE_RESOURCE_KEYS.RECENT_CONTEXT_MD,
+  sync_state: KNOWLEDGE_RESOURCE_KEYS.SYNC_STATE_MD,
 };

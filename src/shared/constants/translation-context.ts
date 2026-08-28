@@ -1,18 +1,13 @@
 import type { PackMode } from './pack-mode';
+import { isPackModeOrLegacy, normalizePackMode } from './pack-mode';
 
 /** How Translation Notebook knowledge is grounded for this job. */
-export const KNOWLEDGE_SOURCE_MODES = [
-  'DRIVE_LIVE',
-  'STATIC',
-  'LOCAL_ONLY',
-] as const;
+export const KNOWLEDGE_SOURCE_MODES = ['STATIC', 'LOCAL_ONLY'] as const;
 
 export type KnowledgeSourceMode = (typeof KNOWLEDGE_SOURCE_MODES)[number];
 
 export function isKnowledgeSourceMode(value: unknown): value is KnowledgeSourceMode {
-  return (
-    value === 'DRIVE_LIVE' || value === 'STATIC' || value === 'LOCAL_ONLY'
-  );
+  return value === 'STATIC' || value === 'LOCAL_ONLY';
 }
 
 /**
@@ -56,24 +51,15 @@ export function formatDiagnosticsAiChannel(
   }
 }
 
-/** Memory surface: Notebook vs local. */
+/** Memory surface: local-first pack. */
 export function formatDiagnosticsMemorySurface(
   diagnostics: Pick<
     TranslationContextDiagnostics,
     'packMode' | 'notebookGroundingVerified' | 'providerType'
   >,
 ): string {
-  if (diagnostics.packMode === 'fat' || diagnostics.providerType === 'GEMINI_WEB_API') {
-    return 'SQLite local memory';
-  }
-  if (diagnostics.packMode === 'hybrid') {
-    return 'Translation Notebook + cập nhật cục bộ';
-  }
-  if (diagnostics.packMode === 'slim' && diagnostics.notebookGroundingVerified) {
-    return 'Translation Notebook';
-  }
-  if (diagnostics.packMode === 'slim') {
-    return 'Translation Notebook';
+  if (diagnostics.packMode === 'notebook_assisted') {
+    return 'Translation Notebook + ngữ cảnh cục bộ';
   }
   return 'SQLite local memory';
 }
@@ -88,22 +74,13 @@ export function formatDiagnosticsContextMode(
     | 'notebookKnowledgeVersion'
   >,
 ): string {
-  if (diagnostics.packMode === 'slim' && diagnostics.notebookGroundingVerified) {
-    return '✓ Notebook đã cập nhật';
+  if (diagnostics.packMode === 'notebook_assisted') {
+    return 'Notebook + ngữ cảnh cục bộ';
   }
-  if (diagnostics.packMode === 'hybrid') {
-    return 'Notebook + cập nhật mới';
-  }
-  if (diagnostics.packMode === 'fat') {
-    return 'Bộ nhớ cục bộ';
-  }
-  if (diagnostics.packMode === 'slim' && !diagnostics.notebookGroundingVerified) {
-    return 'Notebook + cập nhật mới';
-  }
-  return '—';
+  return 'Bộ nhớ cục bộ (Local Context)';
 }
 
-/** Technical pack-mode label for tooltips (SLIM / HYBRID / FAT). */
+/** Technical pack-mode label for tooltips. */
 export function formatDiagnosticsPackModeTooltip(
   diagnostics: Pick<
     TranslationContextDiagnostics,
@@ -114,22 +91,14 @@ export function formatDiagnosticsPackModeTooltip(
   >,
 ): string {
   const local = diagnostics.localKnowledgeVersion;
-  const notebook = diagnostics.notebookKnowledgeVersion;
-  if (diagnostics.packMode === 'slim' && diagnostics.notebookGroundingVerified) {
-    return 'SLIM — Notebook đã xác minh';
-  }
-  if (diagnostics.packMode === 'hybrid') {
+  if (diagnostics.packMode === 'notebook_assisted') {
+    const notebook = diagnostics.notebookKnowledgeVersion;
     const nv = notebook != null ? `v${notebook}` : 'v?';
     const lv = local != null ? `v${local}` : 'v?';
-    return `HYBRID — Notebook ${nv} + cập nhật cục bộ ${lv}`;
+    return `NOTEBOOK_ASSISTED — Notebook ${nv} + local ${lv}`;
   }
-  if (diagnostics.packMode === 'fat') {
-    return 'FAT — SQLite local memory';
-  }
-  if (diagnostics.packMode === 'slim' && !diagnostics.notebookGroundingVerified) {
-    return 'SLIM — Notebook chưa xác minh';
-  }
-  return '—';
+  const lv = local != null ? `v${local}` : 'v?';
+  return `LOCAL_CONTEXT — SQLite ${lv}`;
 }
 
 /** Knowledge version pair: v48 / v48 ✓ or mismatch. */
@@ -154,7 +123,7 @@ export function formatDiagnosticsKnowledgeVersions(
 
 /**
  * Warning when Browser path runs without verified Notebook grounding.
- * Must NOT claim "full Notebook" in that case.
+ * Phase 4: pack is local-first — no false "full Notebook" claim.
  */
 export function formatDiagnosticsGroundingWarning(
   diagnostics: Pick<
@@ -162,29 +131,18 @@ export function formatDiagnosticsGroundingWarning(
     'providerType' | 'notebookGroundingVerified' | 'packMode'
   >,
 ): string | null {
-  if (diagnostics.providerType !== 'PLAYWRIGHT_GEMINI') return null;
-  if (diagnostics.notebookGroundingVerified && diagnostics.packMode === 'slim') {
-    return null;
-  }
-  if (!diagnostics.notebookGroundingVerified) {
-    return 'Notebook chưa xác minh — đang bổ sung bộ nhớ cục bộ.';
-  }
-  if (diagnostics.packMode === 'hybrid') {
-    return 'Notebook chưa xác minh — đang bổ sung bộ nhớ cục bộ.';
-  }
-  return null;
+  if (diagnostics.packMode !== 'notebook_assisted') return null;
+  if (diagnostics.notebookGroundingVerified) return null;
+  return 'Notebook chưa xác minh — đang dùng ngữ cảnh cục bộ.';
 }
 
 export function readDiagnosticsFromProgress(
   progress: Record<string, unknown> | null | undefined,
 ): TranslationContextDiagnostics | null {
   if (!progress) return null;
-  const packMode =
-    progress.packMode === 'slim' ||
-    progress.packMode === 'hybrid' ||
-    progress.packMode === 'fat'
-      ? progress.packMode
-      : null;
+  const packMode = isPackModeOrLegacy(progress.packMode)
+    ? normalizePackMode(progress.packMode)
+    : null;
   const hasAny =
     typeof progress.providerType === 'string' ||
     packMode != null ||
@@ -222,8 +180,8 @@ export function readDiagnosticsFromProgress(
     threadRef: typeof progress.threadRef === 'string' ? progress.threadRef : null,
     knowledgeSourceMode: isKnowledgeSourceMode(progress.knowledgeSourceMode)
       ? progress.knowledgeSourceMode
-      : packMode === 'fat'
+      : packMode === 'local_context'
         ? 'LOCAL_ONLY'
-        : 'DRIVE_LIVE',
+        : 'STATIC',
   };
 }

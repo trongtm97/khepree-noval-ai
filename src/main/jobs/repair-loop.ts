@@ -10,6 +10,7 @@ import {
 import type { ParsedBatchResult, QaResult } from '@shared/schemas/output-protocol';
 import type { JobAttemptDto, RepairLoopResult, RepairPromptPlan } from '@shared/schemas/job';
 import { DEFAULT_MAX_REPAIR_ATTEMPTS } from '@shared/constants/job';
+import { normalizePackMode } from '@shared/constants/pack-mode';
 import { newId } from '../db/utils/uuid';
 import { runLearningPipeline } from '../learning/learning-pipeline';
 import { persistParsedTranslations } from '../learning/translation-persistence';
@@ -325,6 +326,10 @@ export async function runRepairLoop(
             chaptersCompleted,
             sourceContextByParagraph,
           });
+          deps.db.jobs.setKnowledgeVersionAtCommit(
+            input.jobId,
+            learning.knowledgeVersionAtCommit,
+          );
           const emptyDeltas =
             learning.terms.candidatesCreated === 0 &&
             learning.terms.candidatesMerged === 0 &&
@@ -355,7 +360,7 @@ export async function runRepairLoop(
               candidatesCreated: learning.terms.candidatesCreated,
               memoryApplied: learning.memory.applied,
               conflicts: learning.memory.conflicts.length,
-              consolidated: learning.consolidated,
+              consolidated: false,
               archived: learning.compact.archivedEvents,
               emptyDeltas,
             },
@@ -735,10 +740,8 @@ function readChannelFromProgress(
     providerType:
       typeof progress.providerType === 'string' ? progress.providerType : undefined,
     packMode:
-      progress.packMode === 'slim' ||
-      progress.packMode === 'hybrid' ||
-      progress.packMode === 'fat'
-        ? progress.packMode
+      typeof progress.packMode === 'string'
+        ? normalizePackMode(progress.packMode)
         : undefined,
   };
 }
@@ -768,9 +771,7 @@ function toAttemptDto(row: {
   completed_at: string | null;
 }): JobAttemptDto {
   const packMode =
-    row.pack_mode === 'slim' || row.pack_mode === 'hybrid' || row.pack_mode === 'fat'
-      ? (row.pack_mode)
-      : null;
+    typeof row.pack_mode === 'string' ? normalizePackMode(row.pack_mode) : null;
   return {
     id: row.id,
     jobId: row.job_id,

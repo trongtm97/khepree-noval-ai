@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { PackMode } from '@shared/constants/pack-mode';
+import { isLocalContextPack, normalizePackMode } from '@shared/constants/pack-mode';
 import { resolveProjectSourceLanguage } from '../services/resolve-project-source-language';
 import {
   DEFAULT_SOURCE_LANGUAGE,
@@ -30,11 +31,10 @@ export interface BuildPackInput {
   /** When set, only these stable paragraph IDs are included in ## Source. */
   paragraphIds?: string[];
   /**
-   * slim = Notebook cold; pack = task + tiny hot + locked overrides + source.
-   * hybrid = Notebook cold + local delta since last verified (not full DB).
-   * fat = full SQLite context when Notebook unavailable / WebAPI.
+   * Phase 4: local_context (default) or notebook_assisted (explicit opt-in).
+   * Legacy slim/hybrid/fat normalized on read.
    */
-  packMode?: PackMode;
+  packMode?: PackMode | 'slim' | 'hybrid' | 'fat';
   /** Unsynced hot deltas text (already formatted section body or empty). */
   hotMemoryOverride?: string;
   /** Override pair for tests — otherwise read from project row. */
@@ -67,11 +67,10 @@ function buildKnowledgePriorityRules(): string {
     '## Knowledge Priority',
     'If conflict:',
     '1. This Translation Pack explicit instruction',
-    '2. HOT MEMORY (unsynced overrides)',
+    '2. HOT MEMORY (recent SQLite changes)',
     '3. LOCKED PROJECT TERM',
-    '4. Current Project Memory in pack',
-    '5. Notebook Knowledge sources',
-    '6. Model general knowledge (lowest)',
+    '4. Local Knowledge Engine context in this pack',
+    '5. Model general knowledge (lowest)',
     'Do not let general knowledge override locked project terms.',
   ].join('\n');
 }
@@ -79,7 +78,6 @@ function buildKnowledgePriorityRules(): string {
 function buildTaskHeaderFromChapters(
   style: TranslationStyle,
   chapters: ChapterRow[],
-  packMode: PackMode,
   sourceLanguage: string,
   targetLanguage: string,
 ): string {
@@ -88,12 +86,6 @@ function buildTaskHeaderFromChapters(
     labels.length === 1
       ? labels[0]
       : `${labels[0]}–${labels[labels.length - 1]}`;
-  const contextHint =
-    packMode === 'slim'
-      ? 'Follow Notebook knowledge for characters, terms, story state, and world. This pack only adds source + hot overrides.'
-      : packMode === 'hybrid'
-        ? 'Notebook holds cold knowledge. Apply Local Knowledge Delta / Hot Memory for unsynced updates since last verified Notebook version. Do not invent beyond Notebook + delta.'
-        : 'Use ONLY active context below (local memory fallback). Do not invent terms, characters, or plot.';
   return [
     formatTranslationTaskHeader({
       sourceLanguage,
@@ -101,7 +93,7 @@ function buildTaskHeaderFromChapters(
       styleLabel: style,
       range,
     }),
-    contextHint,
+    'Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.',
   ].join('\n');
 }
 
@@ -126,158 +118,116 @@ function buildCriticalRules(
   return ['## Critical Rules', ...unique.map((rule) => `- ${rule}`)].join('\n');
 }
 
-function buildHybridLocalDelta(context: MemoryContextDto): string {
-  /** Relevant story/characters only — not full DB dump. */
-  const lines: string[] = ['## Local Knowledge Delta (since last verified Notebook)'];
+function buildTermSections(context: MemoryContextDto): string {
+  const locked = context.activeTerms.filter((t) => t.locked);
+  const relevant = context.activeTerms.filter((t) => !t.locked);
+  const lines: string[] = [];
 
-  if (context.storyState) {
-    const hot: Record<string, unknown> = {};
-    if (context.storyState.summaryText) hot.summary = context.storyState.summaryText;
-    if (context.storyState.cultivationState) hot.cultivation = context.storyState.cultivationState;
-    if (context.storyState.locationState) hot.location = context.storyState.locationState;
-    if (context.storyState.importantItems?.length) hot.items = context.storyState.importantItems;
-    if (context.storyState.unresolvedPlotPoints?.length) {
-      hot.openPlots = context.storyState.unresolvedPlotPoints;
-    }
-    if (Object.keys(hot).length > 0) {
-      lines.push(`story: ${compactJson(hot)}`);
-    }
-  }
-
-  for (const character of context.activeCharacters.slice(0, 24)) {
-    const aliases =
-      character.aliases.length > 0 ? ` aliases=${character.aliases.join('|')}` : '';
-    lines.push(
-      `char: ${character.canonicalName}` +
-        (character.translatedName ? `=${character.translatedName}` : '') +
-        (character.role ? ` [${character.role}]` : '') +
-        aliases,
-    );
-  }
-
-  for (const rel of context.relationships.slice(0, 20)) {
-    lines.push(
-      `rel: ${rel.fromName}→${rel.toName} (${rel.relationshipType})` +
-        (rel.aCallsB || rel.bCallsA
-          ? ` calls=${rel.aCallsB ?? '?'}/${rel.bCallsA ?? '?'}`
-          : ''),
-    );
-  }
-
-  if (lines.length === 1) {
+  lines.push('## Locked Terms');
+  if (locked.length === 0) {
     lines.push('(none)');
+  } else {
+    for (const term of locked) {
+      lines.push(
+        `${term.sourceText} → ${term.preferredTranslation ?? '?'} (${term.type}) LOCKED`,
+      );
+    }
+  }
+
+  lines.push('', '## Relevant Terms');
+  if (relevant.length === 0) {
+    lines.push('(none)');
+  } else {
+    for (const term of relevant) {
+      lines.push(
+        `${term.sourceText} → ${term.preferredTranslation ?? '?'} (${term.type})`,
+      );
+    }
   }
   return lines.join('\n');
 }
 
-function buildHotMemory(
+function buildLocalContextBody(
   context: MemoryContextDto,
-  packMode: PackMode,
   hotMemoryOverride?: string,
 ): string {
   if (hotMemoryOverride?.trim()) {
-    return hotMemoryOverride.trim().startsWith('##')
+    const hot = hotMemoryOverride.trim().startsWith('##')
       ? hotMemoryOverride.trim()
-      : ['## Hot Memory', hotMemoryOverride.trim()].join('\n');
+      : ['## Hot Changes', hotMemoryOverride.trim()].join('\n');
+    return hot;
   }
 
-  if (packMode === 'slim') {
-    return ['## Hot Memory', '(none — Notebook cold knowledge is authoritative)'].join('\n');
+  const lines: string[] = [];
+
+  lines.push('## Active Characters');
+  if (context.activeCharacters.length === 0) {
+    lines.push('(none)');
+  } else {
+    for (const character of context.activeCharacters) {
+      const aliases =
+        character.aliases.length > 0 ? ` aliases=${character.aliases.join('|')}` : '';
+      lines.push(
+        `${character.canonicalName}` +
+          (character.translatedName ? ` → ${character.translatedName}` : '') +
+          (character.role ? ` [${character.role}]` : '') +
+          aliases,
+      );
+    }
   }
 
-  if (packMode === 'hybrid') {
-    return buildHybridLocalDelta(context);
+  lines.push('', '## Relevant Relationships');
+  if (context.relationships.length === 0) {
+    lines.push('(none)');
+  } else {
+    for (const rel of context.relationships) {
+      lines.push(
+        `${rel.fromName} → ${rel.toName} (${rel.relationshipType})` +
+          (rel.aCallsB || rel.bCallsA
+            ? ` calls=${rel.aCallsB ?? '?'}/${rel.bCallsA ?? '?'}`
+            : ''),
+      );
+    }
   }
 
-  const lines: string[] = ['## Hot Memory'];
-
-  if (context.storyState) {
-    const hot: Record<string, unknown> = {};
-    if (context.storyState.summaryText) hot.summary = context.storyState.summaryText;
-    if (context.storyState.cultivationState) hot.cultivation = context.storyState.cultivationState;
-    if (context.storyState.locationState) hot.location = context.storyState.locationState;
-    if (context.storyState.importantItems?.length) hot.items = context.storyState.importantItems;
+  lines.push('', '## Current Story State');
+  if (context.storyState?.summaryText) {
+    lines.push(context.storyState.summaryText);
+    const extras: Record<string, unknown> = {};
+    if (context.storyState.cultivationState) extras.cultivation = context.storyState.cultivationState;
+    if (context.storyState.locationState) extras.location = context.storyState.locationState;
+    if (context.storyState.importantItems?.length) extras.items = context.storyState.importantItems;
     if (context.storyState.unresolvedPlotPoints?.length) {
-      hot.openPlots = context.storyState.unresolvedPlotPoints;
+      extras.openPlots = context.storyState.unresolvedPlotPoints;
     }
-    if (Object.keys(hot).length > 0) {
-      lines.push(`story: ${compactJson(hot)}`);
+    if (Object.keys(extras).length > 0) {
+      lines.push(compactJson(extras));
     }
-  }
-
-  for (const character of context.activeCharacters) {
-    const aliases =
-      character.aliases.length > 0 ? ` aliases=${character.aliases.join('|')}` : '';
-    lines.push(
-      `char: ${character.canonicalName}` +
-        (character.translatedName ? `=${character.translatedName}` : '') +
-        (character.role ? ` [${character.role}]` : '') +
-        aliases,
-    );
-  }
-
-  for (const rel of context.relationships) {
-    lines.push(
-      `rel: ${rel.fromName}→${rel.toName} (${rel.relationshipType})` +
-        (rel.aCallsB || rel.bCallsA
-          ? ` calls=${rel.aCallsB ?? '?'}/${rel.bCallsA ?? '?'}`
-          : ''),
-    );
-  }
-
-  for (const event of context.recentMemory) {
-    lines.push(
-      `mem@${event.chapterNumber ?? '?'}: ${event.category}.${event.key}=${event.value ?? ''}`,
-    );
-  }
-
-  if (lines.length === 1) {
+  } else {
     lines.push('(none)');
   }
-  return lines.join('\n');
-}
 
-function buildActiveTerms(context: MemoryContextDto, packMode: PackMode): string {
-  const lines: string[] = [
-    packMode === 'fat'
-      ? '## Active Project Terms'
-      : packMode === 'slim'
-        ? '## Active Overrides (LOCKED only — Notebook cold is authoritative)'
-        : '## Active Overrides (locked / local soft)',
-  ];
-
-  // SLIM = CONTENT_CURRENT: Notebook holds cold terms. Pack must NOT dump soft
-  // matches or grounding proof is invalid (term present in prompt, not Notebook).
-  // HYBRID: locked + limited soft as local delta. FAT: all active terms.
-  let effective = context.activeTerms;
-  if (packMode === 'slim') {
-    effective = context.activeTerms.filter((t) => t.locked);
-  } else if (packMode === 'hybrid') {
-    const locked = context.activeTerms.filter((t) => t.locked);
-    effective =
-      locked.length === 0
-        ? context.activeTerms.slice(0, 15)
-        : [...locked, ...context.activeTerms.filter((t) => !t.locked).slice(0, 10)];
-  }
-
-  const seen = new Set<string>();
-  const unique = effective.filter((t) => {
-    if (seen.has(t.sourceText)) return false;
-    seen.add(t.sourceText);
-    return true;
-  });
-
-  if (unique.length === 0) {
+  lines.push('', '## Relevant World Facts');
+  const world = context.worldKnowledge ?? [];
+  if (world.length === 0) {
     lines.push('(none)');
-    return lines.join('\n');
+  } else {
+    for (const entry of world) {
+      lines.push(`${entry.key}: ${entry.value}`);
+    }
   }
-  for (const term of unique) {
-    const lock = term.locked ? ' LOCKED' : '';
-    lines.push(
-      `${term.sourceText} → ${term.preferredTranslation ?? '?'}` +
-        ` (${term.type})${lock}`,
-    );
+
+  lines.push('', '## Recent Context');
+  if (context.recentMemory.length === 0) {
+    lines.push('(none)');
+  } else {
+    for (const event of context.recentMemory) {
+      lines.push(
+        `@${event.chapterNumber ?? '?'} ${event.category}.${event.key}=${event.value ?? ''}`,
+      );
+    }
   }
+
   return lines.join('\n');
 }
 
@@ -337,28 +287,27 @@ export function buildTranslationPack(
 
   chapters.sort((a, b) => a.sequence_order - b.sequence_order);
   const chapterNumbers = chapters.map((chapter) => chapter.chapter_number ?? chapter.sequence_order);
-  const packMode = input.packMode ?? 'fat';
-  const bookProfile =
-    packMode === 'fat' ? buildBookProfileSection(db, input.projectId) : '';
+  const packMode = normalizePackMode(input.packMode ?? 'local_context');
+  const bookProfile = isLocalContextPack(packMode)
+    ? buildBookProfileSection(db, input.projectId)
+    : '';
 
   const paragraphIdFilter =
     input.paragraphIds && input.paragraphIds.length > 0
       ? new Set(input.paragraphIds)
       : undefined;
 
-  const projectRules =
-    packMode === 'slim'
-      ? []
-      : packMode === 'hybrid'
-        ? input.context.criticalProjectRules.slice(0, 8)
-        : input.context.criticalProjectRules;
+  const projectRules = input.context.criticalProjectRules;
 
   const project = db.projects.getById(input.projectId);
+  const editionId = project?.active_edition_id;
+  const editionRow = editionId ? db.translationEditions.getById(editionId) : null;
   const sourceLanguage =
     input.sourceLanguage ??
     (project ? resolveProjectSourceLanguage(project) : DEFAULT_SOURCE_LANGUAGE);
   const targetLanguage =
     input.targetLanguage ??
+    editionRow?.target_language ??
     project?.target_language ??
     DEFAULT_TARGET_LANGUAGE;
 
@@ -366,7 +315,6 @@ export function buildTranslationPack(
     taskHeader: buildTaskHeaderFromChapters(
       input.style,
       chapters,
-      packMode,
       sourceLanguage,
       targetLanguage,
     ),
@@ -383,8 +331,8 @@ export function buildTranslationPack(
     ]
       .filter(Boolean)
       .join('\n\n'),
-    hotMemoryDelta: buildHotMemory(input.context, packMode, input.hotMemoryOverride),
-    activeProjectTerms: buildActiveTerms(input.context, packMode),
+    hotMemoryDelta: buildLocalContextBody(input.context, input.hotMemoryOverride),
+    activeProjectTerms: buildTermSections(input.context),
     sourceParagraphs: buildSourceParagraphs(
       chapters,
       paragraphsByChapter,
@@ -406,13 +354,7 @@ export function buildTranslationPack(
     return sum + rows.filter((r) => paragraphIdFilter.has(r.paragraph_id)).length;
   }, 0);
 
-  const baseContext = [
-    sections.criticalRules,
-    sections.hotMemoryDelta,
-    sections.activeProjectTerms,
-  ]
-    .filter((s) => s.trim())
-    .join('\n\n');
+  const baseContext = buildLocalContextSnapshot(sections);
   const operationPrompt = [
     sections.taskHeader,
     sections.sourceParagraphs,
@@ -445,6 +387,7 @@ export function buildTranslationPack(
       chapterCount: chapters.length,
     },
     promptHash: hashPrompt(prompt),
+    contextFingerprint: input.context.fingerprint,
   };
 }
 
@@ -465,7 +408,7 @@ function buildTaskHeader(
       styleLabel: style,
       range,
     }),
-    'Use ONLY active context below. Do not invent terms, characters, or plot.',
+    'Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.',
   ].join('\n');
 }
 
@@ -481,16 +424,12 @@ export function assemblePackSections(input: {
   hotMemoryOverride?: string;
   sourceLanguage?: string;
   targetLanguage?: string;
-}): { sections: TranslationPackSections; prompt: string } {
-  const packMode = input.packMode ?? 'fat';
+}): { sections: TranslationPackSections; prompt: string; baseContext: string; operationPrompt: string } {
   const sourceLanguage = input.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE;
   const targetLanguage = input.targetLanguage ?? DEFAULT_TARGET_LANGUAGE;
-  const rules =
-    packMode === 'slim'
-      ? []
-      : packMode === 'hybrid'
-        ? input.criticalRules.slice(0, 8)
-        : input.criticalRules;
+  const rules = input.context.criticalProjectRules.length
+    ? input.context.criticalProjectRules
+    : input.criticalRules;
   const sections: TranslationPackSections = {
     taskHeader: buildTaskHeader(
       input.style,
@@ -508,12 +447,29 @@ export function assemblePackSections(input: {
         targetLanguage,
       ),
     ].join('\n\n'),
-    hotMemoryDelta: buildHotMemory(input.context, packMode, input.hotMemoryOverride),
-    activeProjectTerms: buildActiveTerms(input.context, packMode),
+    hotMemoryDelta: buildLocalContextBody(input.context, input.hotMemoryOverride),
+    activeProjectTerms: buildTermSections(input.context),
     sourceParagraphs: ['## Source', ...input.sourceLines].join('\n'),
     outputProtocol: OUTPUT_PROTOCOL_BLOCK,
   };
-  return { sections, prompt: assemblePrompt(sections) };
+  const prompt = assemblePrompt(sections);
+  const baseContext = buildLocalContextSnapshot(sections);
+  const operationPrompt = [
+    sections.taskHeader,
+    sections.sourceParagraphs,
+    '## Output Protocol',
+    sections.outputProtocol,
+  ]
+    .filter((s) => s.trim())
+    .join('\n\n');
+  return { sections, prompt, baseContext, operationPrompt };
+}
+
+/** Build provider-neutral local context snapshot (for repair/continuation). */
+export function buildLocalContextSnapshot(sections: TranslationPackSections): string {
+  return [sections.criticalRules, sections.activeProjectTerms, sections.hotMemoryDelta]
+    .filter((s) => s.trim())
+    .join('\n\n');
 }
 
 /** Count structured hot/delta bullet lines for job telemetry. */

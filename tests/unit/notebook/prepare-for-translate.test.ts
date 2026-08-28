@@ -35,17 +35,15 @@ describe('prepareForTranslate', () => {
   it('bootstraps when knowledge empty', async () => {
     expect(db.knowledgeFiles.listByProject(projectId)).toHaveLength(0);
     const service = new NotebookBootstrapService(db);
-    const syncDrive = vi.fn(() => Promise.resolve());
     const provision = vi.fn(() => Promise.resolve({
       assisted: false,
       mapping: { status: 'ready' },
       message: 'ok',
     }));
-
     const result = await service.prepareForTranslate(
       projectId,
       { accountId: null },
-      { syncDrive, provision },
+      { provision },
     );
 
     expect(result.ready).toBe(true);
@@ -54,7 +52,7 @@ describe('prepareForTranslate', () => {
     expect(provision).not.toHaveBeenCalled();
   });
 
-  it('attempts provision when worker READY and mapping missing', async () => {
+  it('attempts local bootstrap when worker READY — no notebook provision (Phase 5)', async () => {
     const account = db.googleAccounts.create({
       label: 'Worker',
       email: 'worker@example.com',
@@ -77,14 +75,14 @@ describe('prepareForTranslate', () => {
       projectId,
       { accountId: account.id },
       {
-        syncDrive: () => Promise.resolve(),
         provision,
       },
     );
 
-    expect(provision).toHaveBeenCalledOnce();
-    expect(result.needsAssisted).toBe(true);
-    expect(result.usedFallback).toBe(true);
+    expect(provision).not.toHaveBeenCalled();
+    expect(result.needsAssisted).toBe(false);
+    expect(result.usedFallback).toBe(false);
     expect(result.ready).toBe(true);
+    expect(result.notebookStatus).toBeNull();
   });
 });

@@ -28,6 +28,19 @@ export function formatLanguagePickerStacked(profile: Pick<
   };
 }
 
+/** Stacked language pair: intl line + native · code line. */
+export function formatLanguagePairStackedFromProfiles(
+  source: Pick<LanguageProfile, 'internationalName' | 'nativeName' | 'code'>,
+  target: Pick<LanguageProfile, 'internationalName' | 'nativeName' | 'code'>,
+): { internationalLine: string; nativeLine: string } {
+  const sourceStacked = formatLanguagePickerStacked(source);
+  const targetStacked = formatLanguagePickerStacked(target);
+  return {
+    internationalLine: `${source.internationalName} → ${target.internationalName}`,
+    nativeLine: `${sourceStacked.nativeLine} → ${targetStacked.nativeLine}`,
+  };
+}
+
 export function normalizeSearchQuery(query: string): string {
   return query.trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
 }

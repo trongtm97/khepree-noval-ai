@@ -1,4 +1,5 @@
 import { t } from './index';
+import { LEGACY_KNOWLEDGE_SYNC_PENDING_EVENT } from '@shared/constants/legacy-knowledge-events';
 
 const STATUS_KEY: Record<string, string> = {
   READY: 'status.ready',
@@ -64,7 +65,8 @@ const STATUS_KEY: Record<string, string> = {
   completed_with_warnings: 'status.completedWithWarnings',
   SYNC_PENDING: 'status.syncPending',
   sync_pending: 'status.syncPending',
-  NOTEBOOK_SYNC_PENDING: 'status.syncPending',
+  KNOWLEDGE_SYNC_PENDING: 'status.syncPending',
+  [LEGACY_KNOWLEDGE_SYNC_PENDING_EVENT]: 'status.syncPending',
   SYNCING: 'status.syncing',
   syncing: 'status.syncing',
   STALE: 'status.stale',
@@ -134,7 +136,8 @@ export function statusTone(
     s === 'COMPLETED_WITH_WARNINGS' ||
     s === 'STALE' ||
     s === 'SYNC_PENDING' ||
-    s === 'NOTEBOOK_SYNC_PENDING' ||
+    s === 'KNOWLEDGE_SYNC_PENDING' ||
+    s === LEGACY_KNOWLEDGE_SYNC_PENDING_EVENT ||
     s === 'ASSISTED_SETUP' ||
     s === 'SOURCE_STALE'
   ) {

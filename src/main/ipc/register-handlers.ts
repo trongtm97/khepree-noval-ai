@@ -6,8 +6,6 @@ import {
   GetVersionResponseSchema,
   OpenFolderRequestSchema,
   OpenFolderResponseSchema,
-  OpenGuideRequestSchema,
-  OpenGuideResponseSchema,
   PingResponseSchema,
   SecurityHealthCheckResponseSchema,
 } from '@shared/schemas/ipc';
@@ -20,7 +18,6 @@ import {
   AccountActionResponseSchema,
   AccountAddRequestSchema,
   AccountCompleteLoginRequestSchema,
-  AccountConnectDriveAuthPayloadRequestSchema,
   AccountIdRequestSchema,
   AccountListResponseSchema,
   AccountOpenBrowserRequestSchema,
@@ -183,7 +180,6 @@ import {
 } from '@shared/schemas/memory';
 import { getMemoryService } from '../services/memory-service-singleton';
 import { getTranslationPackService } from '../services/translation-pack-service-singleton';
-import { getDriveSyncService } from '../services/drive-sync-service-singleton';
 import { getNotebookService } from '../services/notebook-service-singleton';
 import { getGeminiService } from '../services/gemini-service-singleton';
 import {
@@ -192,17 +188,6 @@ import {
   ListChaptersRequestSchema,
   ListChaptersResponseSchema,
 } from '@shared/schemas/translation-pack';
-import {
-  DriveAssignWorkerRequestSchema,
-  DriveOAuthConfigStatusSchema,
-  DriveProjectIdRequestSchema,
-  DriveProvisionResponseSchema,
-  DriveSetOAuthClientRequestSchema,
-  DriveSetScheduleRequestSchema,
-  DriveStatusResponseSchema,
-  DriveSyncProjectRequestSchema,
-  DriveSyncResponseSchema,
-} from '@shared/schemas/drive';
 import { NotebookBootstrapService } from '../notebook/notebook-bootstrap-service';
 import { BootstrapAnalysisService } from '../bootstrap/bootstrap-analysis-service';
 import { FullNovelPreprocessService } from '../bootstrap/full-novel-preprocess-service';
@@ -229,6 +214,10 @@ import {
   NotebookSkipBootstrapRequestSchema,
   NotebookBootstrapStatusRequestSchema,
   NotebookBootstrapStatusResponseSchema,
+  NotebookResearchQueryRequestSchema,
+  NotebookResearchQueryResponseSchema,
+  NotebookOpenResearchRequestSchema,
+  NotebookOpenResearchResponseSchema,
 } from '@shared/schemas/notebook';
 import {
   TranslateEnsureReadyRequestSchema,
@@ -277,6 +266,9 @@ import {
   SelectExportPathRequestSchema,
   SelectExportPathResponseSchema,
   SetAutoBackupConfigRequestSchema,
+  BackupDirectorySchema,
+  SetBackupDirectoryRequestSchema,
+  SelectBackupDirectoryResponseSchema,
   TermCommitImportRequestSchema,
   TermCommitImportResponseSchema,
   TermImportPreviewRequestSchema,
@@ -358,7 +350,6 @@ import {
   SetupExploreRequestSchema,
   SetupExploreResponseSchema,
   SetupSetStepRequestSchema,
-  SetupSkipDriveRequestSchema,
   SetupStatusSchema,
 } from '@shared/schemas/setup';
 import {
@@ -493,25 +484,6 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
-    IPC_CHANNELS.APP_OPEN_GUIDE,
-    createIpcHandler(
-      OpenGuideRequestSchema,
-      async (request) => {
-        const { resolveGuidePath } = await import('../services/guide-path');
-        const targetPath = resolveGuidePath(request.guideId);
-        const result = await shell.openPath(targetPath);
-        if (result) {
-          logger.warn('Failed to open guide', { guideId: request.guideId, result });
-          throw new Error(result);
-        }
-        logger.info('Opened guide in OS browser', { guideId: request.guideId });
-        return OpenGuideResponseSchema.parse({ ok: true as const, path: targetPath });
-      },
-      OpenGuideResponseSchema,
-    ),
-  );
-
-  ipcMain.handle(
     IPC_CHANNELS.SECURITY_HEALTH_CHECK,
     createIpcHandlerNoArg(async () => {
       const health = await getSecretStorage().healthCheck();
@@ -623,39 +595,6 @@ export function registerIpcHandlers(): void {
         email: request.email,
         label: request.label,
       });
-      return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
-      });
-    }),
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.ACCOUNT_CONNECT_DRIVE,
-    createIpcHandler(AccountIdRequestSchema, async (request) => {
-      const detail = await getAccountWorkerService().connectDrive(request.accountId);
-      return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
-      });
-    }),
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.ACCOUNT_CONNECT_DRIVE_AUTH,
-    createIpcHandler(AccountConnectDriveAuthPayloadRequestSchema, async (request) => {
-      const detail = await getAccountWorkerService().connectDriveWithAuthPayload(
-        request.accountId,
-        request.authPayload,
-      );
-      return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
-      });
-    }),
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.ACCOUNT_DISCONNECT_DRIVE,
-    createIpcHandler(AccountIdRequestSchema, async (request) => {
-      const detail = await getAccountWorkerService().disconnectDrive(request.accountId);
       return AccountActionResponseSchema.parse({
         account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
       });
@@ -1233,8 +1172,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.BOOK_METADATA_SYNC_PROFILE,
     createIpcHandler(BookMetadataGetRequestSchema, async (request) => {
-      const { getDriveSyncService } = await import('../services/drive-sync-service-singleton');
-      await getDriveSyncService().syncProject(request.projectId);
+      await getNotebookSyncService().syncLocalKnowledge(request.projectId);
       getDatabase().projects.updateMetadata(request.projectId, { book_profile_dirty: false });
       return { ok: true as const };
     }),
@@ -1521,80 +1459,6 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
-    IPC_CHANNELS.DRIVE_OAUTH_STATUS,
-    createIpcHandlerNoArg(async () => {
-      const status = await getDriveSyncService().getOAuthStatus();
-      return DriveOAuthConfigStatusSchema.parse(status);
-    }),
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.DRIVE_SET_OAUTH_CLIENT,
-    createIpcHandler(DriveSetOAuthClientRequestSchema, async (request) => {
-      await getDriveSyncService().setOAuthClientConfig({
-        clientId: request.clientId,
-        clientSecret: request.clientSecret,
-      });
-      return { ok: true as const };
-    }),
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.DRIVE_GET_STATUS,
-    createIpcHandler(DriveProjectIdRequestSchema, (request) => {
-      const status = getDriveSyncService().getStatus(request.projectId);
-      return DriveStatusResponseSchema.parse({ status });
-    }),
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.DRIVE_ASSIGN_WORKER,
-    createIpcHandler(DriveAssignWorkerRequestSchema, (request) => {
-      getDriveSyncService().assignWorker(request.projectId, request.accountId);
-      const status = getDriveSyncService().getStatus(request.projectId);
-      return DriveStatusResponseSchema.parse({ status });
-    }),
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.DRIVE_SET_SCHEDULE,
-    createIpcHandler(DriveSetScheduleRequestSchema, (request) => {
-      getDriveSyncService().setSyncSchedule(request.projectId, request.everyNChapters);
-      const status = getDriveSyncService().getStatus(request.projectId);
-      return DriveStatusResponseSchema.parse({ status });
-    }),
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.DRIVE_PROVISION,
-    createIpcHandler(DriveProjectIdRequestSchema, async (request) => {
-      const status = await getDriveSyncService().provisionProject(request.projectId);
-      return DriveProvisionResponseSchema.parse({ status });
-    }),
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.DRIVE_SYNC,
-    createIpcHandler(DriveSyncProjectRequestSchema, async (request) => {
-      const result = await getDriveSyncService().syncProject(
-        request.projectId,
-        request.force ?? false,
-      );
-      const status = getDriveSyncService().getStatus(request.projectId);
-      return DriveSyncResponseSchema.parse({ result, status });
-    }),
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.DRIVE_RETRY,
-    createIpcHandler(DriveProjectIdRequestSchema, async (request) => {
-      const result = await getDriveSyncService().retrySync(request.projectId);
-      const status = getDriveSyncService().getStatus(request.projectId);
-      return DriveSyncResponseSchema.parse({ result, status });
-    }),
-  );
-
-  ipcMain.handle(
     IPC_CHANNELS.NOTEBOOK_LIST,
     createIpcHandler(NotebookListRequestSchema, (request) => {
       const mappings = getNotebookService().listMappings(request.projectId);
@@ -1654,7 +1518,7 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.NOTEBOOK_SYNC_NOW,
     createIpcHandler(NotebookSyncNowRequestSchema, async (request) => {
       const sync = getNotebookSyncService();
-      await sync.syncDrive(request.projectId);
+      await sync.syncLocalKnowledge(request.projectId);
       const accountId =
         request.accountId ??
         new ProjectWorkerResolver(getDatabase()).resolve({
@@ -1745,10 +1609,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.NOTEBOOK_GET_BOOTSTRAP_STATUS,
-    createIpcHandler(NotebookBootstrapStatusRequestSchema, (request) => {
+    createIpcHandler(NotebookBootstrapStatusRequestSchema, async (request) => {
       const db = getDatabase();
       const project = db.projects.getById(request.projectId);
       if (!project) throw new Error(`Project not found: ${request.projectId}`);
+      const { projectHasLegacyDriveArtifacts } = await import('../knowledge/legacy-drive-notice');
       return NotebookBootstrapStatusResponseSchema.parse({
         status: project.bootstrap_status,
         throughChapter: project.bootstrap_through_chapter ?? null,
@@ -1759,7 +1624,33 @@ export function registerIpcHandlers(): void {
         characterCount: db.characters.listByProject(request.projectId).length,
         relationshipCount: db.relationships.listByProject(request.projectId).length,
         termCandidateCount: db.termCandidates.listPending(request.projectId).length,
+        hasLegacyDriveConfig: projectHasLegacyDriveArtifacts(db, request.projectId),
       });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NOTEBOOK_RESEARCH_QUERY,
+    createIpcHandler(NotebookResearchQueryRequestSchema, async (request) => {
+      const { getNotebookService } = await import('../services/notebook-service-singleton');
+      const result = await getNotebookService().researchQuery({
+        projectId: request.projectId,
+        accountId: request.accountId,
+        question: request.question,
+      });
+      return NotebookResearchQueryResponseSchema.parse(result);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NOTEBOOK_OPEN_RESEARCH,
+    createIpcHandler(NotebookOpenResearchRequestSchema, async (request) => {
+      const { getNotebookService } = await import('../services/notebook-service-singleton');
+      const result = await getNotebookService().openResearch({
+        projectId: request.projectId,
+        accountId: request.accountId,
+      });
+      return NotebookOpenResearchResponseSchema.parse(result);
     }),
   );
 
@@ -1793,7 +1684,7 @@ export function registerIpcHandlers(): void {
         {
           text: request.text,
           filePath: request.filePath,
-          syncDrive: request.syncDrive,
+          syncLocalKnowledge: request.syncLocalKnowledge,
         },
       );
       return ImportPreprocessResultResponseSchema.parse(result);
@@ -2250,13 +2141,42 @@ export function registerIpcHandlers(): void {
       const result = await dialog.showOpenDialog({
         properties: ['openFile'],
         filters: [
-          { name: 'NovelTrans backup', extensions: ['nts-project.zip', 'zip'] },
+          { name: 'NovelTrans backup', extensions: ['nts-backup', 'nts-project', 'zip'] },
           { name: 'ZIP', extensions: ['zip'] },
         ],
       });
       return SelectBackupPathResponseSchema.parse({
         canceled: result.canceled,
         filePath: result.filePaths[0] ?? null,
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_GET_BACKUP_DIRECTORY,
+    createIpcHandlerNoArg(() => {
+      return BackupDirectorySchema.parse(getPortabilityService().getBackupDirectory());
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_SET_BACKUP_DIRECTORY,
+    createIpcHandler(SetBackupDirectoryRequestSchema, (request) => {
+      return BackupDirectorySchema.parse(
+        getPortabilityService().setBackupDirectory(request.directory),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_SELECT_BACKUP_DIRECTORY,
+    createIpcHandlerNoArg(async () => {
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory', 'createDirectory'],
+      });
+      return SelectBackupDirectoryResponseSchema.parse({
+        canceled: result.canceled,
+        directory: result.filePaths[0] ?? null,
       });
     }),
   );
@@ -2513,13 +2433,6 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.SETUP_SET_STEP,
     createIpcHandler(SetupSetStepRequestSchema, (request) => {
       return SetupStatusSchema.parse(getSetupService().setStep(request.step));
-    }),
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.SETUP_SKIP_DRIVE,
-    createIpcHandler(SetupSkipDriveRequestSchema, (request) => {
-      return SetupStatusSchema.parse(getSetupService().setSkipDrive(request.skip));
     }),
   );
 

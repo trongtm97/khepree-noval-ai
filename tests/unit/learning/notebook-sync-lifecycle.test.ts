@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resolveAppPaths } from '@main/services/paths-service';
 import { createDatabaseManager, closeDatabase } from '@main/db/connection';
 import type { DatabaseManager } from '@main/db/database-manager';
@@ -92,7 +92,7 @@ describe('isCriticalLearningChange', () => {
   });
 });
 
-describe('Learning Notebook sync lifecycle', () => {
+describe('Learning local knowledge lifecycle', () => {
   let tempRoot: string;
   let db: DatabaseManager;
   let projectId: string;
@@ -121,35 +121,8 @@ describe('Learning Notebook sync lifecycle', () => {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 
-  it('batch 3 chapters: counter += 3', async () => {
-    db.driveSyncState.patch(projectId, {
-      syncEveryNChapters: 10,
-      chaptersSinceSync: 0,
-    });
-
-    await runLearningPipeline(db, {
-      projectId,
-      jobId: db.jobs.create({
-        project_id: projectId,
-        type: 'translate_batch',
-        chapter_from: 101,
-        chapter_to: 103,
-      }).id,
-      parsed: emptyParsed(),
-      chapterFrom: 101,
-      chapterTo: 103,
-      syncDrive: () => Promise.resolve(null),
-    });
-
-    expect(db.driveSyncState.ensure(projectId).chapters_since_sync).toBe(3);
-  });
-
-  it('after threshold: NotebookSyncService.syncDrive exactly once', async () => {
-    db.driveSyncState.patch(projectId, {
-      syncEveryNChapters: 3,
-      chaptersSinceSync: 0,
-    });
-    const syncDrive = vi.fn(() => Promise.resolve({ updated: true }));
+  it('learning PASS rebuilds knowledge and bumps local version', async () => {
+    const before = db.knowledgeFiles.maxLocalVersion(projectId);
 
     const result = await runLearningPipeline(db, {
       projectId,
@@ -166,73 +139,28 @@ describe('Learning Notebook sync lifecycle', () => {
       }),
       chapterFrom: 101,
       chapterTo: 103,
-      syncDrive,
     });
 
-    expect(result.chapterCount).toBe(3);
-    expect(result.driveSyncTriggered).toBe(true);
-    expect(syncDrive).toHaveBeenCalledTimes(1);
-    expect(syncDrive).toHaveBeenCalledWith(projectId);
+    expect(db.knowledgeFiles.maxLocalVersion(projectId)).toBeGreaterThanOrEqual(before);
+    expect(result.knowledgeVersionAtCommit).toBeGreaterThanOrEqual(before);
   });
 
-  it('Drive failure keeps knowledge dirty; no ready', async () => {
-    db.driveSyncState.patch(projectId, {
-      syncEveryNChapters: 1,
+  it('NotebookSyncService.evaluateSyncPolicy advances chapter counter', async () => {
+    db.knowledgeSyncState.patch(projectId, {
+      syncEveryNChapters: 10,
       chaptersSinceSync: 0,
     });
-    db.knowledgeFiles.markDirty(projectId, 'characters');
 
-    const account = db.googleAccounts.create({
-      label: 'W',
-      email: 'w@t.com',
-      displayName: 'W',
-      profileDirName: 'p1',
-      status: 'READY',
-      plan: 'UNKNOWN',
-    });
-    db.notebooks.upsert({
-      project_id: projectId,
-      google_account_id: account.id,
-      notebook_name: '[NovelTrans] Sync Novel',
-      notebook_role: 'TRANSLATION',
-      status: 'ready',
-    });
+    const { getNotebookSyncService, resetNotebookSyncService } =
+      await import('@main/notebook/notebook-sync-service-singleton');
+    resetNotebookSyncService();
+    const sync = getNotebookSyncService(db);
 
-    await runLearningPipeline(db, {
-      projectId,
-      jobId: db.jobs.create({
-        project_id: projectId,
-        type: 'translate_batch',
-        chapter_from: 101,
-        chapter_to: 101,
-      }).id,
-      parsed: emptyParsed({
-        memoryDeltas: [
-          {
-            action: 'upsert',
-            category: 'character',
-            key: '李逍遥',
-            value: { translatedName: 'Lý', role: 'protagonist' },
-          },
-        ],
-      }),
-      chapterFrom: 101,
-      chapterTo: 101,
-      syncDrive: () => Promise.reject(new Error('Drive down')),
-    });
-
-    expect(db.knowledgeFiles.get(projectId, 'characters')?.dirty).toBe(1);
-    const row = db.notebooks.listByProject(projectId)[0];
-    // markDirty may stale the mapping; Drive failure must not reach sync_pending / verified.
-    expect(row.status).not.toBe('sync_pending');
-    expect(row.status).not.toBe('ready');
+    sync.evaluateSyncPolicy(projectId, { chapterCount: 3 });
+    expect(db.knowledgeSyncState.ensure(projectId).chapters_since_sync).toBe(3);
   });
 
-  it('success → mapping sync_pending then schedules version probe (not ready before verify)', async () => {
-    db.driveSyncState.patch(projectId, {
-      syncEveryNChapters: 1,
-      chaptersSinceSync: 0,
-    });
+  it('syncLocalKnowledge marks mapping sync_pending and emits KNOWLEDGE_SYNC_PENDING', async () => {
     const account = db.googleAccounts.create({
       label: 'W2',
       email: 'w2@t.com',
@@ -245,49 +173,26 @@ describe('Learning Notebook sync lifecycle', () => {
       project_id: projectId,
       google_account_id: account.id,
       notebook_name: '[NovelTrans] Sync Novel',
-      notebook_role: 'TRANSLATION',
+      notebook_role: 'SINGLE',
       status: 'ready',
     });
 
-    // Use real singleton so listKnowledgeSyncMappings sees same DB + drive fn.
-    const { getNotebookSyncService, setNotebookDriveSyncFn, resetNotebookSyncService } =
+    const { getNotebookSyncService, resetNotebookSyncService } =
       await import('@main/notebook/notebook-sync-service-singleton');
     resetNotebookSyncService();
-    setNotebookDriveSyncFn(() => Promise.resolve());
 
-    const scheduleVersionProbe = vi.fn();
-    await runLearningPipeline(db, {
-      projectId,
-      jobId: db.jobs.create({
-        project_id: projectId,
-        type: 'translate_batch',
-        chapter_from: 101,
-        chapter_to: 101,
-      }).id,
-      parsed: emptyParsed(),
-      chapterFrom: 101,
-      chapterTo: 101,
-      syncDrive: (id) => getNotebookSyncService(db).syncDrive(id),
-      scheduleVersionProbe,
-    });
+    await getNotebookSyncService(db).syncLocalKnowledge(projectId);
 
     const row = db.notebooks.listByProject(projectId)[0];
     expect(row.status).toBe('sync_pending');
 
     const events = db.knowledgeSyncEvents.listRecent(projectId, 20);
-    expect(events.some((e) => e.event_type === 'DRIVE_SYNC_COMPLETED')).toBe(true);
-    expect(events.some((e) => e.event_type === 'NOTEBOOK_SYNC_PENDING')).toBe(true);
+    expect(events.some((e) => e.event_type === 'KNOWLEDGE_BUILD_STARTED')).toBe(true);
+    expect(events.some((e) => e.event_type === 'KNOWLEDGE_SYNC_PENDING')).toBe(true);
     expect(events.some((e) => e.event_type === 'NOTEBOOK_SYNC_VERIFIED')).toBe(false);
-    expect(scheduleVersionProbe).toHaveBeenCalledWith(projectId, account.id);
   });
 
-  it('candidate discover alone does not force immediate sync under threshold', async () => {
-    db.driveSyncState.patch(projectId, {
-      syncEveryNChapters: 10,
-      chaptersSinceSync: 0,
-    });
-    const syncDrive = vi.fn(() => Promise.resolve(null));
-
+  it('candidate discover alone is not critical', async () => {
     const result = await runLearningPipeline(db, {
       projectId,
       jobId: db.jobs.create({
@@ -303,12 +208,8 @@ describe('Learning Notebook sync lifecycle', () => {
       }),
       chapterFrom: 101,
       chapterTo: 101,
-      syncDrive,
     });
 
     expect(result.critical).toBe(false);
-    expect(result.driveSyncTriggered).toBe(false);
-    expect(syncDrive).not.toHaveBeenCalled();
-    expect(db.driveSyncState.ensure(projectId).chapters_since_sync).toBe(1);
   });
 });

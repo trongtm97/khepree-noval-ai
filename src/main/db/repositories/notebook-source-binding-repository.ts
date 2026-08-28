@@ -6,6 +6,7 @@ import type {
   NotebookSourceBindingStatus,
   NotebookSourceBindingType,
 } from '@shared/constants/notebook-source-binding';
+import { LEGACY_BINDING_DRIVE_LIVE } from '../../knowledge/legacy-db-values';
 
 export interface NotebookSourceBindingRow {
   id: string;
@@ -87,12 +88,16 @@ export class NotebookSourceBindingRepository extends BaseRepository {
       .all(projectId, notebookId) as NotebookSourceBindingRow[];
   }
 
-  listActiveDriveLive(projectId: string, notebookId?: string | null): NotebookSourceBindingRow[] {
+  /** Legacy SQLite rows with deprecated binding_type — read-only for migration tooling. */
+  listLegacyDriveLiveBindings(
+    projectId: string,
+    notebookId?: string | null,
+  ): NotebookSourceBindingRow[] {
     const rows = notebookId
       ? this.listByNotebook(projectId, notebookId)
       : this.listByProject(projectId);
     return rows.filter(
-      (row) => row.binding_type === 'DRIVE_LIVE' && row.status === 'active',
+      (row) => row.binding_type === LEGACY_BINDING_DRIVE_LIVE && row.status === 'active',
     );
   }
 

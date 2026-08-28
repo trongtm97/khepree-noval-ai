@@ -139,26 +139,31 @@ describe('Portability (Phase 18)', () => {
     ).rejects.toThrow(/confirmOverwrite/i);
   });
 
-  it('auto backup runs and respects retention config', () => {
+  it('auto backup runs ZIP archives and respects tiered retention', async () => {
     db.appMeta.set('backup.auto.enabled', 'true');
     db.appMeta.set('backup.auto.intervalHours', '24');
-    db.appMeta.set('backup.auto.retentionCount', '2');
+    db.appMeta.set('backup.auto.retentionDaily', '2');
+    db.appMeta.set('backup.auto.retentionWeekly', '1');
+    db.appMeta.set('backup.auto.retentionMonthly', '1');
     db.appMeta.set('backup.auto.lastRunAt', new Date(0).toISOString());
 
-    const first = runAutoBackupIfDue({ db, dbPath, backupsDir });
+    const first = await runAutoBackupIfDue({ db, dbPath, backupsDir });
     expect(first).toBeTruthy();
+    expect(first).toMatch(/\.nts-backup\.zip$/);
 
     db.appMeta.set('backup.auto.lastRunAt', new Date(0).toISOString());
-    runAutoBackupIfDue({ db, dbPath, backupsDir });
-    runAutoBackupIfDue({ db, dbPath, backupsDir });
+    await runAutoBackupIfDue({ db, dbPath, backupsDir });
+    await runAutoBackupIfDue({ db, dbPath, backupsDir });
 
     const autoFiles = fs
       .readdirSync(backupsDir)
       .filter((name) => name.startsWith('noveltrans-auto-'));
-    expect(autoFiles.length).toBeLessThanOrEqual(2);
+    expect(autoFiles.length).toBeGreaterThanOrEqual(1);
+    expect(autoFiles.length).toBeLessThanOrEqual(4);
 
     const cfg = getAutoBackupConfig(db);
     expect(cfg.enabled).toBe(true);
+    expect(cfg.retentionDaily).toBe(2);
   });
 
   it('term import preview detects duplicates', () => {

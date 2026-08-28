@@ -1,12 +1,15 @@
 import type { ParsedBatchResult } from '@shared/schemas/output-protocol';
 import type { DatabaseManager } from '../db/database-manager';
+import { withTransaction } from '../db/transaction';
 import { applyMemoryDelta, type MemoryDeltaApplyResult } from '../memory/memory-delta-processor';
 import { resolveEditionFromJob } from '../memory/edition-memory';
 import { applyTermDelta, type TermDeltaApplyResult } from './term-delta-processor';
 import { compactProjectMemory, type CompactMemoryResult } from './memory-compactor';
 import { NotebookKnowledgeBuilder } from '../notebook/knowledge-builder';
-import type { ProjectKnowledgeDocuments } from '../notebook/knowledge-builder';
-import { logger } from '../logging/logger';
+import {
+  bumpLocalKnowledgeAfterLearning,
+  getProjectKnowledgeVersion,
+} from '../knowledge/knowledge-version';
 
 export interface LearningPipelineInput {
   projectId: string;
@@ -20,29 +23,16 @@ export interface LearningPipelineInput {
    */
   chaptersCompleted?: number | null;
   sourceContextByParagraph?: Record<string, string>;
-  /** Test inject: override sync policy evaluation. */
-  evaluateSyncPolicy?: (
-    projectId: string,
-    input: { chapterCount: number; critical?: boolean },
-  ) => { shouldSync: boolean };
-  /** Test inject: NotebookSyncService.syncDrive only — never call Drive API client here. */
-  syncDrive?: (projectId: string) => Promise<unknown>;
-  /**
-   * Test inject: after Drive sync, schedule 08_SYNC_STATE version/nonce probe.
-   * Production uses NotebookSyncService.scheduleBackgroundVersionProbe.
-   */
-  scheduleVersionProbe?: (projectId: string, accountId: string) => void;
 }
 
 export interface LearningPipelineResult {
   terms: TermDeltaApplyResult;
   memory: MemoryDeltaApplyResult;
   compact: CompactMemoryResult;
-  consolidated: boolean;
-  driveSyncTriggered: boolean;
   chapterCount: number;
   critical: boolean;
-  documents?: ProjectKnowledgeDocuments;
+  /** Monotonic local knowledge version after this PASS commit. */
+  knowledgeVersionAtCommit: number;
 }
 
 /**
@@ -70,7 +60,7 @@ export function countCompletedChapters(input: {
   return 0;
 }
 
-/** Critical knowledge changes may force early Notebook Drive sync. */
+/** Critical knowledge changes — used for diagnostics and compaction hints. */
 export function isCriticalLearningChange(
   terms: TermDeltaApplyResult,
   memory: MemoryDeltaApplyResult,
@@ -86,9 +76,8 @@ export function isCriticalLearningChange(
 }
 
 /**
- * Post-PASS learning lifecycle (single Notebook sync path):
- * SQLite → Dirty → NotebookSyncService → Drive → Notebook Pending → Verify → Ready.
- * Never call DriveSyncService directly from Learning.
+ * Post-PASS learning lifecycle (local-first).
+ * SQLite txn → version bump → local knowledge rebuild → next job sees new version.
  */
 export async function runLearningPipeline(
   db: DatabaseManager,
@@ -105,22 +94,33 @@ export async function runLearningPipeline(
     chapter?.source_text?.slice(0, 500) ??
     null;
 
-  const terms = applyTermDelta(db, input.parsed.termDeltas, {
-    projectId: input.projectId,
-    chapterId: chapter?.id ?? null,
-    chapterNumber,
-    sourceContext,
-    jobId: input.jobId,
+  const applied = withTransaction(db.getConnection(), () => {
+    const terms = applyTermDelta(db, input.parsed.termDeltas, {
+      projectId: input.projectId,
+      chapterId: chapter?.id ?? null,
+      chapterNumber,
+      sourceContext,
+      jobId: input.jobId,
+    });
+
+    const edition = resolveEditionFromJob(db, input.projectId, input.jobId);
+    const memory = applyMemoryDelta(
+      db,
+      input.projectId,
+      input.parsed.memoryDeltas,
+      chapterNumber ?? undefined,
+      edition.editionId,
+    );
+
+    const knowledgeVersionAtCommit = bumpLocalKnowledgeAfterLearning(db, input.projectId, {
+      terms,
+      memory,
+    });
+
+    return { terms, memory, knowledgeVersionAtCommit };
   });
 
-  const edition = resolveEditionFromJob(db, input.projectId, input.jobId);
-  const memory = applyMemoryDelta(
-    db,
-    input.projectId,
-    input.parsed.memoryDeltas,
-    chapterNumber ?? undefined,
-    edition.editionId,
-  );
+  let { terms, memory, knowledgeVersionAtCommit } = applied;
 
   if (memory.applied > 0) {
     db.learningEvents.create({
@@ -134,44 +134,12 @@ export async function runLearningPipeline(
         relationshipsTouched: memory.relationshipsTouched,
         storyTouched: memory.storyTouched,
         worldTouched: memory.worldTouched,
+        knowledgeVersionAtCommit,
       },
     });
   }
 
-  const termActivity =
-    terms.candidatesCreated > 0 ||
-    terms.candidatesMerged > 0 ||
-    terms.confirms > 0 ||
-    terms.lockedTouched > 0;
-  const memoryActivity = memory.applied > 0;
   const critical = isCriticalLearningChange(terms, memory);
-
-  try {
-    const { getNotebookSyncService } = await import(
-      '../notebook/notebook-sync-service-singleton'
-    );
-    const sync = getNotebookSyncService(db);
-    if (memory.charactersTouched > 0) {
-      sync.markDirty(input.projectId, 'CHARACTER_CHANGED');
-    }
-    if (memory.relationshipsTouched > 0) {
-      sync.markDirty(input.projectId, 'RELATIONSHIP_CHANGED');
-    }
-    if (memory.storyTouched > 0 || memoryActivity) {
-      sync.markDirty(input.projectId, 'STORY_STATE_CHANGED');
-    }
-    if (memory.worldTouched > 0) {
-      sync.markDirty(input.projectId, 'WORLD_KNOWLEDGE_CHANGED');
-    }
-    if (termActivity) {
-      sync.markDirty(input.projectId, 'TERM_CHANGED');
-    }
-    if (memoryActivity || termActivity) {
-      sync.markDirty(input.projectId, 'RECENT_CONTEXT_CHANGED');
-    }
-  } catch {
-    // sync service optional in tests
-  }
 
   for (const conflict of memory.conflicts) {
     db.learningEvents.create({
@@ -192,127 +160,28 @@ export async function runLearningPipeline(
 
   const chapterCount = countCompletedChapters(input);
 
-  // Every PASS: refresh local knowledge from SQLite (fat-pack / next chapter).
   try {
     const { getNotebookSyncService } = await import(
       '../notebook/notebook-sync-service-singleton'
     );
     getNotebookSyncService(db).rebuildKnowledge(input.projectId);
   } catch {
-    // sync service optional in tests
-  }
-
-  let shouldSync = false;
-  try {
-    if (input.evaluateSyncPolicy) {
-      shouldSync = input.evaluateSyncPolicy(input.projectId, {
-        chapterCount,
-        critical,
-      }).shouldSync;
-    } else {
-      const { getNotebookSyncService } = await import(
-        '../notebook/notebook-sync-service-singleton'
-      );
-      shouldSync = getNotebookSyncService(db).evaluateSyncPolicy(input.projectId, {
-        chapterCount,
-        critical,
-      }).shouldSync;
-    }
-  } catch {
-    // fall through — no sync when sync service unavailable
-  }
-
-  let consolidated = false;
-  let driveSyncTriggered = false;
-  let documents: ProjectKnowledgeDocuments | undefined;
-
-  if (shouldSync || critical) {
-    documents = new NotebookKnowledgeBuilder(db).buildAll(input.projectId);
-    consolidated = true;
-    db.learningEvents.create({
-      project_id: input.projectId,
-      event_type: 'consolidate',
-      job_id: input.jobId,
-      payload: {
-        chars: {
-          terms: documents['02_PROJECT_TERMS.md'].length,
-          characters: documents['03_CHARACTERS.md'].length,
-          relationships: documents['04_RELATIONSHIPS.md'].length,
-          story: documents['05_STORY_STATE.md'].length,
-          world: documents['06_WORLD_KNOWLEDGE.md'].length,
-          recent: documents['07_RECENT_CONTEXT.md'].length,
-        },
-        shouldSync,
-        critical,
-        chapterCount,
-      },
-    });
-  }
-
-  if (shouldSync) {
-    driveSyncTriggered = true;
     try {
-      if (input.syncDrive) {
-        await input.syncDrive(input.projectId);
-      } else {
-        const { getNotebookSyncService } = await import(
-          '../notebook/notebook-sync-service-singleton'
-        );
-        await getNotebookSyncService(db).syncDrive(input.projectId);
-      }
-      db.learningEvents.create({
-        project_id: input.projectId,
-        event_type: 'drive_sync',
-        job_id: input.jobId,
-        payload: { ok: true, via: 'NotebookSyncService.syncDrive' },
-      });
-
-      // Pending → Verify (08_SYNC_STATE version+nonce) → Ready. Mapped notebook account only.
-      const { resolveProjectWorker } = await import('../services/project-worker-resolver');
-      const worker = resolveProjectWorker(db, {
-        projectId: input.projectId,
-        purpose: 'notebook',
-      });
-      if (worker.accountId) {
-        if (input.scheduleVersionProbe) {
-          input.scheduleVersionProbe(input.projectId, worker.accountId);
-        } else {
-          const { getNotebookSyncService } = await import(
-            '../notebook/notebook-sync-service-singleton'
-          );
-          getNotebookSyncService(db).scheduleBackgroundVersionProbe(
-            input.projectId,
-            worker.accountId,
-          );
-        }
-      }
-    } catch (error) {
-      // Drive failure: keep knowledge dirty; do not mark ready / sync_pending.
-      logger.warn('Notebook Drive sync failed after learning', {
-        projectId: input.projectId,
-        message: error instanceof Error ? error.message : String(error),
-      });
-      db.learningEvents.create({
-        project_id: input.projectId,
-        event_type: 'drive_sync',
-        job_id: input.jobId,
-        payload: {
-          ok: false,
-          error: error instanceof Error ? error.message : String(error),
-        },
-      });
+      new NotebookKnowledgeBuilder(db).rebuildAndTrack(input.projectId);
+    } catch {
+      // optional in tests
     }
   }
+
+  knowledgeVersionAtCommit = getProjectKnowledgeVersion(db, input.projectId);
 
   return {
     terms,
     memory,
     compact,
-    consolidated,
-    driveSyncTriggered,
     chapterCount,
     critical,
-    documents,
+    knowledgeVersionAtCommit,
   };
 }
 

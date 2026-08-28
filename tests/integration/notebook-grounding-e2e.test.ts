@@ -2,11 +2,7 @@
  * FULL-novel Notebook grounding E2E (offline harness).
  *
  * Flow: corpus → Research preprocess import → SQLite → 00–07 → Drive live
- * → version probe → SLIM pack (must NOT contain probe mapping) → Notebook
- * grounded translate must use expected VI.
- *
- * Live Gemini is simulated by notebook-grounded-translate helper that ONLY
- * reads Notebook knowledge docs — if mapping is in the pack, test is INVALID.
+ * → version probe → local_context pack (SQLite terms) → Notebook grounded translate.
  */
 
 import fs from 'node:fs';
@@ -29,6 +25,7 @@ import { ensureDefaultEdition } from '@main/services/edition-service';
 import { resolveCharacterPreferredName, resolveRelationshipAddressTerms } from '@main/memory/edition-memory';
 import { KNOWLEDGE_FILE_NAMES, KNOWLEDGE_TYPES } from '@shared/constants/knowledge';
 import {
+  assertLocalPackContainsMapping,
   GROUNDING_PROBE,
   translateUsingNotebookKnowledge,
 } from './helpers/notebook-grounded-translate';
@@ -49,7 +46,7 @@ function seedBindings(db: DatabaseManager, projectId: string, notebookId: string
       notebookId,
       knowledgeType: type,
       sourceName: KNOWLEDGE_FILE_NAMES[type],
-      bindingType: 'DRIVE_LIVE',
+      bindingType: 'STATIC_UPLOAD',
       status: 'active',
       driveFileId: `drive-${type}`,
     });
@@ -194,8 +191,8 @@ describe('FULL-novel Notebook grounding E2E', () => {
     expect(docs['03_CHARACTERS.md']).toContain(GROUNDING_PROBE.characterSource);
 
     // 4) Drive LIVE sync (noop upload) → pending version
-    const sync = new NotebookSyncService(db, () => Promise.resolve({ uploaded: true }));
-    await sync.syncDrive(projectId);
+    const sync = new NotebookSyncService(db);
+    await sync.syncLocalKnowledge(projectId);
     const pending = db.driveSyncState.ensure(projectId);
     expect(pending.pending_knowledge_version).toBeGreaterThan(0);
     expect(pending.pending_sync_nonce).toBeTruthy();
@@ -226,14 +223,15 @@ describe('FULL-novel Notebook grounding E2E', () => {
     };
   }
 
-  function buildSlimPackPrompt(): string {
+  function buildLocalPackPrompt(): string {
     const mode = resolveTranslationPackMode(db, {
       projectId,
       accountId,
       providerType: 'PLAYWRIGHT_GEMINI',
+      preferNotebookPack: true,
     });
-    expect(mode.packMode).toBe('slim');
-    expect(mode.reason).toBe('ready_verified');
+    expect(mode.packMode).toBe('notebook_assisted');
+    expect(mode.reason).toBe('notebook_assisted_explicit');
 
     const edition = ensureDefaultEdition(db, projectId);
     const context = buildMemoryContext(
@@ -271,18 +269,20 @@ describe('FULL-novel Notebook grounding E2E', () => {
       chapterIds: [chapterId],
       style: 'balanced',
       context,
-      packMode: 'slim',
+      packMode: 'local_context',
     });
     return pack.prompt;
   }
 
-  it('FULL flow: Research → SQLite → version verify → SLIM without mapping → Notebook term', async () => {
+  it('FULL flow: Research → SQLite → version verify → local_context pack + Notebook term', async () => {
     const { docs } = await runFullImportAndVerify();
 
-    const packPrompt = buildSlimPackPrompt();
-    expect(packPrompt).toContain(GROUNDING_PROBE.itemSource); // in Source only
-    expect(packPrompt).not.toMatch(
-      new RegExp(`${GROUNDING_PROBE.itemSource}\\s*(→|->|=>)\\s*${GROUNDING_PROBE.itemVi}`),
+    const packPrompt = buildLocalPackPrompt();
+    expect(packPrompt).toContain(GROUNDING_PROBE.itemSource);
+    assertLocalPackContainsMapping(
+      packPrompt,
+      GROUNDING_PROBE.itemSource,
+      GROUNDING_PROBE.itemVi,
     );
 
     const sourceLine =
@@ -300,7 +300,6 @@ describe('FULL-novel Notebook grounding E2E', () => {
     const translated = translateUsingNotebookKnowledge({
       sourceParagraph: sourceLine,
       notebookKnowledgeDocs: knowledgeDocs,
-      packPrompt,
       probeSource: GROUNDING_PROBE.itemSource,
       probeExpectedVi: GROUNDING_PROBE.itemVi,
     });
@@ -309,7 +308,7 @@ describe('FULL-novel Notebook grounding E2E', () => {
     expect(translated).not.toContain(GROUNDING_PROBE.itemSource);
   }, 60_000);
 
-  it('UPDATE: term rename bumps version; new Notebook mapping used; pack still clean', async () => {
+  it('UPDATE: term rename bumps version; pack + Notebook reflect new mapping', async () => {
     await runFullImportAndVerify();
 
     // User renames item translation
@@ -329,13 +328,13 @@ describe('FULL-novel Notebook grounding E2E', () => {
     if (!term) throw new Error('expected term row');
     db.terms.setTranslations(term.id, GROUNDING_PROBE.itemViUpdated, []);
 
-    const sync = new NotebookSyncService(db, () => Promise.resolve({ uploaded: true }));
+    const sync = new NotebookSyncService(db);
     sync.markDirty(projectId, 'TERM_CHANGED');
     const builder = new NotebookKnowledgeBuilder(db);
     let docs = builder.rebuildAndTrack(projectId);
     expect(docs['02_PROJECT_TERMS.md']).toContain(GROUNDING_PROBE.itemViUpdated);
 
-    await sync.syncDrive(projectId);
+    await sync.syncLocalKnowledge(projectId);
     const pending = db.driveSyncState.ensure(projectId);
     const probe = await runKnowledgeVersionProbe(db, {
       projectId,
@@ -349,7 +348,12 @@ describe('FULL-novel Notebook grounding E2E', () => {
     expect(pending.pending_knowledge_version).toBeGreaterThan(1);
 
     docs = builder.buildAll(projectId);
-    const packPrompt = buildSlimPackPrompt();
+    const packPrompt = buildLocalPackPrompt();
+    assertLocalPackContainsMapping(
+      packPrompt,
+      GROUNDING_PROBE.itemSource,
+      GROUNDING_PROBE.itemViUpdated,
+    );
 
     const sourceLine =
       db.paragraphs
@@ -363,7 +367,6 @@ describe('FULL-novel Notebook grounding E2E', () => {
         '02_PROJECT_TERMS.md': docs['02_PROJECT_TERMS.md'],
         '03_CHARACTERS.md': docs['03_CHARACTERS.md'],
       },
-      packPrompt,
       probeSource: GROUNDING_PROBE.itemSource,
       probeExpectedVi: GROUNDING_PROBE.itemViUpdated,
     });

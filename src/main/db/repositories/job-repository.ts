@@ -23,6 +23,8 @@ export interface JobRow {
   lease_expires_at: string | null;
   scheduled_at: string | null;
   edition_id: string | null;
+  knowledge_version_at_start: number | null;
+  knowledge_version_at_commit: number | null;
   created_at: string;
   updated_at: string;
   started_at: string | null;
@@ -182,6 +184,28 @@ export class JobRepository extends BaseRepository {
     this.db
       .prepare(`UPDATE jobs SET config = ?, updated_at = ? WHERE id = ?`)
       .run(configJson, utcNow(), id);
+    return this.getById(id);
+  }
+
+  /** Freeze knowledge snapshot at first pack send (COALESCE — repair rounds keep first). */
+  setKnowledgeVersionAtStart(id: string, version: number): JobRow | null {
+    this.db
+      .prepare(
+        `UPDATE jobs SET
+          knowledge_version_at_start = COALESCE(knowledge_version_at_start, ?),
+          updated_at = ?
+        WHERE id = ?`,
+      )
+      .run(version, utcNow(), id);
+    return this.getById(id);
+  }
+
+  setKnowledgeVersionAtCommit(id: string, version: number): JobRow | null {
+    this.db
+      .prepare(
+        `UPDATE jobs SET knowledge_version_at_commit = ?, updated_at = ? WHERE id = ?`,
+      )
+      .run(version, utcNow(), id);
     return this.getById(id);
   }
 

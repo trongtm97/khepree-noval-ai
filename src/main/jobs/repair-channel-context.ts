@@ -1,9 +1,10 @@
 import type { PackMode } from '@shared/constants/pack-mode';
+import { isPackModeOrLegacy, normalizePackMode } from '@shared/constants/pack-mode';
 import { splitRepairChannelPrompt } from '../prompt/pack-operation';
 
 /**
  * Channel context inherited from the initial translation send.
- * Repair / continuation must reuse this unless failover forces FAT WebAPI.
+ * Repair / continuation reuse local context snapshot — provider-neutral.
  */
 export interface RepairChannelContext {
   providerType: string | null;
@@ -12,6 +13,8 @@ export interface RepairChannelContext {
   threadRef: string | null;
   packMode: PackMode | null;
   knowledgeVersion: number | null;
+  /** Frozen local context from initial translate send. */
+  localContextSnapshot?: string | null;
 }
 
 export const REPAIR_CHANNEL_EMPTY: RepairChannelContext = {
@@ -21,11 +24,8 @@ export const REPAIR_CHANNEL_EMPTY: RepairChannelContext = {
   threadRef: null,
   packMode: null,
   knowledgeVersion: null,
+  localContextSnapshot: null,
 };
-
-export function isPackMode(value: unknown): value is PackMode {
-  return value === 'slim' || value === 'hybrid' || value === 'fat';
-}
 
 /** Read channel fields from job.progress JSON. */
 export function readRepairChannelFromProgress(
@@ -34,6 +34,7 @@ export function readRepairChannelFromProgress(
   if (!progressRaw) return { ...REPAIR_CHANNEL_EMPTY };
   try {
     const p = JSON.parse(progressRaw) as Record<string, unknown>;
+    const rawMode = p.packMode;
     return {
       providerType: typeof p.providerType === 'string' ? p.providerType : null,
       accountId: typeof p.accountId === 'string' ? p.accountId : null,
@@ -44,7 +45,7 @@ export function readRepairChannelFromProgress(
             ? null
             : null,
       threadRef: typeof p.threadRef === 'string' ? p.threadRef : null,
-      packMode: isPackMode(p.packMode) ? p.packMode : null,
+      packMode: isPackModeOrLegacy(rawMode) ? normalizePackMode(rawMode) : null,
       knowledgeVersion:
         typeof p.localKnowledgeVersion === 'number'
           ? p.localKnowledgeVersion
@@ -53,6 +54,8 @@ export function readRepairChannelFromProgress(
             : typeof p.knowledgeVersion === 'number'
               ? p.knowledgeVersion
               : null,
+      localContextSnapshot:
+        typeof p.localContextSnapshot === 'string' ? p.localContextSnapshot : null,
     };
   } catch {
     return { ...REPAIR_CHANNEL_EMPTY };
@@ -69,16 +72,17 @@ export function channelSnapshotForAttempt(
     threadRef: channel.threadRef,
     packMode: channel.packMode,
     knowledgeVersion: channel.knowledgeVersion,
+    localContextSnapshot: channel.localContextSnapshot ?? null,
   };
 }
 
 /**
- * Wrap a repair/continuation body so Notebook / locked / hot stay in scope
- * without re-sending the full chapter source.
+ * Wrap repair/continuation with the same local context snapshot as initial send.
  */
 export function wrapRepairPromptWithChannelContext(input: {
   repairBody: string;
-  packMode: PackMode | null;
+  packMode?: PackMode | string | null;
+  localContextSnapshot?: string | null;
   lockedTerms?: { source: string; preferred: string }[];
   hotMemoryText?: string | null;
   notebookId?: string | null;
@@ -87,8 +91,14 @@ export function wrapRepairPromptWithChannelContext(input: {
     hotMemoryDelta?: string;
     activeProjectTerms?: string;
   } | null;
-  /** WebAPI failover — do not claim Notebook knowledge. */
+  /** @deprecated — provider-neutral local context only. */
   webApiFat?: boolean;
+  operationType?: 'REPAIR' | 'CONTINUATION';
 }): string {
-  return splitRepairChannelPrompt(input).prompt;
+  return splitRepairChannelPrompt({
+    repairBody: input.repairBody,
+    operationType: input.operationType ?? 'REPAIR',
+    localContextSnapshot: input.localContextSnapshot,
+    fatSections: input.fatSections,
+  }).prompt;
 }

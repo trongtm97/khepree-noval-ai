@@ -5,6 +5,7 @@ import path from 'node:path';
 import { DatabaseManager } from '../../../src/main/db/database-manager';
 import {
   getNotebookLayout,
+  resolveNotebookForPurpose,
   resolveResearchNotebook,
   resolveTranslationNotebook,
   listKnowledgeSyncMappings,
@@ -74,7 +75,7 @@ describe('notebook role resolver', () => {
     expect(research?.notebook_role).toBe('SINGLE');
   });
 
-  it('DUAL layout resolves research and translation separately', () => {
+  it('DUAL layout resolves research only — legacy TRANSLATION ignored (Phase 5)', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
@@ -95,13 +96,38 @@ describe('notebook role resolver', () => {
     expect(getNotebookLayout(db, projectId, accountId)).toBe('DUAL');
     const research = resolveResearchNotebook(db, projectId, accountId);
     const translation = resolveTranslationNotebook(db, projectId, accountId);
-    if (!research || !translation) throw new Error('expected dual notebooks');
-    expect(research.notebook_role).toBe('RESEARCH');
-    expect(translation.notebook_role).toBe('TRANSLATION');
-    expect(research.resource_url).not.toBe(translation.resource_url);
+    expect(research?.notebook_role).toBe('RESEARCH');
+    expect(translation).toBeNull();
   });
 
-  it('translation jobs must not pick research notebook in DUAL mode', () => {
+  it('Phase 5: translation purpose never resolves NotebookLM (non-SINGLE)', () => {
+    db.notebooks.upsert({
+      project_id: projectId,
+      google_account_id: accountId,
+      notebook_name: '[NovelTrans] Role Novel',
+      notebook_role: 'TRANSLATION',
+      status: 'ready',
+      resource_url: 'https://notebook.google.com/n/translate-only',
+    });
+
+    expect(resolveNotebookForPurpose(db, projectId, accountId, 'translation')).toBeNull();
+  });
+
+  it('deprecated TRANSLATION row excluded from resolveTranslationNotebook', () => {
+    const row = db.notebooks.upsert({
+      project_id: projectId,
+      google_account_id: accountId,
+      notebook_name: '[NovelTrans] Legacy',
+      notebook_role: 'TRANSLATION',
+      status: 'ready',
+      resource_url: 'https://notebook.google.com/n/legacy',
+    });
+    db.notebooks.markDeprecated(row.id);
+
+    expect(resolveTranslationNotebook(db, projectId, accountId)).toBeNull();
+  });
+
+  it('Phase 5: resolveTranslationNotebook never picks TRANSLATION in DUAL mode', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
@@ -119,12 +145,10 @@ describe('notebook role resolver', () => {
       resource_url: 'https://notebook.google.com/n/translate-only',
     });
 
-    const picked = resolveTranslationNotebook(db, projectId, accountId);
-    expect(picked?.resource_url).toContain('translate-only');
-    expect(picked?.notebook_role).toBe('TRANSLATION');
+    expect(resolveTranslationNotebook(db, projectId, accountId)).toBeNull();
   });
 
-  it('knowledge sync targets translation/SINGLE only', () => {
+  it('knowledge sync targets SINGLE only (TRANSLATION deprecated)', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
@@ -140,9 +164,18 @@ describe('notebook role resolver', () => {
       status: 'ready',
     });
 
+    expect(listKnowledgeSyncMappings(db, projectId)).toHaveLength(0);
+
+    db.notebooks.upsert({
+      project_id: projectId,
+      google_account_id: accountId,
+      notebook_name: '[NovelTrans] Role Novel',
+      notebook_role: 'SINGLE',
+      status: 'ready',
+    });
     const syncTargets = listKnowledgeSyncMappings(db, projectId);
     expect(syncTargets).toHaveLength(1);
-    expect(syncTargets[0].notebook_role).toBe('TRANSLATION');
+    expect(syncTargets[0].notebook_role).toBe('SINGLE');
   });
 
   it('worker can hold both roles as separate rows', () => {

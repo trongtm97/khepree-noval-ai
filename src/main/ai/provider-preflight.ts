@@ -21,6 +21,11 @@ export interface CheckProviderForJobInput {
   providerId: string;
   provider?: IAIProvider;
   /**
+   * Phase 5: when false, Playwright preflight skips Notebook URL (translate uses local context).
+   * Research / FULL preprocess should pass true.
+   */
+  requireNotebook?: boolean;
+  /**
    * When true (default for scheduler), skip launching Chromium.
    * Deep mode opens/verifies notebook + composer when a runtime is already available.
    */
@@ -266,36 +271,47 @@ async function checkPlaywright(
     };
   }
 
+  const requireNotebook = input.requireNotebook === true;
   const purpose =
     input.notebookRole === 'RESEARCH'
       ? 'research'
       : 'translation';
-  const mapping = resolveNotebookForPurpose(
-    db,
-    input.projectId,
-    input.accountId,
-    purpose,
-  );
-  const notebookOk = Boolean(
-    mapping &&
-      mapping.resource_url?.startsWith('http') &&
-      (mapping.status === 'ready' ||
-        mapping.status === 'sync_pending' ||
-        mapping.status === 'stale'),
-  );
+  const mapping = requireNotebook
+    ? resolveNotebookForPurpose(
+        db,
+        input.projectId,
+        input.accountId,
+        purpose,
+      )
+    : null;
+  const notebookOk = requireNotebook
+    ? Boolean(
+        mapping &&
+          mapping.resource_url?.startsWith('http') &&
+          (mapping.status === 'ready' ||
+            mapping.status === 'sync_pending' ||
+            mapping.status === 'stale'),
+      )
+    : true;
   checks.notebookOk = notebookOk;
-  checks.notebookStatus = mapping?.status ?? null;
-  if (!notebookOk) {
+  checks.notebookStatus = mapping?.status ?? (requireNotebook ? null : 'not_required');
+  if (requireNotebook && !notebookOk) {
     return {
       providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       result: 'NOTEBOOK_ERROR',
       message:
-        'Translation Notebook chưa sẵn sàng / thiếu URL — không chọn Playwright chỉ vì adapter tồn tại.',
+        purpose === 'research'
+          ? 'Research Notebook chưa sẵn sàng / thiếu URL.'
+          : 'Translation Notebook chưa sẵn sàng / thiếu URL — không chọn Playwright chỉ vì adapter tồn tại.',
       checks,
     };
   }
 
-  if (mapping?.status === 'stale' || mapping?.status === 'sync_pending') {
+  if (
+    requireNotebook &&
+    mapping &&
+    (mapping.status === 'stale' || mapping.status === 'sync_pending')
+  ) {
     return {
       providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
       result: 'DEGRADED',
@@ -304,7 +320,7 @@ async function checkPlaywright(
     };
   }
 
-  if (!lightweight) {
+  if (!lightweight && requireNotebook) {
     const notebookUrl = mapping?.resource_url;
     if (!notebookUrl) {
       return {
@@ -341,7 +357,9 @@ async function checkPlaywright(
   return {
     providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
     result: 'READY',
-    message: 'Playwright / Gemini Notebook sẵn sàng.',
+    message: requireNotebook
+      ? 'Playwright / Gemini Notebook sẵn sàng.'
+      : 'Playwright sẵn sàng (local context — không cần Notebook).',
     checks,
   };
 }

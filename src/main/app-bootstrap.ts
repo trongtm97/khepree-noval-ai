@@ -17,7 +17,6 @@ import { setSourceFolderMainWindow } from './source-folder/source-folder-event-b
 import { initializeTermService } from './services/term-service-singleton';
 import { initializeMemoryService } from './services/memory-service-singleton';
 import { initializeTranslationPackService } from './services/translation-pack-service-singleton';
-import { initializeDriveSyncService } from './services/drive-sync-service-singleton';
 import { initializeNotebookService } from './services/notebook-service-singleton';
 import { initializeGeminiService } from './services/gemini-service-singleton';
 import { initializeJobService } from './services/job-service-singleton';
@@ -149,7 +148,6 @@ function bootApplication(): void {
   initializeTermService();
   initializeMemoryService();
   initializeTranslationPackService();
-  initializeDriveSyncService();
   initializeNotebookService();
   initializeGeminiService();
   initializeBrowserRuntimeManager();
@@ -168,7 +166,7 @@ function bootApplication(): void {
   startAutoBackupScheduler({
     db,
     dbPath: db.dbPath,
-    backupsDir: paths.backups,
+    defaultBackupsDir: paths.backups,
   });
   void secretStorage.healthCheck().then((health) => {
     logger.info('Secret storage health', {

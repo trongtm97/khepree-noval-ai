@@ -14,6 +14,13 @@ import { DatabaseManager } from '@main/db/database-manager';
 const P1 = '[C000001:P000001]';
 const P2 = '[C000001:P000002]';
 
+const LOCAL_SNAPSHOT = [
+  '## Critical Rules',
+  '- Keep tone consistent.',
+  '## Locked Terms',
+  '- 王林 → Vương Lâm [LOCKED]',
+].join('\n');
+
 function okResponse(): string {
   return [
     '<TRANSLATION>',
@@ -36,7 +43,7 @@ function missingP2(): string {
 }
 
 describe('repair channel context helpers', () => {
-  it('reads initial SLIM notebook channel from progress', () => {
+  it('reads channel from progress; legacy slim → local_context', () => {
     const channel = readRepairChannelFromProgress(
       JSON.stringify({
         providerType: 'PLAYWRIGHT_GEMINI',
@@ -45,6 +52,7 @@ describe('repair channel context helpers', () => {
         threadRef: 'thread-x',
         packMode: 'slim',
         localKnowledgeVersion: 47,
+        localContextSnapshot: LOCAL_SNAPSHOT,
       }),
     );
     expect(channel).toEqual({
@@ -52,48 +60,37 @@ describe('repair channel context helpers', () => {
       accountId: 'acc-1',
       notebookId: 'nb-translation-a',
       threadRef: 'thread-x',
-      packMode: 'slim',
+      packMode: 'local_context',
       knowledgeVersion: 47,
+      localContextSnapshot: LOCAL_SNAPSHOT,
     });
   });
 
-  it('SLIM wrap keeps Notebook framing + locked + hot; no full-source dump', () => {
+  it('wrap uses frozen local context snapshot + repair body', () => {
     const prompt = wrapRepairPromptWithChannelContext({
       repairBody: 'Translate ONLY [C000001:P000002] 玄星玉。',
-      packMode: 'slim',
-      notebookId: 'nb-a',
-      lockedTerms: [{ source: '王林', preferred: 'Vương Lâm' }],
-      hotMemoryText: '## Hot Memory\n- 新词 → từ mới',
+      localContextSnapshot: LOCAL_SNAPSHOT,
     });
-    expect(prompt).toContain('Translation Notebook');
-    expect(prompt).toContain('nb-a');
+    expect(prompt).toContain('Critical Rules');
     expect(prompt).toContain('王林 → Vương Lâm');
-    expect(prompt).toContain('新词 → từ mới');
     expect(prompt).toContain('Translate ONLY');
-    expect(prompt).toContain('Do NOT switch to Research Notebook');
-    expect(prompt).toContain('Do NOT open a generic Gemini chat');
+    expect(prompt).toContain('## Repair task');
+    expect(prompt).not.toContain('Translation Notebook');
   });
 
-  it('WebAPI FAT wrap adds local memory and denies Notebook', () => {
+  it('continuation wrap preserves snapshot', () => {
     const prompt = wrapRepairPromptWithChannelContext({
       repairBody: 'Continue from P000010',
-      packMode: 'fat',
-      webApiFat: true,
-      fatSections: {
-        criticalRules: '## Critical Rules\n- keep tone',
-        hotMemoryDelta: '## Hot Memory\nstory: cliff',
-        activeProjectTerms: '## Active Project Terms\n玄星玉 → Huyền Tinh Ngọc',
-      },
+      localContextSnapshot: LOCAL_SNAPSHOT,
+      operationType: 'CONTINUATION',
     });
-    expect(prompt).toContain('GEMINI_WEB_API');
-    expect(prompt).toContain('Notebook knowledge is NOT available');
-    expect(prompt).toContain('玄星玉 → Huyền Tinh Ngọc');
     expect(prompt).toContain('Continue from P000010');
-    expect(prompt).not.toContain('Playwright Translation Notebook');
+    expect(prompt).toContain('## Continuation task');
+    expect(prompt).toContain('Critical Rules');
   });
 });
 
-describe('repair loop inherits channel → same notebook', () => {
+describe('repair loop inherits channel → same local context', () => {
   let db: DatabaseManager;
   let tmp: string;
   let projectId: string;
@@ -135,8 +132,9 @@ describe('repair loop inherits channel → same notebook', () => {
         accountId,
         notebookId: 'nb-translation-a',
         threadRef: 'thread-x',
-        packMode: 'slim',
+        packMode: 'local_context',
         localKnowledgeVersion: 12,
+        localContextSnapshot: LOCAL_SNAPSHOT,
         phase: 'waiting_ai',
       }),
     );
@@ -147,12 +145,13 @@ describe('repair loop inherits channel → same notebook', () => {
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   });
 
-  it('MISSING_PARAGRAPH repair receives same notebook/channel as initial SLIM', async () => {
+  it('MISSING_PARAGRAPH repair receives same channel + local_context', async () => {
     const sendRepair: RepairSender = (req) => {
       expect(req.channel?.notebookId).toBe('nb-translation-a');
       expect(req.channel?.accountId).toBe(accountId);
       expect(req.channel?.threadRef).toBe('thread-x');
-      expect(req.channel?.packMode).toBe('slim');
+      expect(req.channel?.packMode).toBe('local_context');
+      expect(req.channel?.localContextSnapshot).toBe(LOCAL_SNAPSHOT);
       expect(req.channel?.providerType).toBe('PLAYWRIGHT_GEMINI');
       expect(req.channel?.knowledgeVersion).toBe(12);
       return Promise.resolve({
@@ -185,23 +184,24 @@ describe('repair loop inherits channel → same notebook', () => {
     );
     expect(repairAttempt?.notebookId).toBe('nb-translation-a');
     expect(repairAttempt?.providerType).toBe('PLAYWRIGHT_GEMINI');
-    expect(repairAttempt?.packMode).toBe('slim');
+    expect(repairAttempt?.packMode).toBe('local_context');
     expect(repairAttempt?.threadRef).toBe('thread-x');
     expect(repairAttempt?.accountId).toBe(accountId);
     expect(repairAttempt?.knowledgeVersion).toBe(12);
   });
 
-  it('WebAPI failover channel stored as FAT without notebook', async () => {
+  it('WebAPI failover keeps local_context (not separate fat pack)', async () => {
     const sendRepair: RepairSender = (req) => Promise.resolve({
       rawResponse: okResponse(),
       inputRef: 'corr:webapi',
       channel: {
         providerType: 'GEMINI_WEB_API',
         accountId: req.channel?.accountId ?? null,
-        notebookId: null,
-        threadRef: null,
-        packMode: 'fat',
+        notebookId: req.channel?.notebookId ?? null,
+        threadRef: req.channel?.threadRef ?? null,
+        packMode: 'local_context',
         knowledgeVersion: req.channel?.knowledgeVersion ?? null,
+        localContextSnapshot: LOCAL_SNAPSHOT,
       },
     });
 
@@ -227,22 +227,23 @@ describe('repair loop inherits channel → same notebook', () => {
       a.result?.includes('repair_send'),
     );
     expect(repairAttempt?.providerType).toBe('GEMINI_WEB_API');
-    expect(repairAttempt?.packMode).toBe('fat');
-    expect(repairAttempt?.notebookId).toBeNull();
+    expect(repairAttempt?.packMode).toBe('local_context');
   });
 });
 
 describe('channel snapshot', () => {
-  it('continuation-style channel snapshot serializes for attempts', () => {
+  it('serializes local context snapshot for attempts', () => {
     const snap = channelSnapshotForAttempt({
       providerType: 'PLAYWRIGHT_GEMINI',
       accountId: 'acc-1',
       notebookId: 'nb-a',
       threadRef: 'thr',
-      packMode: 'hybrid',
+      packMode: 'local_context',
       knowledgeVersion: 3,
+      localContextSnapshot: LOCAL_SNAPSHOT,
     });
-    expect(snap.packMode).toBe('hybrid');
+    expect(snap.packMode).toBe('local_context');
+    expect(snap.localContextSnapshot).toBe(LOCAL_SNAPSHOT);
     expect(snap.threadRef).toBe('thr');
   });
 });

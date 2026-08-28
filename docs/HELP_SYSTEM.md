@@ -12,7 +12,7 @@ src/renderer/features/help/
   content/
     index.ts             # Registry, search, route/error maps
     intro.ts             # Intro + quick start
-    accounts.ts          # Google accounts, Drive
+    accounts.ts          # Google accounts, browser profiles
     projects.ts          # Projects + import
     book-metadata.ts     # Metadata, _BOOK_INFO, prologue
     translation.ts       # Translation, notebook, editor, QA
@@ -63,7 +63,7 @@ Client-only scoring on title, keywords, description, block text. No AI / network
 `useHelpChecklist()` reads real state via IPC:
 
 - accounts.list → Google added / READY
-- driveConnected on any account
+- Google account READY status (browser profile usable)
 - projects.list → project exists
 - setup.getStatus().notebookReadyCount
 - jobs.list → any COMPLETED job

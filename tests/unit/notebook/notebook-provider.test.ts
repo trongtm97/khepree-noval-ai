@@ -6,7 +6,7 @@ import { startFixtureServer } from '../automation/fixture-server';
 import { NotebookProvider } from '@main/automation/providers/google/notebook-provider';
 import { AutomationError } from '@main/automation/errors/automation-errors';
 import { formatNotebookName } from '@shared/constants/notebook';
-import { DRIVE_PROJECT_FILES } from '@shared/constants/drive';
+import { KNOWLEDGE_PROJECT_FILES } from '@shared/constants/knowledge';
 
 const FIXTURE_DIR = path.resolve(__dirname, '../../fixtures/notebook');
 
@@ -118,7 +118,7 @@ describe('NotebookProvider (fixture DOM)', () => {
     await p.createNotebook(name);
     await p.openNotebook(name);
 
-    const sources = [...DRIVE_PROJECT_FILES];
+    const sources = [...KNOWLEDGE_PROJECT_FILES];
     const first = await p.addDriveSources(sources);
     expect(first.added.length).toBe(sources.length);
     expect(first.skipped.length).toBe(0);

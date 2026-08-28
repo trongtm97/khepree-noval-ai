@@ -57,8 +57,39 @@ Picker sections (approximate, for discoverability):
 
 - `AUTO` is allowed **only for source language** at project creation.
 - Target language must always be explicit.
-- Detection order: local heuristic → confidence score → optional AI fallback.
-- User can always override the detected source.
+- User hint is **never** the detected language; mismatch is reported, content wins.
+
+### Script detection vs language detection
+
+Local analysis splits two questions:
+
+1. **Script** — Unicode writing system (`Cyrl`, `Arab`, `Latn`, `Hebr`, `Thai`, `Kore`, `Jpan`, …). Script may be high-confidence.
+2. **Language** — catalog BCP-47 code (`ru` vs `uk`, `ar` vs `fa`, `en` vs `it`). High local confidence is allowed **only** when evidence identifies a language, not merely a script.
+
+Script-only hits on ambiguous families **must** call AI (when an AI detector is provided). Local must not lock Russian/Arabic/English from script alone.
+
+| Script | Ambiguous languages (examples) | High local confidence |
+|--------|--------------------------------|------------------------|
+| `Cyrl` | ru, uk, bg, sr, mk, be, kk, ky, … | Only with language-specific letters/words (ї/є, ә/қ, ъ + Bulgarian markers, …) |
+| `Arab` | ar, fa, ur, ps, sd, ug, ckb, … | Only with language-specific letters (پ/چ/گ, ٹ/ے, …) |
+| `Latn` | en, fr, es, pt, de, it, nl, ro, id, ms, … | Only with distinctive function words / letters (not “Latin → English”) |
+| `Hebr` | he, yi | Yiddish letters װ/ױ/ײ can identify `yi`; otherwise AI |
+| `Jpan` | ja | Kana (+ Han) may identify Japanese |
+| `Kore` | ko | Hangul strongly identifies Korean |
+| `Thai` | th | Thai script may be high-confidence `th` |
+
+Chinese Han without kana/hangul identifies the Chinese family (`zh-Hans` / `zh-Hant` via simplified vs traditional hits).
+
+### Pipeline
+
+1. Script detection (Unicode).
+2. Language-specific lexical evidence (distinctive letters + function words).
+3. If language is identified with high confidence → use local result (no AI).
+4. If only script is known, or confidence is below high → **AI fallback**.
+5. AI `language_code` must exist in the World Language Catalog (`LanguageProfile` registry). Unknown codes are discarded; local fallback remains.
+6. AI prompt allow-list is generated from `WORLD_LANGUAGE_CATALOG` / `listLanguageCatalogCodes()` — not a hardcoded 15-language subset.
+
+User can always override the detected source.
 
 ## Recent language pairs
 
@@ -113,5 +144,10 @@ Catalog seeds live in `src/shared/constants/world-language-catalog.ts`.
 - `src/shared/constants/language-profile.ts` — registry API
 - `src/shared/constants/world-language-catalog.ts` — catalog data
 - `src/shared/constants/language-catalog-search.ts` — search / grouping
+- `src/main/language/script-detect.ts` — Unicode script vs catalog uniqueness
+- `src/main/language/language-lexical.ts` — language-specific letters/words
+- `src/main/language/language-detect.ts` — orchestrates script + lexical + AI gate
+- `src/main/language/ai-language-detect.ts` — catalog allow-list prompt + parse
 - `src/renderer/components/LanguagePicker.tsx` — searchable combobox UI
 - `tests/unit/language/language-catalog.test.ts` — registry invariants
+- `tests/unit/language/script-vs-language-detection.test.ts` — script ≠ language + AI mocks

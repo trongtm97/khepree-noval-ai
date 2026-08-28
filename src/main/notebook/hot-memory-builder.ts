@@ -9,8 +9,10 @@ export interface HotMemoryBuildOptions {
   anchorChapter?: number | null;
   /** Max bullet lines (keeps pack slim). */
   maxLines?: number;
-  /** Hybrid pack: build delta even when dirty/stale flags lag. */
+  /** Active wave / queue: build structured deltas even without Notebook lag. */
   force?: boolean;
+  /** Phase 7: local learning loop — skip Notebook CONTENT_CURRENT gate. */
+  localLearningMode?: boolean;
 }
 
 interface HotTermFact {
@@ -389,35 +391,37 @@ function listHotMemoryEvents(
 }
 
 /**
- * AI-readable Hot Memory from actual SQLite changes since Notebook verified.
- * Typed facts only: TERM / CHARACTER / RELATIONSHIP / STORY / WORLD / LOCATION / CULTIVATION.
- * Never status strings like "Character delta after job…".
+ * AI-readable Hot Memory from actual SQLite changes since last verified watermark.
+ * Phase 7: also used for active wave / queue structured deltas (localLearningMode).
  */
 export function buildActiveHotMemoryText(
   db: DatabaseManager,
   projectId: string,
   options: HotMemoryBuildOptions = {},
 ): string {
+  const localLearning = options.localLearningMode === true;
   const dirty = db.knowledgeFiles.anyDirty(projectId);
   const mappings = listKnowledgeSyncMappings(db, projectId);
   const stale = mappings.some(
     (m) => m.status === 'stale' || m.status === 'sync_pending',
   );
-  const drive = db.driveSyncState.ensure(projectId);
+  const drive = db.knowledgeSyncState.ensure(projectId);
   const contentCurrent =
+    !localLearning &&
     drive.version_probe_status === 'verified' &&
     drive.verified_knowledge_version === drive.pending_knowledge_version &&
     Boolean(drive.verified_sync_nonce) &&
     drive.verified_sync_nonce === drive.pending_sync_nonce &&
     !dirty;
-  // CONTENT_CURRENT + clean SQLite → Notebook cold knowledge authoritative.
-  if (contentCurrent || (!dirty && !stale && !options.force)) {
+  if (contentCurrent || (!dirty && !stale && !options.force && !localLearning)) {
     return '';
   }
 
-  const since = getNotebookVerifiedWatermark(db, projectId);
+  let since = getNotebookVerifiedWatermark(db, projectId);
+  if (!since && (options.force || localLearning)) {
+    since = '1970-01-01T00:00:00.000Z';
+  }
   if (!since) {
-    // Never verified — no delta-vs-Notebook; fat pack / cold knowledge owns context.
     return '';
   }
 
@@ -454,7 +458,7 @@ export function buildActiveHotMemoryText(
     }),
   );
 
-  const lines: string[] = ['## HOT MEMORY — overrides stale Notebook'];
+  const lines: string[] = ['## HOT MEMORY — active wave / queue deltas'];
   const push = (line: string): boolean => {
     if (!line || lines.length - 1 >= maxLines) return false;
     lines.push(line);

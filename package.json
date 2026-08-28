@@ -71,7 +71,6 @@
     "chokidar": "^4.0.3",
     "electron-squirrel-startup": "^1.0.1",
     "exceljs": "^4.4.0",
-    "googleapis": "^144.0.0",
     "iconv-lite": "^0.7.3",
     "jschardet": "^3.1.4",
     "jszip": "^3.10.1",

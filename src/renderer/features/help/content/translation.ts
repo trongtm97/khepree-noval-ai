@@ -322,7 +322,7 @@ export const translationArticles: HelpArticle[] = [
         type: 'list',
         items: [
           'Tạo dự án: mặc định Tự động nhận diện — không bắt chọn ngôn ngữ nguồn.',
-          'Phát hiện cục bộ trước; chỉ gọi AI khi độ tin cậy thấp hoặc mơ hồ (ví dụ Trung/Nhật có Kanji).',
+          'Phát hiện chữ viết (script) tách khỏi phát hiện ngôn ngữ. Cyrillic/Ả Rập/Latinh không được khóa thành Nga/Ả Rập/Anh nếu chưa có bằng chứng từ vựng. Chỉ gọi AI khi chưa xác định được ngôn ngữ (không chỉ script) hoặc độ tin cậy thấp.',
           'Nguồn truyện → Nhận diện lại: dùng khi đổi thư mục hoặc sửa nội dung lớn. Dự án đã có bản dịch sẽ hỏi xác nhận trước khi đổi.',
           'Ngôn ngữ dịch (đích) do bạn chọn — không tự động nhận diện.',
         ],

@@ -20,9 +20,12 @@ describe('formatTranslateChannel', () => {
     ).toBe('Đang dùng Gemini Notebook');
   });
 
-  it('exposes hybrid memory usage label', () => {
-    expect(formatMemoryUsage('hybrid')).toBe(
-      'Bộ nhớ sử dụng: Notebook + cập nhật cục bộ',
+  it('exposes local context memory usage label', () => {
+    expect(formatMemoryUsage('local_context')).toBe(
+      'Bộ nhớ sử dụng: ngữ cảnh cục bộ (Local Context)',
+    );
+    expect(formatMemoryUsage('notebook_assisted')).toBe(
+      'Bộ nhớ sử dụng: Notebook + ngữ cảnh cục bộ',
     );
   });
 

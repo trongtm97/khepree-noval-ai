@@ -35,6 +35,21 @@ export function formatNotebookNameForRole(
   return `${NOTEBOOK_NAME_PREFIX} ${title}`;
 }
 
+/** Phase 5: TRANSLATION notebook role deprecated — research-only NotebookLM. */
+export const DEPRECATED_NOTEBOOK_ROLES = ['TRANSLATION'] as const;
+
+export type DeprecatedNotebookRole = (typeof DEPRECATED_NOTEBOOK_ROLES)[number];
+
+export function isDeprecatedNotebookRole(role: string | null | undefined): boolean {
+  return role === 'TRANSLATION';
+}
+
+/** Default role for new NotebookLM mappings (Phase 5). */
+export const DEFAULT_NOTEBOOK_ROLE: NotebookRole = 'RESEARCH';
+
+/** Gemini web chat — used for translate when no legacy Translation notebook. */
+export const GEMINI_WEB_CHAT_URL = 'https://gemini.google.com/app';
+
 export function inferNotebookLayout(
   roles: Iterable<NotebookRole>,
 ): NotebookLayout {

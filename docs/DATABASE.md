@@ -406,7 +406,9 @@ Unique: `(project_id, category, event_key)`
 
 ### Resources & Automation
 
-#### `drive_resources`
+#### `drive_resources` (legacy — read-only)
+
+> **Deprecated (Phase 9).** Table kept so existing databases open without migration. New projects do not write Drive file IDs. Use `knowledge_files` + local cache instead.
 
 | Column | Type |
 |--------|------|

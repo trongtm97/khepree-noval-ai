@@ -10,7 +10,7 @@ import {
 import type { BackupManifest } from '@shared/schemas/portability';
 import { BackupManifestSchema } from '@shared/schemas/portability';
 import type { DatabaseManager } from '../db/database-manager';
-import { restoreDatabaseFromBackup } from '../db/backup';
+import { atomicBackupDatabase, restoreDatabaseFromBackup } from '../db/backup';
 import { logger } from '../logging/logger';
 import { newId } from '../db/utils/uuid';
 import { utcNow } from '../db/utils/timestamps';
@@ -50,6 +50,7 @@ interface ProjectBundle {
     status: string;
   };
   settings: { style_config: string | null; import_config: string | null } | null;
+  editions: Record<string, unknown>[];
   chapters: Record<string, unknown>[];
   paragraphs: Record<string, unknown>[];
   translations: Record<string, unknown>[];
@@ -58,6 +59,7 @@ interface ProjectBundle {
   characters: Record<string, unknown>[];
   relationships: Record<string, unknown>[];
   storyState: Record<string, unknown> | null;
+  memoryEvents: Record<string, unknown>[];
 }
 
 export function buildManifest(
@@ -141,6 +143,14 @@ export async function previewBackupArchiveAsync(
   compatible: boolean;
   warnings: string[];
   requiresOverwrite: boolean;
+  summary: {
+    projectTitle: string | null;
+    sourceLanguage: string | null;
+    targetLanguage: string | null;
+    chapterCount: number | null;
+    translationCount: number | null;
+    backupDate: string;
+  };
 }> {
   const manifestRaw = await readZipEntryAsync(archivePath, MANIFEST_NAME);
   if (!manifestRaw) throw new Error('Invalid archive: missing manifest.json');
@@ -170,7 +180,9 @@ export async function previewBackupArchiveAsync(
     warnings.push('Archive includes encrypted credentials');
   }
 
-  return { manifest, compatible, warnings, requiresOverwrite };
+  const summary = await buildRestorePreviewSummary(archivePath, manifest);
+
+  return { manifest, compatible, warnings, requiresOverwrite, summary };
 }
 
 export async function restoreBackupArchiveAsync(input: {
@@ -194,7 +206,7 @@ export async function restoreBackupArchiveAsync(input: {
 
     if (fs.existsSync(input.dbPath)) {
       const safety = path.join(input.backupsDir, `pre-restore-${timestamp()}.db`);
-      fs.copyFileSync(input.dbPath, safety);
+      atomicBackupDatabase(input.dbPath, safety);
     }
 
     input.db.close();
@@ -235,7 +247,7 @@ function createSanitizedDbCopy(
 ): string {
   fs.mkdirSync(backupsDir, { recursive: true });
   const tempPath = path.join(backupsDir, `export-sanitize-${timestamp()}.db`);
-  fs.copyFileSync(dbPath, tempPath);
+  atomicBackupDatabase(dbPath, tempPath);
 
   if (!includeCredentials) {
     const tempDb = new Database(tempPath);
@@ -326,6 +338,10 @@ function exportProjectBundle(db: DatabaseManager, projectId: string): ProjectBun
       status: project.status,
     },
     settings: settings ?? null,
+    editions: db.translationEditions.listByProject(projectId) as unknown as Record<
+      string,
+      unknown
+    >[],
     chapters,
     paragraphs,
     translations,
@@ -337,6 +353,7 @@ function exportProjectBundle(db: DatabaseManager, projectId: string): ProjectBun
       999999,
     ) as unknown as Record<string, unknown>[],
     storyState: db.storyStates.getByProject(projectId) as Record<string, unknown> | null,
+    memoryEvents: db.memoryEvents.listByProject(projectId) as unknown as Record<string, unknown>[],
   };
 }
 
@@ -394,6 +411,12 @@ function importProjectBundle(db: DatabaseManager, bundle: ProjectBundle, overwri
     insertRows(conn, 'terms', bundle.terms);
     insertRows(conn, 'characters', bundle.characters);
     insertRows(conn, 'relationships', bundle.relationships);
+    if (bundle.editions?.length) {
+      insertRows(conn, 'translation_editions', bundle.editions);
+    }
+    if (bundle.memoryEvents?.length) {
+      insertRows(conn, 'memory_events', bundle.memoryEvents);
+    }
     if (bundle.storyState) {
       insertRows(conn, 'story_states', [bundle.storyState]);
     }
@@ -433,6 +456,86 @@ function dbHasProject(dbPath: string, projectId: string): boolean {
     return row != null;
   } finally {
     tempDb.close();
+  }
+}
+
+async function buildRestorePreviewSummary(
+  archivePath: string,
+  manifest: BackupManifest,
+): Promise<{
+  projectTitle: string | null;
+  sourceLanguage: string | null;
+  targetLanguage: string | null;
+  chapterCount: number | null;
+  translationCount: number | null;
+  backupDate: string;
+}> {
+  const base = {
+    projectTitle: manifest.projectTitle,
+    sourceLanguage: null as string | null,
+    targetLanguage: null as string | null,
+    chapterCount: null as number | null,
+    translationCount: null as number | null,
+    backupDate: manifest.exportedAt,
+  };
+
+  if (manifest.kind === 'project') {
+    const bundleRaw = await readZipEntryAsync(archivePath, PROJECT_ENTRY);
+    if (!bundleRaw) return base;
+    const bundle = JSON.parse(bundleRaw.toString('utf8')) as ProjectBundle;
+    return {
+      projectTitle: bundle.project.title,
+      sourceLanguage: bundle.project.source_language,
+      targetLanguage: bundle.project.target_language,
+      chapterCount: bundle.chapters.length,
+      translationCount: bundle.translations.length,
+      backupDate: manifest.exportedAt,
+    };
+  }
+
+  const dbBuffer = await readZipEntryAsync(archivePath, DB_ENTRY);
+  if (!dbBuffer) return base;
+
+  const tempPath = path.join(
+    path.dirname(archivePath),
+    `preview-${timestamp()}.db`,
+  );
+  fs.writeFileSync(tempPath, dbBuffer);
+  const tempDb = new Database(tempPath, { readonly: true });
+  try {
+    const project =
+      manifest.projectId != null
+        ? (tempDb
+            .prepare(`SELECT title, source_language, target_language FROM projects WHERE id = ?`)
+            .get(manifest.projectId) as
+            | { title: string; source_language: string; target_language: string }
+            | undefined)
+        : (tempDb
+            .prepare(
+              `SELECT title, source_language, target_language FROM projects WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT 1`,
+            )
+            .get() as
+            | { title: string; source_language: string; target_language: string }
+            | undefined);
+
+    const chapterRow = tempDb
+      .prepare(`SELECT COUNT(*) AS c FROM chapters`)
+      .get() as { c: number };
+    const translationRow = tempDb
+      .prepare(`SELECT COUNT(*) AS c FROM translations`)
+      .get() as { c: number };
+
+    return {
+      projectTitle: project?.title ?? manifest.projectTitle,
+      sourceLanguage: project?.source_language ?? null,
+      targetLanguage: project?.target_language ?? null,
+      chapterCount: chapterRow.c,
+      translationCount: translationRow.c,
+      backupDate: manifest.exportedAt,
+    };
+  } finally {
+    tempDb.close();
+    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
   }
 }
 

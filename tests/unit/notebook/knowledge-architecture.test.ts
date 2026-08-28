@@ -291,48 +291,31 @@ describe('NotebookSyncService hot memory', () => {
   });
 });
 
-describe('slim vs hybrid vs fat TranslationPack', () => {
-  it('slim pack omits full story dump and prefers locked overrides', () => {
-    const slim = assemblePackSections({
+describe('local_context TranslationPack', () => {
+  it('includes hot override + locked terms without full story dump in baseContext', () => {
+    const pack = assemblePackSections({
       style: 'balanced',
       chapterNumbers: [1],
       criticalRules: [],
       context: FIXED_CONTEXT,
       sourceLines: ['[C000001:P000001] 王林走了。'],
-      packMode: 'slim',
-      hotMemoryOverride: '## Hot Memory\n- breakthrough',
+      hotMemoryOverride: '## Recent Context\n- breakthrough',
     });
-    expect(slim.prompt).toContain('Hot Memory');
-    expect(slim.prompt).toContain('breakthrough');
-    expect(slim.prompt).toContain('王林');
-    expect(slim.prompt).not.toContain('Should not appear in slim pack body dump');
-    expect(slim.sections.activeProjectTerms).toContain('LOCKED');
+    expect(pack.prompt).toContain('breakthrough');
+    expect(pack.prompt).toContain('王林');
+    expect(pack.sections.hotMemoryDelta).toContain('breakthrough');
+    expect(pack.sections.activeProjectTerms).toContain('LOCKED');
   });
 
-  it('hybrid pack includes local delta story/chars without mem dump', () => {
-    const hybrid = assemblePackSections({
-      style: 'balanced',
-      chapterNumbers: [1],
-      criticalRules: ['rule-should-not-be-in-slim'],
-      context: FIXED_CONTEXT,
-      sourceLines: ['[C000001:P000001] 王林走了。'],
-      packMode: 'hybrid',
-    });
-    expect(hybrid.prompt).toContain('Local Knowledge Delta');
-    expect(hybrid.prompt).toContain('Should not appear in slim pack body dump');
-    expect(hybrid.sections.activeProjectTerms).toContain('LOCKED');
-  });
-
-  it('fat pack includes story snapshot', () => {
-    const fat = assemblePackSections({
+  it('local context includes selected story snapshot from ContextSelector', () => {
+    const pack = assemblePackSections({
       style: 'balanced',
       chapterNumbers: [1],
       criticalRules: ['keep tone'],
       context: FIXED_CONTEXT,
       sourceLines: ['[C000001:P000001] 王林走了。'],
-      packMode: 'fat',
     });
-    expect(fat.prompt).toContain('Should not appear in slim pack body dump');
+    expect(pack.baseContext).toContain('Should not appear in slim pack body dump');
   });
 });
 

@@ -39,7 +39,7 @@
 - Browser Runner Manager (spawn/kill/monitor child processes)
 - Gemini Web API WorkerProcessManager (Python FastAPI on 127.0.0.1)
 - Credential Store (`safeStorage` encrypt/decrypt)
-- Google Drive OAuth (official `googleapis` client)
+- Local knowledge cache + optional NotebookLM grounding (no Google Drive sync)
 - IPC router with Zod validation
 - Structured logging + diagnostics export
 
@@ -77,7 +77,7 @@
 ├───────────────────┼──────────────────────────────────────┤
 │ Repository Layer  │ SQL access only                      │
 ├───────────────────┼──────────────────────────────────────┤
-│ Infrastructure    │ db · fs · logger · credentials · drive│
+│ Infrastructure    │ db · fs · logger · credentials · knowledge cache │
 ├───────────────────┼──────────────────────────────────────┤
 │ Automation Layer  │ browser-runner · providers           │
 └──────────────────────────────────────────────────────────┘
@@ -110,7 +110,7 @@ Cross-process types, Zod schemas, constants, pure utilities. No Electron, no Rea
 | `MemoryService` | Novel memory, story state, relationship memory |
 | `JobService` | Create/resume/cancel jobs, state transitions |
 | `SchedulerService` | Multi-account worker assignment, quota failover |
-| `DriveSyncService` | Upload/download memory snapshots via Drive API |
+| `NotebookSyncService` | Rebuild local knowledge markdown; optional Notebook version probe |
 | `BackupService` | Full DB + config backup/restore |
 | `ExportService` | TXT/DOCX/EPUB export |
 | `AccountService` | Google account registry, worker binding |
@@ -128,7 +128,7 @@ Cross-process types, Zod schemas, constants, pure utilities. No Electron, no Rea
 | `source-folder-service.ts` | IPC orchestration, watcher, resync, import |
 | `chapter-file-detector.ts` | Filename + heading chapter detection |
 
-SQLite remains source of truth; Notebook/Drive files are AI knowledge layer. See [BOOK_METADATA.md](./BOOK_METADATA.md).
+SQLite remains source of truth; local knowledge files + optional NotebookLM are the AI context layer. See [BOOK_METADATA.md](./BOOK_METADATA.md) and [NOTEBOOK_ARCHITECTURE.md](./NOTEBOOK_ARCHITECTURE.md).
 
 ### `src/main/jobs/`
 
@@ -265,11 +265,13 @@ AI-discovered terms enter at `DISCOVERED` or `CANDIDATE`. Never auto-promote to 
 | Story State | per project | `story_state` |
 | Translation Style | per project | `projects.style_config` |
 
-### Drive Sync
+### Local knowledge & portability
 
-- Memory snapshots exported as JSON to Drive folder (OAuth)
-- Notebook uses same Drive files as knowledge source (automation uploads + links in Notebook UI)
-- Local DB remains authoritative; Drive is backup + Notebook input
+- **SQLite** is authoritative for terms, memory, translations, jobs
+- **NotebookKnowledgeBuilder** writes `00–08` markdown under `%APPDATA%/NovelTrans/cache/knowledge/{projectId}/`
+- After each learning PASS, local knowledge version bumps immediately (Phase 7)
+- **Backups:** daily ZIP via `VACUUM INTO` + tiered retention (Phase 8) — see [PORTABILITY.md](./PORTABILITY.md)
+- **Legacy Drive tables** (`drive_resources`, `drive_sync_state`) remain for opening old databases only — no runtime Drive API (Phase 9)
 
 ## 8. Import / Paragraph ID Strategy
 
@@ -326,9 +328,9 @@ Future providers (e.g. Claude web, local LLM UI) implement same interface. Job s
 | **5 — Browser Automation Core** | Runner process, GeminiProvider skeleton, screenshots | Navigate Gemini logged in |
 | **6 — Job System** | State machine, batch planner, scheduler | Job runs end-to-end with mock provider |
 | **7 — Translation Loop** | Prompt builder, output parser, QA, repair | Real translation batch completes |
-| **8 — Notebook Integration** | NotebookProvider, Drive knowledge files | Notebook-backed translation works |
+| **8 — Notebook Integration** | NotebookProvider, local knowledge cache | Notebook-assisted translation |
 | **9 — Editor & Export** | Parallel CN/VN editor, TXT/DOCX/EPUB export | Edit and export novel |
-| **10 — Drive Sync & Backup** | Memory sync, backup/restore | Sync + restore verified |
+| **10 — Local backup** | Atomic backup, portability, export bundles | Backup/restore without Drive |
 | **11 — Installer & Polish** | Squirrel installer, diagnostics, settings | Installable Windows build |
 
 ## 13. Folder Structure

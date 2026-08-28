@@ -1,11 +1,14 @@
-/** How a Translation Notebook knowledge source is bound. */
+/** How a Translation Notebook knowledge source is bound (local-first). */
+import { LEGACY_NOTEBOOK_BINDING_DRIVE_LIVE } from './legacy-knowledge-events';
+
 export const NOTEBOOK_SOURCE_BINDING_TYPES = [
-  'DRIVE_LIVE',
   'STATIC_UPLOAD',
   'COPIED_TEXT',
 ] as const;
 
-export type NotebookSourceBindingType = (typeof NOTEBOOK_SOURCE_BINDING_TYPES)[number];
+export type NotebookSourceBindingType =
+  | (typeof NOTEBOOK_SOURCE_BINDING_TYPES)[number]
+  | typeof LEGACY_NOTEBOOK_BINDING_DRIVE_LIVE;
 
 export const NOTEBOOK_SOURCE_BINDING_STATUSES = [
   'active',
@@ -17,16 +20,13 @@ export const NOTEBOOK_SOURCE_BINDING_STATUSES = [
 export type NotebookSourceBindingStatus =
   (typeof NOTEBOOK_SOURCE_BINDING_STATUSES)[number];
 
-/** Google Docs preferred for live Notebook knowledge. */
-export const GOOGLE_DOC_MIME_TYPE = 'application/vnd.google-apps.document';
-
 export const MARKDOWN_MIME_TYPE = 'text/markdown';
 
 /**
- * Drive / Notebook display titles for knowledge docs (no .md).
+ * Notebook display titles for knowledge docs (no .md).
  * Local cache may still use `KNOWLEDGE_FILE_NAMES` (*.md).
  */
-export const KNOWLEDGE_DRIVE_DOC_TITLES = {
+export const KNOWLEDGE_DOC_TITLES = {
   book_profile: '00_BOOK_PROFILE',
   translation_rules: '01_TRANSLATION_RULES',
   project_terms: '02_PROJECT_TERMS',
@@ -38,7 +38,7 @@ export const KNOWLEDGE_DRIVE_DOC_TITLES = {
   sync_state: '08_SYNC_STATE',
 } as const;
 
-export const DRIVE_PROJECT_DOC_TITLES = [
+export const KNOWLEDGE_PROJECT_DOC_TITLES = [
   '00_BOOK_PROFILE',
   '01_TRANSLATION_RULES',
   '02_PROJECT_TERMS',
@@ -50,4 +50,4 @@ export const DRIVE_PROJECT_DOC_TITLES = [
   '08_SYNC_STATE',
 ] as const;
 
-export type DriveProjectDocTitle = (typeof DRIVE_PROJECT_DOC_TITLES)[number];
+export type KnowledgeDocTitle = (typeof KNOWLEDGE_PROJECT_DOC_TITLES)[number];

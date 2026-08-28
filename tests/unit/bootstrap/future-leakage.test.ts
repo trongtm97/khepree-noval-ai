@@ -63,6 +63,9 @@ function mockDb(opts: {
     termCandidates: {
       listPendingForPack: () => [],
     },
+    knowledgeFiles: {
+      maxLocalVersion: () => 0,
+    },
     storyStates: {
       getByProject: () =>
         opts.storyChapter == null

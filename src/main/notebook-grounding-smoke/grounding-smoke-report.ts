@@ -11,8 +11,8 @@ export interface GroundingSmokeTestResult {
   durationMs: number;
   localVersion: number | null;
   notebookVersion: number | null;
-  bindingType: 'STATIC' | 'DRIVE_LIVE' | 'UNKNOWN' | null;
-  driveFileId: string | null;
+  bindingType: 'STATIC' | 'UNKNOWN' | null;
+  remoteFileId: string | null;
   notebookName: string | null;
   packMode: 'SLIM' | 'HYBRID' | 'FAT' | 'N/A' | null;
   response: string | null;
@@ -79,7 +79,7 @@ export function renderGroundingReportMarkdown(report: GroundingSmokeRunReport): 
 
   for (const r of report.results) {
     lines.push(
-      `| ${r.id} | ${escapeCell(r.name)} | **${r.status}** | ${r.localVersion ?? '—'} | ${r.notebookVersion ?? '—'} | ${r.bindingType ?? '—'} | ${r.driveFileId ? `\`${r.driveFileId}\`` : '—'} | ${r.packMode ?? '—'} | ${r.response ? `\`${escapeCell(r.response)}\`` : '—'} | ${escapeCell(r.message)} |`,
+      `| ${r.id} | ${escapeCell(r.name)} | **${r.status}** | ${r.localVersion ?? '—'} | ${r.notebookVersion ?? '—'} | ${r.bindingType ?? '—'} | ${r.remoteFileId ? `\`${r.remoteFileId}\`` : '—'} | ${r.packMode ?? '—'} | ${r.response ? `\`${escapeCell(r.response)}\`` : '—'} | ${escapeCell(r.message)} |`,
     );
   }
 
@@ -138,7 +138,7 @@ export function renderNotRunGroundingReport(): string {
       localVersion: null,
       notebookVersion: null,
       bindingType: null,
-      driveFileId: null,
+      remoteFileId: null,
       notebookName: null,
       packMode: null,
       response: null,

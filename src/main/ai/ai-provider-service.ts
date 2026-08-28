@@ -169,7 +169,8 @@ export class AiProviderService {
         accountId: context.accountId,
         projectId: context.projectId,
         providerId,
-        notebookRole: 'TRANSLATION',
+        notebookRole: 'RESEARCH',
+        requireNotebook: false,
         lightweight: true,
       });
       const status =

@@ -54,18 +54,6 @@ export function ProjectInfoPage() {
     }
   };
 
-  const syncNotebook = async () => {
-    if (!projectId) return;
-    setBusy(true);
-    try {
-      await window.novelTrans.bookMetadata.syncProfile(projectId);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   if (!metadata) {
     return <div className="page">{error ?? t('common.loading')}</div>;
   }
@@ -122,9 +110,6 @@ export function ProjectInfoPage() {
               </Button>
             </>
           )}
-          <Button disabled={busy} onClick={() => { void syncNotebook(); }}>
-            {t('bookMetadata.syncNotebook')}
-          </Button>
           {projectId ? (
             <TabularImportExportDialog
               dataType="project_data"

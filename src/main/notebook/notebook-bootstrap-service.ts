@@ -1,9 +1,7 @@
 import type { DatabaseManager } from '../db/database-manager';
 import { loadNotebookSettings, NotebookKnowledgeBuilder } from './knowledge-builder';
 import { getNotebookSyncService } from './notebook-sync-service-singleton';
-import { resolveTranslationNotebook } from './notebook-resolver';
 import { logger } from '../logging/logger';
-import { resolveProjectWorker } from '../services/project-worker-resolver';
 
 export interface BootstrapResult {
   rebuilt: boolean;
@@ -20,14 +18,12 @@ export interface PrepareForTranslateResult {
   needsAssisted: boolean;
 }
 
-const USABLE_NOTEBOOK_STATUSES = new Set(['ready', 'sync_pending', 'stale']);
-
 export interface PrepareForTranslateDeps {
   provision?: (input: {
     projectId: string;
     accountId: string;
   }) => Promise<{ assisted: boolean; mapping: { status: string }; message: string }>;
-  syncDrive?: (projectId: string) => Promise<unknown>;
+  syncLocalKnowledge?: (projectId: string) => Promise<unknown>;
 }
 
 /**
@@ -242,14 +238,13 @@ export class NotebookBootstrapService {
   }
 
   /**
-   * Explicit pre-translate Notebook prepare: bootstrap if empty → rebuild →
-   * Drive sync when possible → best-effort provision. Never blocks forever on
-   * assisted/fail — returns usedFallback so translate can continue with fat-pack.
+   * Phase 5: pre-translate local knowledge only — no Translation Notebook provision.
+   * NotebookLM is research-only; translate uses local_context pack.
    */
   async prepareForTranslate(
     projectId: string,
-    options?: { accountId?: string | null },
-    deps?: PrepareForTranslateDeps,
+    _options?: { accountId?: string | null },
+    _deps?: PrepareForTranslateDeps,
   ): Promise<PrepareForTranslateResult> {
     const project = this.db.projects.getById(projectId);
     if (!project) throw new Error(`Project not found: ${projectId}`);
@@ -262,7 +257,6 @@ export class NotebookBootstrapService {
 
     if (knowledgeEmpty) {
       const status = project.bootstrap_status;
-      // Never force AI bootstrap here — local seed only when not explicitly skipped.
       if (status !== 'SKIPPED') {
         this.bootstrap(projectId, { seed: true });
       } else {
@@ -276,93 +270,11 @@ export class NotebookBootstrapService {
       }
     }
 
-    const driveState = this.db.driveSyncState.getByProject(projectId);
-    // Explicit options.accountId is absolute for this call (setWorker / UI).
-    // Otherwise use canonical ProjectWorkerResolver — never first READY blindly.
-    const accountId =
-      options?.accountId ??
-      resolveProjectWorker(this.db, {
-        projectId,
-        purpose: 'notebook',
-      }).accountId ??
-      null;
-
-    let driveSynced = false;
-    if (accountId || driveState?.google_account_id) {
-      try {
-        if (deps?.syncDrive) {
-          await deps.syncDrive(projectId);
-        } else {
-          await sync.syncDrive(projectId);
-        }
-        driveSynced = true;
-      } catch (error) {
-        logger.warn('prepareForTranslate Drive sync failed; continuing', {
-          projectId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    let notebookStatus: string | null = null;
-    let needsAssisted = false;
-    let usedFallback = true;
-    let message = driveSynced
-      ? 'Đã chuẩn bị bộ nhớ AI (Drive). Dịch sẽ dùng fat-pack nếu Notebook chưa sẵn sàng.'
-      : 'Đã chuẩn bị bộ nhớ AI cục bộ. Dịch sẽ dùng fat-pack nếu Notebook chưa sẵn sàng.';
-
-    if (accountId) {
-      const mapping = resolveTranslationNotebook(this.db, projectId, accountId);
-      notebookStatus = mapping?.status ?? null;
-
-      if (mapping && USABLE_NOTEBOOK_STATUSES.has(mapping.status)) {
-        usedFallback = false;
-        message = `Bộ nhớ AI sẵn sàng (Translation Notebook: ${mapping.status}).`;
-      } else {
-        const workerReady = this.isWorkerReady(accountId);
-        if (workerReady) {
-          try {
-            const provision =
-              deps?.provision ??
-              (async (input) => {
-                const { getNotebookService } = await import(
-                  '../services/notebook-service-singleton'
-                );
-                return getNotebookService().provision({
-                  ...input,
-                  role: 'TRANSLATION',
-                });
-              });
-            const result = await provision({ projectId, accountId });
-            notebookStatus = result.mapping.status;
-            if (result.assisted) {
-              needsAssisted = true;
-              usedFallback = true;
-              message =
-                result.message ||
-                'Notebook cần thao tác trên trình duyệt — tiếp tục dịch với fat-pack.';
-            } else if (USABLE_NOTEBOOK_STATUSES.has(result.mapping.status)) {
-              usedFallback = false;
-              message = result.message || 'Notebook đã thiết lập.';
-            } else {
-              usedFallback = true;
-              message =
-                result.message ||
-                'Notebook chưa sẵn sàng — tiếp tục dịch với fat-pack.';
-            }
-          } catch (error) {
-            usedFallback = true;
-            needsAssisted = false;
-            message = `Không provision Notebook (${error instanceof Error ? error.message : String(error)}) — tiếp tục với fat-pack.`;
-            logger.warn('prepareForTranslate provision failed; fat-pack fallback', {
-              projectId,
-              accountId,
-              error: message,
-            });
-          }
-        }
-      }
-    }
+    const localVersion = this.db.knowledgeFiles.maxLocalVersion(projectId);
+    const message =
+      localVersion > 0
+        ? `Bộ nhớ AI cục bộ sẵn sàng (v${localVersion}). Dịch dùng local context — không cần Notebook.`
+        : 'Bộ nhớ AI cục bộ đã khởi tạo. Có thể dịch ngay; phân tích toàn truyện qua Research Notebook là tùy chọn.';
 
     this.db.knowledgeSyncEvents.insert({
       projectId,
@@ -372,17 +284,10 @@ export class NotebookBootstrapService {
 
     return {
       ready: true,
-      usedFallback,
+      usedFallback: false,
       message,
-      notebookStatus,
-      needsAssisted,
+      notebookStatus: null,
+      needsAssisted: false,
     };
-  }
-
-  private isWorkerReady(accountId: string): boolean {
-    const worker = this.db.workerStates
-      .listEnabled()
-      .find((w) => w.google_account_id === accountId);
-    return worker?.health.toUpperCase() === 'READY';
   }
 }

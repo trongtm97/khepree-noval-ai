@@ -160,7 +160,8 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
       const preflight = await checkProviderForJob(getDatabase(), {
         accountId: googleAccountId,
         projectId,
-        notebookRole: 'TRANSLATION',
+        notebookRole: 'RESEARCH',
+        requireNotebook: false,
         providerId: this.providerId,
         jobId: options.jobId ?? null,
         lightweight: true,

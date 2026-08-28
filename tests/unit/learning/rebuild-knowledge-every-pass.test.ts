@@ -1,16 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const rebuildKnowledge = vi.fn();
-const markDirty = vi.fn();
-const evaluateSyncPolicy = vi.fn(() => ({ shouldSync: false, chaptersSinceSync: 0 }));
-const syncDrive = vi.fn(() => Promise.resolve({ updated: true }));
 
 vi.mock('@main/notebook/notebook-sync-service-singleton', () => ({
   getNotebookSyncService: () => ({
     rebuildKnowledge,
-    markDirty,
-    evaluateSyncPolicy,
-    syncDrive,
   }),
 }));
 
@@ -46,31 +40,10 @@ vi.mock('@main/learning/memory-compactor', () => ({
   }),
 }));
 
-vi.mock('@main/drive/drive-content-builder', () => ({
-  buildProjectDriveDocuments: () => ({
-    '02_PROJECT_TERMS.md': 't',
-    '03_CHARACTERS.md': 'c',
-    '04_RELATIONSHIPS.md': 'r',
-    '05_STORY_STATE.md': 's',
-    '06_WORLD_KNOWLEDGE.md': 'w',
-    '07_RECENT_CONTEXT.md': 'x',
-  }),
-}));
-
 vi.mock('@main/notebook/knowledge-builder', () => ({
   NotebookKnowledgeBuilder: class {
-    buildAll() {
-      return {
-        '00_BOOK_PROFILE.md': 'p',
-        '01_TRANSLATION_RULES.md': 'r',
-        '02_PROJECT_TERMS.md': 't',
-        '03_CHARACTERS.md': 'c',
-        '04_RELATIONSHIPS.md': 'rel',
-        '05_STORY_STATE.md': 's',
-        '06_WORLD_KNOWLEDGE.md': 'w',
-        '07_RECENT_CONTEXT.md': 'x',
-        '08_SYNC_STATE.md': 'sync',
-      };
+    rebuildAndTrack() {
+      return {};
     }
   },
 }));
@@ -94,6 +67,16 @@ function emptyParsed(): ParsedBatchResult {
 }
 
 function mockDb(): DatabaseManager {
+  const edition = {
+    id: 'ed-1',
+    project_id: PROJECT,
+    target_language: 'vi',
+    name: 'vi',
+    status: 'active',
+    style_config: null,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+  };
   return {
     projects: {
       getById: () => ({
@@ -101,9 +84,16 @@ function mockDb(): DatabaseManager {
         title: 'Test',
         source_language: 'zh',
         target_language: 'vi',
+        active_edition_id: edition.id,
       }),
+      setActiveEditionId: vi.fn(),
+    },
+    translationEditions: {
+      getById: () => edition,
+      listByProject: () => [edition],
     },
     chapters: { getByProjectAndNumber: () => null, listByProject: () => [] },
+    jobs: { getById: () => null },
     characters: { listByProject: () => [], listAliases: () => [] },
     relationships: { listByProject: () => [] },
     terms: { listForMatching: () => [], listTranslations: () => [] },
@@ -111,21 +101,16 @@ function mockDb(): DatabaseManager {
     storyStates: { getByProject: () => null, parseStructured: () => null },
     memoryEvents: { listByProject: () => [], listRecentChapters: () => [] },
     learningEvents: { create: vi.fn() },
-    driveSyncState: {
-      ensure: () => ({
-        chapters_since_sync: 0,
-        sync_every_n_chapters: 10,
-        critical_change_pending: 0,
-      }),
-      patch: vi.fn(),
-    },
-    notebooks: { listByProject: () => [] },
+    knowledgeSyncState: { patch: vi.fn(), ensure: () => ({}) },
+    knowledgeSyncEvents: { insert: vi.fn() },
     knowledgeFiles: {
       maxLocalVersion: () => 1,
       listByProject: () => [],
+      markDirty: vi.fn(),
     },
     getConnection: () => ({
       prepare: () => ({ all: () => [], get: () => null, run: () => undefined }),
+      transaction: (fn: () => unknown) => () => fn(),
     }),
   } as unknown as DatabaseManager;
 }
@@ -133,13 +118,9 @@ function mockDb(): DatabaseManager {
 describe('learning pipeline rebuildKnowledge every PASS', () => {
   beforeEach(() => {
     rebuildKnowledge.mockClear();
-    markDirty.mockClear();
-    evaluateSyncPolicy.mockClear();
-    syncDrive.mockClear();
-    evaluateSyncPolicy.mockReturnValue({ shouldSync: false, chaptersSinceSync: 0 });
   });
 
-  it('rebuilds local knowledge even when shouldSync is false', async () => {
+  it('rebuilds local knowledge on every PASS', async () => {
     await runLearningPipeline(mockDb(), {
       projectId: PROJECT,
       jobId: '33333333-3333-3333-3333-333333333333',
@@ -149,21 +130,5 @@ describe('learning pipeline rebuildKnowledge every PASS', () => {
     });
 
     expect(rebuildKnowledge).toHaveBeenCalledWith(PROJECT);
-    expect(syncDrive).not.toHaveBeenCalled();
-  });
-
-  it('rebuilds then calls syncDrive when policy says sync', async () => {
-    evaluateSyncPolicy.mockReturnValue({ shouldSync: true, chaptersSinceSync: 0 });
-    await runLearningPipeline(mockDb(), {
-      projectId: PROJECT,
-      jobId: '33333333-3333-3333-3333-333333333334',
-      chapterFrom: 2,
-      chapterTo: 2,
-      parsed: emptyParsed(),
-    });
-
-    expect(rebuildKnowledge).toHaveBeenCalledWith(PROJECT);
-    expect(syncDrive).toHaveBeenCalledTimes(1);
-    expect(syncDrive).toHaveBeenCalledWith(PROJECT);
   });
 });

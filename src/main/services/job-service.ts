@@ -12,6 +12,7 @@ import type {
   JobDto,
   RepairLoopResult,
 } from '@shared/schemas/job';
+import { isPackModeOrLegacy, normalizePackMode } from '@shared/constants/pack-mode';
 import type { AttentionAction, WorkerMode } from '@shared/constants/job';
 import {
   ATTENTION_ACTIONS,
@@ -763,12 +764,9 @@ export class JobService {
     const phase = typeof progress.phase === 'string' ? progress.phase : undefined;
     const providerType =
       typeof progress.providerType === 'string' ? progress.providerType : undefined;
-    const packMode =
-      progress.packMode === 'slim' ||
-      progress.packMode === 'hybrid' ||
-      progress.packMode === 'fat'
-        ? progress.packMode
-        : undefined;
+    const packMode = isPackModeOrLegacy(progress.packMode)
+      ? normalizePackMode(progress.packMode)
+      : undefined;
     const notebookId =
       typeof progress.notebookId === 'string'
         ? progress.notebookId
@@ -830,7 +828,6 @@ export class JobService {
         ? progress.notebookKnowledgeVersion
         : notebookVerifiedVersion;
     const knowledgeSourceMode =
-      progress.knowledgeSourceMode === 'DRIVE_LIVE' ||
       progress.knowledgeSourceMode === 'STATIC' ||
       progress.knowledgeSourceMode === 'LOCAL_ONLY'
         ? progress.knowledgeSourceMode
@@ -919,6 +916,8 @@ export class JobService {
             learning,
           }
         : null,
+      knowledgeVersionAtStart: row.knowledge_version_at_start ?? null,
+      knowledgeVersionAtCommit: row.knowledge_version_at_commit ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       startedAt: row.started_at,
@@ -929,9 +928,7 @@ export class JobService {
 
 function toAttemptDto(row: JobAttemptRow): JobAttemptDto {
   const packMode =
-    row.pack_mode === 'slim' || row.pack_mode === 'hybrid' || row.pack_mode === 'fat'
-      ? row.pack_mode
-      : null;
+    typeof row.pack_mode === 'string' ? normalizePackMode(row.pack_mode) : null;
   return {
     id: row.id,
     jobId: row.job_id,

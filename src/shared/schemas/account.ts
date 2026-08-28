@@ -12,7 +12,6 @@ export const GoogleAccountDtoSchema = z.object({
   avatarUrl: z.string().nullable(),
   plan: z.enum(GOOGLE_ACCOUNT_PLANS),
   status: z.enum(GOOGLE_ACCOUNT_STATUSES),
-  driveConnected: z.boolean(),
   browserProfilePath: z.string(),
   lastSeenAt: z.string().nullable(),
   lastUsedAt: z.string().nullable(),
@@ -67,14 +66,9 @@ export const AccountCompleteLoginRequestSchema = z.object({
   label: z.string().min(1).max(200).optional(),
 });
 
-export const AccountConnectDriveAuthPayloadRequestSchema = z.object({
-  accountId: z.string().uuid(),
-  authPayload: z.string().min(10),
-});
-
 export const AccountOpenBrowserRequestSchema = z.object({
   accountId: z.string().uuid(),
-  target: z.enum(['gemini', 'drive', 'notebook']).optional(),
+  target: z.enum(['gemini', 'notebook']).optional(),
 });
 
 export const AccountRemoveRequestSchema = z.object({

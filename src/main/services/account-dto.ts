@@ -19,7 +19,6 @@ export function toGoogleAccountDto(detail: GoogleAccountDetail): GoogleAccountDt
     avatarUrl: detail.avatar_url,
     plan: detail.plan as GoogleAccountPlan,
     status: detail.status as GoogleAccountStatus,
-    driveConnected: detail.drive_connected === 1,
     browserProfilePath,
     lastSeenAt: detail.last_seen_at,
     lastUsedAt: detail.last_used_at,

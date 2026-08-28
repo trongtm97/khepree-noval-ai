@@ -21,8 +21,19 @@ function mockDb(opts: {
       getById: () => null,
       listByProject: () => [],
     },
-    driveSyncState: {
+    knowledgeSyncState: {
       getByProject: () => null,
+      ensure: () => ({
+        google_account_id: null,
+        chapters_since_sync: 0,
+        sync_every_n_chapters: 10,
+        critical_change_pending: 0,
+        version_probe_status: 'pending',
+        pending_knowledge_version: 0,
+        verified_knowledge_version: 0,
+        pending_sync_nonce: null,
+        verified_sync_nonce: null,
+      }),
     },
     workerStates: {
       listAll: () => [
@@ -147,7 +158,20 @@ describe('TranslateReadinessService.ensureForTranslate', () => {
     const db = {
       projects: { getById: () => ({ id: PROJECT }) },
       jobs: { getById: () => null, listByProject: () => [] },
-      driveSyncState: { getByProject: () => null },
+      knowledgeSyncState: {
+        getByProject: () => null,
+        ensure: () => ({
+          google_account_id: null,
+          chapters_since_sync: 0,
+          sync_every_n_chapters: 10,
+          critical_change_pending: 0,
+          version_probe_status: 'pending',
+          pending_knowledge_version: 0,
+          verified_knowledge_version: 0,
+          pending_sync_nonce: null,
+          verified_sync_nonce: null,
+        }),
+      },
       workerStates: {
         listAll: () => [],
         listEnabled: () => [],

@@ -5,6 +5,7 @@ import {
   TEXT_DIRECTIONS,
   formatLanguagePickerLabel,
   getLanguageProfile,
+  listLanguageCatalogCodes,
   listLanguageProfiles,
   normalizeLanguageCode,
   searchLanguageProfiles,
@@ -22,6 +23,7 @@ describe('World Language Catalog', () => {
   it('has unique canonical codes', () => {
     const codes = profiles.map((p) => p.code);
     expect(new Set(codes).size).toBe(codes.length);
+    expect(listLanguageCatalogCodes().sort()).toEqual([...codes].sort());
   });
 
   it('every entry has non-empty internationalName and nativeName', () => {

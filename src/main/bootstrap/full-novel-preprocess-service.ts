@@ -90,7 +90,7 @@ export class FullNovelPreprocessService {
     input: {
       text?: string;
       filePath?: string;
-      syncDrive?: boolean;
+      syncLocalKnowledge?: boolean;
       temporalProvenance?: boolean;
     },
   ): {

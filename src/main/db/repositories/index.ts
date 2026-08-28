@@ -41,8 +41,12 @@ export { LearningEventRepository } from './learning-event-repository';
 export type { LearningEventRow } from './learning-event-repository';
 export { DriveResourceRepository } from './drive-resource-repository';
 export type { DriveResourceRow, UpsertDriveResourceInput } from './drive-resource-repository';
-export { DriveSyncStateRepository } from './drive-sync-state-repository';
-export type { DriveSyncStateRow } from './drive-sync-state-repository';
+export {
+  KnowledgeSyncStateRepository,
+} from './knowledge-sync-state-repository';
+export type {
+  KnowledgeSyncStateRow,
+} from './knowledge-sync-state-repository';
 export { NotebookRepository } from './notebook-repository';
 export type { NotebookResourceRow, UpsertNotebookInput } from './notebook-repository';
 export {
