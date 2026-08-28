@@ -61,6 +61,8 @@ export function SettingsPage() {
   const setDensity = useUiShellStore((state) => state.setDensity);
   const showAdvancedTools = useUiShellStore((state) => state.showAdvancedTools);
   const setShowAdvancedTools = useUiShellStore((state) => state.setShowAdvancedTools);
+  const showParagraphIds = useUiShellStore((state) => state.showParagraphIds);
+  const setShowParagraphIds = useUiShellStore((state) => state.setShowParagraphIds);
   const [tab, setTab] = useState<SettingsTab>(() =>
     parseSettingsTab(searchParams.get('tab')),
   );
@@ -158,6 +160,19 @@ export function SettingsPage() {
               checked={showAdvancedTools}
               label={t('settings.showAdvancedTools')}
               onChange={setShowAdvancedTools}
+            />
+          </div>
+          <div className="settings-toggle-row">
+            <div>
+              <strong>{t('settings.showParagraphIds')}</strong>
+              <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+                {t('settings.showParagraphIdsHelp')}
+              </p>
+            </div>
+            <Switch
+              checked={showParagraphIds}
+              label={t('settings.showParagraphIds')}
+              onChange={setShowParagraphIds}
             />
           </div>
         </Card>

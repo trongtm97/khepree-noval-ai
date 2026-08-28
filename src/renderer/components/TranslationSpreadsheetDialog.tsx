@@ -4,13 +4,15 @@ import type { TranslationSpreadsheetConflictStrategy } from '@shared/constants/t
 import { TRANSLATION_SPREADSHEET_WARNINGS } from '@shared/constants/translation-spreadsheet';
 import type { TabularPreviewResponse, TabularPreviewRow } from '@shared/schemas/tabular';
 import { useT } from '../i18n';
-import { Button, Dialog, Select } from './ui';
+import { Button, Dialog, Drawer, Select } from './ui';
 
 type RowFilter = 'all' | 'valid' | 'warning' | 'error' | 'conflicts';
 
 interface TranslationSpreadsheetDialogProps {
   projectId: string;
   editionId: string;
+  open: boolean;
+  onClose: () => void;
   onComplete?: (message: string) => void;
   onImported?: () => void;
 }
@@ -31,6 +33,8 @@ function parseTranslationCommitMessage(
 export function TranslationSpreadsheetDialog({
   projectId,
   editionId,
+  open,
+  onClose,
   onComplete,
   onImported,
 }: TranslationSpreadsheetDialogProps) {
@@ -74,12 +78,13 @@ export function TranslationSpreadsheetDialog({
       });
       setPreview(result);
       setImportOpen(true);
+      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
     } finally {
       setBusy(false);
     }
-  }, [conflictStrategy, editionId, projectId, t]);
+  }, [conflictStrategy, editionId, onClose, projectId, t]);
 
   const runExport = useCallback(
     async (format: TabularFormat) => {
@@ -152,17 +157,21 @@ export function TranslationSpreadsheetDialog({
   }, [preview]);
 
   return (
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <Button variant="secondary" disabled={busy} onClick={() => void startImport()}>
-        {t('translationSpreadsheet.import')}
-      </Button>
-      <Button variant="secondary" disabled={busy} onClick={() => void runExport('xlsx')}>
-        {t('translationSpreadsheet.exportXlsx')}
-      </Button>
-      <Button variant="ghost" disabled={busy} onClick={() => void runExport('csv')}>
-        {t('translationSpreadsheet.exportCsv')}
-      </Button>
-      {error ? <span className="nt-error-text">{error}</span> : null}
+    <>
+      <Drawer open={open} title={t('translation.excelCsvData')} onClose={onClose}>
+        <div className="translation-spreadsheet-hub">
+          <Button variant="secondary" disabled={busy} onClick={() => void startImport()}>
+            {t('translationSpreadsheet.import')}
+          </Button>
+          <Button variant="secondary" disabled={busy} onClick={() => void runExport('xlsx')}>
+            {t('translationSpreadsheet.exportXlsx')}
+          </Button>
+          <Button variant="ghost" disabled={busy} onClick={() => void runExport('csv')}>
+            {t('translationSpreadsheet.exportCsv')}
+          </Button>
+          {error ? <span className="nt-error-text">{error}</span> : null}
+        </div>
+      </Drawer>
 
       <Dialog
         open={importOpen}
@@ -189,7 +198,9 @@ export function TranslationSpreadsheetDialog({
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Select
                 value={rowFilter}
-                onChange={(e) => setRowFilter(e.target.value as RowFilter)}
+                onChange={(e) => {
+                  setRowFilter(e.target.value as RowFilter);
+                }}
                 aria-label={t('tabular.filterRows')}
               >
                 <option value="all">{t('tabular.filterAll')}</option>
@@ -200,9 +211,9 @@ export function TranslationSpreadsheetDialog({
               </Select>
               <Select
                 value={conflictStrategy}
-                onChange={(e) =>
-                  setConflictStrategy(e.target.value as TranslationSpreadsheetConflictStrategy)
-                }
+                onChange={(e) => {
+                  setConflictStrategy(e.target.value as TranslationSpreadsheetConflictStrategy);
+                }}
                 aria-label={t('translationSpreadsheet.conflictStrategy')}
               >
                 <option value="USE_EXCEL">{t('translationSpreadsheet.useExcel')}</option>
@@ -210,7 +221,9 @@ export function TranslationSpreadsheetDialog({
               </Select>
               <Select
                 value={importMode}
-                onChange={(e) => setImportMode(e.target.value as TabularImportMode)}
+                onChange={(e) => {
+                  setImportMode(e.target.value as TabularImportMode);
+                }}
                 aria-label={t('tabular.importMode')}
               >
                 <option value="IMPORT_VALID_ONLY">{t('tabular.modeValidOnly')}</option>
@@ -247,7 +260,12 @@ export function TranslationSpreadsheetDialog({
                         {row.messages.includes(
                           TRANSLATION_SPREADSHEET_WARNINGS.CONFLICT_APP_NEWER,
                         ) ? (
-                          <Button variant="ghost" onClick={() => setCompareRow(row)}>
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              setCompareRow(row);
+                            }}
+                          >
                             {t('translationSpreadsheet.compare')}
                           </Button>
                         ) : null}
@@ -284,6 +302,6 @@ export function TranslationSpreadsheetDialog({
           </div>
         ) : null}
       </Dialog>
-    </div>
+    </>
   );
 }

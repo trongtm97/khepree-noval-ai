@@ -2,9 +2,15 @@ import { createElement } from 'react';
 import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { computeVirtualWindow } from '../../../src/renderer/utils/virtual-window';
+import {
+  estimateEditorRowHeight,
+  shouldScrollActiveRow,
+  rowsOverlap,
+} from '../../../src/renderer/utils/editor-virtual';
 import { findMatches, applyReplaceAll } from '../../../src/renderer/utils/editor-search';
 import { pushUndo, popUndo, popRedo } from '../../../src/renderer/utils/editor-undo';
 import { HighlightedSourceText } from '../../../src/renderer/components/editor/HighlightedSourceText';
+import { EDITOR_ROW_HEIGHT } from '../../../src/shared/constants/translation-editor';
 
 describe('virtual-window', () => {
   it('returns visible slice with overscan', () => {
@@ -18,6 +24,31 @@ describe('virtual-window', () => {
     const win = computeVirtualWindow(0, 400, 0, 72, 2);
     expect(win.endIndex).toBe(-1);
     expect(win.totalHeight).toBe(0);
+  });
+});
+
+describe('variable editor estimates', () => {
+  it('estimates taller rows for long source or translation', () => {
+    const short = estimateEditorRowHeight('短', '');
+    const longSource = estimateEditorRowHeight('字'.repeat(800), '');
+    const longTarget = estimateEditorRowHeight('短', 'dịch '.repeat(400));
+    const bothLong = estimateEditorRowHeight('字'.repeat(800), 'dịch '.repeat(400));
+    expect(longSource).toBeGreaterThan(short);
+    expect(longTarget).toBeGreaterThan(short);
+    expect(bothLong).toBeGreaterThanOrEqual(Math.max(longSource, longTarget) - 1);
+    expect(short).toBeGreaterThanOrEqual(EDITOR_ROW_HEIGHT - 20);
+  });
+
+  it('scrolls active row only when fully outside the viewport', () => {
+    expect(shouldScrollActiveRow(0, 80, 0, 600)).toBe(false);
+    expect(shouldScrollActiveRow(100, 180, 0, 600)).toBe(false);
+    expect(shouldScrollActiveRow(800, 900, 0, 600)).toBe(true);
+    expect(shouldScrollActiveRow(0, 50, 400, 200)).toBe(true);
+  });
+
+  it('detects overlapping measured rows', () => {
+    expect(rowsOverlap([{ start: 0, size: 80 }, { start: 80, size: 120 }])).toBe(false);
+    expect(rowsOverlap([{ start: 0, size: 80 }, { start: 70, size: 120 }])).toBe(true);
   });
 });
 

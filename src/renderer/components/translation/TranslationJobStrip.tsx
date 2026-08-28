@@ -1,15 +1,24 @@
 import type { JobDto } from '@shared/schemas/job';
 import { measureJobProgress } from '@shared/utils/job-progress';
 import { useT } from '../../i18n';
+import { Button } from '../ui';
 
 interface TranslationJobStripProps {
   job: JobDto | null;
   preparing: boolean;
   preparingMessage?: string | null;
+  onPause?: () => void;
+  onResume?: () => void;
 }
 
-/** Compact inline job status for command bar (<=28px). */
-export function TranslationJobStrip({ job, preparing, preparingMessage }: TranslationJobStripProps) {
+/** Compact inline job status for command bar (<=28px). Absent when no job. */
+export function TranslationJobStrip({
+  job,
+  preparing,
+  preparingMessage,
+  onPause,
+  onResume,
+}: TranslationJobStripProps) {
   const t = useT();
 
   if (preparing && !job) {
@@ -30,18 +39,18 @@ export function TranslationJobStrip({ job, preparing, preparingMessage }: Transl
         ? String(job.chapterFrom)
         : '…';
 
+  const done = job.progress?.paragraphsDone;
+  const total = job.progress?.paragraphsTotal;
   const paraLabel =
-    typeof job.progress?.paragraphsDone === 'number' &&
-    typeof job.progress.paragraphsTotal === 'number' &&
-    job.progress.paragraphsTotal > 0
-      ? `${job.progress.paragraphsDone}/${job.progress.paragraphsTotal}`
+    typeof done === 'number' && typeof total === 'number' && total > 0
+      ? t('translation.jobStripParas', { done: String(done), total: String(total) })
       : null;
+  const paused = job.state === 'PAUSED';
 
   return (
     <div className="translation-job-strip" role="status">
-      <span>
-        {t('translation.jobStripActive', { range, paras: paraLabel ?? '…' })}
-      </span>
+      <span>{t('translation.jobStripActive', { range })}</span>
+      {paraLabel ? <span>{paraLabel}</span> : null}
       <div
         className="translation-job-strip__progress"
         role="progressbar"
@@ -60,6 +69,15 @@ export function TranslationJobStrip({ job, preparing, preparingMessage }: Transl
           style={measure.indeterminate ? undefined : { width: `${measure.percent}%` }}
         />
       </div>
+      {paused ? (
+        <Button size="sm" variant="ghost" onClick={onResume}>
+          {t('actions.resume')}
+        </Button>
+      ) : (
+        <Button size="sm" variant="ghost" onClick={onPause}>
+          {t('actions.pause')}
+        </Button>
+      )}
     </div>
   );
 }

@@ -1,20 +1,28 @@
 import { Brain } from 'lucide-react';
-import type { EditorContextResponseSchema } from '@shared/schemas/translation-editor';
-import type { z } from 'zod';
+import type { EditorParagraphDto } from '@shared/schemas/translation-editor';
 import { useT } from '../../i18n';
+import type { EditorContext } from '../../utils/editor-context-filter';
 import { EditorContextPanel } from '../editor/EditorContextPanel';
 import { Button, IconButton } from '../ui';
 
-type EditorContext = z.infer<typeof EditorContextResponseSchema>;
-
 export interface ContextDrawerProps {
   context: EditorContext | null;
+  paragraph?: EditorParagraphDto | null;
   collapsed: boolean;
   onToggle: () => void;
+  onTermClick?: (termId: string) => void;
+  onCharacterClick?: (characterId: string, canonicalName: string) => void;
 }
 
-/** Right context panel — collapsed icon rail by default. */
-export function ContextDrawer({ context, collapsed, onToggle }: ContextDrawerProps) {
+/** Right context panel — collapsed icon rail by default. Never auto-opens. */
+export function ContextDrawer({
+  context,
+  paragraph = null,
+  collapsed,
+  onToggle,
+  onTermClick,
+  onCharacterClick,
+}: ContextDrawerProps) {
   const t = useT();
 
   if (collapsed) {
@@ -40,7 +48,12 @@ export function ContextDrawer({ context, collapsed, onToggle }: ContextDrawerPro
         </Button>
       </div>
       <div className="translation-context__body">
-        <EditorContextPanel context={context} />
+        <EditorContextPanel
+          context={context}
+          paragraph={paragraph}
+          onTermClick={onTermClick}
+          onCharacterClick={onCharacterClick}
+        />
       </div>
     </aside>
   );

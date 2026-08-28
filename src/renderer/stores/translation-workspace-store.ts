@@ -17,6 +17,8 @@ interface TranslationWorkspaceState {
   setSearchOpen: (v: boolean) => void;
   setChapterRailWidth: (w: number) => void;
   setContextWidth: (w: number) => void;
+  chapterListScrollByProject: Record<string, number>;
+  setChapterListScroll: (projectId: string, offset: number) => void;
 }
 
 export const useTranslationWorkspaceStore = create<TranslationWorkspaceState>()(
@@ -36,9 +38,17 @@ export const useTranslationWorkspaceStore = create<TranslationWorkspaceState>()(
       setFocusMode: (focusMode) => set({ focusMode }),
       setSearchOpen: (searchOpen) => set({ searchOpen }),
       setChapterRailWidth: (chapterRailWidth) =>
-        set({ chapterRailWidth: Math.min(320, Math.max(160, chapterRailWidth)) }),
+        set({ chapterRailWidth: Math.min(220, Math.max(190, chapterRailWidth)) }),
       setContextWidth: (contextWidth) =>
-        set({ contextWidth: Math.min(420, Math.max(240, contextWidth)) }),
+        set({ contextWidth: Math.min(340, Math.max(280, contextWidth)) }),
+      chapterListScrollByProject: {},
+      setChapterListScroll: (projectId, offset) =>
+        set((s) => ({
+          chapterListScrollByProject: {
+            ...s.chapterListScrollByProject,
+            [projectId]: offset,
+          },
+        })),
     }),
     {
       name: 'noveltrans-translation-workspace',
@@ -47,6 +57,7 @@ export const useTranslationWorkspaceStore = create<TranslationWorkspaceState>()(
         contextCollapsed: state.contextCollapsed,
         chapterRailWidth: state.chapterRailWidth,
         contextWidth: state.contextWidth,
+        chapterListScrollByProject: state.chapterListScrollByProject,
       }),
     },
   ),

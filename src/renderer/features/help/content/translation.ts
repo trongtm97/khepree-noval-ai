@@ -113,7 +113,7 @@ export const translationArticles: HelpArticle[] = [
       },
       {
         type: 'paragraph',
-        text: 'Chọn nhiều chương: tick checkbox (Shift+click để chọn dải). Thanh công cụ hiện Dịch đã chọn / Xóa bản dịch đã chọn / Dịch lại đã chọn. Click tên chương vẫn mở editor; không tick thì Xóa/Dịch lại chỉ áp dụng chương đang mở.',
+        text: 'Chọn nhiều chương: ⋯ → Chọn nhiều, hoặc Ctrl/Shift+click trên hàng. Khi đã chọn, thanh compact: Dịch / Xuất / Hủy. Click tên chương vẫn mở editor.',
       },
       {
         type: 'paragraph',
@@ -233,8 +233,11 @@ export const translationArticles: HelpArticle[] = [
           'Ctrl+S — lưu bản dịch đang chỉnh',
           'Ctrl+F — tìm trong chương',
           'Ctrl+H — bật thay thế',
+          'Ctrl+Shift+F — chế độ tập trung',
           'Ctrl+G — nhảy tới kết quả tìm tiếp theo',
           'Alt+↑ / Alt+↓ — chương trước / sau',
+          'Alt+Shift+↓ — chương chưa dịch tiếp',
+          'Alt+Shift+↑ — vấn đề tiếp theo',
         ],
       },
       {

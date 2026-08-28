@@ -21,8 +21,11 @@ export type TranslationEditorStatus = (typeof TRANSLATION_EDITOR_STATUSES)[numbe
 /** Autosave debounce (ms). */
 export const EDITOR_AUTOSAVE_MS = 800;
 
-/** Virtual row height estimate (px). */
+/**
+ * Virtualizer estimate only (px). Never used as the rendered row height —
+ * measured content (source, target, markers) determines layout.
+ */
 export const EDITOR_ROW_HEIGHT = 72;
 
-/** Rows rendered outside viewport. */
+/** Extra virtualized rows rendered outside the viewport. */
 export const EDITOR_OVERSCAN = 6;

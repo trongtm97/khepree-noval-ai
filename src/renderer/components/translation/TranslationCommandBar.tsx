@@ -7,14 +7,17 @@ import type { JobDto } from '@shared/schemas/job';
 import type { ChapterCopyMode } from '@shared/utils/chapter-export-text';
 import type { NovelExportFormat } from '@shared/constants/portability';
 import { useT } from '../../i18n';
+import type { SaveStatus } from '../../stores/editor-store';
 import { DropdownMenu, ListboxPopover } from '../overlay';
 import { Button, IconButton } from '../ui';
 import { LanguagePairLabel } from '../LanguagePairLabel';
 import { TranslationActions } from './TranslationActions';
 import { TranslationContextStatus } from './TranslationContextStatus';
 import { TranslationJobStrip } from './TranslationJobStrip';
+import { EditorSaveChip } from './EditorSaveChip';
 import { TranslationSpreadsheetDialog } from '../TranslationSpreadsheetDialog';
-import { chapterLabel } from './chapter-utils';
+import { VirtualChapterPicker } from './VirtualChapterPicker';
+import { chapterMatchesSearch } from '../../utils/chapter-navigator';
 
 export interface TranslationCommandBarProps {
   projects: ProjectDto[];
@@ -28,7 +31,7 @@ export interface TranslationCommandBarProps {
   chapterNumber: number | null;
   busy: boolean;
   preparing: boolean;
-  saveStatus: string;
+  saveStatus: SaveStatus;
   selectedCount: number;
   copyDisabled: boolean;
   activeJob: JobDto | null;
@@ -49,6 +52,10 @@ export interface TranslationCommandBarProps {
   onRetranslate: () => void;
   onToggleFocusMode: () => void;
   onSpreadsheetImported: () => void;
+  onPrevChapter?: () => void;
+  onNextChapter?: () => void;
+  onNextUntranslated?: () => void;
+  onNextIssue?: () => void;
 }
 
 export function TranslationCommandBar({
@@ -84,6 +91,10 @@ export function TranslationCommandBar({
   onRetranslate,
   onToggleFocusMode,
   onSpreadsheetImported,
+  onPrevChapter,
+  onNextChapter,
+  onNextUntranslated,
+  onNextIssue,
 }: TranslationCommandBarProps) {
   const t = useT();
   const navigate = useNavigate();
@@ -92,6 +103,7 @@ export function TranslationCommandBar({
   const [copyOpen, setCopyOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [spreadsheetOpen, setSpreadsheetOpen] = useState(false);
   const [chapterFilter, setChapterFilter] = useState('');
   const projectTriggerRef = useRef<HTMLButtonElement>(null);
   const chapterTriggerRef = useRef<HTMLButtonElement>(null);
@@ -100,26 +112,10 @@ export function TranslationCommandBar({
   const moreTriggerRef = useRef<HTMLButtonElement>(null);
 
   const filteredChapters = useMemo(() => {
-    const q = chapterFilter.trim().toLowerCase();
-    if (!q) return chapters.map((ch, idx) => ({ ch, idx }));
     return chapters
       .map((ch, idx) => ({ ch, idx }))
-      .filter(({ ch }) => {
-        const label = chapterLabel(ch).toLowerCase();
-        return label.includes(q) || (ch.title?.toLowerCase().includes(q) ?? false);
-      });
+      .filter(({ ch }) => chapterMatchesSearch(ch, chapterFilter));
   }, [chapters, chapterFilter]);
-
-  const saveLabel =
-    saveStatus === 'dirty'
-      ? '…'
-      : saveStatus === 'saving'
-        ? t('common.loading')
-        : saveStatus === 'saved'
-          ? t('translation.saved')
-          : saveStatus === 'error'
-            ? t('status.failed')
-            : '';
 
   const closeMenus = () => {
     setProjectOpen(false);
@@ -127,6 +123,14 @@ export function TranslationCommandBar({
     setCopyOpen(false);
     setExportOpen(false);
     setMoreOpen(false);
+  };
+
+  const pauseJob = () => {
+    void window.novelTrans.jobs.pauseAll();
+  };
+
+  const resumeJob = () => {
+    void window.novelTrans.jobs.resumeAll();
   };
 
   return (
@@ -224,31 +228,21 @@ export function TranslationCommandBar({
               <input
                 type="search"
                 className="input translation-command-bar__chapter-search"
-                placeholder={t('actions.search')}
+                placeholder={t('translation.chapterSearchPlaceholder')}
                 value={chapterFilter}
                 onChange={(e) => {
                   setChapterFilter(e.target.value);
                 }}
               />
-              <div className="translation-command-bar__menu-scroll">
-                {filteredChapters.map(({ ch, idx }) => (
-                  <button
-                    key={ch.id}
-                    type="button"
-                    role="option"
-                    aria-selected={idx === chapterIndex}
-                    className={idx === chapterIndex ? 'active' : undefined}
-                    onClick={() => {
-                      closeMenus();
-                      setChapterFilter('');
-                      onChapterChange(idx);
-                    }}
-                  >
-                    {chapterLabel(ch)}
-                    {ch.title ? ` · ${ch.title}` : ''}
-                  </button>
-                ))}
-              </div>
+              <VirtualChapterPicker
+                chapters={filteredChapters}
+                chapterIndex={chapterIndex}
+                onPick={(idx) => {
+                  closeMenus();
+                  setChapterFilter('');
+                  onChapterChange(idx);
+                }}
+              />
             </ListboxPopover>
           </div>
 
@@ -271,7 +265,7 @@ export function TranslationCommandBar({
               }}
             >
               <Copy size={14} aria-hidden />
-              {t('actions.copy')}
+              <span className="translation-command-bar__action-label">{t('actions.copy')}</span>
             </Button>
             <IconButton
               label={t('translation.copyMenu')}
@@ -320,7 +314,7 @@ export function TranslationCommandBar({
               }}
             >
               <Download size={14} aria-hidden />
-              {t('actions.export')}
+              <span className="translation-command-bar__action-label">{t('actions.export')}</span>
               <ChevronDown size={14} aria-hidden />
             </Button>
             <DropdownMenu
@@ -368,10 +362,7 @@ export function TranslationCommandBar({
             onTranslateRange={onTranslateRange}
           />
 
-          <TranslationContextStatus
-            projectId={projectId}
-            packMode={activeJob?.progress?.packMode ?? null}
-          />
+          <TranslationContextStatus projectId={projectId} />
 
           <div className="translation-command-bar__dropdown">
             <IconButton
@@ -396,23 +387,40 @@ export function TranslationCommandBar({
               maxHeight={320}
             >
               {projectId && activeEditionId ? (
-                <div className="translation-command-bar__menu-spreadsheet" role="none">
-                  <TranslationSpreadsheetDialog
-                    projectId={projectId}
-                    editionId={activeEditionId}
-                    onComplete={() => {
-                      closeMenus();
-                    }}
-                    onImported={() => {
-                      closeMenus();
-                      onSpreadsheetImported();
-                    }}
-                  />
-                </div>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    closeMenus();
+                    setSpreadsheetOpen(true);
+                  }}
+                >
+                  {t('translation.excelCsvData')}
+                </button>
               ) : null}
-              <button type="button" role="menuitem" onClick={() => { closeMenus(); onToggleFocusMode(); }}>
+              <button type="button" role="menuitem" title="Ctrl+Shift+F" onClick={() => { closeMenus(); onToggleFocusMode(); }}>
                 {t('translation.focusMode')}
               </button>
+              {onPrevChapter ? (
+                <button type="button" role="menuitem" title="Alt+↑" onClick={() => { closeMenus(); onPrevChapter(); }}>
+                  {t('translation.prevChapter')}
+                </button>
+              ) : null}
+              {onNextChapter ? (
+                <button type="button" role="menuitem" title="Alt+↓" onClick={() => { closeMenus(); onNextChapter(); }}>
+                  {t('translation.nextChapter')}
+                </button>
+              ) : null}
+              {onNextUntranslated ? (
+                <button type="button" role="menuitem" title="Alt+Shift+↓" onClick={() => { closeMenus(); onNextUntranslated(); }}>
+                  {t('translation.nextUntranslated')}
+                </button>
+              ) : null}
+              {onNextIssue ? (
+                <button type="button" role="menuitem" title="Alt+Shift+↑" onClick={() => { closeMenus(); onNextIssue(); }}>
+                  {t('translation.nextIssue')}
+                </button>
+              ) : null}
               <button type="button" role="menuitem" onClick={() => { closeMenus(); onClearTranslations(); }}>
                 {selectedCount > 0 ? t('translation.clearSelected') : t('translation.clearChapter')}
               </button>
@@ -422,17 +430,32 @@ export function TranslationCommandBar({
             </DropdownMenu>
           </div>
 
-          {saveLabel ? (
-            <span className={`editor-save-status editor-save-status--${saveStatus}`}>{saveLabel}</span>
-          ) : null}
+          <EditorSaveChip status={saveStatus} />
         </div>
       </header>
+
+      {projectId && activeEditionId ? (
+        <TranslationSpreadsheetDialog
+          projectId={projectId}
+          editionId={activeEditionId}
+          open={spreadsheetOpen}
+          onClose={() => {
+            setSpreadsheetOpen(false);
+          }}
+          onImported={() => {
+            setSpreadsheetOpen(false);
+            onSpreadsheetImported();
+          }}
+        />
+      ) : null}
 
       {(activeJob || preparing) ? (
         <TranslationJobStrip
           job={activeJob}
           preparing={preparing}
           preparingMessage={preparingMessage}
+          onPause={pauseJob}
+          onResume={resumeJob}
         />
       ) : null}
     </div>

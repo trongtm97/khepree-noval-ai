@@ -10,6 +10,8 @@ interface VersionHistoryPanelProps {
   projectId: string;
   chapterId: string;
   onReverted: () => void;
+  /** When false, skip IPC. Closed history consumes no editor height. */
+  active?: boolean;
 }
 
 export function VersionHistoryPanel({
@@ -17,6 +19,7 @@ export function VersionHistoryPanel({
   projectId,
   chapterId,
   onReverted,
+  active = true,
 }: VersionHistoryPanelProps) {
   const t = useT();
   const [versions, setVersions] = useState<EditorVersion[]>([]);
@@ -24,6 +27,7 @@ export function VersionHistoryPanel({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!active) return;
     if (!translationId) {
       setVersions([]);
       return;
@@ -34,7 +38,7 @@ export function VersionHistoryPanel({
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : i18nT('editor.loadVersionsFailed'));
       });
-  }, [translationId]);
+  }, [active, translationId]);
 
   const revert = async (version: number) => {
     if (!translationId) return;

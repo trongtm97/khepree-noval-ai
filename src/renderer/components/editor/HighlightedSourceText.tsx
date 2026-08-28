@@ -8,12 +8,14 @@ interface HighlightedSourceTextProps {
   text: string;
   highlights: TermHighlight[];
   searchHighlight?: { start: number; end: number } | null;
+  onTermClick?: (termId: string) => void;
 }
 
 export function HighlightedSourceText({
   text,
   highlights,
   searchHighlight,
+  onTermClick,
 }: HighlightedSourceTextProps) {
   if (highlights.length === 0 && !searchHighlight) {
     return <span>{text}</span>;
@@ -51,9 +53,18 @@ export function HighlightedSourceText({
         .filter(Boolean)
         .join(' · ');
       nodes.push(
-        <mark key={`term-${range.start}`} className="editor-term" title={title}>
+        <button
+          key={`term-${range.start}`}
+          type="button"
+          className="editor-term"
+          title={title}
+          onClick={(event) => {
+            event.stopPropagation();
+            onTermClick?.(h.termId);
+          }}
+        >
           {slice}
-        </mark>,
+        </button>,
       );
     } else {
       nodes.push(

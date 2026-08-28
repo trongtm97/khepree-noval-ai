@@ -4,23 +4,19 @@ import { useT } from '../../i18n';
 
 interface TranslationContextStatusProps {
   projectId: string;
-  /** Live packMode from active job — technical tooltip only. */
-  packMode?: 'local_context' | 'notebook_assisted' | null;
 }
 
 interface MemoryBadge {
-  label: string;
   ok: boolean;
   tooltip: string;
 }
 
 /**
- * Translator-facing memory status — local SQLite only (Phase 5).
- * Research Notebook is optional and never blocks translation.
+ * Translator-facing memory status — local SQLite only.
+ * Chip only: "Bộ nhớ ✓". No pack-mode / version numbers.
  */
 export function TranslationContextStatus({
   projectId,
-  packMode,
 }: TranslationContextStatusProps) {
   const t = useT();
   const navigate = useNavigate();
@@ -43,25 +39,18 @@ export function TranslationContextStatus({
         boot.status === 'READY';
 
       setBadge({
-        label: t('translation.memoryLocal'),
         ok: localReady,
-        tooltip: [
-          localReady
-            ? t('translation.memoryTooltipLocalReady')
-            : t('translation.memoryTooltipLocal'),
-          packModeTip(packMode, t),
-        ]
-          .filter(Boolean)
-          .join(' · '),
+        tooltip: localReady
+          ? t('translation.memoryTooltipActive')
+          : t('translation.memoryTooltipLocal'),
       });
     } catch {
       setBadge({
-        label: t('translation.memoryLocal'),
         ok: false,
         tooltip: t('translation.memoryTooltipLocal'),
       });
     }
-  }, [projectId, packMode, t]);
+  }, [projectId, t]);
 
   useEffect(() => {
     void refresh();
@@ -78,18 +67,7 @@ export function TranslationContextStatus({
         navigate(`/projects/${projectId}/ai-memory`);
       }}
     >
-      <span className="translation-memory-badge__label">{t('translation.memoryLabel')}</span>
-      <span>{badge.label}</span>
+      {badge.ok ? t('translation.memoryChipOk') : t('translation.memoryChip')}
     </button>
   );
-}
-
-function packModeTip(
-  packMode: 'local_context' | 'notebook_assisted' | null | undefined,
-  t: (key: string, vars?: Record<string, string>) => string,
-): string {
-  if (!packMode) return '';
-  const label =
-    packMode === 'notebook_assisted' ? 'NOTEBOOK_ASSISTED' : 'LOCAL_CONTEXT';
-  return t('translation.memoryPackTooltip', { mode: label });
 }

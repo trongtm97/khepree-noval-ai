@@ -25,6 +25,11 @@ import { chapterRef } from '../../../components/translation/chapter-utils';
 import { TranslationCommandBar } from '../../../components/translation/TranslationCommandBar';
 import { TranslationSearchOverlay } from '../../../components/translation/TranslationSearchOverlay';
 import { TranslationWorkspace } from '../../../components/translation/TranslationWorkspace';
+import {
+  findNextIssueIndex,
+  findNextUntranslatedIndex,
+  translatingNumbersFromJob,
+} from '../../../utils/chapter-navigator';
 import { getLanguageProfile } from '@shared/constants/language-profile';
 import type { ChapterCopyMode, ChapterParagraphInput } from '@shared/utils/chapter-export-text';
 import type { NovelExportFormat } from '@shared/constants/portability';
@@ -232,6 +237,28 @@ export function useTranslationEditorController() {
       setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
     });
   }, [projectId, chapters, chapterIndex, loadChapter, t]);
+
+  useEffect(() => {
+    if (!projectId || chapters.length === 0) return;
+    const neighbors = [chapters[chapterIndex - 1], chapters[chapterIndex + 1]].filter(
+      (ch): ch is ChapterSummaryDto => Boolean(ch),
+    );
+    if (neighbors.length === 0) return;
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      for (const ch of neighbors) {
+        void window.novelTrans.editor.getChapter({ projectId, chapterId: ch.id });
+      }
+    };
+    const usedIdle = typeof window.requestIdleCallback === 'function';
+    const handle = usedIdle ? window.requestIdleCallback(run) : window.setTimeout(run, 250);
+    return () => {
+      cancelled = true;
+      if (usedIdle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+    };
+  }, [projectId, chapterIndex, chapters]);
 
   const scheduleSave = useCallback(
     (stableId: string, text: string) => {
@@ -566,6 +593,9 @@ export function useTranslationEditorController() {
     }
   };
 
+  const enqueueNovelRangeRef = useRef(enqueueNovelRange);
+  enqueueNovelRangeRef.current = enqueueNovelRange;
+
   const continueTranslate = async () => {
     const project = projects.find((p) => p.id === projectId);
     const chapter = chapters.at(chapterIndex);
@@ -583,14 +613,37 @@ export function useTranslationEditorController() {
 
   const selectedIds = useMemo(() => Array.from(selectedChapterIds), [selectedChapterIds]);
 
+  const translatingNumbers = useMemo(
+    () => translatingNumbersFromJob(activeJob),
+    // Ignore job.progress ticks so the chapter list does not rebuild on every poll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- identity is from/to/state
+    [activeJob?.id, activeJob?.state, activeJob?.chapterFrom, activeJob?.chapterTo],
+  );
+
+  const goNextUntranslated = useCallback(() => {
+    const next = findNextUntranslatedIndex(chapters, chapterIndex, translatingNumbers);
+    if (next != null) setChapterIndex(next);
+  }, [chapters, chapterIndex, translatingNumbers]);
+
+  const goNextIssue = useCallback(() => {
+    const next = findNextIssueIndex(chapters, chapterIndex, translatingNumbers);
+    if (next != null) setChapterIndex(next);
+  }, [chapters, chapterIndex, translatingNumbers]);
+
+  const translateSelectedChapters = useCallback(() => {
+    const ids = Array.from(selectedChapterIds);
+    if (ids.length === 0) return;
+    void enqueueNovelRangeRef.current({ chapterIds: ids });
+  }, [selectedChapterIds]);
+
   const currentParagraphInputs = useMemo((): ChapterParagraphInput[] => {
     return paragraphs.map((p) => {
-      const draft = dirty[p.stableParagraphId];
+      const hasDraft = Object.hasOwn(dirty, p.stableParagraphId);
       return {
         stableParagraphId: p.stableParagraphId,
         sourceText: p.sourceText,
         translatedText: p.translatedText,
-        ...(draft !== undefined ? { draftText: draft } : {}),
+        ...(hasDraft ? { draftText: dirty[p.stableParagraphId] } : {}),
       };
     });
   }, [paragraphs, dirty]);
@@ -754,6 +807,22 @@ export function useTranslationEditorController() {
     ],
   );
 
+  const onChapterCopy = useCallback(
+    (id: string, mode: ChapterCopyMode) => {
+      const ch = chapters.find((c) => c.id === id);
+      if (ch) void handleCopy(mode, ch);
+    },
+    [chapters, handleCopy],
+  );
+
+  const onChapterExport = useCallback(
+    (id: string, format: Extract<NovelExportFormat, 'txt' | 'docx'>) => {
+      const ch = chapters.find((c) => c.id === id);
+      if (ch) void handleExport(format, ch);
+    },
+    [chapters, handleExport],
+  );
+
   const handleExportSelected = useCallback(async () => {
     if (!projectId || selectedIds.length === 0) return;
     const project = projects.find((p) => p.id === projectId);
@@ -826,12 +895,20 @@ export function useTranslationEditorController() {
     }
   }, [projectId, projects, t]);
 
+  const exportSelectedChapters = useCallback(() => {
+    void handleExportSelected();
+  }, [handleExportSelected]);
+
+  const openExportDirectory = useCallback(() => {
+    void handleOpenExportDirectory();
+  }, [handleOpenExportDirectory]);
+
   const handleChangeExportLocation = useCallback(() => {
     if (!projectId) return;
     navigate(`/projects/${projectId}/export`);
   }, [navigate, projectId]);
 
-  const toggleChapterSelect = (idx: number, shiftKey: boolean) => {
+  const toggleChapterSelect = useCallback((idx: number, shiftKey: boolean) => {
     const chapter = chapters.at(idx);
     if (!chapter) return;
     setSelectedChapterIds((prev) => {
@@ -851,7 +928,17 @@ export function useTranslationEditorController() {
       return next;
     });
     selectAnchorRef.current = idx;
-  };
+  }, [chapters]);
+
+  const selectAllChapters = useCallback(() => {
+    setSelectedChapterIds(new Set(chapters.map((c) => c.id)));
+    selectAnchorRef.current = chapters.length > 0 ? 0 : null;
+  }, [chapters]);
+
+  const clearChapterSelection = useCallback(() => {
+    setSelectedChapterIds(new Set());
+    selectAnchorRef.current = null;
+  }, []);
 
   const clearSelectedTranslations = async () => {
     if (!projectId || selectedIds.length === 0) return;
@@ -950,8 +1037,8 @@ export function useTranslationEditorController() {
     }
   };
 
-  const retranslateChapter = async () => {
-    const chapter = chapters.at(chapterIndex);
+  const retranslateChapter = async (target?: ChapterSummaryDto) => {
+    const chapter = target ?? chapters.at(chapterIndex);
     if (!projectId || chapter === undefined) {
       setError(t('translation.selectChapter'));
       return;
@@ -985,6 +1072,17 @@ export function useTranslationEditorController() {
     }
   };
 
+  const retranslateChapterRef = useRef(retranslateChapter);
+  retranslateChapterRef.current = retranslateChapter;
+
+  const onChapterRetranslate = useCallback((id: string) => {
+    const ch = chapters.find((c) => c.id === id);
+    if (!ch) return;
+    const idx = chapters.findIndex((c) => c.id === id);
+    if (idx >= 0) setChapterIndex(idx);
+    void retranslateChapterRef.current(ch);
+  }, [chapters]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.ctrlKey || event.metaKey;
@@ -1014,24 +1112,28 @@ export function useTranslationEditorController() {
         event.preventDefault();
         applyRedo();
       }
-      if (mod && event.key === 'f') {
+      if (mod && event.key.toLowerCase() === 'f') {
         event.preventDefault();
-        openFind();
+        if (event.shiftKey) {
+          toggleFocusMode();
+        } else {
+          openFind();
+        }
         return;
       }
-      if (mod && event.key === 'h') {
+      if (mod && event.key.toLowerCase() === 'h' && !event.shiftKey) {
         event.preventDefault();
         openReplace();
-        return;
-      }
-      if (mod && event.shiftKey && event.key === 'F') {
-        event.preventDefault();
-        toggleFocusMode();
         return;
       }
       if (mod && event.shiftKey && event.key === 'B') {
         event.preventDefault();
         toggleChapterRail();
+        return;
+      }
+      if (event.key === 'Escape' && searchOpen) {
+        event.preventDefault();
+        closeSearch();
         return;
       }
       if (focusMode && event.key === 'Escape') {
@@ -1041,11 +1143,15 @@ export function useTranslationEditorController() {
       }
       if (event.altKey && event.key === 'ArrowUp') {
         event.preventDefault();
-        goChapter(-1);
+        if (event.shiftKey) goNextIssue();
+        else goChapter(-1);
+        return;
       }
       if (event.altKey && event.key === 'ArrowDown') {
         event.preventDefault();
-        goChapter(1);
+        if (event.shiftKey) goNextUntranslated();
+        else goChapter(1);
+        return;
       }
       if (mod && event.key === 'g' && searchMatches.length > 0) {
         event.preventDefault();
@@ -1062,6 +1168,8 @@ export function useTranslationEditorController() {
     chapterId,
     dirty,
     goChapter,
+    goNextUntranslated,
+    goNextIssue,
     markSaveError,
     markSaved,
     projectId,
@@ -1073,6 +1181,8 @@ export function useTranslationEditorController() {
     nextMatch,
     toggleFocusMode,
     toggleChapterRail,
+    searchOpen,
+    closeSearch,
   ]);
 
   const currentChapter = chapters.at(chapterIndex) ?? null;
@@ -1126,16 +1236,8 @@ export function useTranslationEditorController() {
         onExport={(format) => {
           void handleExport(format);
         }}
-        onExportSelected={
-          selectedIds.length > 1
-            ? () => {
-                void handleExportSelected();
-              }
-            : undefined
-        }
-        onOpenExportDirectory={() => {
-          void handleOpenExportDirectory();
-        }}
+        onExportSelected={selectedIds.length > 1 ? exportSelectedChapters : undefined}
+        onOpenExportDirectory={openExportDirectory}
         onChangeExportLocation={handleChangeExportLocation}
         onContinue={() => {
           void continueTranslate();
@@ -1163,6 +1265,14 @@ export function useTranslationEditorController() {
             : retranslateChapter());
         }}
         onToggleFocusMode={toggleFocusMode}
+        onPrevChapter={() => {
+          goChapter(-1);
+        }}
+        onNextChapter={() => {
+          goChapter(1);
+        }}
+        onNextUntranslated={goNextUntranslated}
+        onNextIssue={goNextIssue}
         onSpreadsheetImported={() => {
           if (chapters.length === 0) return;
           const chapter = chapters[chapterIndex] ?? chapters[0];
@@ -1226,6 +1336,7 @@ export function useTranslationEditorController() {
         chapterIndex={chapterIndex}
         selectedChapterIds={selectedChapterIds}
         enqueueBusy={enqueueBusy}
+        translatingNumbers={translatingNumbers}
         paragraphs={paragraphs}
         activeParagraphId={activeParagraphId}
         dirty={dirty}
@@ -1241,29 +1352,16 @@ export function useTranslationEditorController() {
         onToggleChapterRail={toggleChapterRail}
         onSelectChapter={setChapterIndex}
         onToggleChapterSelect={toggleChapterSelect}
-        onSelectAllChapters={() => {
-          setSelectedChapterIds(new Set(chapters.map((c) => c.id)));
-          selectAnchorRef.current = chapters.length > 0 ? 0 : null;
-        }}
-        onClearChapterSelection={() => {
-          setSelectedChapterIds(new Set());
-          selectAnchorRef.current = null;
-        }}
-        onChapterCopy={(chapterId, mode) => {
-          const ch = chapters.find((c) => c.id === chapterId);
-          if (ch) void handleCopy(mode, ch);
-        }}
-        onChapterExport={(chapterId, format) => {
-          const ch = chapters.find((c) => c.id === chapterId);
-          if (ch) void handleExport(format, ch);
-        }}
-        onChapterRetranslate={(chapterId) => {
-          const idx = chapters.findIndex((c) => c.id === chapterId);
-          if (idx >= 0) {
-            setChapterIndex(idx);
-            void retranslateChapter();
-          }
-        }}
+        onSelectAllChapters={selectAllChapters}
+        onClearChapterSelection={clearChapterSelection}
+        onTranslateSelected={translateSelectedChapters}
+        onExportSelected={exportSelectedChapters}
+        onOpenExportDirectory={openExportDirectory}
+        onNextUntranslated={goNextUntranslated}
+        onNextIssue={goNextIssue}
+        onChapterCopy={onChapterCopy}
+        onChapterExport={onChapterExport}
+        onChapterRetranslate={onChapterRetranslate}
         onSelectParagraph={setActiveParagraph}
         onDraftChange={handleDraftChange}
         onEditorReverted={() => {
