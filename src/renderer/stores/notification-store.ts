@@ -13,6 +13,12 @@ export function shouldAutoDismissToast(kind: NotificationKind): boolean {
   return kind !== 'ACTION_REQUIRED';
 }
 
+export interface ToastAction {
+  label: string;
+  action: 'open-file' | 'open-folder';
+  path: string;
+}
+
 export interface AppNotification {
   id: string;
   kind: NotificationKind;
@@ -23,6 +29,8 @@ export interface AppNotification {
   projectName?: string;
   read: boolean;
   toast?: boolean;
+  toastActions?: ToastAction[];
+  toastDurationMs?: number;
 }
 
 interface NotificationState {
@@ -55,6 +63,8 @@ export const useNotificationStore = create<NotificationState>()(
               projectName: n.projectName,
               read: false,
               toast: n.toast ?? ['SUCCESS', 'ERROR', 'ACTION_REQUIRED'].includes(n.kind),
+        toastActions: n.toastActions,
+        toastDurationMs: n.toastDurationMs,
             },
             ...state.items,
           ].slice(0, 200),

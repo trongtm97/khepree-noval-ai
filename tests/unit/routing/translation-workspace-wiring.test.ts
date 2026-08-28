@@ -55,13 +55,22 @@ describe('canonical translation workspace wiring', () => {
     expect(hook).toContain('TranslationSearchOverlay');
     expect(hook).toContain('event.shiftKey');
     expect(hook).toContain('toggleFocusMode');
+  });
 
+  it('command bar uses action hierarchy layout', () => {
     const commandBar = readFileSync(
       resolve(process.cwd(), 'src/renderer/components/translation/TranslationCommandBar.tsx'),
       'utf8',
     );
-    expect(commandBar).toContain('excelCsvData');
-    expect(commandBar).not.toContain('translation-command-bar__menu-spreadsheet');
+    const actions = readFileSync(
+      resolve(process.cwd(), 'src/renderer/components/translation/TranslationActions.tsx'),
+      'utf8',
+    );
+    expect(commandBar).toContain('translation-command-bar__chapter-nav');
+    expect(commandBar).toContain('translation-command-bar__split-action');
+    expect(commandBar).not.toContain('onNextUntranslated');
+    expect(actions).toContain('translation-action-split__main');
+    expect(actions).toContain('translateSettings');
   });
 
   it('collapsed workspace grid uses context rail not panel width', () => {
@@ -70,6 +79,9 @@ describe('canonical translation workspace wiring', () => {
       /\.translation-workspace \{[\s\S]*minmax\(0,\s*1fr\)[\s\S]*--context-rail-width/,
     );
     expect(css).toContain('translation-workspace--context-expanded');
+    expect(css).toContain('chapter-nav-header--stacked');
+    expect(css).toContain('chapter-rail-edge-toggle');
+    expect(css).toContain('translation-context--overlay');
   });
 
   it('translation workspace uses one ChapterNavigator, not an inline chapters.map', () => {

@@ -193,4 +193,56 @@ describe('ChapterNavigator', () => {
       expect(list?.scrollTop).toBe(180);
     });
   });
+
+  it('uses stacked header without single-row icon cramming', () => {
+    const chapters = makeChapters(184);
+    const { container } = render(
+      <ChapterNavigator
+        projectId="p1"
+        chapters={chapters}
+        chapterIndex={2}
+        selectedChapterIds={new Set()}
+        busy={false}
+        collapsed={false}
+        {...noop}
+      />,
+    );
+    expect(container.querySelector('.chapter-nav-header--stacked')).toBeTruthy();
+    expect(container.querySelector('.chapter-nav-header-row--search')).toBeTruthy();
+    expect(container.querySelector('.chapter-nav-filter-btn')).toBeTruthy();
+    expect(container.querySelectorAll('.chapter-nav-header-row').length).toBe(2);
+  });
+
+  it('shows chapter display label as "Chương N" or with title', () => {
+    render(
+      <ChapterNavigator
+        projectId="p1"
+        chapters={makeChapters(5)}
+        chapterIndex={0}
+        selectedChapterIds={new Set()}
+        busy={false}
+        collapsed={false}
+        {...noop}
+      />,
+    );
+    expect(screen.getByText('Chương 1')).toBeTruthy();
+    expect(screen.getByText(/Chương 2 · Mở đầu/)).toBeTruthy();
+  });
+
+  it('shows filter chip when status filter active', () => {
+    render(
+      <ChapterNavigator
+        projectId="p1"
+        chapters={makeChapters(10)}
+        chapterIndex={0}
+        selectedChapterIds={new Set()}
+        busy={false}
+        collapsed={false}
+        {...noop}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Lọc chương'));
+    fireEvent.click(screen.getByText('Chưa dịch'));
+    expect(screen.getByText(/Chưa dịch ×/)).toBeTruthy();
+  });
 });

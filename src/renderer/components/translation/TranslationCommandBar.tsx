@@ -1,5 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ChevronDown, Copy, Download, MoreHorizontal } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
+  MoreHorizontal,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { ProjectDto } from '@shared/schemas/import';
 import type { ChapterSummaryDto } from '@shared/schemas/translation-pack';
@@ -14,10 +22,13 @@ import { LanguagePairLabel } from '../LanguagePairLabel';
 import { TranslationActions } from './TranslationActions';
 import { TranslationContextStatus } from './TranslationContextStatus';
 import { TranslationJobStrip } from './TranslationJobStrip';
+import { TranslationIssueCounter } from './TranslationIssueCounter';
+import { TranslationChapterStatus } from './TranslationChapterStatus';
 import { EditorSaveChip } from './EditorSaveChip';
 import { TranslationSpreadsheetDialog } from '../TranslationSpreadsheetDialog';
 import { VirtualChapterPicker } from './VirtualChapterPicker';
 import { chapterMatchesSearch } from '../../utils/chapter-navigator';
+import type { EditorFontPreset } from '../../stores/translation-workspace-store';
 
 export interface TranslationCommandBarProps {
   projects: ProjectDto[];
@@ -26,6 +37,7 @@ export interface TranslationCommandBarProps {
   sourceLanguage: string;
   targetLanguage: string;
   activeEditionId?: string;
+  nextUntranslatedChapter?: number | null;
   chapters: ChapterSummaryDto[];
   chapterIndex: number;
   chapterNumber: number | null;
@@ -47,15 +59,27 @@ export interface TranslationCommandBarProps {
   onTranslateCurrent: () => void;
   onTranslateNext3: () => void;
   onTranslateRemaining: () => void;
+  onTranslateSelected: () => void;
   onTranslateRange: (from: number, to: number) => void;
   onClearTranslations: () => void;
   onRetranslate: () => void;
   onToggleFocusMode: () => void;
+  onToggleContext?: () => void;
   onSpreadsheetImported: () => void;
   onPrevChapter?: () => void;
   onNextChapter?: () => void;
-  onNextUntranslated?: () => void;
-  onNextIssue?: () => void;
+  qaIssueCount?: number;
+  onJumpQaIssue?: () => void;
+  chapterTranslated?: boolean;
+  hasNextChapter?: boolean;
+  readingMode?: boolean;
+  qaReviewMode?: boolean;
+  editorFontPreset?: EditorFontPreset;
+  autoAdvanceAfterTranslate?: boolean;
+  onToggleReadingMode?: () => void;
+  onToggleQaReviewMode?: () => void;
+  onSetEditorFontPreset?: (preset: EditorFontPreset) => void;
+  onSetAutoAdvanceAfterTranslate?: (value: boolean) => void;
 }
 
 export function TranslationCommandBar({
@@ -65,6 +89,7 @@ export function TranslationCommandBar({
   sourceLanguage,
   targetLanguage,
   activeEditionId,
+  nextUntranslatedChapter,
   chapters,
   chapterIndex,
   chapterNumber,
@@ -86,15 +111,27 @@ export function TranslationCommandBar({
   onTranslateCurrent,
   onTranslateNext3,
   onTranslateRemaining,
+  onTranslateSelected,
   onTranslateRange,
   onClearTranslations,
   onRetranslate,
   onToggleFocusMode,
+  onToggleContext,
   onSpreadsheetImported,
   onPrevChapter,
   onNextChapter,
-  onNextUntranslated,
-  onNextIssue,
+  qaIssueCount = 0,
+  onJumpQaIssue,
+  chapterTranslated = false,
+  hasNextChapter = false,
+  readingMode = false,
+  qaReviewMode = false,
+  editorFontPreset = 'md',
+  autoAdvanceAfterTranslate = false,
+  onToggleReadingMode,
+  onToggleQaReviewMode,
+  onSetEditorFontPreset,
+  onSetAutoAdvanceAfterTranslate,
 }: TranslationCommandBarProps) {
   const t = useT();
   const navigate = useNavigate();
@@ -108,7 +145,9 @@ export function TranslationCommandBar({
   const projectTriggerRef = useRef<HTMLButtonElement>(null);
   const chapterTriggerRef = useRef<HTMLButtonElement>(null);
   const copyAnchorRef = useRef<HTMLDivElement>(null);
-  const exportTriggerRef = useRef<HTMLButtonElement>(null);
+  const copyChevronRef = useRef<HTMLButtonElement>(null);
+  const exportAnchorRef = useRef<HTMLDivElement>(null);
+  const exportChevronRef = useRef<HTMLButtonElement>(null);
   const moreTriggerRef = useRef<HTMLButtonElement>(null);
 
   const filteredChapters = useMemo(() => {
@@ -117,10 +156,25 @@ export function TranslationCommandBar({
       .filter(({ ch }) => chapterMatchesSearch(ch, chapterFilter));
   }, [chapters, chapterFilter]);
 
+  const canPrev = chapterIndex > 0;
+  const canNext = chapterIndex < chapters.length - 1;
+
   const closeMenus = () => {
     setProjectOpen(false);
     setChapterOpen(false);
     setCopyOpen(false);
+    setExportOpen(false);
+    setMoreOpen(false);
+  };
+
+  const openExportMenu = () => {
+    setExportOpen(true);
+    setCopyOpen(false);
+    setMoreOpen(false);
+  };
+
+  const openCopyMenu = () => {
+    setCopyOpen(true);
     setExportOpen(false);
     setMoreOpen(false);
   };
@@ -192,58 +246,84 @@ export function TranslationCommandBar({
             </ListboxPopover>
           </div>
 
-          <div className="translation-command-bar__dropdown">
-            <button
-              ref={chapterTriggerRef}
-              type="button"
-              className="translation-command-bar__picker"
-              aria-expanded={chapterOpen}
-              aria-haspopup="listbox"
-              disabled={chapters.length === 0}
+          <div className="translation-command-bar__chapter-nav">
+            <IconButton
+              label={t('translation.prevChapter')}
+              className="translation-command-bar__chapter-step"
+              disabled={!canPrev}
+              title={t('translation.shortcutPrevChapter')}
               onClick={() => {
-                setChapterOpen((v) => !v);
-                setProjectOpen(false);
+                onPrevChapter?.();
               }}
             >
-              <span>
-                {chapterNumber != null
-                  ? t('translation.chapterNumber', { n: String(chapterNumber) })
-                  : t('translation.selectChapter')}
-              </span>
-              <ChevronDown size={14} aria-hidden />
-            </button>
-            <ListboxPopover
-              open={chapterOpen}
-              onOpenChange={(next) => {
-                setChapterOpen(next);
-                if (!next) setChapterFilter('');
+              <ChevronLeft size={16} aria-hidden />
+            </IconButton>
+
+            <div className="translation-command-bar__dropdown">
+              <button
+                ref={chapterTriggerRef}
+                type="button"
+                className="translation-command-bar__picker translation-command-bar__picker--chapter"
+                aria-expanded={chapterOpen}
+                aria-haspopup="listbox"
+                disabled={chapters.length === 0}
+                onClick={() => {
+                  setChapterOpen((v) => !v);
+                  setProjectOpen(false);
+                }}
+              >
+                <span>
+                  {chapterNumber != null
+                    ? t('translation.chapterNumber', { n: String(chapterNumber) })
+                    : t('translation.selectChapter')}
+                </span>
+                <ChevronDown size={14} aria-hidden />
+              </button>
+              <ListboxPopover
+                open={chapterOpen}
+                onOpenChange={(next) => {
+                  setChapterOpen(next);
+                  if (!next) setChapterFilter('');
+                }}
+                anchorRef={chapterTriggerRef}
+                className="translation-command-bar__menu translation-command-bar__menu--chapters"
+                placement="bottom-start"
+                matchAnchorWidth={false}
+                minWidth={240}
+                maxHeight={280}
+              >
+                <input
+                  type="search"
+                  className="input translation-command-bar__chapter-search"
+                  placeholder={t('translation.chapterSearchPlaceholder')}
+                  value={chapterFilter}
+                  onChange={(e) => {
+                    setChapterFilter(e.target.value);
+                  }}
+                />
+                <VirtualChapterPicker
+                  chapters={filteredChapters}
+                  chapterIndex={chapterIndex}
+                  onPick={(idx) => {
+                    closeMenus();
+                    setChapterFilter('');
+                    onChapterChange(idx);
+                  }}
+                />
+              </ListboxPopover>
+            </div>
+
+            <IconButton
+              label={t('translation.nextChapter')}
+              className="translation-command-bar__chapter-step"
+              disabled={!canNext}
+              title={t('translation.shortcutNextChapter')}
+              onClick={() => {
+                onNextChapter?.();
               }}
-              anchorRef={chapterTriggerRef}
-              className="translation-command-bar__menu translation-command-bar__menu--chapters"
-              placement="bottom-start"
-              matchAnchorWidth={false}
-              minWidth={240}
-              maxHeight={280}
             >
-              <input
-                type="search"
-                className="input translation-command-bar__chapter-search"
-                placeholder={t('translation.chapterSearchPlaceholder')}
-                value={chapterFilter}
-                onChange={(e) => {
-                  setChapterFilter(e.target.value);
-                }}
-              />
-              <VirtualChapterPicker
-                chapters={filteredChapters}
-                chapterIndex={chapterIndex}
-                onPick={(idx) => {
-                  closeMenus();
-                  setChapterFilter('');
-                  onChapterChange(idx);
-                }}
-              />
-            </ListboxPopover>
+              <ChevronRight size={16} aria-hidden />
+            </IconButton>
           </div>
 
           <LanguagePairLabel
@@ -254,7 +334,13 @@ export function TranslationCommandBar({
         </div>
 
         <div className="translation-command-bar__actions">
-          <div ref={copyAnchorRef} className="translation-command-bar__dropdown">
+          <EditorSaveChip status={saveStatus} />
+
+          {onJumpQaIssue ? (
+            <TranslationIssueCounter count={qaIssueCount} onJump={onJumpQaIssue} />
+          ) : null}
+
+          <div ref={copyAnchorRef} className="translation-command-bar__split-action">
             <Button
               variant="secondary"
               size="sm"
@@ -268,13 +354,11 @@ export function TranslationCommandBar({
               <span className="translation-command-bar__action-label">{t('actions.copy')}</span>
             </Button>
             <IconButton
+              ref={copyChevronRef}
               label={t('translation.copyMenu')}
               active={copyOpen}
-              onClick={() => {
-                setCopyOpen((v) => !v);
-                setExportOpen(false);
-                setMoreOpen(false);
-              }}
+              className="translation-command-bar__split-chevron"
+              onClick={openCopyMenu}
             >
               <ChevronDown size={14} />
             </IconButton>
@@ -299,28 +383,32 @@ export function TranslationCommandBar({
             </DropdownMenu>
           </div>
 
-          <div className="translation-command-bar__dropdown">
+          <div ref={exportAnchorRef} className="translation-command-bar__split-action">
             <Button
-              ref={exportTriggerRef}
               variant="secondary"
               size="sm"
               disabled={busy || chapters.length === 0}
               aria-expanded={exportOpen}
               aria-haspopup="menu"
-              onClick={() => {
-                setExportOpen((v) => !v);
-                setCopyOpen(false);
-                setMoreOpen(false);
-              }}
+              aria-label={t('actions.export')}
+              onClick={openExportMenu}
             >
               <Download size={14} aria-hidden />
               <span className="translation-command-bar__action-label">{t('actions.export')}</span>
-              <ChevronDown size={14} aria-hidden />
             </Button>
+            <IconButton
+              ref={exportChevronRef}
+              label={t('actions.export')}
+              active={exportOpen}
+              className="translation-command-bar__split-chevron"
+              onClick={openExportMenu}
+            >
+              <ChevronDown size={14} />
+            </IconButton>
             <DropdownMenu
               open={exportOpen}
               onOpenChange={setExportOpen}
-              anchorRef={exportTriggerRef}
+              anchorRef={exportAnchorRef}
               className="translation-command-bar__menu translation-command-bar__menu--wide"
               placement="bottom-end"
               minWidth={200}
@@ -353,16 +441,26 @@ export function TranslationCommandBar({
 
           <TranslationActions
             projectId={projectId}
+            chapters={chapters}
+            chapterIndex={chapterIndex}
+            nextUntranslatedChapter={nextUntranslatedChapter}
+            selectedCount={selectedCount}
             busy={busy}
             preparing={preparing}
+            activeJob={activeJob}
             onContinue={onContinue}
             onTranslateCurrent={onTranslateCurrent}
             onTranslateNext3={onTranslateNext3}
             onTranslateRemaining={onTranslateRemaining}
+            onTranslateSelected={onTranslateSelected}
             onTranslateRange={onTranslateRange}
+            onResume={resumeJob}
           />
 
-          <TranslationContextStatus projectId={projectId} />
+          <TranslationContextStatus
+            projectId={projectId}
+            onOpenContext={onToggleContext}
+          />
 
           <div className="translation-command-bar__dropdown">
             <IconButton
@@ -398,39 +496,86 @@ export function TranslationCommandBar({
                   {t('translation.excelCsvData')}
                 </button>
               ) : null}
+              {onToggleContext ? (
+                <button type="button" role="menuitem" onClick={() => { closeMenus(); onToggleContext(); }}>
+                  {t('translation.showContext')}
+                </button>
+              ) : null}
+              {onToggleReadingMode ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={readingMode ? 'active' : undefined}
+                  onClick={() => {
+                    closeMenus();
+                    onToggleReadingMode();
+                  }}
+                >
+                  {t('translation.readingMode')}
+                </button>
+              ) : null}
+              {onToggleQaReviewMode ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={qaReviewMode ? 'active' : undefined}
+                  onClick={() => {
+                    closeMenus();
+                    onToggleQaReviewMode();
+                  }}
+                >
+                  {t('translation.qaReviewMode')}
+                </button>
+              ) : null}
+              {onSetEditorFontPreset ? (
+                <>
+                  <div className="translation-command-bar__menu-sep" role="separator" />
+                  <div className="translation-command-bar__menu-label" role="presentation">
+                    {t('translation.editorFontSize')}
+                  </div>
+                  {(['sm', 'md', 'lg'] as const).map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={editorFontPreset === preset}
+                      className={editorFontPreset === preset ? 'active' : undefined}
+                      onClick={() => {
+                        closeMenus();
+                        onSetEditorFontPreset(preset);
+                      }}
+                    >
+                      {t(`translation.editorFontPreset.${preset}`)}
+                    </button>
+                  ))}
+                </>
+              ) : null}
+              {onSetAutoAdvanceAfterTranslate ? (
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={autoAdvanceAfterTranslate}
+                  className={autoAdvanceAfterTranslate ? 'active' : undefined}
+                  onClick={() => {
+                    closeMenus();
+                    onSetAutoAdvanceAfterTranslate(!autoAdvanceAfterTranslate);
+                  }}
+                >
+                  {t('translation.autoAdvanceAfterTranslate')}
+                </button>
+              ) : null}
               <button type="button" role="menuitem" title="Ctrl+Shift+F" onClick={() => { closeMenus(); onToggleFocusMode(); }}>
                 {t('translation.focusMode')}
               </button>
-              {onPrevChapter ? (
-                <button type="button" role="menuitem" title="Alt+↑" onClick={() => { closeMenus(); onPrevChapter(); }}>
-                  {t('translation.prevChapter')}
-                </button>
-              ) : null}
-              {onNextChapter ? (
-                <button type="button" role="menuitem" title="Alt+↓" onClick={() => { closeMenus(); onNextChapter(); }}>
-                  {t('translation.nextChapter')}
-                </button>
-              ) : null}
-              {onNextUntranslated ? (
-                <button type="button" role="menuitem" title="Alt+Shift+↓" onClick={() => { closeMenus(); onNextUntranslated(); }}>
-                  {t('translation.nextUntranslated')}
-                </button>
-              ) : null}
-              {onNextIssue ? (
-                <button type="button" role="menuitem" title="Alt+Shift+↑" onClick={() => { closeMenus(); onNextIssue(); }}>
-                  {t('translation.nextIssue')}
-                </button>
-              ) : null}
-              <button type="button" role="menuitem" onClick={() => { closeMenus(); onClearTranslations(); }}>
-                {selectedCount > 0 ? t('translation.clearSelected') : t('translation.clearChapter')}
-              </button>
-              <button type="button" role="menuitem" onClick={() => { closeMenus(); onRetranslate(); }}>
+              <hr className="translation-menu__sep" />
+              <button type="button" role="menuitem" className="translation-menu__danger" onClick={() => { closeMenus(); onRetranslate(); }}>
                 {selectedCount > 0 ? t('actions.retranslateSelected') : t('actions.retranslate')}
+              </button>
+              <button type="button" role="menuitem" className="translation-menu__danger" onClick={() => { closeMenus(); onClearTranslations(); }}>
+                {selectedCount > 0 ? t('translation.clearSelected') : t('translation.clearChapter')}
               </button>
             </DropdownMenu>
           </div>
-
-          <EditorSaveChip status={saveStatus} />
         </div>
       </header>
 
@@ -456,6 +601,12 @@ export function TranslationCommandBar({
           preparingMessage={preparingMessage}
           onPause={pauseJob}
           onResume={resumeJob}
+        />
+      ) : chapterTranslated ? (
+        <TranslationChapterStatus
+          translated
+          hasNext={hasNextChapter}
+          onNextChapter={onNextChapter}
         />
       ) : null}
     </div>

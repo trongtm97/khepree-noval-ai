@@ -1,82 +1,120 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Settings2 } from 'lucide-react';
+import { ChevronDown, Play, Settings2 } from 'lucide-react';
+import type { ChapterSummaryDto } from '@shared/schemas/translation-pack';
+import type { JobDto } from '@shared/schemas/job';
+import { isJobActive } from '@shared/utils/job-progress';
 import { useT } from '../../i18n';
+import { resolvePrimaryTranslateAction } from '../../utils/translation-primary-action';
 import { DropdownMenu } from '../overlay';
 import { Button, Input, Dialog } from '../ui';
 
 export interface TranslationActionsProps {
   projectId: string;
+  chapters: ChapterSummaryDto[];
+  chapterIndex: number;
+  nextUntranslatedChapter?: number | null;
+  selectedCount: number;
   busy: boolean;
   preparing: boolean;
+  activeJob: JobDto | null;
   onContinue: () => void;
   onTranslateCurrent: () => void;
   onTranslateNext3: () => void;
   onTranslateRemaining: () => void;
+  onTranslateSelected: () => void;
   onTranslateRange: (from: number, to: number) => void;
+  onResume?: () => void;
 }
 
 /**
  * Primary [Dịch tiếp] + translator translate menu.
- * Advanced links → Settings / Jobs (not a developer console).
+ * High-frequency CTA — larger than secondary toolbar actions.
  */
 export function TranslationActions({
   projectId,
+  chapters,
+  chapterIndex,
+  nextUntranslatedChapter,
+  selectedCount,
   busy,
   preparing,
+  activeJob,
   onContinue,
   onTranslateCurrent,
   onTranslateNext3,
   onTranslateRemaining,
+  onTranslateSelected,
   onTranslateRange,
+  onResume,
 }: TranslationActionsProps) {
   const t = useT();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [rangeOpen, setRangeOpen] = useState(false);
   const [rangeFrom, setRangeFrom] = useState('');
   const [rangeTo, setRangeTo] = useState('');
   const chevronRef = useRef<HTMLButtonElement>(null);
+
+  const primary = resolvePrimaryTranslateAction({
+    chapters,
+    chapterIndex,
+    nextUntranslatedChapter,
+    activeJob,
+    preparing,
+    busy,
+  });
+
+  const jobBlocksMenu = activeJob != null && isJobActive(activeJob.state);
+
+  const handlePrimary = () => {
+    if (primary.primaryHandler === 'resume') {
+      onResume?.();
+      return;
+    }
+    if (primary.primaryHandler === 'continue') {
+      onContinue();
+    }
+  };
+
+  const label = t(primary.labelKey, primary.labelParams);
 
   return (
     <div className="translation-actions">
       <div className="translation-action-split">
         <Button
           variant="primary"
-          size="sm"
-          loading={busy}
-          disabled={busy || !projectId}
-          onClick={onContinue}
+          className="translation-action-split__main"
+          loading={primary.loading}
+          disabled={primary.disabled || !projectId}
+          aria-label={label}
+          title={t('translation.shortcutTranslateContinue')}
+          onClick={handlePrimary}
         >
-          {preparing ? t('translation.ensuringReady') : t('translation.continueAction')}
+          {primary.showPlayIcon ? <Play size={16} aria-hidden /> : null}
+          <span className="translation-action-split__label">{label}</span>
         </Button>
         <Button
           ref={chevronRef}
           variant="primary"
-          size="sm"
           className="translation-action-split__chevron"
-          disabled={busy || !projectId}
+          disabled={busy || !projectId || jobBlocksMenu}
           aria-expanded={open}
           aria-haspopup="menu"
           aria-label={t('translation.translateMenu')}
           onClick={() => {
             setOpen((v) => !v);
-            setAdvancedOpen(false);
           }}
         >
           <ChevronDown size={16} aria-hidden />
         </Button>
         <DropdownMenu
           open={open}
-          onOpenChange={(next) => {
-            setOpen(next);
-            if (!next) setAdvancedOpen(false);
-          }}
+          onOpenChange={setOpen}
           anchorRef={chevronRef}
           className="translation-menu"
           placement="bottom-end"
-          minWidth={220}
+          minWidth={240}
           maxHeight={400}
         >
           <button
@@ -99,6 +137,28 @@ export function TranslationActions({
           >
             {t('translation.translateNext3')}
           </button>
+          {selectedCount > 0 ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onTranslateSelected();
+              }}
+            >
+              {t('translation.translateSelectedMenu', { count: String(selectedCount) })}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setRangeOpen(true);
+            }}
+          >
+            {t('translation.translateRangeMenu')}
+          </button>
           <button
             type="button"
             role="menuitem"
@@ -109,76 +169,23 @@ export function TranslationActions({
           >
             {t('translation.translateRemaining')}
           </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              setRangeOpen(true);
-            }}
-          >
-            {t('translation.translateOptions')}
-          </button>
           <hr className="translation-menu__sep" />
           <button
             type="button"
             role="menuitem"
             onClick={() => {
-              setAdvancedOpen((v) => !v);
+              setOpen(false);
+              navigate('/settings');
             }}
           >
-            <Settings2 size={14} aria-hidden /> {t('translation.advancedOptions')}
+            <Settings2 size={14} aria-hidden /> {t('translation.translateSettings')}
           </button>
-          {advancedOpen ? (
-            <div className="translation-menu__advanced" role="group">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  navigate('/jobs');
-                }}
-              >
-                {t('translation.advancedWorker')}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  navigate('/settings');
-                }}
-              >
-                {t('translation.advancedProvider')}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  navigate('/settings');
-                }}
-              >
-                {t('translation.advancedBatch')}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  navigate('/settings');
-                }}
-              >
-                {t('translation.advancedWaves')}
-              </button>
-            </div>
-          ) : null}
         </DropdownMenu>
       </div>
 
       <Dialog
         open={rangeOpen}
-        title={t('translation.translateOptions')}
+        title={t('translation.translateRangeMenu')}
         description={t('translation.novelMemoryHint')}
         confirmLabel={t('actions.start')}
         cancelLabel={t('actions.cancel')}

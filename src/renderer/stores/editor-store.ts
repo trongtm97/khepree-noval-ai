@@ -12,6 +12,7 @@ interface EditorState {
   projectId: string;
   chapterId: string;
   chapterNumber: number;
+  chapterTitle: string | null;
   paragraphs: EditorParagraphDto[];
   activeParagraphId: string | null;
   dirty: Record<string, string>;
@@ -24,6 +25,7 @@ interface EditorState {
     chapterId: string,
     chapterNumber: number,
     paragraphs: EditorParagraphDto[],
+    chapterTitle?: string | null,
   ) => void;
   setActiveParagraph: (stableId: string | null) => void;
   updateDraft: (stableId: string, text: string) => void;
@@ -41,6 +43,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   projectId: '',
   chapterId: '',
   chapterNumber: 1,
+  chapterTitle: null,
   paragraphs: [],
   activeParagraphId: null,
   dirty: {},
@@ -49,11 +52,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   context: null,
   undoStacks: { undo: [], redo: [] },
 
-  setChapter: (projectId, chapterId, chapterNumber, paragraphs) => {
+  setChapter: (projectId, chapterId, chapterNumber, paragraphs, chapterTitle = null) => {
     set({
       projectId,
       chapterId,
       chapterNumber,
+      chapterTitle,
       paragraphs,
       activeParagraphId: paragraphs[0]?.stableParagraphId ?? null,
       dirty: {},

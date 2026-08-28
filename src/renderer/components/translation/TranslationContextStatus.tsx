@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Brain } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useT } from '../../i18n';
 
 interface TranslationContextStatusProps {
   projectId: string;
+  onOpenContext?: () => void;
 }
 
 interface MemoryBadge {
@@ -11,12 +13,10 @@ interface MemoryBadge {
   tooltip: string;
 }
 
-/**
- * Translator-facing memory status — local SQLite only.
- * Chip only: "Bộ nhớ ✓". No pack-mode / version numbers.
- */
+/** Quiet ghost chip — opens context panel or memory summary. */
 export function TranslationContextStatus({
   projectId,
+  onOpenContext,
 }: TranslationContextStatusProps) {
   const t = useT();
   const navigate = useNavigate();
@@ -61,13 +61,21 @@ export function TranslationContextStatus({
   return (
     <button
       type="button"
-      className={`translation-memory-badge ${badge.ok ? 'is-ok' : ''}`}
+      className={`translation-memory-badge translation-memory-badge--ghost ${badge.ok ? 'is-ok' : ''}`}
       title={badge.tooltip}
+      aria-label={badge.tooltip}
       onClick={() => {
+        if (onOpenContext) {
+          onOpenContext();
+          return;
+        }
         navigate(`/projects/${projectId}/ai-memory`);
       }}
     >
-      {badge.ok ? t('translation.memoryChipOk') : t('translation.memoryChip')}
+      <Brain size={14} aria-hidden className="translation-memory-badge__icon" />
+      <span className="translation-memory-badge__label">
+        {badge.ok ? t('translation.memoryChipOkShort') : t('translation.memoryChipShort')}
+      </span>
     </button>
   );
 }

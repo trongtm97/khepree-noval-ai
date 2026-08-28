@@ -23,11 +23,13 @@ interface EditorVirtualListProps {
     start: number;
     end: number;
   }[];
+  readingMode?: boolean;
   sourceDirection?: TextDirection;
   targetDirection?: TextDirection;
   onSelect: (stableId: string) => void;
   onDraftChange: (stableId: string, text: string, previous: string) => void;
   onOpenVersionHistory?: (stableId: string) => void;
+  onRetranslateParagraph?: (stableId: string) => void;
   onTermClick?: (termId: string) => void;
 }
 
@@ -38,11 +40,13 @@ export function EditorVirtualList({
   dirty,
   searchMatchIndex,
   searchMatches,
+  readingMode = false,
   sourceDirection = 'ltr',
   targetDirection = 'ltr',
   onSelect,
   onDraftChange,
   onOpenVersionHistory,
+  onRetranslateParagraph,
   onTermClick,
 }: EditorVirtualListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -156,12 +160,14 @@ export function EditorVirtualList({
                 draftText={draftText}
                 isActive={activeParagraphId === paragraph.stableParagraphId}
                 isDirty={Object.hasOwn(dirty, paragraph.stableParagraphId)}
+                readingMode={readingMode}
                 searchHighlight={highlight}
                 sourceDirection={sourceDirection}
                 targetDirection={targetDirection}
                 onSelect={onSelect}
                 onDraftChange={onDraftChange}
                 onOpenVersionHistory={onOpenVersionHistory}
+                onRetranslateParagraph={onRetranslateParagraph}
                 onTermClick={onTermClick}
               />
             </div>

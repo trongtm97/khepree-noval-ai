@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ChapterSummaryDto } from '@shared/schemas/translation-pack';
-import { Filter, MoreHorizontal, PanelLeft, PanelLeftClose } from 'lucide-react';
+import { Filter, MoreHorizontal, PanelLeft } from 'lucide-react';
 import type { NovelExportFormat } from '@shared/constants/portability';
 import type { ChapterCopyMode } from '@shared/utils/chapter-export-text';
 import type { ChapterDisplayStatus } from '../../features/project-chapters/chapter-display-status';
@@ -21,8 +21,7 @@ import {
 } from '../../utils/chapter-navigator';
 import { DropdownMenu } from '../overlay';
 import { Button, IconButton, SearchInput } from '../ui';
-import { chapterLabel } from './chapter-utils';
-
+import { formatChapterDisplayLabel } from './chapter-utils';
 interface ChapterNavigatorProps {
   projectId: string;
   chapters: ChapterSummaryDto[];
@@ -53,6 +52,7 @@ interface ChapterRowProps {
   isActive: boolean;
   isSelected: boolean;
   showCheckbox: boolean;
+  displayLabel: string;
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
   onSelectChapter: (index: number) => void;
@@ -70,6 +70,7 @@ const ChapterRow = memo(function ChapterRow({
   isActive,
   isSelected,
   showCheckbox,
+  displayLabel,
   menuOpen,
   onMenuOpenChange,
   onSelectChapter,
@@ -94,7 +95,7 @@ const ChapterRow = memo(function ChapterRow({
           type="checkbox"
           className="chapter-item-check"
           checked={isSelected}
-          aria-label={chapterLabel(ch)}
+          aria-label={displayLabel}
           onChange={() => undefined}
           onClick={(event) => {
             event.stopPropagation();
@@ -121,10 +122,7 @@ const ChapterRow = memo(function ChapterRow({
         >
           {CHAPTER_STATUS_GLYPH[status]}
         </span>
-        <span className="chapter-item-label">
-          {chapterLabel(ch)}
-          {ch.title ? ` · ${ch.title}` : ''}
-        </span>
+        <span className="chapter-item-label">{displayLabel}</span>
       </button>
       <div className="chapter-item-menu">
         <IconButton
@@ -196,6 +194,7 @@ function ChapterNavigatorInner({
   onNextIssue,
 }: ChapterNavigatorProps) {
   const t = useT();
+  const chapterPrefix = t('translation.chapterNumber', { n: '{n}' });
   const selectedCount = selectedChapterIds.size;
   const [selectionMode, setSelectionMode] = useState(false);
   const showCheckbox = selectionMode || selectedCount > 0;
@@ -266,6 +265,21 @@ function ChapterNavigatorInner({
     searchRef.current?.focus();
   };
 
+  const filterTrailing = (
+    <IconButton
+      ref={filterTriggerRef}
+      label={t('translation.chapterFilter')}
+      active={filterOpen || statusFilter !== 'all'}
+      className="chapter-nav-filter-btn"
+      onClick={() => {
+        setFilterOpen((v) => !v);
+        setHeaderMenuOpen(false);
+      }}
+    >
+      <Filter size={14} />
+    </IconButton>
+  );
+
   if (collapsed) {
     return (
       <aside
@@ -306,39 +320,116 @@ function ChapterNavigatorInner({
           </Button>
         </div>
       ) : (
-        <div className="chapter-nav-header chapter-nav-header--compact">
-          <span className="chapter-nav-title">
-            {t('translation.chapters')}
-            {chapters.length > 0 ? (
-              <span className="chapter-nav-count">
-                {t('translation.chapterCount', { current: counts.current, total: counts.total })}
-              </span>
-            ) : null}
-          </span>
-          <SearchInput
-            ref={searchRef}
-            className="chapter-nav-search"
-            placeholder={t('translation.chapterSearchPlaceholder')}
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-            }}
-            onClear={() => {
-              setQuery('');
-            }}
-          />
-          <div className="chapter-nav-header-menu">
-            <IconButton
-              ref={filterTriggerRef}
-              label={t('translation.chapterFilter')}
-              active={filterOpen || statusFilter !== 'all'}
-              onClick={() => {
-                setFilterOpen((v) => !v);
-                setHeaderMenuOpen(false);
+        <div className="chapter-nav-header chapter-nav-header--stacked">
+          <div className="chapter-nav-header-row">
+            <span className="chapter-nav-title">
+              {t('translation.chapters')}
+              {chapters.length > 0 ? (
+                <span className="chapter-nav-count">
+                  {t('translation.chapterCount', { current: counts.current, total: counts.total })}
+                </span>
+              ) : null}
+            </span>
+            <span className="chapter-nav-header-spacer" aria-hidden />
+            <div className="chapter-nav-header-menu">
+              <IconButton
+                ref={headerMenuTriggerRef}
+                label={t('translation.chapterListMenu')}
+                active={headerMenuOpen}
+                onClick={() => {
+                  setHeaderMenuOpen((v) => !v);
+                  setFilterOpen(false);
+                }}
+              >
+                <MoreHorizontal size={16} />
+              </IconButton>
+              <DropdownMenu
+                open={headerMenuOpen}
+                onOpenChange={setHeaderMenuOpen}
+                anchorRef={headerMenuTriggerRef}
+                className="translation-menu"
+                placement="bottom-end"
+                minWidth={220}
+                maxHeight={320}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setHeaderMenuOpen(false);
+                    setSelectionMode(true);
+                  }}
+                >
+                  {t('translation.chapterSelectMultiple')}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={busy || chapters.length === 0}
+                  onClick={() => {
+                    setHeaderMenuOpen(false);
+                    setSelectionMode(true);
+                    onSelectAll();
+                  }}
+                >
+                  {t('translation.selectAllChapters')}
+                </button>
+                {onNextUntranslated ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setHeaderMenuOpen(false);
+                      onNextUntranslated();
+                    }}
+                  >
+                    {t('translation.nextUntranslated')}
+                  </button>
+                ) : null}
+                {onNextIssue ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setHeaderMenuOpen(false);
+                      onNextIssue();
+                    }}
+                  >
+                    {t('translation.nextIssue')}
+                  </button>
+                ) : null}
+                {onOpenExportDirectory ? (
+                  <>
+                    <hr className="translation-menu__sep" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        onOpenExportDirectory();
+                      }}
+                    >
+                      {t('exportDirectory.openExportFolder')}
+                    </button>
+                  </>
+                ) : null}
+              </DropdownMenu>
+            </div>
+          </div>
+          <div className="chapter-nav-header-row chapter-nav-header-row--search">
+            <SearchInput
+              ref={searchRef}
+              className="chapter-nav-search"
+              placeholder={t('translation.chapterSearchPlaceholder')}
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
               }}
-            >
-              <Filter size={16} />
-            </IconButton>
+              onClear={() => {
+                setQuery('');
+              }}
+              trailingAction={filterTrailing}
+            />
             <DropdownMenu
               open={filterOpen}
               onOpenChange={setFilterOpen}
@@ -362,78 +453,6 @@ function ChapterNavigatorInner({
                   {t(CHAPTER_FILTER_LABEL_KEY[key])}
                 </button>
               ))}
-            </DropdownMenu>
-          </div>
-          <IconButton label={t('translation.collapseChapterRail')} onClick={onToggleCollapse}>
-            <PanelLeftClose size={16} />
-          </IconButton>
-          <div className="chapter-nav-header-menu">
-            <IconButton
-              ref={headerMenuTriggerRef}
-              label={t('translation.chapterListMenu')}
-              active={headerMenuOpen}
-              onClick={() => {
-                setHeaderMenuOpen((v) => !v);
-                setFilterOpen(false);
-              }}
-            >
-              <MoreHorizontal size={16} />
-            </IconButton>
-            <DropdownMenu
-              open={headerMenuOpen}
-              onOpenChange={setHeaderMenuOpen}
-              anchorRef={headerMenuTriggerRef}
-              className="translation-menu"
-              placement="bottom-end"
-              minWidth={220}
-              maxHeight={280}
-            >
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setHeaderMenuOpen(false);
-                  setSelectionMode(true);
-                }}
-              >
-                {t('translation.chapterSelectMultiple')}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                disabled={busy || chapters.length === 0}
-                onClick={() => {
-                  setHeaderMenuOpen(false);
-                  setSelectionMode(true);
-                  onSelectAll();
-                }}
-              >
-                {t('translation.selectAllChapters')}
-              </button>
-              {onNextUntranslated ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setHeaderMenuOpen(false);
-                    onNextUntranslated();
-                  }}
-                >
-                  {t('translation.nextUntranslated')}
-                </button>
-              ) : null}
-              {onNextIssue ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setHeaderMenuOpen(false);
-                    onNextIssue();
-                  }}
-                >
-                  {t('translation.nextIssue')}
-                </button>
-              ) : null}
             </DropdownMenu>
           </div>
         </div>
@@ -469,6 +488,7 @@ function ChapterNavigatorInner({
           >
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const entry = filtered[virtualRow.index];
+              const displayLabel = formatChapterDisplayLabel(entry.ch, chapterPrefix);
               return (
                 <div
                   key={virtualRow.key}
@@ -491,6 +511,7 @@ function ChapterNavigatorInner({
                     isActive={entry.idx === chapterIndex}
                     isSelected={selectedChapterIds.has(entry.ch.id)}
                     showCheckbox={showCheckbox}
+                    displayLabel={displayLabel}
                     menuOpen={menuIdx === entry.idx}
                     onMenuOpenChange={(open) => {
                       setMenuIdx(open ? entry.idx : null);

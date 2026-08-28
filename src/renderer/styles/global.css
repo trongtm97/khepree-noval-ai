@@ -1469,6 +1469,21 @@ body {
   border-bottom-right-radius: 0;
 }
 
+.translation-action-split__main {
+  min-height: 36px;
+  padding: 0 1rem;
+  font-size: var(--font-body);
+  font-weight: 600;
+}
+
+.translation-action-split__label {
+  white-space: nowrap;
+}
+
+.translation-menu__danger {
+  color: var(--error-text, var(--error)) !important;
+}
+
 .translation-menu {
   min-width: 220px;
   display: grid;
@@ -1543,9 +1558,31 @@ body {
   max-width: 7.5rem;
 }
 
+.translation-memory-badge--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+  padding: 0.2rem 0.35rem;
+  max-width: none;
+}
+
+.translation-memory-badge--ghost:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
 .translation-memory-badge.is-ok {
   color: var(--success, #2f9e44);
   border-color: color-mix(in srgb, var(--success, #2f9e44) 35%, var(--border));
+}
+
+.translation-memory-badge--ghost.is-ok {
+  border-color: transparent;
+  color: var(--text-muted);
+}
+
+.translation-memory-badge--ghost.is-ok .translation-memory-badge__icon {
+  color: var(--success, #2f9e44);
 }
 
 .translation-memory-badge__label {
@@ -1692,6 +1729,114 @@ body {
   transform: translateX(-50%);
 }
 
+.editor-split-gutter--draggable {
+  pointer-events: auto;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.editor-split-gutter--draggable::before {
+  width: 2px;
+}
+
+.editor-split-gutter--draggable:hover::before,
+.editor-split-gutter--draggable:active::before {
+  background: var(--accent);
+  width: 3px;
+}
+
+.editor-title-row {
+  border-bottom: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--bg-elevated) 65%, transparent);
+  padding: 0.35rem 0.65rem;
+}
+
+.editor-title-row-cols {
+  display: grid;
+  grid-template-columns:
+    minmax(0, var(--editor-source-col))
+    var(--editor-split-gutter)
+    minmax(0, var(--editor-target-col));
+  gap: 0;
+  align-items: start;
+}
+
+.editor-title-cell {
+  font-weight: 600;
+  font-size: calc(var(--font-editor-size, 15.5px) * 0.92);
+  line-height: 1.45;
+  min-height: 1.45em;
+}
+
+.editor-textarea--title {
+  min-height: 1.45em;
+  font-weight: 600;
+  font-size: calc(var(--font-editor-size, 15.5px) * 0.92);
+}
+
+.editor-row-menu {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.35rem;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.editor-row-menu--visible,
+.editor-row:hover .editor-row-menu {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.editor-row-menu-btn {
+  width: 1.5rem;
+  height: 1.5rem;
+  min-width: 1.5rem;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+}
+
+.editor-row--reading .editor-row-markers,
+.editor-row--reading .editor-row-menu {
+  display: none;
+}
+
+.editor-row--reading .editor-textarea {
+  border-color: transparent;
+  background: transparent;
+  pointer-events: none;
+}
+
+.editor-row--reading:hover .editor-textarea,
+.editor-row--reading .editor-row--active .editor-textarea {
+  pointer-events: auto;
+}
+
+.bilingual-editor--font-sm {
+  --font-editor-size: 14px;
+  --font-editor-leading: 1.6;
+}
+
+.bilingual-editor--font-md {
+  --font-editor-size: 15.5px;
+  --font-editor-leading: 1.7;
+}
+
+.bilingual-editor--font-lg {
+  --font-editor-size: 17px;
+  --font-editor-leading: 1.75;
+}
+
+.editor-reading-text {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-height: 1.45em;
+}
+
 .editor-scroll {
   flex: 1;
   overflow-x: hidden;
@@ -1719,9 +1864,8 @@ body {
 }
 
 .editor-row--active {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  outline: 1px solid var(--accent);
-  outline-offset: -1px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .editor-row--warning {
@@ -1938,6 +2082,19 @@ body {
 .editor-context--empty p {
   margin: 0;
   font-size: var(--font-small);
+}
+
+.editor-context-empty-hint {
+  margin-top: 0.35rem !important;
+  font-size: 0.6875rem !important;
+  line-height: 1.4;
+}
+
+.editor-context-tabs-more {
+  font-size: 0.6875rem;
+  align-self: center;
+  padding: 0 0.25rem;
+  white-space: nowrap;
 }
 
 .editor-context-tabs {

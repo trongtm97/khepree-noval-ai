@@ -192,7 +192,7 @@ describe('EditorParagraphRow', () => {
     expect(onDraftChange).toHaveBeenCalledWith('[C000001:P000001]', 'mới', 'cũ');
   });
 
-  it('exposes version history as an on-demand row action', () => {
+  it('exposes version history through the paragraph menu', () => {
     const onOpenVersionHistory = vi.fn();
     const paragraph = makeParagraph();
     render(
@@ -206,7 +206,8 @@ describe('EditorParagraphRow', () => {
         onOpenVersionHistory={onOpenVersionHistory}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Lịch sử phiên bản' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Thao tác đoạn' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Lịch sử phiên bản/i }));
     expect(onOpenVersionHistory).toHaveBeenCalledWith('[C000001:P000001]');
   });
 

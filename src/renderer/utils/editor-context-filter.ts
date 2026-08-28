@@ -8,11 +8,29 @@ export type EditorContext = z.infer<typeof EditorContextResponseSchema>;
 
 export function isEditorContextEmpty(context: EditorContext | null): boolean {
   if (!context) return true;
+  return countContextItems(context) === 0;
+}
+
+/** Count useful context items for rail badge / auto-expand heuristics. */
+export function countContextItems(context: EditorContext | null): number {
+  if (!context) return 0;
   const hasMemory = Boolean(context.memorySnippet?.trim());
   return (
-    context.characters.length === 0 &&
+    context.characters.length +
+    context.terms.length +
+    context.relationships.length +
+    (hasMemory ? 1 : 0)
+  );
+}
+
+/** True when context has no meaningful data (0 terms, 0 relationships, ≤1 character, no memory). */
+export function isContextMeaningfullyEmpty(context: EditorContext | null): boolean {
+  if (!context) return true;
+  const hasMemory = Boolean(context.memorySnippet?.trim());
+  return (
     context.terms.length === 0 &&
     context.relationships.length === 0 &&
+    context.characters.length <= 1 &&
     !hasMemory
   );
 }
@@ -62,7 +80,15 @@ export function filterContextForParagraph(
   );
 
   const hasHits = terms.length + characters.length + relationships.length > 0;
-  if (!hasHits) return context;
+  if (!hasHits) {
+    return {
+      ...context,
+      terms: [],
+      characters: [],
+      relationships: [],
+      memorySnippet: null,
+    };
+  }
 
   return {
     ...context,

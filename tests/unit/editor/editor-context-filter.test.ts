@@ -64,11 +64,14 @@ describe('editor-context-filter', () => {
     expect(filtered.memorySnippet).toBe('Chapter memory');
   });
 
-  it('falls back to chapter context when the paragraph matches nothing', () => {
+  it('returns empty scoped context when the paragraph matches nothing', () => {
     const filtered = filterContextForParagraph(
       chapterContext,
       makeParagraph({ sourceText: '无匹配', translatedText: 'không khớp' }),
     );
-    expect(filtered).toEqual(chapterContext);
+    expect(filtered.characters).toHaveLength(0);
+    expect(filtered.terms).toHaveLength(0);
+    expect(filtered.relationships).toHaveLength(0);
+    expect(filtered.memorySnippet).toBeNull();
   });
 });

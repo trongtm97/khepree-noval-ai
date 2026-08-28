@@ -24,10 +24,11 @@ export function ToastViewport({
       if (!shouldAutoDismissToast(item.kind)) continue;
       if (scheduled.current.has(item.id)) continue;
       scheduled.current.add(item.id);
+      const duration = item.toastDurationMs ?? 5000;
       window.setTimeout(() => {
         scheduled.current.delete(item.id);
         markRead(item.id);
-      }, 5000);
+      }, duration);
     }
   }, [toasts, markRead]);
 
@@ -41,6 +42,32 @@ export function ToastViewport({
           <div style={{ flex: 1, minWidth: 0 }}>
             <h4>{item.title}</h4>
             <p>{item.description}</p>
+            {item.toastActions && item.toastActions.length > 0 ? (
+              <div className="nt-toast__actions">
+                {item.toastActions.map((action) => (
+                  <Button
+                    key={`${action.action}-${action.path}`}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      markRead(item.id);
+                      if (action.action === 'open-file') {
+                        void window.novelTrans.portability.openExportedFile({
+                          projectId: item.projectId ?? '',
+                          filePath: action.path,
+                        });
+                      } else {
+                        void window.novelTrans.portability.openExportDirectory({
+                          projectId: item.projectId ?? '',
+                        });
+                      }
+                    }}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
             {item.id === STARTUP_AI_NOTIFY_ID ? (
               <div className="btn-row" style={{ marginTop: '0.5rem' }}>
                 <Button
