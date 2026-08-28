@@ -11,6 +11,7 @@ interface UiShellState {
   lastTranslationProjectId: string | null;
   lastTranslationChapterId: string | null;
   projectsViewMode: 'list' | 'grid';
+  dashboardReadyShown: boolean;
   setSidebarCollapsed: (v: boolean) => void;
   toggleSidebar: () => void;
   setSidebarPinned: (v: boolean) => void;
@@ -19,6 +20,7 @@ interface UiShellState {
   setCurrentProject: (id: string | null, name: string | null) => void;
   setLastTranslationSession: (projectId: string | null, chapterId?: string | null) => void;
   setProjectsViewMode: (mode: 'list' | 'grid') => void;
+  setDashboardReadyShown: (v: boolean) => void;
 }
 
 export const useUiShellStore = create<UiShellState>()(
@@ -33,6 +35,7 @@ export const useUiShellStore = create<UiShellState>()(
       lastTranslationProjectId: null,
       lastTranslationChapterId: null,
       projectsViewMode: 'list',
+      dashboardReadyShown: false,
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setSidebarPinned: (sidebarPinned) => set({ sidebarPinned }),
@@ -53,6 +56,7 @@ export const useUiShellStore = create<UiShellState>()(
               : {}),
         })),
       setProjectsViewMode: (projectsViewMode) => set({ projectsViewMode }),
+      setDashboardReadyShown: (dashboardReadyShown) => set({ dashboardReadyShown }),
     }),
     { name: 'noveltrans-ui-shell' },
   ),

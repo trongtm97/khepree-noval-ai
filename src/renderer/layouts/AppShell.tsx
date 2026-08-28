@@ -26,7 +26,6 @@ import { useStartupAiReadiness } from '../hooks/useStartupAiReadiness';
 import { useSourceFolderEvents } from '../hooks/useSourceFolderEvents';
 import {
   isProjectWorkspacePath,
-  projectTabKeyFromPath,
 } from './ProjectWorkspace';
 import {
   isTranslationWorkspaceRoute,
@@ -34,6 +33,7 @@ import {
   resolveTranslationDestination,
 } from './translation-shell-mode';
 import { useTranslationWorkspaceStore } from '../stores/translation-workspace-store';
+import { resolveBreadcrumb } from '../features/dashboard/resolve-breadcrumb';
 
 interface AppShellProps {
   children: ReactNode;
@@ -53,25 +53,6 @@ const SECONDARY_NAV = [
   { to: '/settings', key: 'nav.settings', icon: Settings },
 ] as const;
 
-const ROUTE_TITLE: Record<string, string> = {
-  '/': 'nav.dashboard',
-  '/projects': 'nav.projects',
-  '/translation': 'nav.translation',
-  '/translation/pick': 'nav.translation',
-  '/editor': 'nav.translation',
-  '/accounts': 'nav.accounts',
-  '/jobs': 'nav.jobs',
-  '/logs': 'nav.logs',
-  '/help': 'nav.help',
-  '/settings': 'nav.settings',
-  '/learning': 'nav.learning',
-  '/diagnostics': 'nav.diagnostics',
-  '/ai-memory': 'nav.aiMemory',
-  '/terms': 'nav.terms',
-  '/characters': 'nav.characters',
-  '/export': 'nav.export',
-};
-
 export function AppShell({ children, appInfo }: AppShellProps) {
   const t = useT();
   const location = useLocation();
@@ -83,6 +64,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
     currentProjectName,
     currentProjectId,
     lastTranslationProjectId,
+    showAdvancedTools,
     toggleSidebar,
   } = useUiShellStore();
   const notifications = useNotificationStore((s) => s.items);
@@ -132,11 +114,12 @@ export function AppShell({ children, appInfo }: AppShellProps) {
 
   const unread = notifications.filter((n) => !n.read).length;
   const inProject = isProjectWorkspacePath(location.pathname);
-  const isProjectsList = location.pathname === '/projects';
-  const pageKey = inProject
-    ? projectTabKeyFromPath(location.pathname)
-    : (ROUTE_TITLE[location.pathname] ??
-      (location.pathname.startsWith('/projects') ? 'nav.projects' : 'nav.dashboard'));
+  const breadcrumb = resolveBreadcrumb(
+    location.pathname,
+    currentProjectId && currentProjectName
+      ? { id: currentProjectId, name: currentProjectName }
+      : null,
+  );
   const flush = translationFocus;
   const mainClass = flush
     ? 'main-content main-content--flush'
@@ -251,13 +234,24 @@ export function AppShell({ children, appInfo }: AppShellProps) {
           <div className="topbar-left">
             {!inProject ? (
               <div className="topbar-breadcrumb">
-                <strong>{t(pageKey)}</strong>
-                {currentProjectName && !isProjectsList ? (
-                  <>
-                    <span aria-hidden>/</span>
-                    <span>{currentProjectName}</span>
-                  </>
-                ) : null}
+                {breadcrumb.map((segment, index) => (
+                  <span key={`${segment.labelKey ?? segment.text}-${index}`}>
+                    {index > 0 ? (
+                      <>
+                        <span aria-hidden> / </span>
+                      </>
+                    ) : null}
+                    {index === 0 && breadcrumb.length === 1 ? (
+                      <strong>
+                        {segment.labelKey ? t(segment.labelKey) : segment.text}
+                      </strong>
+                    ) : index === 0 ? (
+                      <span>{segment.labelKey ? t(segment.labelKey) : segment.text}</span>
+                    ) : (
+                      <strong>{segment.text ?? (segment.labelKey ? t(segment.labelKey) : '')}</strong>
+                    )}
+                  </span>
+                ))}
               </div>
             ) : null}
           </div>
@@ -397,19 +391,26 @@ export function AppShell({ children, appInfo }: AppShellProps) {
       {!translationFocus ? (
         <footer className="statusbar">
           <span>{t('app.name')}</span>
-          <span className="statusbar-sep">|</span>
-          <span>{t('statusbar.dbReady')}</span>
+          {showAdvancedTools ? (
+            <>
+              <span className="statusbar-sep">|</span>
+              <span>{t('statusbar.dbReady')}</span>
+            </>
+          ) : null}
           <span className="statusbar-sep">|</span>
           <span>
-            {t('statusbar.streamsRunning', { count: status.jobsRunning })}
+            {status.jobsRunning > 0
+              ? t('statusbar.streamsRunning', { count: status.jobsRunning })
+              : t('statusbar.idle')}
           </span>
-          <span className="statusbar-sep">|</span>
-          <span>
-            {t('statusbar.accountsReady', {
-              ready: status.accountsReady,
-              total: status.workersTotal,
-            })}
-          </span>
+          {status.jobsRunning === 0 &&
+          status.accountsReady < status.workersTotal &&
+          status.workersTotal > 0 ? (
+            <>
+              <span className="statusbar-sep">|</span>
+              <span className="statusbar-warning">{t('statusbar.accountsIssue')}</span>
+            </>
+          ) : null}
           <span className="statusbar-sep">|</span>
           <span>{t('statusbar.version', { version: appInfo.version })}</span>
         </footer>

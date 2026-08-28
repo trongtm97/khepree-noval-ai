@@ -18,10 +18,25 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
   );
 }
 
-export function SectionHeader({ title, actions }: { title: string; actions?: ReactNode }) {
+export function SectionHeader({
+  id,
+  title,
+  description,
+  actions,
+}: {
+  id?: string;
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+}) {
   return (
-    <div className="page-header-row" style={{ marginBottom: '0.75rem' }}>
-      <h3 style={{ margin: 0, fontSize: 'var(--font-section)' }}>{title}</h3>
+    <div className="page-header-row section-header" style={{ marginBottom: '0.75rem' }}>
+      <div>
+        <h3 id={id} style={{ margin: 0, fontSize: 'var(--font-section)' }}>
+          {title}
+        </h3>
+        {description ? <p className="muted section-header__desc">{description}</p> : null}
+      </div>
       {actions}
     </div>
   );

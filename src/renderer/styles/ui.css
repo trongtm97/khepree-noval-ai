@@ -1369,6 +1369,216 @@ textarea:-webkit-autofill:focus {
   gap: 0.25rem;
 }
 
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 87.5rem;
+  padding-top: 1.25rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.dashboard-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dashboard-section--priority {
+  gap: 0;
+}
+
+.dashboard-summary-strip {
+  margin: 0;
+  font-size: var(--font-small);
+}
+
+.dashboard-priority-card {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dashboard-priority-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.dashboard-priority-card__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.dashboard-priority-card__lang {
+  margin: 0.25rem 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.dashboard-priority-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--font-small);
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-sm);
+}
+
+.dashboard-priority-card__badge--done {
+  color: var(--success, #2f9e44);
+  background: color-mix(in srgb, var(--success, #2f9e44) 12%, transparent);
+}
+
+.dashboard-priority-card__badge--new {
+  color: var(--warning, #f08c00);
+  background: color-mix(in srgb, var(--warning, #f08c00) 12%, transparent);
+}
+
+.dashboard-priority-card__progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.dashboard-priority-card__progress-text {
+  color: var(--text-secondary);
+}
+
+.dashboard-priority-card__percent {
+  font-size: var(--font-small);
+  color: var(--text-muted);
+}
+
+.dashboard-priority-card__next,
+.dashboard-priority-card__hint,
+.dashboard-priority-card__updated {
+  margin: 0;
+  font-size: var(--font-body);
+}
+
+.dashboard-priority-card__actions {
+  margin-top: 0.25rem;
+}
+
+.dashboard-action-list,
+.dashboard-job-list,
+.dashboard-activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.dashboard-action-card__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.dashboard-action-card__message {
+  flex: 1 1 12rem;
+}
+
+.dashboard-action-card__icon {
+  flex-shrink: 0;
+  color: var(--warning, #f08c00);
+}
+
+.dashboard-action-card--error .dashboard-action-card__icon {
+  color: var(--error);
+}
+
+.dashboard-job-card__header {
+  margin-bottom: 0.35rem;
+}
+
+.dashboard-job-card__range {
+  margin: 0.15rem 0 0;
+}
+
+.dashboard-job-card__detail {
+  margin: 0 0 0.35rem;
+  font-size: var(--font-small);
+  color: var(--text-secondary);
+}
+
+.dashboard-job-card__actions {
+  margin-top: 0.5rem;
+}
+
+.dashboard-activity-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.35rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.dashboard-activity-item:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+}
+
+.dashboard-activity-item__label {
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-activity-item__when {
+  font-size: var(--font-small);
+  white-space: nowrap;
+}
+
+.dashboard-onboarding {
+  padding: 1rem 1.25rem;
+}
+
+.dashboard-onboarding__title {
+  margin: 0 0 0.75rem;
+  font-size: var(--font-section);
+}
+
+.dashboard-ready-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--success, #2f9e44) 10%, transparent);
+  color: var(--success, #2f9e44);
+  font-size: var(--font-body);
+}
+
+.dashboard-skeleton-card {
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-skeleton-row {
+  margin-bottom: 0.35rem;
+}
+
+.statusbar-warning {
+  color: var(--warning, #f08c00);
+}
+
 .cc-next-list,
 .cc-job-list {
   display: grid;

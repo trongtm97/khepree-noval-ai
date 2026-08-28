@@ -4,6 +4,10 @@ import { CheckCircle2, Circle } from 'lucide-react';
 import { useT } from '../i18n';
 import { Button, Card, SectionHeader } from '../components/ui';
 import { useUiShellStore } from '../stores/ui-shell-store';
+import {
+  resolveOnboardingSteps,
+  type OnboardingStep,
+} from '../features/dashboard/dashboard-readiness';
 
 export interface OnboardingChecklistItem {
   id: string;
@@ -12,6 +16,34 @@ export interface OnboardingChecklistItem {
   actionLabel?: string;
   actionTo?: string;
 }
+
+const STEP_TO_ITEM: Record<
+  OnboardingStep['id'],
+  { labelKey: string; actionKey: string; route: (projectId: string | null) => string }
+> = {
+  ai: {
+    labelKey: 'dashboard.check.aiReady',
+    actionKey: 'dashboard.check.actionAccount',
+    route: () => '/accounts',
+  },
+  project: {
+    labelKey: 'dashboard.check.hasProject',
+    actionKey: 'dashboard.check.actionProject',
+    route: () => '/projects',
+  },
+  source: {
+    labelKey: 'dashboard.check.hasSource',
+    actionKey: 'dashboard.check.actionSource',
+    route: (projectId) =>
+      projectId ? `/projects/${projectId}/chapters` : '/projects',
+  },
+  translation: {
+    labelKey: 'dashboard.check.firstTranslation',
+    actionKey: 'dashboard.check.actionTranslate',
+    route: (projectId) =>
+      projectId ? `/projects/${projectId}/translate` : '/projects',
+  },
+};
 
 /** Real-state first-run checklist (no fake/static checks). */
 export function useOnboardingChecklist(): {
@@ -31,63 +63,36 @@ export function useOnboardingChecklist(): {
     setLoading(true);
     setError(null);
     try {
-      const [accountsRes, projectsRes, setupRes, jobsRes] = await Promise.all([
+      const [accountsRes, projectsRes, jobsRes] = await Promise.all([
         window.novelTrans.accounts.list(),
         window.novelTrans.projects.list(),
-        window.novelTrans.setup.getStatus(),
         window.novelTrans.jobs.list(undefined),
       ]);
 
-      const accounts = accountsRes.accounts;
       const projects = projectsRes.projects;
-      const hasAccount = accounts.length > 0;
-      const geminiReady = accounts.some((a) => a.status === 'READY' && a.workerEnabled);
-      const hasProject = projects.length > 0;
-      const notebookReady = setupRes.notebookReadyCount > 0;
-      const hasCompletedJob = jobsRes.jobs.some((j) => j.state === 'COMPLETED');
-      const firstProjectId = projects[0]?.id ?? currentProjectId;
+      const hasCompletedJob = jobsRes.jobs.some(
+        (j) => j.state === 'COMPLETED' || j.state === 'ACCEPTED_WITH_WARNINGS',
+      );
+      const priorityProject = projects.find((p) => p.status !== 'archived') ?? null;
+      const steps = resolveOnboardingSteps({
+        projects,
+        accounts: accountsRes.accounts,
+        hasCompletedJob,
+        priorityProject,
+      });
 
-      setItems([
-        {
-          id: 'account',
-          label: tr('dashboard.check.hasAccount'),
-          done: hasAccount,
-          actionLabel: tr('dashboard.check.actionAccount'),
-          actionTo: '/accounts',
-        },
-        {
-          id: 'gemini',
-          label: tr('dashboard.check.geminiReady'),
-          done: geminiReady,
-          actionLabel: tr('dashboard.check.actionAccount'),
-          actionTo: '/accounts',
-        },
-        {
-          id: 'project',
-          label: tr('dashboard.check.hasProject'),
-          done: hasProject,
-          actionLabel: tr('dashboard.check.actionProject'),
-          actionTo: '/projects',
-        },
-        {
-          id: 'aiMemory',
-          label: tr('dashboard.check.aiMemory'),
-          done: notebookReady,
-          actionLabel: tr('dashboard.check.actionAiMemory'),
-          actionTo: firstProjectId
-            ? `/projects/${firstProjectId}/ai-memory`
-            : '/projects',
-        },
-        {
-          id: 'firstTranslation',
-          label: tr('dashboard.check.firstTranslation'),
-          done: hasCompletedJob,
-          actionLabel: tr('dashboard.check.actionTranslate'),
-          actionTo: firstProjectId
-            ? `/projects/${firstProjectId}/translate`
-            : '/projects',
-        },
-      ]);
+      setItems(
+        steps.map((step) => {
+          const meta = STEP_TO_ITEM[step.id];
+          return {
+            id: step.id,
+            label: tr(meta.labelKey),
+            done: step.done,
+            actionLabel: tr(meta.actionKey),
+            actionTo: meta.route(currentProjectId ?? priorityProject?.id ?? null),
+          };
+        }),
+      );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : tr('dashboard.checkError'));
     } finally {
@@ -118,7 +123,7 @@ export function OnboardingChecklistPanel() {
   }
 
   return (
-    <Card as="section" style={{ marginBottom: '1.5rem' }}>
+    <Card as="section" className="dashboard-onboarding">
       <SectionHeader title={t('dashboard.checklistTitle')} />
       {loading ? <p className="muted">{t('common.loading')}</p> : null}
       {error ? (
