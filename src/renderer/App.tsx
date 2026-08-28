@@ -24,6 +24,7 @@ import { LogsPage } from './pages/LogsPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
 import { SetupWizardPage } from './pages/SetupWizardPage';
 import { HelpPage } from './features/help/HelpPage';
+import { OverlayPlaygroundPage } from './pages/dev/OverlayPlaygroundPage';
 import {
   applyTheme,
   useThemeStore,
@@ -156,6 +157,9 @@ export function App() {
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/help" element={<HelpPage appInfo={appInfo} />} />
             <Route path="/help/:articleId" element={<HelpPage appInfo={appInfo} />} />
+            {import.meta.env.DEV ? (
+              <Route path="/dev/overlay-playground" element={<OverlayPlaygroundPage />} />
+            ) : null}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppShell>

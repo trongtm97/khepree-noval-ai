@@ -5,6 +5,7 @@ import { useT } from '../../i18n';
 import { Button, IconButton } from '../ui';
 import { X } from 'lucide-react';
 import { STARTUP_AI_NOTIFY_ID } from '../../utils/startup-ai-readiness';
+import { OverlayPortal } from '../overlay/OverlayPortal';
 
 export function ToastViewport({
   onStartupRecheck,
@@ -33,7 +34,8 @@ export function ToastViewport({
   if (toasts.length === 0) return null;
 
   return (
-    <div className="nt-toast-viewport" aria-live="polite">
+    <OverlayPortal>
+      <div className="nt-toast-viewport" aria-live="polite" data-nt-overlay="toast">
       {toasts.slice(0, 3).map((item) => (
         <div key={item.id} className="nt-toast" role="status">
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -73,6 +75,7 @@ export function ToastViewport({
           </IconButton>
         </div>
       ))}
-    </div>
+      </div>
+    </OverlayPortal>
   );
 }

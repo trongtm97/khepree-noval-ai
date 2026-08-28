@@ -44,12 +44,15 @@ export function CompactProjectBar({
       </span>
 
       {project ? (
-        <>
-          <LanguagePairLabel
-            sourceLanguage={project.sourceLanguage}
-            targetLanguage={project.targetLanguage}
-            className="compact-project-bar__pair"
-          />
+        <LanguagePairLabel
+          sourceLanguage={project.sourceLanguage}
+          targetLanguage={project.targetLanguage}
+          className="compact-project-bar__pair"
+        />
+      ) : null}
+
+      <div className="compact-project-bar__actions">
+        {project ? (
           <EditionSwitcher
             projectId={project.id}
             sourceLanguage={project.sourceLanguage}
@@ -61,21 +64,20 @@ export function CompactProjectBar({
               });
             }}
           />
-        </>
-      ) : null}
-
-      {showOpenTranslator ? (
-        <Button
-          variant="primary"
-          size="sm"
-          className="compact-project-bar__open-translator"
-          onClick={() => {
-            navigate(`/projects/${projectId}/translate`);
-          }}
-        >
-          {t('projectNav.openTranslator')}
-        </Button>
-      ) : null}
+        ) : null}
+        {showOpenTranslator ? (
+          <Button
+            variant="primary"
+            size="sm"
+            className="compact-project-bar__open-translator"
+            onClick={() => {
+              navigate(`/projects/${projectId}/translate`);
+            }}
+          >
+            {t('projectNav.openTranslator')}
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

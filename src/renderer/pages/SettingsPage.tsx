@@ -22,11 +22,13 @@ import { AiProvidersSettingsPanel } from '../components/settings/AiProvidersSett
 import { AiDiagnosticsSettingsPanel } from '../components/settings/AiDiagnosticsSettingsPanel';
 import { SchedulerConcurrencyPanel } from '../components/settings/SchedulerConcurrencyPanel';
 import { TranslationSettingsPanel } from '../components/settings/TranslationSettingsPanel';
+import { ExportSettingsPanel } from '../components/settings/ExportSettingsPanel';
 
 type SettingsTab =
   | 'appearance'
   | 'language'
   | 'translation'
+  | 'export'
   | 'aiProviders'
   | 'aiDiagnostics'
   | 'advanced';
@@ -35,6 +37,7 @@ const SETTINGS_TABS: SettingsTab[] = [
   'appearance',
   'language',
   'translation',
+  'export',
   'aiProviders',
   'aiDiagnostics',
   'advanced',
@@ -80,6 +83,7 @@ export function SettingsPage() {
           { id: 'appearance', label: t('settings.appearance') },
           { id: 'language', label: t('settings.language') },
           { id: 'translation', label: t('settings.translation') },
+          { id: 'export', label: t('settings.exportData') },
           { id: 'aiProviders', label: t('settings.aiProviders') },
           { id: 'aiDiagnostics', label: t('settings.aiDiagnostics') },
           { id: 'advanced', label: t('settings.advanced') },
@@ -153,6 +157,10 @@ export function SettingsPage() {
 
       <TabPanel active={tab === 'translation'}>
         <TranslationSettingsPanel onMessage={setMessage} onError={setError} />
+      </TabPanel>
+
+      <TabPanel active={tab === 'export'}>
+        <ExportSettingsPanel />
       </TabPanel>
 
       <TabPanel active={tab === 'aiProviders'}>

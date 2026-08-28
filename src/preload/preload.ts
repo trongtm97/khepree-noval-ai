@@ -306,6 +306,29 @@ const api: NovelTransApi = {
       invokeChannel(IPC_CHANNELS.PORTABILITY_SET_BACKUP_DIRECTORY, input),
     selectBackupDirectory: () =>
       invokeChannel(IPC_CHANNELS.PORTABILITY_SELECT_BACKUP_DIRECTORY),
+    resolveExportDirectory: (input) =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_RESOLVE_EXPORT_DIRECTORY, input),
+    getDefaultExportDirectory: () =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_GET_DEFAULT_EXPORT_DIRECTORY),
+    setDefaultExportDirectory: (input) =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_SET_DEFAULT_EXPORT_DIRECTORY, input),
+    openDefaultExportDirectory: () =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_OPEN_DEFAULT_EXPORT_DIRECTORY),
+    selectExportDirectory: () =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_SELECT_EXPORT_DIRECTORY),
+    getProjectExportSettings: (input) =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_GET_PROJECT_EXPORT_SETTINGS, input),
+    setProjectExportDirectory: (input) =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_SET_PROJECT_EXPORT_DIRECTORY, input),
+    persistExportDirectory: (input) =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_PERSIST_EXPORT_DIRECTORY, input),
+    openExportDirectory: (input) =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_OPEN_EXPORT_DIRECTORY, input),
+    openExportedFile: (input) =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_OPEN_EXPORTED_FILE, input),
+    exportChapter: (input) => invokeChannel(IPC_CHANNELS.PORTABILITY_EXPORT_CHAPTER, input),
+    exportChapterRange: (input) =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_EXPORT_CHAPTER_RANGE, input),
   },
   diagnostics: {
     listProviders: () => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_LIST_PROVIDERS),

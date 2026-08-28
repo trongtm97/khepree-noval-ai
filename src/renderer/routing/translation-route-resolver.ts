@@ -36,6 +36,11 @@ export function resolveTranslationDestination(
 
 /** True when app shell should enter translation focus mode (minimal chrome). */
 export function isTranslationFocusPath(pathname: string): boolean {
+  return isTranslationWorkspaceRoute(pathname);
+}
+
+/** Canonical predicate for translation workspace routes (shell, flush layout, nav). */
+export function isTranslationWorkspaceRoute(pathname: string): boolean {
   return (
     pathname === '/translation' ||
     pathname === '/editor' ||

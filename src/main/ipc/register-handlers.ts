@@ -1,4 +1,5 @@
 import { app, dialog, ipcMain, shell } from 'electron';
+import path from 'node:path';
 import { IPC_CHANNELS } from './channels';
 import {
   GetInfoResponseSchema,
@@ -269,6 +270,21 @@ import {
   BackupDirectorySchema,
   SetBackupDirectoryRequestSchema,
   SelectBackupDirectoryResponseSchema,
+  ResolveExportDirectoryRequestSchema,
+  ResolveExportDirectoryResponseSchema,
+  DefaultExportDirectorySchema,
+  SetDefaultExportDirectoryRequestSchema,
+  ProjectExportSettingsSchema,
+  SetProjectExportDirectoryRequestSchema,
+  PersistExportDirectoryRequestSchema,
+  OpenExportDirectoryRequestSchema,
+  OpenExportDirectoryResponseSchema,
+  OpenExportedFileRequestSchema,
+  OpenExportedFileResponseSchema,
+  ExportChapterRequestSchema,
+  ExportChapterRangeRequestSchema,
+  ExportChapterResponseSchema,
+  SelectExportDirectoryResponseSchema,
   TermCommitImportRequestSchema,
   TermCommitImportResponseSchema,
   TermImportPreviewRequestSchema,
@@ -2072,8 +2088,18 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.PORTABILITY_SELECT_EXPORT_PATH,
     createIpcHandler(SelectExportPathRequestSchema, async (request) => {
       const ext = request.format;
+      let defaultPath = request.defaultName;
+      if (request.projectId) {
+        const resolved = getPortabilityService().resolveExportDirectory({
+          projectId: request.projectId,
+          editionId: request.editionId,
+        });
+        if (resolved.status === 'ok') {
+          defaultPath = path.join(resolved.directory, request.defaultName);
+        }
+      }
       const result = await dialog.showSaveDialog({
-        defaultPath: request.defaultName,
+        defaultPath,
         filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
       });
       return SelectExportPathResponseSchema.parse({
@@ -2178,6 +2204,123 @@ export function registerIpcHandlers(): void {
         canceled: result.canceled,
         directory: result.filePaths[0] ?? null,
       });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_RESOLVE_EXPORT_DIRECTORY,
+    createIpcHandler(ResolveExportDirectoryRequestSchema, (request) => {
+      return ResolveExportDirectoryResponseSchema.parse(
+        getPortabilityService().resolveExportDirectory(request),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_GET_DEFAULT_EXPORT_DIRECTORY,
+    createIpcHandlerNoArg(() => {
+      return DefaultExportDirectorySchema.parse(getPortabilityService().getDefaultExportDirectory());
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_SET_DEFAULT_EXPORT_DIRECTORY,
+    createIpcHandler(SetDefaultExportDirectoryRequestSchema, (request) => {
+      return DefaultExportDirectorySchema.parse(
+        getPortabilityService().setDefaultExportDirectory(request.directory),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_SELECT_EXPORT_DIRECTORY,
+    createIpcHandlerNoArg(async () => {
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory', 'createDirectory'],
+      });
+      return SelectExportDirectoryResponseSchema.parse({
+        canceled: result.canceled,
+        directory: result.filePaths[0] ?? null,
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_GET_PROJECT_EXPORT_SETTINGS,
+    createIpcHandler(ResolveExportDirectoryRequestSchema.pick({ projectId: true }), (request) => {
+      return ProjectExportSettingsSchema.parse(
+        getPortabilityService().getProjectExportSettings(request.projectId),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_SET_PROJECT_EXPORT_DIRECTORY,
+    createIpcHandler(SetProjectExportDirectoryRequestSchema, (request) => {
+      return ProjectExportSettingsSchema.parse(
+        getPortabilityService().setProjectExportDirectory(request.projectId, request.directory),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_PERSIST_EXPORT_DIRECTORY,
+    createIpcHandler(PersistExportDirectoryRequestSchema, (request) => {
+      return ResolveExportDirectoryResponseSchema.parse(
+        getPortabilityService().persistExportDirectory(request),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_OPEN_DEFAULT_EXPORT_DIRECTORY,
+    createIpcHandlerNoArg(async () => {
+      const { directory } = getPortabilityService().openDefaultExportDirectory();
+      const result = await shell.openPath(directory);
+      if (result) {
+        throw new Error(result);
+      }
+      return OpenExportDirectoryResponseSchema.parse({ directory });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_OPEN_EXPORT_DIRECTORY,
+    createIpcHandler(OpenExportDirectoryRequestSchema, async (request) => {
+      const { directory } = getPortabilityService().openExportDirectory(request);
+      const result = await shell.openPath(directory);
+      if (result) {
+        throw new Error(result);
+      }
+      return OpenExportDirectoryResponseSchema.parse({ directory });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_OPEN_EXPORTED_FILE,
+    createIpcHandler(OpenExportedFileRequestSchema, async (request) => {
+      const { filePath } = getPortabilityService().openExportedFile(request);
+      const result = await shell.openPath(filePath);
+      if (result) {
+        throw new Error(result);
+      }
+      return OpenExportedFileResponseSchema.parse({ filePath });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_EXPORT_CHAPTER,
+    createIpcHandler(ExportChapterRequestSchema, async (request) => {
+      const result = await getPortabilityService().exportChapterToDirectory(request);
+      return ExportChapterResponseSchema.parse(result);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_EXPORT_CHAPTER_RANGE,
+    createIpcHandler(ExportChapterRangeRequestSchema, async (request) => {
+      const result = await getPortabilityService().exportChapterRangeToDirectory(request);
+      return ExportChapterResponseSchema.parse(result);
     }),
   );
 

@@ -531,10 +531,6 @@
 }
 
 .nt-tooltip__tip {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text-primary);
@@ -543,9 +539,6 @@
   border-radius: var(--radius-sm);
   white-space: nowrap;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-  z-index: var(--z-dropdown);
 }
 
 .nt-tooltip:hover .nt-tooltip__tip,
@@ -687,17 +680,6 @@
   min-height: 0;
 }
 
-.translation-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem 1rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-primary);
-}
-
 .translation-command-bar {
   display: flex;
   align-items: center;
@@ -756,10 +738,6 @@
 }
 
 .translation-command-bar__menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: var(--z-dropdown);
   min-width: 200px;
   max-height: 280px;
   overflow: auto;
@@ -770,9 +748,8 @@
   padding: 0.25rem;
 }
 
-.translation-command-bar__menu--right {
-  left: auto;
-  right: 0;
+.translation-command-bar__menu--wide {
+  min-width: 240px;
 }
 
 .translation-command-bar__menu button {
@@ -909,13 +886,6 @@
   opacity: 1;
 }
 
-.chapter-item .translation-menu {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  z-index: var(--z-dropdown);
-}
-
 .translation-command-bar__back {
   flex-shrink: 0;
   padding-inline: 0.35rem;
@@ -1001,37 +971,6 @@
 
 .topbar-location {
   font-size: var(--font-small);
-}
-
-.translation-header__identity {
-  display: grid;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.translation-header__title {
-  margin: 0;
-  font-size: var(--font-section);
-  font-weight: 650;
-  line-height: 1.25;
-}
-
-.translation-header__pair {
-  font-size: var(--font-small);
-  color: var(--text-secondary);
-}
-
-.translation-header__chapter {
-  margin: 0;
-  font-size: var(--font-small);
-}
-
-.translation-header__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .translation-actions {

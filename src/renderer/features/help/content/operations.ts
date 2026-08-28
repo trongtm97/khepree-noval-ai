@@ -127,4 +127,33 @@ export const operationsArticles: HelpArticle[] = [
       { type: 'actions', items: [{ label: 'Xuất truyện', to: '/export' }] },
     ],
   },
+  {
+    id: 'export-directory',
+    categoryId: 'export',
+    title: 'Chọn nơi lưu bản dịch',
+    description: 'Thư mục xuất mặc định và override theo dự án.',
+    keywords: ['xuất', 'thư mục', 'export', 'folder', 'lưu'],
+    order: 2,
+    relatedIds: ['export-novel'],
+    blocks: [
+      { type: 'heading', level: 1, text: 'Chọn nơi lưu bản dịch' },
+      {
+        type: 'paragraph',
+        text: 'NovelTrans ưu tiên: (1) thư mục riêng của dự án nếu đã cấu hình; (2) thư mục xuất mặc định toàn cục; (3) hỏi một lần khi xuất lần đầu. Sau khi thiết lập, xuất TXT/DOCX không mở hộp thoại Save As mỗi lần.',
+      },
+      {
+        type: 'callout',
+        variant: 'info',
+        title: 'Lưu ý',
+        body: 'Đổi thư mục mặc định không thay đổi thư mục riêng của các dự án đã cấu hình.',
+      },
+      {
+        type: 'actions',
+        items: [
+          { label: 'Cài đặt xuất', to: '/settings?tab=export' },
+          { label: 'Xuất dự án', to: '/export' },
+        ],
+      },
+    ],
+  },
 ];

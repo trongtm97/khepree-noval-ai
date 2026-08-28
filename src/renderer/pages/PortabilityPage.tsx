@@ -5,6 +5,8 @@ import type { AutoBackupConfig } from '@shared/schemas/portability';
 import type { NovelExportFormat } from '@shared/constants/portability';
 import { useT, t as i18nT } from '../i18n';
 import { useUiShellStore } from '../stores/ui-shell-store';
+import { ProjectExportSettingsPanel } from '../components/settings/ProjectExportSettingsPanel';
+import { buildNovelExportFilename } from '@shared/utils/sanitize-filename';
 
 type BackupEntry = {
   fileName: string;
@@ -90,11 +92,17 @@ export function PortabilityPage() {
     setMessage(null);
     try {
       const project = projects.find((p) => p.id === projectId);
-      const pick = await window.novelTrans.portability.selectExportPath({
-        defaultName: `${project?.title ?? 'novel'}.${format}`,
-        format,
-      });
-      if (pick.canceled || !pick.filePath) return;
+      const resolved = await window.novelTrans.portability.resolveExportDirectory({ projectId });
+      let outputPath: string | undefined;
+      if (resolved.status !== 'ok') {
+        const pick = await window.novelTrans.portability.selectExportPath({
+          defaultName: buildNovelExportFilename(project?.title ?? 'novel', format),
+          format,
+          projectId,
+        });
+        if (pick.canceled || !pick.filePath) return;
+        outputPath = pick.filePath;
+      }
       const result = await window.novelTrans.portability.exportNovel({
         projectId,
         format,
@@ -103,7 +111,7 @@ export function PortabilityPage() {
         translatedOnly,
         includeChapterTitles: includeTitles,
         includeParagraphIds,
-        outputPath: pick.filePath,
+        outputPath,
       });
       setMessage(
         t('portability.exportOk', {
@@ -280,6 +288,13 @@ export function PortabilityPage() {
           </label>
         )}
       </div>
+
+      {projectId ? (
+        <ProjectExportSettingsPanel
+          projectId={projectId}
+          projectTitle={projects.find((p) => p.id === projectId)?.title ?? projectId}
+        />
+      ) : null}
 
       <section className="card" style={{ marginBottom: '1rem' }}>
         <h3>{t('portability.novelExport')}</h3>

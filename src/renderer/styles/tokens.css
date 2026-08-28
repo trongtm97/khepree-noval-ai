@@ -99,10 +99,15 @@
   --transition-fast: 120ms ease;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
   --focus-ring: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--accent);
-  --z-dropdown: 200;
-  --z-modal: 300;
-  --z-toast: 400;
+  --z-sticky: 20;
+  --z-popover: 1000;
+  --z-modal: 1100;
+  --z-toast: 1200;
   --z-titlebar: 100;
+  --overlay-listbox-min-width: 300px;
+  --overlay-listbox-preferred-width: 380px;
+  /* Legacy alias */
+  --z-dropdown: var(--z-popover);
 }
 
 [data-theme='light'] {

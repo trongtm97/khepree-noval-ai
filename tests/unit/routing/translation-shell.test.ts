@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isTranslationFocusPath,
   isTranslationNavActive,
+  isTranslationWorkspaceRoute,
   resolveTranslationDestination,
 } from '../../../src/renderer/routing/translation-route-resolver';
 import {
@@ -66,6 +67,12 @@ describe('translation focus shell mode', () => {
     expect(isTranslationNavActive('/projects/x/translate')).toBe(true);
     expect(isTranslationNavActive('/translation/pick')).toBe(true);
     expect(isTranslationNavActive('/projects/x/chapters')).toBe(false);
+  });
+
+  it('isTranslationWorkspaceRoute matches focus paths', () => {
+    expect(isTranslationWorkspaceRoute('/projects/abc/translate')).toBe(true);
+    expect(isTranslationWorkspaceRoute('/translation')).toBe(true);
+    expect(isTranslationWorkspaceRoute('/projects/abc/chapters')).toBe(false);
   });
 });
 

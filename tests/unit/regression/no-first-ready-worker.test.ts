@@ -11,8 +11,7 @@ const ROOT = path.resolve(__dirname, '../../..');
 
 const GUARDED_FILES = [
   'src/renderer/pages/AiMemoryPage.tsx',
-  'src/renderer/components/translation/AiStatusPanel.tsx',
-  'src/renderer/pages/TranslationEditorPage.tsx',
+  'src/renderer/features/translation/hooks/useTranslationEditorController.tsx',
   'src/main/notebook/notebook-bootstrap-service.ts',
   'src/main/services/translate-readiness-service.ts',
   'src/main/bootstrap/full-novel-preprocess-orchestrator.ts',

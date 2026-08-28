@@ -12,6 +12,7 @@ import {
   loadRecentLanguagePairs,
   saveRecentLanguagePair,
 } from '../services/language-recent-pairs';
+import { DropdownMenu } from './overlay';
 import { Button } from './ui';
 
 export function SwitchTranslationControl({
@@ -27,7 +28,7 @@ export function SwitchTranslationControl({
 }) {
   const t = useT();
   const menuId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [langs, setLangs] = useState<LanguageProfileDto[]>([]);
   const [recentPairs, setRecentPairs] = useState(loadRecentLanguagePairs());
@@ -52,17 +53,6 @@ export function SwitchTranslationControl({
       setLangs(res.languages);
     });
     setRecentPairs(loadRecentLanguagePairs());
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-    };
   }, [open]);
 
   const save = async () => {
@@ -91,12 +81,14 @@ export function SwitchTranslationControl({
   const recentTargets = recentPairs.map((p) => p.targetCode);
 
   return (
-    <div className="switch-translation" ref={rootRef}>
+    <div className="switch-translation">
       <Button
+        ref={triggerRef}
         type="button"
         size="sm"
         variant="secondary"
         aria-expanded={open}
+        aria-haspopup="dialog"
         aria-controls={menuId}
         onClick={() => {
           setOpen((v) => !v);
@@ -105,61 +97,68 @@ export function SwitchTranslationControl({
         {t('projectNav.switchTranslation')}
         <ChevronDown size={14} aria-hidden />
       </Button>
-      {open ? (
-        <div id={menuId} className="switch-translation-menu" role="dialog">
-          <div style={{ margin: '0 0 0.5rem' }}>
-            <LanguagePairLabel
-              sourceLanguage={sourceLanguage}
-              targetLanguage={targetLanguage}
-            />
-          </div>
-          <label className="muted" style={{ display: 'block', marginBottom: '0.25rem' }}>
-            {t('projectNav.sourceLanguage')}
-          </label>
-          <div
-            className="source-language-readonly"
-            aria-label={t('projectNav.sourceLanguage')}
-            style={{ marginBottom: '0.5rem' }}
-          >
-            <span className="language-picker-intl">{sourceStacked.internationalName}</span>
-            <br />
-            <span className="language-picker-native">{sourceStacked.nativeLine}</span>
-            <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: 'var(--font-small)' }}>
-              {t('projectNav.sourceLanguageDetected')}
-            </p>
-          </div>
-          <label
-            className="muted"
-            style={{ display: 'block', margin: '0.5rem 0 0.25rem' }}
-          >
-            {t('projectNav.targetLanguage')}
-          </label>
-          <LanguagePicker
-            value={target}
-            aria-label={t('projectNav.targetLanguage')}
-            languages={langs}
-            recentCodes={recentTargets}
-            disabled={saving}
-            onChange={setTarget}
+      <DropdownMenu
+        open={open}
+        onOpenChange={setOpen}
+        anchorRef={triggerRef}
+        id={menuId}
+        className="switch-translation-menu"
+        placement="bottom-start"
+        minWidth={280}
+        role="dialog"
+      >
+        <div style={{ margin: '0 0 0.5rem' }}>
+          <LanguagePairLabel
+            sourceLanguage={sourceLanguage}
+            targetLanguage={targetLanguage}
           />
-          {error ? <p className="error-text">{error}</p> : null}
-          <div className="btn-row" style={{ marginTop: '0.65rem' }}>
-            <Button size="sm" disabled={saving} onClick={() => void save()}>
-              {t('actions.save')}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={saving}
-              onClick={() => {
-                setOpen(false);
-              }}
-            >
-              {t('actions.cancel')}
-            </Button>
-          </div>
         </div>
-      ) : null}
+        <label className="muted" style={{ display: 'block', marginBottom: '0.25rem' }}>
+          {t('projectNav.sourceLanguage')}
+        </label>
+        <div
+          className="source-language-readonly"
+          aria-label={t('projectNav.sourceLanguage')}
+          style={{ marginBottom: '0.5rem' }}
+        >
+          <span className="language-picker-intl">{sourceStacked.internationalName}</span>
+          <br />
+          <span className="language-picker-native">{sourceStacked.nativeLine}</span>
+          <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: 'var(--font-small)' }}>
+            {t('projectNav.sourceLanguageDetected')}
+          </p>
+        </div>
+        <label
+          className="muted"
+          style={{ display: 'block', margin: '0.5rem 0 0.25rem' }}
+        >
+          {t('projectNav.targetLanguage')}
+        </label>
+        <LanguagePicker
+          value={target}
+          aria-label={t('projectNav.targetLanguage')}
+          languages={langs}
+          recentCodes={recentTargets}
+          disabled={saving}
+          onChange={setTarget}
+        />
+        {error ? <p className="error-text">{error}</p> : null}
+        <div className="btn-row" style={{ marginTop: '0.65rem' }}>
+          <Button size="sm" disabled={saving} onClick={() => void save()}>
+            {t('actions.save')}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={saving}
+            onClick={() => {
+              setOpen(false);
+            }}
+          >
+            {t('actions.cancel')}
+          </Button>
+        </div>
+      </DropdownMenu>
     </div>
   );
 }

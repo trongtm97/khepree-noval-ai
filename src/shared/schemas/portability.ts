@@ -4,6 +4,11 @@ import {
   NOVEL_EXPORT_FORMATS,
   TERM_IMPORT_DUPLICATE_STRATEGIES,
 } from '../constants/portability';
+import {
+  EXPORT_DIRECTORY_SCOPES,
+  EXPORT_EXISTING_FILE_POLICIES,
+  EXPORT_FOLDER_STRUCTURES,
+} from '../constants/export-settings';
 import { TermDtoSchema } from './term';
 
 export const NovelExportFormatSchema = z.enum(NOVEL_EXPORT_FORMATS);
@@ -29,6 +34,8 @@ export const NovelExportResponseSchema = z.object({
 export const SelectExportPathRequestSchema = z.object({
   defaultName: z.string(),
   format: NovelExportFormatSchema,
+  projectId: z.string().uuid().optional(),
+  editionId: z.string().uuid().nullable().optional(),
 });
 
 export const SelectExportPathResponseSchema = z.object({
@@ -127,6 +134,106 @@ export const SetBackupDirectoryRequestSchema = z.object({
 });
 
 export const SelectBackupDirectoryResponseSchema = z.object({
+  canceled: z.boolean(),
+  directory: z.string().nullable(),
+});
+
+export const ResolveExportDirectoryRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  editionId: z.string().uuid().nullable().optional(),
+});
+
+export const ResolveExportDirectoryResponseSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('ok'),
+    directory: z.string(),
+    source: z.enum(['project', 'global', 'auto_subfolder']),
+  }),
+  z.object({ status: z.literal('missing') }),
+  z.object({
+    status: z.literal('inaccessible'),
+    configuredPath: z.string(),
+    source: z.enum(['project', 'global', 'auto_subfolder']),
+  }),
+]);
+
+export const DefaultExportDirectorySchema = z.object({
+  directory: z.string().nullable(),
+  isConfigured: z.boolean(),
+});
+
+export const SetDefaultExportDirectoryRequestSchema = z.object({
+  directory: z.string().nullable(),
+});
+
+export const ExportSettingsSchema = z.object({
+  defaultExportDirectory: z.string().nullable(),
+  autoProjectSubfolder: z.boolean(),
+  folderStructure: z.enum(EXPORT_FOLDER_STRUCTURES),
+  existingFilePolicy: z.enum(EXPORT_EXISTING_FILE_POLICIES),
+});
+
+export const ProjectExportSettingsSchema = z.object({
+  projectExportDirectory: z.string().nullable(),
+  useProjectOverride: z.boolean(),
+  defaultExportDirectory: z.string().nullable(),
+  resolvedDirectory: z.string().nullable(),
+  resolvedSource: z.enum(['project', 'global', 'auto_subfolder']).nullable(),
+});
+
+export const SetProjectExportDirectoryRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  directory: z.string().nullable(),
+});
+
+export const PersistExportDirectoryRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  directory: z.string().min(1),
+  scope: z.enum(EXPORT_DIRECTORY_SCOPES),
+});
+
+export const OpenExportDirectoryRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  editionId: z.string().uuid().nullable().optional(),
+});
+
+export const OpenExportDirectoryResponseSchema = z.object({
+  directory: z.string(),
+});
+
+export const OpenExportedFileRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  filePath: z.string().min(1),
+  editionId: z.string().uuid().nullable().optional(),
+});
+
+export const OpenExportedFileResponseSchema = z.object({
+  filePath: z.string(),
+});
+
+export const ExportChapterRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  chapterNumber: z.number().int().positive(),
+  chapterTitle: z.string().nullable().optional(),
+  format: z.enum(['txt', 'docx']),
+  editionId: z.string().uuid().nullable().optional(),
+  outputDirectory: z.string().min(1).optional(),
+});
+
+export const ExportChapterRangeRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  chapterFrom: z.number().int().positive(),
+  chapterTo: z.number().int().positive(),
+  format: z.enum(['txt', 'docx']),
+  editionId: z.string().uuid().nullable().optional(),
+  outputDirectory: z.string().min(1).optional(),
+});
+
+export const ExportChapterResponseSchema = NovelExportResponseSchema.extend({
+  exportDirectory: z.string(),
+});
+
+export const SelectExportDirectoryResponseSchema = z.object({
   canceled: z.boolean(),
   directory: z.string().nullable(),
 });

@@ -74,14 +74,22 @@ import type {
   AutoBackupConfigSchema,
   BackupDirectorySchema,
   CreateBackupResponseSchema,
+  DefaultExportDirectorySchema,
+  ExportChapterResponseSchema,
   ListBackupsResponseSchema,
   NovelExportResponseSchema,
+  OpenExportDirectoryResponseSchema,
+  OpenExportedFileResponseSchema,
   PreviewRestoreResponseSchema,
+  ProjectExportSettingsSchema,
+  ResolveExportDirectoryResponseSchema,
   RestoreBackupResponseSchema,
+  SelectExportDirectoryResponseSchema,
   SelectExportPathResponseSchema,
   TermCommitImportResponseSchema,
   TermImportPreviewResponseSchema,
 } from '../schemas/portability';
+import type { ExportDirectoryScope } from '../constants/export-settings';
 import type { NovelExportFormat } from '../constants/portability';
 import type { TermImportDuplicateStrategy } from '../constants/portability';
 import type { AutomationProviderId } from '../constants/diagnostics';
@@ -1037,6 +1045,8 @@ export interface NovelTransApi {
     selectExportPath: (input: {
       defaultName: string;
       format: NovelExportFormat;
+      projectId?: string;
+      editionId?: string | null;
     }) => Promise<z.infer<typeof SelectExportPathResponseSchema>>;
     createBackup: (input: {
       kind: 'full' | 'project';
@@ -1070,6 +1080,53 @@ export interface NovelTransApi {
       canceled: boolean;
       directory: string | null;
     }>;
+    resolveExportDirectory: (input: {
+      projectId: string;
+      editionId?: string | null;
+    }) => Promise<z.infer<typeof ResolveExportDirectoryResponseSchema>>;
+    getDefaultExportDirectory: () => Promise<z.infer<typeof DefaultExportDirectorySchema>>;
+    setDefaultExportDirectory: (input: {
+      directory: string | null;
+    }) => Promise<z.infer<typeof DefaultExportDirectorySchema>>;
+    openDefaultExportDirectory: () => Promise<z.infer<typeof OpenExportDirectoryResponseSchema>>;
+    selectExportDirectory: () => Promise<z.infer<typeof SelectExportDirectoryResponseSchema>>;
+    getProjectExportSettings: (input: {
+      projectId: string;
+    }) => Promise<z.infer<typeof ProjectExportSettingsSchema>>;
+    setProjectExportDirectory: (input: {
+      projectId: string;
+      directory: string | null;
+    }) => Promise<z.infer<typeof ProjectExportSettingsSchema>>;
+    persistExportDirectory: (input: {
+      projectId: string;
+      directory: string;
+      scope: ExportDirectoryScope;
+    }) => Promise<z.infer<typeof ResolveExportDirectoryResponseSchema>>;
+    openExportDirectory: (input: {
+      projectId: string;
+      editionId?: string | null;
+    }) => Promise<z.infer<typeof OpenExportDirectoryResponseSchema>>;
+    openExportedFile: (input: {
+      projectId: string;
+      filePath: string;
+      editionId?: string | null;
+    }) => Promise<z.infer<typeof OpenExportedFileResponseSchema>>;
+    exportChapter: (input: {
+      projectId: string;
+      chapterNumber: number;
+      chapterTitle?: string | null;
+      format: 'txt' | 'docx';
+      editionId?: string | null;
+      outputDirectory?: string;
+    }) => Promise<z.infer<typeof ExportChapterResponseSchema>>;
+    exportChapterRange: (input: {
+      projectId: string;
+      chapterFrom: number;
+      chapterTo: number;
+      format: 'txt' | 'docx';
+      editionId?: string | null;
+      outputDirectory?: string;
+    }) => Promise<z.infer<typeof ExportChapterResponseSchema>>;
   };
   diagnostics: {
     listProviders: () => Promise<z.infer<typeof ListProviderStatusResponseSchema>>;

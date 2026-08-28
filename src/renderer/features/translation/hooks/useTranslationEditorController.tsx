@@ -5,7 +5,6 @@ import type { ChapterSummaryDto } from '@shared/schemas/translation-pack';
 import type { JobDto } from '@shared/schemas/job';
 import { EDITOR_AUTOSAVE_MS } from '@shared/constants/translation-editor';
 import { useEditorStore } from '../../../stores/editor-store';
-import { findMatches, applyReplaceAll } from '../../../utils/editor-search';
 import { useT } from '../../../i18n';
 import { Button, Skeleton } from '../../../components/ui';
 import { useUiShellStore } from '../../../stores/ui-shell-store';
@@ -25,9 +24,7 @@ import { confirmDangerous } from '../../../utils/confirm-dangerous';
 import { chapterRef } from '../../../components/translation/chapter-utils';
 import { TranslationCommandBar } from '../../../components/translation/TranslationCommandBar';
 import { TranslationSearchOverlay } from '../../../components/translation/TranslationSearchOverlay';
-import { ChapterNavigator } from '../../../components/translation/ChapterNavigator';
-import { BilingualEditor } from '../../../components/translation/BilingualEditor';
-import { ContextDrawer } from '../../../components/translation/ContextDrawer';
+import { TranslationWorkspace } from '../../../components/translation/TranslationWorkspace';
 import { getLanguageProfile } from '@shared/constants/language-profile';
 import type { ChapterCopyMode, ChapterParagraphInput } from '@shared/utils/chapter-export-text';
 import type { NovelExportFormat } from '@shared/constants/portability';
@@ -37,14 +34,16 @@ import {
   canCopyChapter,
   copyChapterToClipboard,
 } from '../../../services/chapter-clipboard-service';
-import { exportChapter } from '../../../services/chapter-export-service';
-import { flushEditorSaves } from '../../../services/editor-flush-save';
-import type { CSSProperties } from 'react';
+import { exportChapter, exportChapterRange, parseExportDirectoryError } from '../../../services/chapter-export-service';
+import { useExportDirectoryPersistPrompt } from '../../../components/export/ExportDirectorySetupDialog';
+import { useTranslationSearch } from './useTranslationSearch';
 
 /** Orchestrates translation workspace state, jobs, search, and layout. */
 export function useTranslationEditorController() {
   const t = useT();
   const navigate = useNavigate();
+  const { prompt: exportDirectoryPrompt, dialog: exportDirectoryDialog } =
+    useExportDirectoryPersistPrompt();
   const { projectId: routeProjectId } = useParams();
   const setCurrentProject = useUiShellStore((s) => s.setCurrentProject);
   const storedProjectId = useUiShellStore((s) => s.currentProjectId);
@@ -71,10 +70,6 @@ export function useTranslationEditorController() {
     setFocusMode,
     setSearchOpen,
   } = useTranslationWorkspaceStore();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [replaceQuery, setReplaceQuery] = useState('');
-  const [searchMatchIndex, setSearchMatchIndex] = useState<number | null>(null);
-  const [showReplace, setShowReplace] = useState(false);
   const [enqueueBusy, setEnqueueBusy] = useState(false);
   const [preparePhase, setPreparePhase] = useState(false);
   const [selectedChapterIds, setSelectedChapterIds] = useState<Set<string>>(() => new Set());
@@ -273,27 +268,30 @@ export function useTranslationEditorController() {
     [recordUndo, updateDraft, scheduleSave],
   );
 
-  const searchMatches = useMemo(() => {
-    const merged = paragraphs.map((p) => ({
-      stableParagraphId: p.stableParagraphId,
-      sourceText: p.sourceText,
-      translatedText: dirty[p.stableParagraphId] ?? p.translatedText,
-    }));
-    return findMatches(merged, searchQuery);
-  }, [paragraphs, dirty, searchQuery]);
-
-  useEffect(() => {
-    if (searchMatches.length === 0) {
-      setSearchMatchIndex(null);
-      return;
-    }
-    setSearchMatchIndex((prev) => prev ?? 0);
-  }, [searchMatches.length, searchQuery]);
-
-  useEffect(() => {
-    const match = searchMatchIndex != null ? searchMatches[searchMatchIndex] : null;
-    if (match) setActiveParagraph(match.stableParagraphId);
-  }, [searchMatchIndex, searchMatches, setActiveParagraph]);
+  const {
+    searchQuery,
+    replaceQuery,
+    searchMatchIndex,
+    showReplace,
+    searchMatches,
+    setSearchQuery,
+    setReplaceQuery,
+    setShowReplace,
+    runReplaceAll,
+    closeSearch,
+    openFind,
+    openReplace,
+    nextMatch,
+  } = useTranslationSearch({
+    paragraphs,
+    dirty,
+    setActiveParagraph,
+    recordUndo,
+    updateDraft,
+    scheduleSave,
+    searchOpen,
+    setSearchOpen,
+  });
 
   const goChapter = useCallback(
     (delta: number) => {
@@ -301,19 +299,6 @@ export function useTranslationEditorController() {
     },
     [chapters.length],
   );
-
-  const runReplaceAll = () => {
-    if (!searchQuery) return;
-    for (const para of paragraphs) {
-      const current = (dirty[para.stableParagraphId] ?? para.translatedText) || '';
-      const next = applyReplaceAll(current, searchQuery, replaceQuery);
-      if (next !== current) {
-        recordUndo(para.stableParagraphId, current, next);
-        updateDraft(para.stableParagraphId, next);
-        scheduleSave(para.stableParagraphId, next);
-      }
-    }
-  };
 
   const watchJob = async (jobId: string, chapter: ChapterSummaryDto) => {
     setJobWatchMessage(t('translation.jobQueued'));
@@ -713,80 +698,102 @@ export function useTranslationEditorController() {
     ) => {
       const target = chapter ?? activeChapterSummary;
       if (!projectId || !target) return;
+      const project = projects.find((p) => p.id === projectId);
+      const exportProjectTitle = project?.title ?? '';
+      const exportEditionId = project?.activeEditionId ?? undefined;
       const isCurrent = !chapter || chapter.id === chapterId;
       try {
-        if (isCurrent) {
-          await exportChapter({
-            projectId,
-            chapterNumber: chapterRef(target),
-            chapterTitle: target.title,
-            format,
-            flushSave: flushSaveInput(),
-          });
-        } else {
-          await exportChapter({
-            projectId,
-            chapterNumber: chapterRef(target),
-            chapterTitle: target.title,
-            format,
-            flushSave: {
+        const flushSave = isCurrent
+          ? flushSaveInput()
+          : {
               ...flushSaveInput(),
               dirty: {},
               pendingTimers: saveTimers.current,
-            },
-          });
-        }
+            };
+        const result = await exportChapter(
+          {
+            projectId,
+            chapterNumber: chapterRef(target),
+            chapterTitle: target.title,
+            format,
+            editionId: exportEditionId,
+            flushSave,
+            projectTitle: exportProjectTitle,
+          },
+          exportDirectoryPrompt,
+        );
         addNotification({
           kind: 'SUCCESS',
           title: t('translation.exportChapterOk', { n: String(chapterRef(target)) }),
-          description: '',
+          description: result.filePath,
           toast: true,
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : '';
-        if (msg === 'SAVE_BEFORE_EXPORT_FAILED') {
+        const parsed = parseExportDirectoryError(msg);
+        if (parsed.kind === 'save_failed') {
           setError(t('translation.exportSaveFailed'));
-        } else if (msg !== 'EXPORT_CANCELED') {
+        } else if (parsed.kind === 'inaccessible') {
+          setError(
+            t('exportDirectory.inaccessible', { path: parsed.path ?? '' }),
+          );
+        } else if (parsed.kind !== 'canceled') {
           setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
         }
       }
     },
-    [projectId, activeChapterSummary, chapterId, flushSaveInput, addNotification, t],
+    [
+      projectId,
+      activeChapterSummary,
+      chapterId,
+      flushSaveInput,
+      addNotification,
+      t,
+      projects,
+      exportDirectoryPrompt,
+    ],
   );
 
   const handleExportSelected = useCallback(async () => {
     if (!projectId || selectedIds.length === 0) return;
+    const project = projects.find((p) => p.id === projectId);
+    const exportProjectTitle = project?.title ?? '';
+    const exportEditionId = project?.activeEditionId ?? undefined;
     const nums = chapters
       .filter((c) => selectedChapterIds.has(c.id))
       .map((c) => chapterRef(c))
       .sort((a, b) => a - b);
     if (nums.length === 0) return;
-    const saved = await flushEditorSaves(flushSaveInput());
-    if (!saved) {
-      setError(t('translation.exportSaveFailed'));
-      return;
+    try {
+      const result = await exportChapterRange(
+        {
+          projectId,
+          chapterFrom: nums[0],
+          chapterTo: nums[nums.length - 1],
+          format: 'txt',
+          editionId: exportEditionId,
+          flushSave: flushSaveInput(),
+          projectTitle: exportProjectTitle,
+        },
+        exportDirectoryPrompt,
+      );
+      addNotification({
+        kind: 'SUCCESS',
+        title: t('translation.exportSelectedOk', { count: String(nums.length) }),
+        description: result.filePath,
+        toast: true,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      const parsed = parseExportDirectoryError(msg);
+      if (parsed.kind === 'save_failed') {
+        setError(t('translation.exportSaveFailed'));
+      } else if (parsed.kind === 'inaccessible') {
+        setError(t('exportDirectory.inaccessible', { path: parsed.path ?? '' }));
+      } else if (parsed.kind !== 'canceled') {
+        setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
+      }
     }
-    const pick = await window.novelTrans.portability.selectExportPath({
-      defaultName: `chapters-${nums[0]}-${nums[nums.length - 1]}.txt`,
-      format: 'txt',
-    });
-    if (pick.canceled || !pick.filePath) return;
-    await window.novelTrans.portability.exportNovel({
-      projectId,
-      format: 'txt',
-      chapterFrom: nums[0],
-      chapterTo: nums[nums.length - 1],
-      translatedOnly: false,
-      includeChapterTitles: true,
-      includeParagraphIds: false,
-      outputPath: pick.filePath,
-    });
-    addNotification({
-      kind: 'SUCCESS',
-      title: t('translation.exportSelectedOk', { count: String(nums.length) }),
-      description: '',
-      toast: true,
-    });
   }, [
     projectId,
     selectedIds.length,
@@ -795,7 +802,34 @@ export function useTranslationEditorController() {
     flushSaveInput,
     addNotification,
     t,
+    projects,
+    exportDirectoryPrompt,
   ]);
+
+  const handleOpenExportDirectory = useCallback(async () => {
+    if (!projectId) return;
+    const project = projects.find((p) => p.id === projectId);
+    const exportEditionId = project?.activeEditionId ?? undefined;
+    try {
+      await window.novelTrans.portability.openExportDirectory({
+        projectId,
+        editionId: exportEditionId,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      const parsed = parseExportDirectoryError(msg);
+      if (parsed.kind === 'inaccessible') {
+        setError(t('exportDirectory.inaccessible', { path: parsed.path ?? '' }));
+      } else {
+        setError(err instanceof Error ? err.message : t('exportDirectory.openFailed'));
+      }
+    }
+  }, [projectId, projects, t]);
+
+  const handleChangeExportLocation = useCallback(() => {
+    if (!projectId) return;
+    navigate(`/projects/${projectId}/export`);
+  }, [navigate, projectId]);
 
   const toggleChapterSelect = (idx: number, shiftKey: boolean) => {
     const chapter = chapters.at(idx);
@@ -982,14 +1016,12 @@ export function useTranslationEditorController() {
       }
       if (mod && event.key === 'f') {
         event.preventDefault();
-        setSearchOpen(true);
-        setShowReplace(false);
+        openFind();
         return;
       }
       if (mod && event.key === 'h') {
         event.preventDefault();
-        setSearchOpen(true);
-        setShowReplace(true);
+        openReplace();
         return;
       }
       if (mod && event.shiftKey && event.key === 'F') {
@@ -1017,10 +1049,7 @@ export function useTranslationEditorController() {
       }
       if (mod && event.key === 'g' && searchMatches.length > 0) {
         event.preventDefault();
-        setSearchMatchIndex((idx) => {
-          if (idx == null) return 0;
-          return (idx + 1) % searchMatches.length;
-        });
+        nextMatch();
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -1039,7 +1068,9 @@ export function useTranslationEditorController() {
     searchMatches.length,
     focusMode,
     setFocusMode,
-    setSearchOpen,
+    openFind,
+    openReplace,
+    nextMatch,
     toggleFocusMode,
     toggleChapterRail,
   ]);
@@ -1063,15 +1094,11 @@ export function useTranslationEditorController() {
     );
   }
 
-  const workspaceStyle = {
-    '--chapter-rail-width': `${chapterRailWidth}px`,
-    '--context-panel-width': `${contextWidth}px`,
-  } as CSSProperties;
-
   return (
     <div
       className={`editor-page translation-editor-page${focusMode ? ' translation-editor-page--focus' : ''}`}
     >
+      {exportDirectoryDialog}
       <TranslationCommandBar
         projects={projects}
         projectId={projectId}
@@ -1106,6 +1133,10 @@ export function useTranslationEditorController() {
               }
             : undefined
         }
+        onOpenExportDirectory={() => {
+          void handleOpenExportDirectory();
+        }}
+        onChangeExportLocation={handleChangeExportLocation}
         onContinue={() => {
           void continueTranslate();
         }}
@@ -1181,97 +1212,69 @@ export function useTranslationEditorController() {
           setShowReplace((v) => !v);
         }}
         onReplaceAll={runReplaceAll}
-        onNextMatch={() => {
-          setSearchMatchIndex((idx) => {
-            if (searchMatches.length === 0) return null;
-            if (idx == null) return 0;
-            return (idx + 1) % searchMatches.length;
-          });
-        }}
-        onClose={() => {
-          setSearchOpen(false);
-          setShowReplace(false);
-        }}
+        onNextMatch={nextMatch}
+        onClose={closeSearch}
       />
 
-      <div
-        className={[
-          'translation-workspace',
-          !contextCollapsed ? 'translation-workspace--context-expanded' : '',
-          chapterRailCollapsed ? 'translation-workspace--chapter-collapsed' : '',
-          focusMode ? 'translation-workspace--focus' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        style={workspaceStyle}
-      >
-        {!focusMode ? (
-          <ChapterNavigator
-            chapters={chapters}
-            chapterIndex={chapterIndex}
-            selectedChapterIds={selectedChapterIds}
-            busy={enqueueBusy}
-            collapsed={chapterRailCollapsed}
-            onToggleCollapse={toggleChapterRail}
-            onSelectChapter={setChapterIndex}
-            onToggleSelect={toggleChapterSelect}
-            onSelectAll={() => {
-              setSelectedChapterIds(new Set(chapters.map((c) => c.id)));
-              selectAnchorRef.current = chapters.length > 0 ? 0 : null;
-            }}
-            onClearSelection={() => {
-              setSelectedChapterIds(new Set());
-              selectAnchorRef.current = null;
-            }}
-            onChapterCopy={(chapterId, mode) => {
-              const ch = chapters.find((c) => c.id === chapterId);
-              if (ch) void handleCopy(mode, ch);
-            }}
-            onChapterExport={(chapterId, format) => {
-              const ch = chapters.find((c) => c.id === chapterId);
-              if (ch) void handleExport(format, ch);
-            }}
-            onChapterRetranslate={(chapterId) => {
-              const idx = chapters.findIndex((c) => c.id === chapterId);
-              if (idx >= 0) {
-                setChapterIndex(idx);
-                void retranslateChapter();
-              }
-            }}
-          />
-        ) : null}
-
-        <BilingualEditor
-          paragraphs={paragraphs}
-          activeParagraphId={activeParagraphId}
-          dirty={dirty}
-          searchMatchIndex={searchMatchIndex}
-          searchMatches={searchMatches}
-          projectId={projectId}
-          chapterId={chapterId}
-          sourceLabel={sourceProfile.nativeName}
-          targetLabel={targetProfile.nativeName}
-          sourceDirection={sourceProfile.direction}
-          targetDirection={targetProfile.direction}
-          onSelectParagraph={setActiveParagraph}
-          onDraftChange={handleDraftChange}
-          onReverted={() => {
-            if (chapters.length === 0) return;
-            const chapter = chapters[chapterIndex] ?? chapters[0];
-            void loadChapter(projectId, chapterId, chapterRef(chapter)).then(() => {
-              if (activeParagraphId) setActiveParagraph(activeParagraphId);
-            });
-          }}
-        />
-
-        {!focusMode ? (
-          <ContextDrawer
-            context={context}
-            collapsed={contextCollapsed}
-            onToggle={toggleContext}
-          />
-        ) : null}
-      </div>
+      <TranslationWorkspace
+        focusMode={focusMode}
+        chapterRailCollapsed={chapterRailCollapsed}
+        contextCollapsed={contextCollapsed}
+        chapterRailWidth={chapterRailWidth}
+        contextWidth={contextWidth}
+        chapters={chapters}
+        chapterIndex={chapterIndex}
+        selectedChapterIds={selectedChapterIds}
+        enqueueBusy={enqueueBusy}
+        paragraphs={paragraphs}
+        activeParagraphId={activeParagraphId}
+        dirty={dirty}
+        searchMatchIndex={searchMatchIndex}
+        searchMatches={searchMatches}
+        projectId={projectId}
+        chapterId={chapterId}
+        sourceLabel={sourceProfile.nativeName}
+        targetLabel={targetProfile.nativeName}
+        sourceDirection={sourceProfile.direction}
+        targetDirection={targetProfile.direction}
+        context={context}
+        onToggleChapterRail={toggleChapterRail}
+        onSelectChapter={setChapterIndex}
+        onToggleChapterSelect={toggleChapterSelect}
+        onSelectAllChapters={() => {
+          setSelectedChapterIds(new Set(chapters.map((c) => c.id)));
+          selectAnchorRef.current = chapters.length > 0 ? 0 : null;
+        }}
+        onClearChapterSelection={() => {
+          setSelectedChapterIds(new Set());
+          selectAnchorRef.current = null;
+        }}
+        onChapterCopy={(chapterId, mode) => {
+          const ch = chapters.find((c) => c.id === chapterId);
+          if (ch) void handleCopy(mode, ch);
+        }}
+        onChapterExport={(chapterId, format) => {
+          const ch = chapters.find((c) => c.id === chapterId);
+          if (ch) void handleExport(format, ch);
+        }}
+        onChapterRetranslate={(chapterId) => {
+          const idx = chapters.findIndex((c) => c.id === chapterId);
+          if (idx >= 0) {
+            setChapterIndex(idx);
+            void retranslateChapter();
+          }
+        }}
+        onSelectParagraph={setActiveParagraph}
+        onDraftChange={handleDraftChange}
+        onEditorReverted={() => {
+          if (chapters.length === 0) return;
+          const chapter = chapters[chapterIndex] ?? chapters[0];
+          void loadChapter(projectId, chapterId, chapterRef(chapter)).then(() => {
+            if (activeParagraphId) setActiveParagraph(activeParagraphId);
+          });
+        }}
+        onToggleContext={toggleContext}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { LanguageProfileDto } from '@shared/schemas/language-profile';
 import {
@@ -10,6 +10,7 @@ import {
   searchLanguageProfiles,
 } from '@shared/constants/language-profile';
 import { getLanguageProfile } from '@shared/constants/language-profile';
+import { ListboxPopover } from './overlay';
 import { SearchInput } from './ui/SearchInput';
 
 export interface LanguagePickerProps {
@@ -28,11 +29,11 @@ export interface LanguagePickerProps {
   labelVariant?: 'compact' | 'stacked';
 }
 
-type ListSection = {
+interface ListSection {
   key: string;
   label: string;
   items: LanguageProfileDto[];
-};
+}
 
 export function LanguagePicker({
   value,
@@ -47,7 +48,7 @@ export function LanguagePicker({
   labelVariant = 'compact',
 }: LanguagePickerProps) {
   const listId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -102,20 +103,6 @@ export function LanguagePicker({
 
   const direction = selected?.direction ?? 'ltr';
 
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-        setQuery('');
-      }
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-    };
-  }, [open]);
-
   const pick = (code: string) => {
     onChange(code);
     setOpen(false);
@@ -159,12 +146,14 @@ export function LanguagePicker({
   })();
 
   return (
-    <div className="language-picker" ref={rootRef}>
+    <div className="language-picker">
       <button
+        ref={triggerRef}
         type="button"
         className="language-picker-trigger nt-input"
         aria-label={ariaLabel}
         aria-expanded={open}
+        aria-haspopup="listbox"
         aria-controls={listId}
         disabled={disabled}
         dir={direction}
@@ -176,66 +165,77 @@ export function LanguagePicker({
         {triggerContent}
         <ChevronDown size={14} aria-hidden className="language-picker-chevron" />
       </button>
-      {open ? (
-        <div id={listId} className="language-picker-menu" role="listbox">
-          <SearchInput
-            autoFocus
-            value={query}
-            placeholder="Tìm: japan, 日本, ja, nhật…"
-            aria-label="Tìm ngôn ngữ"
-            onChange={(e) => {
-              setQuery(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setOpen(false);
-                setQuery('');
-              }
-            }}
-          />
-          <div className="language-picker-list">
-            {allowAuto && !query.trim() ? (
-              <button
-                type="button"
-                role="option"
-                aria-selected={value.toUpperCase() === 'AUTO'}
-                className={`language-picker-option${value.toUpperCase() === 'AUTO' ? ' is-selected' : ''}`}
-                onClick={() => {
-                  pick('AUTO');
-                }}
-              >
-                {autoLabel}
-              </button>
-            ) : null}
-            {sections.map((section) => (
-              <div key={section.key} className="language-picker-section">
-                <div className="language-picker-section-label">{section.label}</div>
-                {section.items.map((lang) => (
-                  <button
-                    key={lang.code}
-                    type="button"
-                    role="option"
-                    aria-selected={lang.code === value}
-                    dir={lang.direction}
-                    className={`language-picker-option${lang.code === value ? ' is-selected' : ''}`}
-                    onClick={() => {
-                      pick(lang.code);
-                    }}
-                  >
-                    {renderOptionLabel(lang)}
-                    {lang.aiSupportTier === 'EXPERIMENTAL' ? (
-                      <span className="language-picker-tier muted">thử nghiệm</span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            ))}
-            {sections.every((s) => s.items.length === 0) ? (
-              <p className="muted language-picker-empty">Không tìm thấy ngôn ngữ.</p>
-            ) : null}
-          </div>
+      <ListboxPopover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setQuery('');
+        }}
+        anchorRef={triggerRef}
+        id={listId}
+        className="language-picker-menu"
+        matchAnchorWidth={false}
+        minWidth={300}
+        preferredWidth={380}
+        maxHeight={320}
+      >
+        <SearchInput
+          autoFocus
+          value={query}
+          placeholder="Tìm: japan, 日本, ja, nhật…"
+          aria-label="Tìm ngôn ngữ"
+          onChange={(e) => {
+            setQuery(e.target.value);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setOpen(false);
+              setQuery('');
+            }
+          }}
+        />
+        <div className="language-picker-list">
+          {allowAuto && !query.trim() ? (
+            <button
+              type="button"
+              role="option"
+              aria-selected={value.toUpperCase() === 'AUTO'}
+              className={`language-picker-option${value.toUpperCase() === 'AUTO' ? ' is-selected' : ''}`}
+              onClick={() => {
+                pick('AUTO');
+              }}
+            >
+              {autoLabel}
+            </button>
+          ) : null}
+          {sections.map((section) => (
+            <div key={section.key} className="language-picker-section">
+              <div className="language-picker-section-label">{section.label}</div>
+              {section.items.map((lang) => (
+                <button
+                  key={lang.code}
+                  type="button"
+                  role="option"
+                  aria-selected={lang.code === value}
+                  dir={lang.direction}
+                  className={`language-picker-option${lang.code === value ? ' is-selected' : ''}`}
+                  onClick={() => {
+                    pick(lang.code);
+                  }}
+                >
+                  {renderOptionLabel(lang)}
+                  {lang.aiSupportTier === 'EXPERIMENTAL' ? (
+                    <span className="language-picker-tier muted">thử nghiệm</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          ))}
+          {sections.every((s) => s.items.length === 0) ? (
+            <p className="muted language-picker-empty">Không tìm thấy ngôn ngữ.</p>
+          ) : null}
         </div>
-      ) : null}
+      </ListboxPopover>
     </div>
   );
 }

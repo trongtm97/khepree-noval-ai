@@ -29,7 +29,7 @@ import {
   projectTabKeyFromPath,
 } from './ProjectWorkspace';
 import {
-  isTranslationFocusPath,
+  isTranslationWorkspaceRoute,
   isTranslationNavActive,
   resolveTranslationDestination,
 } from './translation-shell-mode';
@@ -95,8 +95,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
   useSourceFolderEvents();
 
   const editorFocusMode = useTranslationWorkspaceStore((s) => s.focusMode);
-  const translationFocus =
-    isTranslationFocusPath(location.pathname) || editorFocusMode;
+  const translationFocus = isTranslationWorkspaceRoute(location.pathname);
 
   useEffect(() => {
     applyDensity(density);
@@ -143,6 +142,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
     const parts = ['app-shell'];
     if (sidebarCollapsed) parts.push('sidebar-collapsed');
     if (sidebarPinned) parts.push('sidebar-pinned');
+    if (translationFocus) parts.push('app-shell--translation-focus');
     if (editorFocusMode) parts.push('app-shell--editor-focus');
     return parts.join(' ');
   }, [sidebarCollapsed, sidebarPinned, translationFocus, editorFocusMode]);

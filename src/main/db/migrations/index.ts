@@ -44,6 +44,7 @@ import { MIGRATION_035_LEGACY_DRIVE_DEPRECATION } from './035-legacy-drive-depre
 import { MIGRATION_036_CONTEXT_FINGERPRINT } from './036-context-fingerprint';
 import { MIGRATION_037_RESEARCH_NOTEBOOK } from './037-research-notebook-persistence';
 import { MIGRATION_038_LOCAL_LEARNING_LOOP } from './038-local-learning-loop';
+import { MIGRATION_039_EXPORT_DIRECTORY } from './039-export-directory';
 
 export const MIGRATIONS: MigrationDefinition[] = [
   {
@@ -233,6 +234,11 @@ export const MIGRATIONS: MigrationDefinition[] = [
     version: 38,
     name: 'local_learning_loop',
     sql: MIGRATION_038_LOCAL_LEARNING_LOOP,
+  },
+  {
+    version: 39,
+    name: 'export_directory',
+    sql: MIGRATION_039_EXPORT_DIRECTORY,
   },
 ];
 

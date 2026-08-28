@@ -16,7 +16,7 @@ export default tseslint.config(
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
   {
-    files: ['src/**/*.{ts,tsx}', 'tests/**/*.ts', '*.config.ts'],
+    files: ['src/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}', '*.config.ts'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',

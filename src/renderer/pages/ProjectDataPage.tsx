@@ -5,6 +5,7 @@ import { DATA_SECTION_IDS } from '@shared/constants/data-portability';
 import type { TabularImportHistoryEntry } from '@shared/schemas/tabular';
 import type { ProjectDto } from '@shared/schemas/import';
 import { PageHeader, Card, Button } from '../components/ui';
+import { ModalPortal } from '../components/overlay';
 import { DataPortabilityCard } from '../components/data-portability/DataPortabilityCard';
 import { useT } from '../i18n';
 
@@ -158,9 +159,15 @@ export function ProjectDataPage() {
         )}
       </Card>
 
-      {reportEntry ? (
-        <div className="nt-dialog-backdrop" onClick={() => setReportEntry(null)}>
-          <div className="nt-dialog" onClick={(e) => e.stopPropagation()}>
+      <ModalPortal
+        open={!!reportEntry}
+        onBackdropClick={() => setReportEntry(null)}
+        contentClassName="nt-dialog"
+        role="dialog"
+        ariaModal
+      >
+        {reportEntry ? (
+          <>
             <h2>{t('dataHub.reportTitle')}</h2>
             <p>
               <strong>{reportEntry.fileName}</strong>
@@ -174,9 +181,9 @@ export function ProjectDataPage() {
             <Button variant="primary" onClick={() => setReportEntry(null)}>
               {t('actions.close')}
             </Button>
-          </div>
-        </div>
-      ) : null}
+          </>
+        ) : null}
+      </ModalPortal>
     </div>
   );
 }

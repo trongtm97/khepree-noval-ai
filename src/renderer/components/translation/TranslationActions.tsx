@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Settings2 } from 'lucide-react';
 import { useT } from '../../i18n';
+import { DropdownMenu } from '../overlay';
 import { Button, Input, Dialog } from '../ui';
 
 export interface TranslationActionsProps {
@@ -36,23 +37,10 @@ export function TranslationActions({
   const [rangeOpen, setRangeOpen] = useState(false);
   const [rangeFrom, setRangeFrom] = useState('');
   const [rangeTo, setRangeTo] = useState('');
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onDoc = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
-        setOpen(false);
-        setAdvancedOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-    };
-  }, []);
+  const chevronRef = useRef<HTMLButtonElement>(null);
 
   return (
-    <div className="translation-actions" ref={rootRef}>
+    <div className="translation-actions">
       <div className="translation-action-split">
         <Button
           variant="primary"
@@ -64,6 +52,7 @@ export function TranslationActions({
           {preparing ? t('translation.ensuringReady') : t('translation.continueAction')}
         </Button>
         <Button
+          ref={chevronRef}
           variant="primary"
           size="sm"
           className="translation-action-split__chevron"
@@ -78,104 +67,113 @@ export function TranslationActions({
         >
           <ChevronDown size={16} aria-hidden />
         </Button>
-        {open ? (
-          <div className="translation-menu" role="menu">
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onTranslateCurrent();
-              }}
-            >
-              {t('translation.translateCurrent')}
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onTranslateNext3();
-              }}
-            >
-              {t('translation.translateNext3')}
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onTranslateRemaining();
-              }}
-            >
-              {t('translation.translateRemaining')}
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                setRangeOpen(true);
-              }}
-            >
-              {t('translation.translateOptions')}
-            </button>
-            <hr className="translation-menu__sep" />
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setAdvancedOpen((v) => !v);
-              }}
-            >
-              <Settings2 size={14} aria-hidden /> {t('translation.advancedOptions')}
-            </button>
-            {advancedOpen ? (
-              <div className="translation-menu__advanced" role="group">
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    navigate('/jobs');
-                  }}
-                >
-                  {t('translation.advancedWorker')}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    navigate('/settings');
-                  }}
-                >
-                  {t('translation.advancedProvider')}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    navigate('/settings');
-                  }}
-                >
-                  {t('translation.advancedBatch')}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    navigate('/settings');
-                  }}
-                >
-                  {t('translation.advancedWaves')}
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        <DropdownMenu
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) setAdvancedOpen(false);
+          }}
+          anchorRef={chevronRef}
+          className="translation-menu"
+          placement="bottom-end"
+          minWidth={220}
+          maxHeight={400}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onTranslateCurrent();
+            }}
+          >
+            {t('translation.translateCurrent')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onTranslateNext3();
+            }}
+          >
+            {t('translation.translateNext3')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onTranslateRemaining();
+            }}
+          >
+            {t('translation.translateRemaining')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setRangeOpen(true);
+            }}
+          >
+            {t('translation.translateOptions')}
+          </button>
+          <hr className="translation-menu__sep" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setAdvancedOpen((v) => !v);
+            }}
+          >
+            <Settings2 size={14} aria-hidden /> {t('translation.advancedOptions')}
+          </button>
+          {advancedOpen ? (
+            <div className="translation-menu__advanced" role="group">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/jobs');
+                }}
+              >
+                {t('translation.advancedWorker')}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/settings');
+                }}
+              >
+                {t('translation.advancedProvider')}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/settings');
+                }}
+              >
+                {t('translation.advancedBatch')}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/settings');
+                }}
+              >
+                {t('translation.advancedWaves')}
+              </button>
+            </div>
+          ) : null}
+        </DropdownMenu>
       </div>
 
       <Dialog

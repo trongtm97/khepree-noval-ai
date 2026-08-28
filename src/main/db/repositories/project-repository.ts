@@ -59,6 +59,7 @@ export interface ProjectRow {
   bootstrap_version: string;
   bootstrap_chapter_count: number;
   active_edition_id: string | null;
+  export_directory: string | null;
 }
 
 export interface ProjectMetadataPatch {
@@ -502,6 +503,21 @@ export class ProjectRepository extends BaseRepository {
         utcNow(),
         id,
       );
+    return this.getById(id);
+  }
+
+  updateExportDirectory(id: string, exportDirectory: string | null): ProjectRow | null {
+    const existing = this.getById(id);
+    if (!existing) {
+      return null;
+    }
+    const normalized =
+      exportDirectory == null || exportDirectory.trim() === ''
+        ? null
+        : exportDirectory.trim();
+    this.db
+      .prepare(`UPDATE projects SET export_directory = ?, updated_at = ? WHERE id = ?`)
+      .run(normalized, utcNow(), id);
     return this.getById(id);
   }
 

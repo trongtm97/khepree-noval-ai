@@ -7,6 +7,7 @@ import type { TermTabularDuplicateStrategy } from '@shared/constants/term-tabula
 import type { TranslationSpreadsheetConflictStrategy } from '@shared/constants/translation-spreadsheet';
 import type { TabularPreviewResponse } from '@shared/schemas/tabular';
 import { useT } from '../../i18n';
+import { ModalPortal } from '../overlay';
 import { Button, Select } from '../ui';
 import { loadMappingPreset, saveMappingPreset } from './column-mapping-presets';
 
@@ -163,16 +164,14 @@ export function DataImportWizard({
   const mappingFields = section.mappingFields;
   const sourceHeaders = preview?.sourceHeaders ?? [];
 
-  if (!open) return null;
-
   return (
-    <div className="nt-dialog-backdrop" role="presentation" onClick={() => void cancel()}>
-      <div
-        className="nt-dialog data-wizard-dialog"
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalPortal
+      open={open}
+      onBackdropClick={() => void cancel()}
+      contentClassName="nt-dialog data-wizard-dialog"
+      role="dialog"
+      ariaModal
+    >
         <h2>
           {t('dataHub.wizard.title', { section: t(`dataHub.sections.${sectionId}`) })}
         </h2>
@@ -375,7 +374,6 @@ export function DataImportWizard({
             ) : null}
           </div>
         </div>
-      </div>
-    </div>
+    </ModalPortal>
   );
 }
