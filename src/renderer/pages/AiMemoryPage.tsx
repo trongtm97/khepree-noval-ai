@@ -2,11 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { NotebookDualHealthDto, NotebookHealthDto } from '@shared/schemas/notebook';
-import { Button, Badge, ErrorPanel } from '../components/ui';
+import { Button, Badge, ErrorPanel, ProgressBar } from '../components/ui';
+import { ProjectSectionHeader } from '../components/shell/ProjectSectionHeader';
+import { MemoryDetailDrawer } from '../features/ai-memory/MemoryDetailDrawer';
+import type { CharacterDto, MemoryConflictDto, RelationshipDto, StoryStateDto } from '@shared/schemas/memory';
+import type { TermDto } from '@shared/schemas/term';
+import type { ProjectDto } from '@shared/schemas/import';
 import { useT } from '../i18n';
 import { friendlyError } from '../i18n/errors';
 import { statusLabel } from '../i18n/status';
-import { HelpContextButton } from '../features/help/HelpContextButton';
 import { useUiShellStore } from '../stores/ui-shell-store';
 import { confirmDangerous } from '../utils/confirm-dangerous';
 
@@ -34,6 +38,7 @@ export function AiMemoryPage() {
   const navigate = useNavigate();
   const { projectId: paramProjectId = '' } = useParams();
   const storeProjectId = useUiShellStore((s) => s.currentProjectId) ?? '';
+  const showAdvancedTools = useUiShellStore((s) => s.showAdvancedTools);
   const projectId = paramProjectId || storeProjectId;
   const [dualHealth, setDualHealth] = useState<NotebookDualHealthDto | null>(null);
   const [health, setHealth] = useState<NotebookHealthDto | null>(null);
@@ -54,6 +59,13 @@ export function AiMemoryPage() {
     relationships: 0,
     throughChapter: null as number | null,
   });
+  const [charactersList, setCharactersList] = useState<CharacterDto[]>([]);
+  const [relationshipsList, setRelationshipsList] = useState<RelationshipDto[]>([]);
+  const [termsList, setTermsList] = useState<TermDto[]>([]);
+  const [storyState, setStoryState] = useState<StoryStateDto | null>(null);
+  const [conflicts, setConflicts] = useState<MemoryConflictDto[]>([]);
+  const [project, setProject] = useState<ProjectDto | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [accountOptions, setAccountOptions] = useState<
@@ -77,7 +89,8 @@ export function AiMemoryPage() {
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
-    const [dual, accounts, boot, resolved, chars, rels, terms] = await Promise.all([
+    const [dual, accounts, boot, resolved, chars, rels, terms, storyRes, conflictRes, projectRes] =
+      await Promise.all([
       window.novelTrans.notebook.health({
         projectId,
         dual: true,
@@ -91,6 +104,9 @@ export function AiMemoryPage() {
       window.novelTrans.memory.listCharacters(projectId),
       window.novelTrans.memory.listRelationships({ projectId }),
       window.novelTrans.terms.search({ projectId, limit: 500 }),
+      window.novelTrans.memory.getStoryState(projectId),
+      window.novelTrans.memory.listConflicts(projectId),
+      window.novelTrans.projects.get(projectId),
     ]);
     setDualHealth(dual);
     setHealth(dual.translation);
@@ -110,6 +126,12 @@ export function AiMemoryPage() {
       relationships: rels.relationships.length || boot.relationshipCount,
       throughChapter: boot.throughChapter,
     });
+    setCharactersList(chars.characters);
+    setRelationshipsList(rels.relationships);
+    setTermsList(terms.terms);
+    setStoryState(storyRes.storyState);
+    setConflicts(conflictRes.conflicts);
+    setProject(projectRes.project);
   }, [projectId]);
 
   const changeWorker = async (nextAccountId: string) => {
@@ -386,9 +408,14 @@ export function AiMemoryPage() {
       : null;
 
   const storyChapter = summary.throughChapter ?? bootstrap?.throughChapter ?? null;
-  const recentTo = storyChapter;
-  const recentFrom =
-    storyChapter != null ? Math.max(1, storyChapter - 19) : null;
+  const totalChapters =
+    project?.sourceChapterCount ?? bootstrap?.chapterCount ?? storyChapter ?? 0;
+  const researchProgressPct =
+    totalChapters > 0 && storyChapter != null
+      ? Math.min(100, Math.round((storyChapter / totalChapters) * 100))
+      : 0;
+  const researchFullyComplete =
+    totalChapters > 0 && storyChapter != null && storyChapter >= totalChapters;
   const fullResearchChapter =
     bootstrap?.throughChapter ?? bootstrap?.chapterCount ?? storyChapter;
   const showLegacyDriveNotice =
@@ -417,13 +444,38 @@ export function AiMemoryPage() {
   }
 
   return (
-    <div className="ai-memory-page">
-      <header className="ai-memory-header">
-        <div>
-          <h1>{t('aiMemory.title')}</h1>
-        </div>
-        <HelpContextButton articleId="bootstrap-memory" />
-      </header>
+    <div className="project-page ai-memory-page">
+      <ProjectSectionHeader
+        title={t('aiMemory.title')}
+        description={t('aiMemory.subtitle')}
+        helpArticleId="bootstrap-memory"
+        primaryAction={
+          !localMemoryReady
+            ? {
+                id: 'init-memory',
+                label: t('aiMemory.initMemory'),
+                variant: 'primary',
+                disabled: busy,
+                onClick: () => {
+                  void initMemory(false);
+                },
+              }
+            : undefined
+        }
+        secondaryAction={
+          researchDone
+            ? {
+                id: 'lookup',
+                label: t('aiMemory.researchLookup'),
+                disabled: busy || !accountId,
+                onClick: () => {
+                  const el = document.getElementById('research-query');
+                  el?.focus();
+                },
+              }
+            : undefined
+        }
+      />
 
       {showLegacyDriveNotice ? (
         <div className="banner banner-info ai-memory-legacy-drive" role="status">
@@ -458,76 +510,67 @@ export function AiMemoryPage() {
       {progressMsg && busy ? <p className="muted">{progressMsg}</p> : null}
 
       <section className="ai-memory-card">
-        <h2 className="ai-memory-section-title">{t('aiMemory.localMemorySection')}</h2>
-        {localMemoryReady ? (
-          <Badge tone="success">✓ {t('aiMemory.localMemoryActive')}</Badge>
-        ) : (
-          <Badge tone="warning">{t('aiMemory.localMemoryPending')}</Badge>
-        )}
+        <div className="ai-memory-card__head">
+          <h2 className="ai-memory-section-title">{t('aiMemory.localMemorySection')}</h2>
+          {localMemoryReady ? (
+            <span className="project-status-quiet">✓ {t('aiMemory.localMemoryReadyShort')}</span>
+          ) : (
+            <Badge tone="warning">{t('aiMemory.localMemoryPending')}</Badge>
+          )}
+        </div>
 
-        <ul className="ai-memory-stats">
-          <li>{t('aiMemory.statTerms', { n: String(summary.terms) })}</li>
-          <li>{t('aiMemory.statCharacters', { n: String(summary.characters) })}</li>
-          <li>{t('aiMemory.statRelationships', { n: String(summary.relationships) })}</li>
-          <li>
-            {storyChapter != null
-              ? t('aiMemory.storyStateChapter', { n: String(storyChapter) })
-              : t('aiMemory.storyStateUnknown')}
-          </li>
-          <li>
-            {recentFrom != null && recentTo != null
-              ? t('aiMemory.recentContextRange', {
-                  from: String(recentFrom),
-                  to: String(recentTo),
-                })
-              : t('aiMemory.recentContextUnknown')}
-          </li>
-        </ul>
+        <div className="source-metrics-row ai-memory-metrics">
+          <MemoryMetric value={summary.terms} label={t('aiMemory.metricTerms')} />
+          <MemoryMetric value={summary.characters} label={t('aiMemory.metricCharacters')} />
+          <MemoryMetric value={summary.relationships} label={t('aiMemory.metricRelationships')} />
+          <MemoryMetric
+            value={storyChapter ?? 0}
+            label={t('aiMemory.metricLearnedChapter')}
+            quiet={storyChapter == null || storyChapter === 0}
+          />
+        </div>
+
+        <Button variant="secondary" onClick={() => setDetailOpen(true)}>
+          {t('aiMemory.viewMemoryDetail')}
+        </Button>
       </section>
 
+      <p className="ai-memory-optional-note muted">{t('aiMemory.optionalResearchNote')}</p>
+
       <section className="ai-memory-card">
-        <h2 className="ai-memory-section-title">{t('aiMemory.fullResearchSection')}</h2>
-        {researchDone && fullResearchChapter != null ? (
-          <p className="ai-memory-research-status">
-            ✓ {t('aiMemory.fullResearchDone', { n: String(fullResearchChapter) })}
+        <h2 className="ai-memory-section-title">{t('aiMemory.fullResearchSectionPlain')}</h2>
+        <p className="muted">{t('aiMemory.fullResearchDesc')}</p>
+
+        {researchFullyComplete && fullResearchChapter != null ? (
+          <p className="project-status-quiet">
+            ✓ {t('aiMemory.fullResearchComplete', { n: String(totalChapters || fullResearchChapter) })}
           </p>
         ) : (
-          <p className="muted">{t('aiMemory.fullResearchPending')}</p>
-        )}
-
-        <div className="ai-memory-meta">
-          <div>
-            <span className="muted">{t('aiMemory.accountLabel')}</span>
-            {accountOptions.length > 1 ? (
-              <select
-                value={accountId ?? ''}
-                disabled={busy}
-                aria-label={t('aiMemory.accountLabel')}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  if (next) void changeWorker(next);
-                }}
-              >
-                {accountOptions.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.email ?? a.id}
-                  </option>
-                ))}
-              </select>
+          <>
+            {storyChapter != null && totalChapters > 0 ? (
+              <div className="ai-memory-research-progress">
+                <p className="overview-stat">
+                  {t('aiMemory.researchProgress', {
+                    done: storyChapter,
+                    total: totalChapters,
+                  })}{' '}
+                  · {researchProgressPct}%
+                </p>
+                <ProgressBar value={researchProgressPct} label={t('aiMemory.fullResearchSectionPlain')} />
+              </div>
             ) : (
-              <strong>{accountEmail ?? '—'}</strong>
+              <p className="muted">{t('aiMemory.fullResearchPending')}</p>
             )}
-          </div>
-        </div>
-
-        <div className="ai-memory-actions">
-          <Button variant="primary" disabled={busy} onClick={() => void initMemory(true)}>
-            {t('aiMemory.reanalyzeFull')}
-          </Button>
-          <Button variant="secondary" disabled={busy || !accountId} onClick={() => void openNotebook()}>
-            {t('aiMemory.openResearchNotebook')}
-          </Button>
-        </div>
+            <div className="ai-memory-actions">
+              <Button variant="primary" disabled={busy} onClick={() => void initMemory(false)}>
+                {t('aiMemory.continueResearch')}
+              </Button>
+              <Button variant="secondary" disabled={busy || !accountId} onClick={() => void openNotebook()}>
+                {t('aiMemory.openResearchNotebook')}
+              </Button>
+            </div>
+          </>
+        )}
       </section>
 
       <section className="ai-memory-card ai-memory-card--optional">
@@ -574,44 +617,88 @@ export function AiMemoryPage() {
             <p className="muted">{t('aiMemory.detailsHint')}</p>
             <ul className="ai-memory-details-list">
               <li>
-                <span>{t('aiMemory.notebook')}</span>
-                <strong>{health?.notebookName ?? '—'}</strong>
+                <span>{t('aiMemory.accountInUse')}</span>
+                <strong>{accountEmail ?? '—'}</strong>
               </li>
-              <li>
-                <span>{t('aiMemory.versions')}</span>
-                <strong>
-                  v{health?.pendingKnowledgeVersion ?? health?.localVersion ?? 0} / v
-                  {health?.verifiedKnowledgeVersion ?? health?.notebookVersion ?? 0}
-                </strong>
-              </li>
-              {bootstrap ? (
+              {showAdvancedTools && accountOptions.length > 1 ? (
                 <li>
-                  <span>{t('aiMemory.bootstrapStatus')}</span>
-                  <strong>{statusLabel(bootstrap.status)}</strong>
+                  <span>{t('aiMemory.accountLabel')}</span>
+                  <select
+                    value={accountId ?? ''}
+                    disabled={busy}
+                    aria-label={t('aiMemory.accountLabel')}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      if (next) void changeWorker(next);
+                    }}
+                  >
+                    {accountOptions.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.email ?? a.id}
+                      </option>
+                    ))}
+                  </select>
                 </li>
               ) : null}
+              {showAdvancedTools ? (
+                <>
+                  <li>
+                    <span>{t('aiMemory.notebook')}</span>
+                    <strong>{health?.notebookName ?? '—'}</strong>
+                  </li>
+                  <li>
+                    <span>{t('aiMemory.versions')}</span>
+                    <strong>
+                      v{health?.pendingKnowledgeVersion ?? health?.localVersion ?? 0} / v
+                      {health?.verifiedKnowledgeVersion ?? health?.notebookVersion ?? 0}
+                    </strong>
+                  </li>
+                  {bootstrap ? (
+                    <li>
+                      <span>{t('aiMemory.bootstrapStatus')}</span>
+                      <strong>{statusLabel(bootstrap.status)}</strong>
+                    </li>
+                  ) : null}
+                </>
+              ) : null}
             </ul>
-            {!researchDone ? (
+            {!researchFullyComplete ? (
               <Button size="sm" disabled={busy} onClick={() => void initMemory(false)}>
-                {t('aiMemory.initMemory')}
+                {t('aiMemory.continueResearch')}
+              </Button>
+            ) : null}
+            {showAdvancedTools ? (
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => void initMemory(true)}>
+                {t('aiMemory.reanalyzeFromStart')}
               </Button>
             ) : null}
           </div>
         ) : null}
       </section>
 
-      <section className="ai-memory-disclosure">
-        <button
-          type="button"
-          className="ai-memory-disclosure__toggle"
-          onClick={() => {
-            setShowAdvanced((v) => !v);
-          }}
-        >
-          {showAdvanced ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          {t('aiMemory.advancedTitle')}
-        </button>
-        {showAdvanced ? (
+      <MemoryDetailDrawer
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        characters={charactersList}
+        terms={termsList}
+        relationships={relationshipsList}
+        storyState={storyState}
+        conflicts={conflicts}
+      />
+
+      {showAdvancedTools ? (
+        <section className="ai-memory-disclosure">
+          <button
+            type="button"
+            className="ai-memory-disclosure__toggle"
+            onClick={() => {
+              setShowAdvanced((v) => !v);
+            }}
+          >
+            {showAdvanced ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            {t('aiMemory.advancedTitle')}
+          </button>
+          {showAdvanced ? (
           <div className="ai-memory-disclosure__body ai-memory-advanced">
             <p className="muted">{t('aiMemory.advancedHint')}</p>
 
@@ -815,7 +902,25 @@ export function AiMemoryPage() {
             ) : null}
           </div>
         ) : null}
-      </section>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function MemoryMetric({
+  value,
+  label,
+  quiet = false,
+}: {
+  value: number;
+  label: string;
+  quiet?: boolean;
+}) {
+  return (
+    <div className={`source-metric ${quiet ? 'source-metric--quiet' : ''}`.trim()}>
+      <span className="source-metric__value">{value}</span>
+      <span className="source-metric__label">{label}</span>
     </div>
   );
 }

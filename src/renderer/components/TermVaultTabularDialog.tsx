@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import type { TabularFormat, TabularImportMode } from '@shared/constants/tabular';
 import type {
   TermTabularDefaultStatus,
@@ -9,6 +10,8 @@ import { TERM_TABULAR_DUPLICATE_STRATEGIES, TERM_TABULAR_EXPORT_SCOPES } from '@
 import type { TabularPreviewResponse, TabularPreviewRow } from '@shared/schemas/tabular';
 import { useT } from '../i18n';
 import { Button, Dialog, Select } from './ui';
+import { DropdownMenu } from './overlay';
+import { useUiShellStore } from '../stores/ui-shell-store';
 
 type RowFilter = 'all' | 'valid' | 'warning' | 'error';
 
@@ -16,6 +19,8 @@ interface TermVaultTabularDialogProps {
   projectId?: string;
   editionId?: string;
   onComplete?: (message: string) => void;
+  /** `dropdown` = single Nhập/Xuất menu trigger; `inline` = separate buttons (legacy). */
+  variant?: 'inline' | 'dropdown';
 }
 
 function parseTermCommitMessage(message: string): { inserted: number; updated: number; skipped: number } | null {
@@ -33,8 +38,12 @@ export function TermVaultTabularDialog({
   projectId,
   editionId,
   onComplete,
+  variant = 'inline',
 }: TermVaultTabularDialogProps) {
   const t = useT();
+  const showAdvancedTools = useUiShellStore((s) => s.showAdvancedTools);
+  const menuRef = useRef<HTMLButtonElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -184,19 +193,42 @@ export function TermVaultTabularDialog({
     setPreview(null);
   }, [preview]);
 
-  return (
-    <div className="nt-term-tabular-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <Button variant="secondary" disabled={busy} onClick={() => void startImport()}>
-        {t('terms.tabularImport')}
-      </Button>
-      <Button variant="secondary" disabled={busy} onClick={() => setExportOpen(true)}>
-        {t('terms.tabularExport')}
-      </Button>
-      <Button variant="ghost" disabled={busy} onClick={() => void downloadTemplate()}>
-        {t('terms.tabularTemplate')}
-      </Button>
-      {error ? <span className="nt-error-text">{error}</span> : null}
+  const rawImport = useCallback(async () => {
+    const content = window.prompt(t('terms.promptImport'));
+    if (!content?.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const format: 'csv' | 'json' = content.trim().startsWith('[') ? 'json' : 'csv';
+      const result = await window.novelTrans.terms.import({
+        format,
+        content,
+        scope: 'GLOBAL',
+      });
+      onComplete?.(t('terms.imported', { count: result.terms.length }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
+    } finally {
+      setBusy(false);
+    }
+  }, [onComplete, t]);
 
+  const rawExportJson = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await window.novelTrans.terms.export({ format: 'json', filters: {} });
+      await navigator.clipboard.writeText(result.content);
+      onComplete?.(t('terms.exported', { count: result.count, format: 'json' }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
+    } finally {
+      setBusy(false);
+    }
+  }, [onComplete, t]);
+
+  const dialogs = (
+    <>
       <Dialog
         open={importOpen}
         title={t('terms.tabularPreviewTitle')}
@@ -328,6 +360,121 @@ export function TermVaultTabularDialog({
           </Select>
         </div>
       </Dialog>
+    </>
+  );
+
+  if (variant === 'dropdown') {
+    return (
+      <>
+        <Button
+          ref={menuRef}
+          variant="secondary"
+          disabled={busy}
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          {t('terms.importExportMenu')}
+          <ChevronDown size={14} style={{ marginLeft: 4 }} aria-hidden />
+        </Button>
+        <DropdownMenu
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          anchorRef={menuRef}
+          className="translation-menu"
+          placement="bottom-end"
+          minWidth={220}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={() => {
+              setMenuOpen(false);
+              void startImport();
+            }}
+          >
+            {t('terms.tabularImport')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={() => {
+              setMenuOpen(false);
+              setExportFormat('xlsx');
+              setExportOpen(true);
+            }}
+          >
+            {t('terms.exportXlsx')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={() => {
+              setMenuOpen(false);
+              setExportFormat('csv');
+              void runExport();
+            }}
+          >
+            {t('terms.exportCsvMenu')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={() => {
+              setMenuOpen(false);
+              void downloadTemplate();
+            }}
+          >
+            {t('terms.tabularTemplate')}
+          </button>
+          {showAdvancedTools ? (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={busy}
+                onClick={() => {
+                  setMenuOpen(false);
+                  void rawExportJson();
+                }}
+              >
+                {t('terms.exportJsonMenu')}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={busy}
+                onClick={() => {
+                  setMenuOpen(false);
+                  void rawImport();
+                }}
+              >
+                {t('terms.rawImportMenu')}
+              </button>
+            </>
+          ) : null}
+        </DropdownMenu>
+        {error ? <span className="nt-error-text">{error}</span> : null}
+        {dialogs}
+      </>
+    );
+  }
+
+  return (
+    <div className="nt-term-tabular-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Button variant="secondary" disabled={busy} onClick={() => void startImport()}>
+        {t('terms.tabularImport')}
+      </Button>
+      <Button variant="secondary" disabled={busy} onClick={() => setExportOpen(true)}>
+        {t('terms.tabularExport')}
+      </Button>
+      <Button variant="ghost" disabled={busy} onClick={() => void downloadTemplate()}>
+        {t('terms.tabularTemplate')}
+      </Button>
+      {error ? <span className="nt-error-text">{error}</span> : null}
+      {dialogs}
     </div>
   );
 }

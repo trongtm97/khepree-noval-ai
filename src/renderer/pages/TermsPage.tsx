@@ -1,81 +1,96 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { BookOpen, Lock } from 'lucide-react';
 import type { TermCandidateDto, TermDto } from '@shared/schemas/term';
-import {
-  TERM_SCOPES,
-  TERM_STATUSES,
-  TERM_TYPES,
-  type TermScope,
-  type TermStatus,
-  type TermType,
-} from '@shared/constants/term';
+import type { ProjectDto } from '@shared/schemas/import';
+import type { TermStatus, TermType } from '@shared/constants/term';
+import { DEFAULT_SOURCE_LANGUAGE, DEFAULT_TARGET_LANGUAGE } from '@shared/constants/language-profile';
 import { useT } from '../i18n';
 import { friendlyError } from '../i18n/errors';
+import { termStatusLabel, termTypeLabel } from '../i18n/enums';
 import {
-  termScopeLabel,
-  termStatusLabel,
-  termTypeLabel,
-} from '../i18n/enums';
-import {
-  PageHeader,
   Button,
   Tabs,
   TabPanel,
   EmptyState,
   Badge,
   DataTable,
-  Select,
-  Input,
   SearchInput,
   ErrorPanel,
   Skeleton,
 } from '../components/ui';
-import { HelpContextButton } from '../features/help/HelpContextButton';
+import { ProjectSectionHeader } from '../components/shell/ProjectSectionHeader';
 import { TermVaultTabularDialog } from '../components/TermVaultTabularDialog';
 import { helpArticleForErrorCode } from '../features/help/content';
+import { useUiShellStore } from '../stores/ui-shell-store';
+import { termLanguageColumnLabels } from '../features/terms/term-language-labels';
+import {
+  TermFilterDrawer,
+  countActiveTermFilters,
+  type TermFiltersState,
+} from '../features/terms/TermFilterDrawer';
+import { TermDetailDrawer } from '../features/terms/TermDetailDrawer';
 
 type Tab = 'vault' | 'review' | 'candidates';
 
-const EMPTY_FILTERS = {
-  chinese: '',
-  vietnamese: '',
-  pinyin: '',
-  type: '' as TermType | '',
-  scope: '' as TermScope | '',
-  status: '' as TermStatus | '',
+const EMPTY_FILTERS: TermFiltersState = {
+  type: '',
+  scope: '',
+  status: '',
   genre: '',
+  pinyin: '',
 };
 
 export function TermsPage() {
   const t = useT();
-  const navigate = useNavigate();
+  const showAdvancedTools = useUiShellStore((s) => s.showAdvancedTools);
+  const { projectId = '' } = useParams();
   const [tab, setTab] = useState<Tab>('vault');
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<TermFiltersState>(EMPTY_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [terms, setTerms] = useState<TermDto[]>([]);
   const [candidates, setCandidates] = useState<TermCandidateDto[]>([]);
   const [candidateCount, setCandidateCount] = useState(0);
+  const [vaultCount, setVaultCount] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [detailTerm, setDetailTerm] = useState<TermDto | null>(null);
+  const [project, setProject] = useState<ProjectDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  const columnLabels = useMemo(
+    () =>
+      termLanguageColumnLabels(
+        project?.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE,
+        project?.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
+      ),
+    [project],
+  );
+
+  const showTransliteration = columnLabels.transliterationLabel != null;
+
   const refresh = useCallback(async () => {
-    const candidateResult = await window.novelTrans.terms.listCandidates({});
+    const candidateResult = await window.novelTrans.terms.listCandidates(
+      projectId ? { projectId } : {},
+    );
     setCandidateCount(candidateResult.candidates.length);
+
     if (tab === 'vault') {
       const result = await window.novelTrans.terms.search({
-        chinese: filters.chinese || undefined,
-        vietnamese: filters.vietnamese || undefined,
+        chinese: searchQuery || undefined,
         pinyin: filters.pinyin || undefined,
         type: filters.type || undefined,
         scope: filters.scope || undefined,
         status: filters.status || undefined,
         genre: filters.genre || undefined,
+        projectId: projectId || undefined,
         limit: 200,
       });
       setTerms(result.terms);
+      setVaultCount(result.terms.length);
     } else if (tab === 'review') {
       const result = await window.novelTrans.terms.reviewQueue();
       setTerms(result.terms);
@@ -83,7 +98,15 @@ export function TermsPage() {
       setCandidates(candidateResult.candidates);
     }
     setSelected(new Set());
-  }, [tab, filters]);
+  }, [tab, searchQuery, filters, projectId]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    void window.novelTrans.projects
+      .get(projectId)
+      .then((res) => setProject(res.project))
+      .catch(() => setProject(null));
+  }, [projectId]);
 
   useEffect(() => {
     void refresh()
@@ -110,6 +133,7 @@ export function TermsPage() {
   };
 
   const selectedIds = useMemo(() => [...selected], [selected]);
+  const activeFilterCount = countActiveTermFilters(filters);
 
   const bulkReview = (action: 'accept' | 'reject' | 'lock' | 'promote') => {
     if (selectedIds.length === 0) return;
@@ -119,31 +143,7 @@ export function TermsPage() {
         termIds: selectedIds,
         targetScope: action === 'promote' ? 'GLOBAL' : undefined,
       });
-      setMessage(
-        t('terms.bulkApplied', { action, count: selectedIds.length }),
-      );
-    });
-  };
-
-  const exportTerms = (format: 'csv' | 'json') => {
-    void run(async () => {
-      const result = await window.novelTrans.terms.export({ format, filters });
-      await navigator.clipboard.writeText(result.content);
-      setMessage(t('terms.exported', { count: result.count, format }));
-    });
-  };
-
-  const importTerms = () => {
-    const content = window.prompt(t('terms.promptImport'));
-    if (!content?.trim()) return;
-    const format: 'csv' | 'json' = content.trim().startsWith('[') ? 'json' : 'csv';
-    void run(async () => {
-      const result = await window.novelTrans.terms.import({
-        format,
-        content,
-        scope: 'GLOBAL',
-      });
-      setMessage(t('terms.imported', { count: result.terms.length }));
+      setMessage(t('terms.bulkApplied', { action, count: selectedIds.length }));
     });
   };
 
@@ -180,16 +180,14 @@ export function TermsPage() {
         action,
         patch: { scope: 'GLOBAL' },
       });
-      setMessage(
-        t('terms.candidateApplied', { action, count: selectedIds.length }),
-      );
+      setMessage(t('terms.candidateApplied', { action, count: selectedIds.length }));
     });
   };
 
   if (loading) {
     return (
-      <div>
-        <PageHeader title={t('terms.title')} description={t('terms.subtitle')} />
+      <div className="project-page">
+        <ProjectSectionHeader title={t('terms.title')} description={t('terms.subtitlePlain')} />
         <Skeleton height={240} />
       </div>
     );
@@ -206,29 +204,20 @@ export function TermsPage() {
         <input
           type="checkbox"
           checked={selected.has(term.id)}
-          onChange={() => {
-            toggleSelect(term.id);
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
+          onChange={() => toggleSelect(term.id)}
+          onClick={(e) => e.stopPropagation()}
         />
       ),
     },
     {
       key: 'source',
-      header: t('terms.source'),
+      header: columnLabels.sourceLabel,
       render: (term: TermDto) => term.sourceText,
     },
     {
       key: 'target',
-      header: t('terms.target'),
+      header: columnLabels.targetLabel,
       render: (term: TermDto) => term.preferredTranslation ?? '—',
-    },
-    {
-      key: 'pinyin',
-      header: t('terms.pinyin'),
-      render: (term: TermDto) => term.pinyin ?? '—',
     },
     {
       key: 'type',
@@ -236,34 +225,21 @@ export function TermsPage() {
       render: (term: TermDto) => <Badge>{termTypeLabel(term.type)}</Badge>,
     },
     {
-      key: 'scope',
-      header: t('terms.scope'),
-      render: (term: TermDto) => (
-        <span>
-          {termScopeLabel(term.scope)}
-          {term.locked ? <Lock size={12} style={{ marginLeft: 4 }} aria-hidden /> : null}
-        </span>
-      ),
-    },
-    {
       key: 'status',
       header: t('terms.status'),
       render: (term: TermDto) => termStatusLabel(term.status),
     },
     {
-      key: 'genre',
-      header: t('terms.genre'),
-      render: (term: TermDto) => term.genre ?? '—',
-    },
-    {
       key: 'occ',
-      header: t('terms.occ'),
+      header: t('terms.colOccurrences'),
       render: (term: TermDto) => term.occurrences,
     },
     {
-      key: 'proj',
-      header: t('terms.proj'),
-      render: (term: TermDto) => term.projectCount,
+      key: 'lock',
+      header: '',
+      width: '2rem',
+      render: (term: TermDto) =>
+        term.locked ? <Lock size={14} aria-label={t('terms.lockedLabel')} /> : null,
     },
   ];
 
@@ -276,18 +252,14 @@ export function TermsPage() {
         <input
           type="checkbox"
           checked={selected.has(c.id)}
-          onChange={() => {
-            toggleSelect(c.id);
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
+          onChange={() => toggleSelect(c.id)}
+          onClick={(e) => e.stopPropagation()}
         />
       ),
     },
     {
       key: 'source',
-      header: t('terms.source'),
+      header: columnLabels.sourceLabel,
       render: (c: TermCandidateDto) => c.sourceText,
     },
     {
@@ -301,16 +273,6 @@ export function TermsPage() {
       render: (c: TermCandidateDto) => c.frequency,
     },
     {
-      key: 'conf',
-      header: t('terms.conf'),
-      render: (c: TermCandidateDto) => c.confidence?.toFixed(2) ?? '—',
-    },
-    {
-      key: 'tags',
-      header: t('terms.tags'),
-      render: (c: TermCandidateDto) => c.heuristicTags.join(', '),
-    },
-    {
       key: 'snippet',
       header: t('terms.snippet'),
       render: (c: TermCandidateDto) => (
@@ -319,64 +281,45 @@ export function TermsPage() {
     },
   ];
 
-  return (
-    <div>
-      <PageHeader
-        title={t('terms.title')}
-        description={t('terms.subtitle')}
-        actions={
-          <>
-            <HelpContextButton articleId="term-vault" />
-            <Button variant="primary" disabled={busy} onClick={addTerm}>
-              {t('terms.addTerm')}
-            </Button>
-            <TermVaultTabularDialog onComplete={(msg) => setMessage(msg)} />
-            <Button variant="secondary" disabled={busy} onClick={importTerms}>
-              {t('actions.import')}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onClick={() => {
-                exportTerms('csv');
-              }}
-            >
-              {t('actions.export')} CSV
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onClick={() => {
-                exportTerms('json');
-              }}
-            >
-              {t('actions.export')} JSON
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                navigate('/learning');
-              }}
-            >
-              {t('terms.openLearning')}
-            </Button>
-          </>
-        }
-      />
+  const vaultLabel =
+    vaultCount > 0 ? `${t('terms.tabVault')} (${vaultCount})` : t('terms.tabVault');
+  const candidatesLabel =
+    candidateCount > 0
+      ? `${t('terms.tabCandidates')} (${candidateCount})`
+      : t('terms.tabCandidates');
 
-      <p className="muted">{t('terms.priorityHint')}</p>
+  return (
+    <div className="project-page terms-page">
+      <ProjectSectionHeader
+        title={t('terms.title')}
+        description={t('terms.subtitlePlain')}
+        helpArticleId="term-vault"
+        primaryAction={{
+          id: 'add-term',
+          label: t('terms.addTerm'),
+          variant: 'primary',
+          disabled: busy,
+          onClick: addTerm,
+        }}
+        secondaryAction={{
+          id: 'import-export',
+          label: t('terms.importExportMenu'),
+          element: (
+            <TermVaultTabularDialog
+              variant="dropdown"
+              projectId={projectId || undefined}
+              editionId={project?.activeEditionId ?? undefined}
+              onComplete={(msg) => setMessage(msg)}
+            />
+          ),
+        }}
+      />
 
       <Tabs
         items={[
-          { id: 'vault', label: t('terms.vault') },
-          { id: 'review', label: t('terms.review') },
-          {
-            id: 'candidates',
-            label:
-              candidateCount > 0
-                ? `${t('terms.candidates')} (${candidateCount})`
-                : t('terms.candidates'),
-          },
+          { id: 'vault', label: vaultLabel },
+          { id: 'review', label: t('terms.tabReview') },
+          { id: 'candidates', label: candidatesLabel },
         ]}
         value={tab}
         onChange={(id) => {
@@ -396,165 +339,114 @@ export function TermsPage() {
       {message ? <div className="banner banner-info">{message}</div> : null}
 
       <TabPanel active={tab === 'vault'}>
-        <div className="term-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', margin: '0.75rem 0' }}>
+        <div className="terms-toolbar">
           <SearchInput
-            placeholder={t('terms.source')}
-            value={filters.chinese}
-            onChange={(e) => {
-              setFilters((f) => ({ ...f, chinese: e.target.value }));
-            }}
+            placeholder={t('terms.searchPlaceholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Input
-            placeholder={t('terms.target')}
-            value={filters.vietnamese}
-            onChange={(e) => {
-              setFilters((f) => ({ ...f, vietnamese: e.target.value }));
-            }}
-          />
-          <Input
-            placeholder={t('terms.pinyin')}
-            value={filters.pinyin}
-            onChange={(e) => {
-              setFilters((f) => ({ ...f, pinyin: e.target.value }));
-            }}
-          />
-          <Select
-            value={filters.type}
-            onChange={(e) => {
-              setFilters((f) => ({ ...f, type: e.target.value as TermType | '' }));
-            }}
+          <Button
+            variant={activeFilterCount > 0 ? 'primary' : 'secondary'}
+            onClick={() => setFilterOpen(true)}
           >
-            <option value="">{t('terms.allTypes')}</option>
-            {TERM_TYPES.map((ty) => (
-              <option key={ty} value={ty}>
-                {termTypeLabel(ty)}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={filters.scope}
-            onChange={(e) => {
-              setFilters((f) => ({ ...f, scope: e.target.value as TermScope | '' }));
-            }}
-          >
-            <option value="">{t('terms.allScopes')}</option>
-            {TERM_SCOPES.map((s) => (
-              <option key={s} value={s}>
-                {termScopeLabel(s)}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={filters.status}
-            onChange={(e) => {
-              setFilters((f) => ({ ...f, status: e.target.value as TermStatus | '' }));
-            }}
-          >
-            <option value="">{t('terms.allStatuses')}</option>
-            {TERM_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {termStatusLabel(s)}
-              </option>
-            ))}
-          </Select>
-          <Input
-            placeholder={t('terms.genre')}
-            value={filters.genre}
-            onChange={(e) => {
-              setFilters((f) => ({ ...f, genre: e.target.value }));
-            }}
-          />
+            {t('terms.filterButton')}
+            {activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </Button>
           <Button
             variant="secondary"
             disabled={busy}
-            onClick={() => {
-              void refresh();
-            }}
+            onClick={() => void refresh()}
           >
             {t('actions.search')}
           </Button>
         </div>
+        {activeFilterCount > 0 ? (
+          <div className="filter-chips">
+            {filters.type ? (
+              <span className="filter-chip">{termTypeLabel(filters.type as TermType)}</span>
+            ) : null}
+            {filters.scope ? (
+              <span className="filter-chip">{filters.scope}</span>
+            ) : null}
+            {filters.status ? (
+              <span className="filter-chip">{termStatusLabel(filters.status as TermStatus)}</span>
+            ) : null}
+            {filters.genre ? <span className="filter-chip">{filters.genre}</span> : null}
+          </div>
+        ) : null}
       </TabPanel>
 
-      {(tab === 'vault' || tab === 'review') && (
-        <>
-          <div className="btn-row" style={{ marginBottom: '0.75rem' }}>
-            <Button
-              variant="secondary"
-              disabled={busy || !selected.size}
-              onClick={() => {
-                bulkReview('accept');
-              }}
-            >
-              {t('terms.accept')}
+      {(tab === 'vault' || tab === 'review') && selected.size > 0 ? (
+        <div className="bulk-actions-bar">
+          <span className="muted">{t('terms.selectedCount', { count: selected.size })}</span>
+          <Button variant="secondary" disabled={busy} onClick={() => bulkReview('accept')}>
+            {t('terms.accept')}
+          </Button>
+          <Button variant="secondary" disabled={busy} onClick={() => bulkReview('reject')}>
+            {t('terms.reject')}
+          </Button>
+          <Button variant="secondary" disabled={busy} onClick={() => bulkReview('lock')}>
+            {t('terms.lock')}
+          </Button>
+          {showAdvancedTools ? (
+            <Button variant="secondary" disabled={busy} onClick={() => bulkReview('promote')}>
+              {t('terms.promoteGlobal')}
             </Button>
-            <Button
-              variant="secondary"
-              disabled={busy || !selected.size}
-              onClick={() => {
-                bulkReview('reject');
-              }}
-            >
-              {t('terms.reject')}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={busy || !selected.size}
-              onClick={() => {
-                bulkReview('lock');
-              }}
-            >
-              {t('terms.lock')}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={busy || !selected.size}
-              onClick={() => {
-                bulkReview('promote');
-              }}
-            >
-              {t('terms.promote')}
-            </Button>
-          </div>
-          {terms.length === 0 ? (
-            <EmptyState
-              icon={<BookOpen />}
-              title={tab === 'review' ? t('terms.emptyReview') : t('terms.emptyFilter')}
-              description={
-                tab === 'review'
-                  ? t('terms.emptyDesc')
-                  : candidateCount > 0
-                    ? t('terms.emptyVaultDesc')
+          ) : null}
+        </div>
+      ) : null}
+
+      {(tab === 'vault' || tab === 'review') &&
+        (terms.length === 0 ? (
+          <EmptyState
+            icon={<BookOpen />}
+            title={
+              tab === 'review'
+                ? t('terms.emptyReview')
+                : activeFilterCount > 0 || searchQuery.trim()
+                  ? t('terms.emptyFilter')
+                  : t('terms.emptyTitle')
+            }
+            description={
+              tab === 'review'
+                ? t('terms.emptyVaultDesc')
+                : activeFilterCount > 0 || searchQuery.trim()
+                  ? undefined
+                  : showAdvancedTools
+                    ? t('terms.emptyDescAdvanced')
                     : t('terms.emptyDesc')
-              }
-            />
-          ) : (
-            <DataTable columns={termColumns} rows={terms} rowKey={(row) => row.id} />
-          )}
-        </>
+            }
+            actionLabel={
+              tab === 'vault' && activeFilterCount === 0 && !searchQuery.trim()
+                ? t('terms.addTerm')
+                : undefined
+            }
+            onAction={
+              tab === 'vault' && activeFilterCount === 0 && !searchQuery.trim() ? addTerm : undefined
+            }
+          />
+        ) : (
+          <DataTable
+            columns={termColumns}
+            rows={terms}
+            rowKey={(row) => row.id}
+            onRowClick={(row) => setDetailTerm(row)}
+          />
+        )
       )}
 
       <TabPanel active={tab === 'candidates'}>
-        <div className="btn-row" style={{ margin: '0.75rem 0' }}>
-          <Button
-            variant="secondary"
-            disabled={busy || !selected.size}
-            onClick={() => {
-              candidateBulk('accept');
-            }}
-          >
-            {t('terms.accept')}
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={busy || !selected.size}
-            onClick={() => {
-              candidateBulk('reject');
-            }}
-          >
-            {t('terms.reject')}
-          </Button>
-        </div>
+        {selected.size > 0 ? (
+          <div className="bulk-actions-bar">
+            <span className="muted">{t('terms.selectedCount', { count: selected.size })}</span>
+            <Button variant="secondary" disabled={busy} onClick={() => candidateBulk('accept')}>
+              {t('terms.accept')}
+            </Button>
+            <Button variant="secondary" disabled={busy} onClick={() => candidateBulk('reject')}>
+              {t('terms.reject')}
+            </Button>
+          </div>
+        ) : null}
         {candidates.length === 0 ? (
           <EmptyState
             icon={<BookOpen />}
@@ -562,13 +454,38 @@ export function TermsPage() {
             description={t('terms.emptyCandidatesDesc')}
           />
         ) : (
-          <DataTable
-            columns={candidateColumns}
-            rows={candidates}
-            rowKey={(row) => row.id}
-          />
+          <DataTable columns={candidateColumns} rows={candidates} rowKey={(row) => row.id} />
         )}
       </TabPanel>
+
+      <TermFilterDrawer
+        open={filterOpen}
+        filters={filters}
+        showTransliteration={showTransliteration}
+        transliterationLabel={columnLabels.transliterationLabel}
+        onClose={() => setFilterOpen(false)}
+        onChange={setFilters}
+        onApply={() => {
+          setFilterOpen(false);
+          void refresh();
+        }}
+        onClear={() => {
+          setFilters(EMPTY_FILTERS);
+          setFilterOpen(false);
+        }}
+      />
+
+      <TermDetailDrawer
+        open={detailTerm != null}
+        busy={busy}
+        term={detailTerm}
+        onClose={() => setDetailTerm(null)}
+        onSaved={() => {
+          setDetailTerm(null);
+          void refresh();
+        }}
+        onError={setError}
+      />
     </div>
   );
 }

@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { DataSectionId } from '@shared/constants/data-portability';
 import { DATA_SECTION_IDS } from '@shared/constants/data-portability';
 import type { TabularImportHistoryEntry } from '@shared/schemas/tabular';
 import type { ProjectDto } from '@shared/schemas/import';
-import { PageHeader, Card, Button } from '../components/ui';
+import { Card, Button } from '../components/ui';
 import { ModalPortal } from '../components/overlay';
+import { ProjectSectionHeader } from '../components/shell/ProjectSectionHeader';
 import { DataPortabilityCard } from '../components/data-portability/DataPortabilityCard';
+import type { DataExportResult } from '../components/data-portability/DataExportMenu';
+import { DataRecentOperationsTable } from '../components/data-portability/DataRecentOperationsTable';
 import { useT } from '../i18n';
 
 interface SectionCounts {
@@ -22,16 +25,6 @@ function formatCount(n: number, locale: string): string {
   return n.toLocaleString(locale);
 }
 
-function isToday(iso: string): boolean {
-  const d = new Date(iso);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
-}
-
 export function ProjectDataPage() {
   const t = useT();
   const { projectId = '' } = useParams();
@@ -39,7 +32,9 @@ export function ProjectDataPage() {
   const [counts, setCounts] = useState<SectionCounts | null>(null);
   const [history, setHistory] = useState<TabularImportHistoryEntry[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [exportResult, setExportResult] = useState<DataExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [reportEntry, setReportEntry] = useState<TabularImportHistoryEntry | null>(null);
 
   const locale = 'vi-VN';
@@ -98,23 +93,70 @@ export function ProjectDataPage() {
     [counts, locale, t],
   );
 
-  const recentToday = useMemo(
-    () => history.filter((e) => isToday(e.createdAt)).slice(0, 10),
-    [history],
-  );
-
   const editionId = project?.activeEditionId ?? undefined;
+
+  const handleUndo = async (_entryId: string) => {
+    setBusy(true);
+    try {
+      const result = await window.novelTrans.tabular.undoLast({ projectId });
+      setMessage(result.message);
+      await refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (!projectId) {
     return <div className="banner banner-error">{t('dataHub.noProject')}</div>;
   }
 
   return (
-    <div className="data-hub-page">
-      <PageHeader title={t('dataHub.title')} description={t('dataHub.subtitle')} />
+    <div className="project-page data-hub-page">
+      <ProjectSectionHeader
+        title={t('dataHub.title')}
+        description={t('dataHub.subtitle')}
+        helpArticleId="data-portability"
+      />
 
       {error ? <div className="banner banner-error">{error}</div> : null}
-      {message ? <div className="banner banner-success">{message}</div> : null}
+      {message ? <div className="banner banner-info">{message}</div> : null}
+
+      {exportResult ? (
+        <div className="banner banner-success data-export-toast">
+          <span>{exportResult.message}</span>
+          {exportResult.filePath ? (
+            <div className="btn-row">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  void window.novelTrans.portability.openExportedFile({
+                    projectId,
+                    filePath: exportResult.filePath,
+                    editionId,
+                  });
+                }}
+              >
+                {t('dataHub.openFile')}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  void window.novelTrans.portability.openExportDirectory({
+                    projectId,
+                    editionId,
+                  });
+                }}
+              >
+                {t('dataHub.openFolder')}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="data-hub-grid">
         {DATA_SECTION_IDS.map((sectionId) => (
@@ -124,39 +166,29 @@ export function ProjectDataPage() {
             projectId={projectId}
             editionId={editionId}
             countLabel={countLabel(sectionId)}
-            onComplete={(msg) => {
+            onImportComplete={(msg) => {
               setMessage(msg);
+              setExportResult(null);
               void refresh();
             }}
+            onExportComplete={(result) => {
+              setExportResult(result);
+              setMessage(null);
+              void refresh();
+            }}
+            onError={setError}
           />
         ))}
       </div>
 
       <Card className="data-hub-recent">
-        <h3>{t('dataHub.recentTitle')}</h3>
-        {recentToday.length === 0 ? (
-          <p className="nt-muted-text">{t('dataHub.recentEmpty')}</p>
-        ) : (
-          <ul className="data-hub-recent-list">
-            {recentToday.map((entry) => (
-              <li key={entry.id}>
-                <div>
-                  <strong>{entry.fileName}</strong>
-                  <span className="nt-muted-text">
-                    {' '}
-                    · {t('dataHub.recentRows', { count: entry.rowCount })}
-                  </span>
-                </div>
-                <Button
-                  variant="ghost"
-                  onClick={() => setReportEntry(entry)}
-                >
-                  {t('dataHub.viewReport')}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <h3 className="data-hub-recent__title">{t('dataHub.recentTitle')}</h3>
+        <DataRecentOperationsTable
+          entries={history}
+          busy={busy}
+          onUndo={() => void handleUndo('')}
+          onViewReport={setReportEntry}
+        />
       </Card>
 
       <ModalPortal

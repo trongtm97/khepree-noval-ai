@@ -1,10 +1,12 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import type { TabularFormat, TabularImportMode } from '@shared/constants/tabular';
 import type { SourceWorkbookImportMode } from '@shared/constants/source-workbook-tabular';
 import { SOURCE_WORKBOOK_WARNINGS } from '@shared/constants/source-workbook-tabular';
 import type { TabularPreviewResponse, TabularPreviewRow } from '@shared/schemas/tabular';
 import { useT } from '../i18n';
 import { Button, Dialog, Select } from './ui';
+import { DropdownMenu } from './overlay';
 
 type RowFilter = 'all' | 'valid' | 'warning' | 'error' | 'blocked';
 
@@ -15,6 +17,8 @@ interface SourceWorkbookDialogProps {
 
 export function SourceWorkbookDialog({ projectId, onComplete }: SourceWorkbookDialogProps) {
   const t = useT();
+  const exportRef = useRef<HTMLButtonElement>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<TabularPreviewResponse | null>(null);
@@ -120,19 +124,6 @@ export function SourceWorkbookDialog({ projectId, onComplete }: SourceWorkbookDi
     setPreview(null);
   }, [preview]);
 
-  const undoLast = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await window.novelTrans.tabular.undoLast({ projectId });
-      onComplete?.(result.message);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
-    } finally {
-      setBusy(false);
-    }
-  }, [onComplete, projectId, t]);
-
   return (
     <div className="nt-tabular-actions" style={{ display: 'grid', gap: 8 }}>
       <p className="nt-muted-text" style={{ margin: 0, fontSize: 13 }}>
@@ -149,19 +140,53 @@ export function SourceWorkbookDialog({ projectId, onComplete }: SourceWorkbookDi
           <option value="METADATA_ONLY">{t('sourceWorkbook.modeMetadataOnly')}</option>
           <option value="UPDATE_SOURCE_CONTENT">{t('sourceWorkbook.modeUpdateSource')}</option>
         </Select>
-        <Button variant="secondary" disabled={busy} onClick={() => void startImport()}>
-          {t('sourceWorkbook.import')}
+        <Button variant="secondary" size="sm" disabled={busy} onClick={() => void startImport()}>
+          {t('tabular.importShort')}
         </Button>
-      <Button variant="secondary" disabled={busy} onClick={() => void runExport('csv')}>
-        {t('sourceWorkbook.exportCsv')}
-      </Button>
-      <Button variant="secondary" disabled={busy} onClick={() => void runExport('xlsx')}>
-        {t('sourceWorkbook.exportXlsx')}
-      </Button>
-      <Button variant="ghost" disabled={busy} onClick={() => void undoLast()}>
-        {t('tabular.undoLast')}
-      </Button>
-      {error ? <span className="nt-error-text">{error}</span> : null}
+        <Button
+          ref={exportRef}
+          variant="secondary"
+          size="sm"
+          disabled={busy}
+          onClick={() => {
+            setExportOpen((v) => !v);
+          }}
+        >
+          {t('tabular.exportMenu')}
+          <ChevronDown size={14} style={{ marginLeft: 4 }} aria-hidden />
+        </Button>
+        <DropdownMenu
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          anchorRef={exportRef}
+          className="translation-menu"
+          placement="bottom-end"
+          minWidth={200}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={() => {
+              setExportOpen(false);
+              void runExport('xlsx');
+            }}
+          >
+            {t('tabular.exportXlsxLabel')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={() => {
+              setExportOpen(false);
+              void runExport('csv');
+            }}
+          >
+            {t('tabular.exportCsvLabel')}
+          </button>
+        </DropdownMenu>
+        {error ? <span className="nt-error-text">{error}</span> : null}
       </div>
 
       <Dialog

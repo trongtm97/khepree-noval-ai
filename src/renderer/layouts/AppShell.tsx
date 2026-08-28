@@ -138,6 +138,11 @@ export function AppShell({ children, appInfo }: AppShellProps) {
     : (ROUTE_TITLE[location.pathname] ??
       (location.pathname.startsWith('/projects') ? 'nav.projects' : 'nav.dashboard'));
   const flush = translationFocus;
+  const mainClass = flush
+    ? 'main-content main-content--flush'
+    : inProject
+      ? 'main-content main-content--project'
+      : 'main-content';
 
   const shellClass = useMemo(() => {
     const parts = ['app-shell'];
@@ -244,25 +249,17 @@ export function AppShell({ children, appInfo }: AppShellProps) {
       <header className={translationFocus ? 'topbar topbar--compact' : 'topbar'}>
         {!translationFocus ? (
           <div className="topbar-left">
-            <div className="topbar-breadcrumb">
-              {inProject && currentProjectName ? (
-                <>
-                  <span>{t('nav.projects')}</span>
-                  <span aria-hidden>/</span>
-                  <strong>{currentProjectName}</strong>
-                </>
-              ) : (
-                <>
-                  <strong>{t(pageKey)}</strong>
-                  {currentProjectName && !isProjectsList ? (
-                    <>
-                      <span aria-hidden>/</span>
-                      <span>{currentProjectName}</span>
-                    </>
-                  ) : null}
-                </>
-              )}
-            </div>
+            {!inProject ? (
+              <div className="topbar-breadcrumb">
+                <strong>{t(pageKey)}</strong>
+                {currentProjectName && !isProjectsList ? (
+                  <>
+                    <span aria-hidden>/</span>
+                    <span>{currentProjectName}</span>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="topbar-left">
@@ -321,7 +318,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
         </div>
       </header>
 
-      <main className={flush ? 'main-content main-content--flush' : 'main-content'}>
+      <main className={mainClass}>
         {!startupAi.dismissed &&
         startupAi.result &&
         !startupAi.result.ok &&

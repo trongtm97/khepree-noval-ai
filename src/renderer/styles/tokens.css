@@ -53,7 +53,8 @@
   --statusbar-height: 22px;
   --project-bar-height: 44px;
   --project-tabs-height: 34px;
-  --toolbar-height: 40px;
+  --section-header-height: 48px;
+  --toolbar-height: 38px;
   --chapter-rail-width: 200px;
   --context-rail-width: 2.25rem;
 
@@ -87,11 +88,11 @@
 
   /* Control sizes (Windows desktop density) */
   --btn-height: 2rem; /* 32px */
-  --btn-height-sm: 1.75rem; /* 28px */
+  --btn-height-sm: 1.875rem; /* 30px */
   --input-height: 2rem;
   --icon-size: 1rem;
   --icon-btn-size: 2rem;
-  --table-cell-y: 0.55rem;
+  --table-cell-y: 0.6875rem;
   --table-cell-x: 0.75rem;
   --line-height-body: 1.5;
 

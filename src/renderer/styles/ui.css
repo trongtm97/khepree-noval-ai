@@ -137,6 +137,62 @@
   box-shadow: var(--focus-ring);
 }
 
+.nt-input:disabled,
+.nt-select:disabled,
+.nt-textarea:disabled,
+.nt-input[readonly],
+.nt-textarea[readonly] {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border-color: var(--border);
+  opacity: 0.9;
+  cursor: default;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled,
+input[readonly],
+textarea[readonly],
+.input:disabled,
+.textarea:disabled {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+select,
+.nt-select,
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
+textarea {
+  color-scheme: dark;
+}
+
+[data-theme='light'] select,
+[data-theme='light'] .nt-select,
+[data-theme='light'] input:not([type='checkbox']):not([type='radio']):not([type='range']),
+[data-theme='light'] textarea {
+  color-scheme: light;
+}
+
+.nt-input:-webkit-autofill,
+.nt-input:-webkit-autofill:hover,
+.nt-input:-webkit-autofill:focus,
+.nt-textarea:-webkit-autofill,
+.nt-textarea:-webkit-autofill:hover,
+.nt-textarea:-webkit-autofill:focus,
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--text-primary);
+  box-shadow: 0 0 0 1000px var(--bg-secondary) inset;
+  transition: background-color 99999s ease-out;
+}
+
 .nt-search {
   position: relative;
   display: flex;

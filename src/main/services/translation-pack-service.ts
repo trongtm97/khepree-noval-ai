@@ -47,6 +47,10 @@ export class TranslationPackService {
         (sum, paragraph) => sum + paragraph.source_text.length,
         0,
       );
+      const translations = db.translations.listByChapter(chapter.id);
+      const hasTranslation = translations.some(
+        (t) => t.translated_text != null && t.translated_text.trim().length > 0,
+      );
       return {
         id: chapter.id,
         chapterNumber: chapter.chapter_number,
@@ -58,6 +62,8 @@ export class TranslationPackService {
         paragraphCount: paragraphs.length,
         status: chapter.status,
         sourceStatus: chapter.source_status,
+        updatedAt: chapter.updated_at,
+        hasTranslation,
       };
     });
   }

@@ -1,52 +1,84 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import type { ProjectMetadataDto } from '@shared/schemas/book-metadata';
-import { GENRE_PRESETS } from '@shared/constants/book-metadata';
-import { Button, Input, Select } from '../components/ui';
+import type { ProjectDto } from '@shared/schemas/import';
 import { TabularImportExportDialog } from '../components/TabularImportExportDialog';
+import { ProjectSectionHeader } from '../components/shell/ProjectSectionHeader';
+import { ProjectOverviewCards } from '../features/project-overview/ProjectOverviewCards';
+import { MetadataTextSections } from '../features/project-overview/MetadataTextSections';
+import { ProjectMetadataEditDrawer } from '../features/project-overview/ProjectMetadataEditDrawer';
+import { buildProjectNextActions } from '../features/project-overview/project-next-actions';
 import { useT } from '../i18n';
-import { HelpContextButton } from '../features/help/HelpContextButton';
+import { useUiShellStore } from '../stores/ui-shell-store';
+
+function sourceHealthKey(project: ProjectDto): string {
+  switch (project.health?.source) {
+    case 'ok':
+      return 'bookMetadata.sourceReady';
+    case 'warn':
+      return 'bookMetadata.sourceWarn';
+    default:
+      return 'bookMetadata.sourceMissing';
+  }
+}
 
 export function ProjectInfoPage() {
   const t = useT();
-  const navigate = useNavigate();
+  const showAdvancedTools = useUiShellStore((s) => s.showAdvancedTools);
   const { projectId = '' } = useParams();
   const [metadata, setMetadata] = useState<ProjectMetadataDto | null>(null);
-  const [documents, setDocuments] = useState<
-    { id: string; documentType: string; sourceFileName: string | null }[]
-  >([]);
-  const [editing, setEditing] = useState(false);
+  const [project, setProject] = useState<ProjectDto | null>(null);
+  const [sourceSummary, setSourceSummary] = useState<{ newCount: number } | null>(null);
+  const [termsReviewCount, setTermsReviewCount] = useState(0);
+  const [termCandidateCount, setTermCandidateCount] = useState(0);
+  const [editOpen, setEditOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeEditionId, setActiveEditionId] = useState<string | undefined>();
   const [workbookMessage, setWorkbookMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!projectId) return;
     void Promise.all([
       window.novelTrans.bookMetadata.get(projectId),
-      window.novelTrans.bookMetadata.listDocuments(projectId),
-      window.novelTrans.projects.list(),
+      window.novelTrans.projects.get(projectId),
+      window.novelTrans.sourceFolder.getStatus(projectId).catch(() => null),
+      window.novelTrans.terms.reviewQueue().catch(() => ({ terms: [] })),
+      window.novelTrans.terms.listCandidates({ projectId }).catch(() => ({ candidates: [] })),
     ])
-      .then(([metaRes, docsRes, projectsRes]) => {
+      .then(([metaRes, projectRes, sourceStatus, reviewRes, candidateRes]) => {
         setMetadata(metaRes.metadata);
-        setDocuments(docsRes.documents);
-        const project = projectsRes.projects.find((p) => p.id === projectId);
-        setActiveEditionId(project?.activeEditionId ?? undefined);
+        setProject(projectRes.project);
+        setSourceSummary(
+          sourceStatus?.scanSummary
+            ? { newCount: sourceStatus.scanSummary.newCount }
+            : null,
+        );
+        setTermsReviewCount(reviewRes.terms.length);
+        setTermCandidateCount(candidateRes.candidates.length);
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
       });
   }, [projectId, t]);
 
-  const save = async () => {
-    if (!metadata || !projectId) return;
+  const nextActions = useMemo(() => {
+    if (!project) return [];
+    return buildProjectNextActions({
+      project,
+      newChapterCount: sourceSummary?.newCount ?? 0,
+      termsReviewCount,
+      termCandidateCount,
+    });
+  }, [project, sourceSummary, termsReviewCount, termCandidateCount]);
+
+  const save = async (next: ProjectMetadataDto) => {
+    if (!projectId) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await window.novelTrans.bookMetadata.update({ projectId, metadata });
+      const res = await window.novelTrans.bookMetadata.update({ projectId, metadata: next });
       setMetadata(res.metadata);
-      setEditing(false);
+      setEditOpen(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
     } finally {
@@ -54,145 +86,70 @@ export function ProjectInfoPage() {
     }
   };
 
-  if (!metadata) {
-    return <div className="page">{error ?? t('common.loading')}</div>;
+  if (!metadata || !project) {
+    return <div className="project-page page">{error ?? t('common.loading')}</div>;
   }
 
-  const field = (
-    label: string,
-    key: keyof ProjectMetadataDto,
-    multiline = false,
-  ) => (
-    <label>
-      {label}
-      {multiline ? (
-        <textarea
-          className="input"
-          rows={4}
-          disabled={!editing}
-          value={(metadata[key] as string | null) ?? ''}
-          onChange={(e) => {
-            setMetadata({ ...metadata, [key]: e.target.value || null });
-          }}
-        />
-      ) : (
-        <Input
-          disabled={!editing}
-          value={(metadata[key] as string | null) ?? ''}
-          onChange={(e) => {
-            setMetadata({ ...metadata, [key]: e.target.value || null });
-          }}
-        />
-      )}
-    </label>
-  );
+  const overflowActions =
+    showAdvancedTools && projectId
+      ? [
+          {
+            id: 'metadata-import-export',
+            label: t('bookMetadata.importExportInfo'),
+            element: (
+              <TabularImportExportDialog
+                dataType="project_data"
+                projectId={projectId}
+                editionId={project.activeEditionId ?? undefined}
+                variant="dropdown"
+                onComplete={(msg) => {
+                  setWorkbookMessage(msg);
+                }}
+              />
+            ),
+          },
+        ]
+      : [];
 
   return (
-    <div className="page page--compact-header">
-      <div className="page-toolbar-row">
-        <span className="page-toolbar-title">{t('bookMetadata.pageTitle')}</span>
-        <div className="btn-row">
-          <HelpContextButton articleId="project-info" />
-          <Button
-            variant="primary"
-            onClick={() => {
-              navigate(`/projects/${projectId}/translate`);
-            }}
-          >
-            {t('projectNav.openTranslator')}
-          </Button>
-          <Button onClick={() => { navigate(`/projects/${projectId}/chapters`); }}>
-            {t('bookMetadata.viewSource')}
-          </Button>
-          {!editing ? (
-            <Button onClick={() => { setEditing(true); }}>
-              {t('actions.edit')}
-            </Button>
-          ) : (
-            <>
-              <Button variant="primary" disabled={busy} onClick={() => { void save(); }}>
-                {t('actions.save')}
-              </Button>
-              <Button onClick={() => { setEditing(false); }}>
-                {t('actions.cancel')}
-              </Button>
-            </>
-          )}
-          {projectId ? (
-            <TabularImportExportDialog
-              dataType="project_data"
-              projectId={projectId}
-              editionId={activeEditionId}
-              onComplete={(msg) => setWorkbookMessage(msg)}
-            />
-          ) : null}
-        </div>
-      </div>
+    <div className="project-page page page--compact-header">
+      <ProjectSectionHeader
+        title={t('bookMetadata.pageTitle')}
+        helpArticleId="project-info"
+        primaryAction={{
+          id: 'edit',
+          label: t('actions.edit'),
+          variant: 'primary',
+          onClick: () => {
+            setEditOpen(true);
+          },
+        }}
+        overflowActions={overflowActions}
+      />
 
       {workbookMessage ? <p className="banner banner-info">{workbookMessage}</p> : null}
-
       {error ? <p className="banner banner-error">{error}</p> : null}
 
-      <div className="card form-stack">
-        {field(t('bookMetadata.title'), 'title')}
-        {field(t('bookMetadata.sourceTitle'), 'sourceTitle')}
-        {field(t('bookMetadata.targetTitle'), 'targetTitle')}
-        {field(t('bookMetadata.author'), 'authorName')}
-        <label>
-          {t('bookMetadata.genre')}
-          <Select
-            disabled={!editing}
-            value={metadata.genre ?? ''}
-            onChange={(e) => {
-              setMetadata({ ...metadata, genre: e.target.value || null });
-            }}
-          >
-            <option value="">{t('bookMetadata.genreUnset')}</option>
-            {GENRE_PRESETS.map((g) => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </Select>
-        </label>
-        {field(t('bookMetadata.publicationStatus'), 'publicationStatus')}
-        <label>
-          {t('bookMetadata.expectedChapters')}
-          <Input
-            type="number"
-            disabled={!editing}
-            value={metadata.expectedChapterCount ?? ''}
-            onChange={(e) => {
-              const val = e.target.value ? Number.parseInt(e.target.value, 10) : null;
-              setMetadata({ ...metadata, expectedChapterCount: val });
-            }}
-          />
-        </label>
-        {field(t('bookMetadata.description'), 'description', true)}
-        {field(t('bookMetadata.introduction'), 'introduction', true)}
-        {field(t('bookMetadata.officialSummary'), 'officialSummary', true)}
-        {field(t('bookMetadata.notes'), 'notes', true)}
-      </div>
+      <ProjectOverviewCards
+        project={project}
+        metadata={metadata}
+        sourceHealthLabelKey={sourceHealthKey(project)}
+        nextActions={nextActions}
+      />
 
-      {documents.length > 0 ? (
-        <div className="card" style={{ marginTop: '1rem' }}>
-          <h3>{t('bookMetadata.documents')}</h3>
-          <table className="import-chapter-table">
-            <thead>
-              <tr>
-                <th>{t('bookMetadata.docType')}</th>
-                <th>{t('createProjectWizard.colFile')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((doc) => (
-                <tr key={doc.id}>
-                  <td>{doc.documentType}</td>
-                  <td>{doc.sourceFileName}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+      <MetadataTextSections metadata={metadata} />
+
+      <ProjectMetadataEditDrawer
+        open={editOpen}
+        metadata={metadata}
+        busy={busy}
+        onClose={() => {
+          setEditOpen(false);
+        }}
+        onSave={(next) => {
+          void save(next);
+        }}
+      />
     </div>
   );
 }

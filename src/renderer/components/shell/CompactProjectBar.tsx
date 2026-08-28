@@ -1,10 +1,13 @@
+import { useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { ProjectDto } from '@shared/schemas/import';
+import { getLanguageProfile } from '@shared/constants/language-profile';
 import { useT } from '../../i18n';
 import { Button } from '../ui';
 import { LanguagePairLabel } from '../LanguagePairLabel';
 import { EditionSwitcher } from '../EditionSwitcher';
+import { TooltipPopover } from '../overlay';
 
 export interface CompactProjectBarProps {
   project: ProjectDto | null;
@@ -14,7 +17,21 @@ export interface CompactProjectBarProps {
   onProjectChange?: (project: ProjectDto) => void;
 }
 
-/** Single-row project context bar (~40–48px). */
+function languagePairTooltip(sourceLanguage: string, targetLanguage: string): string {
+  const source = getLanguageProfile(sourceLanguage);
+  const target = getLanguageProfile(targetLanguage);
+  return [
+    source.internationalName,
+    source.nativeName,
+    sourceLanguage,
+    '→',
+    target.internationalName,
+    target.nativeName,
+    targetLanguage,
+  ].join('\n');
+}
+
+/** Single-row project context bar (~40–46px). */
 export function CompactProjectBar({
   project,
   title,
@@ -24,6 +41,7 @@ export function CompactProjectBar({
 }: CompactProjectBarProps) {
   const t = useT();
   const navigate = useNavigate();
+  const pairRef = useRef<HTMLSpanElement>(null);
 
   return (
     <div className="compact-project-bar">
@@ -44,12 +62,28 @@ export function CompactProjectBar({
       </span>
 
       {project ? (
-        <LanguagePairLabel
-          sourceLanguage={project.sourceLanguage}
-          targetLanguage={project.targetLanguage}
-          className="compact-project-bar__pair"
-        />
+        <>
+          <span ref={pairRef} className="compact-project-bar__pair-wrap">
+            <LanguagePairLabel
+              sourceLanguage={project.sourceLanguage}
+              targetLanguage={project.targetLanguage}
+              className="compact-project-bar__pair"
+              variant="compact"
+            />
+          </span>
+          <TooltipPopover
+            anchorRef={pairRef}
+            content={
+              <pre className="language-pair-tooltip">
+                {languagePairTooltip(project.sourceLanguage, project.targetLanguage)}
+              </pre>
+            }
+            placement="bottom-start"
+          />
+        </>
       ) : null}
+
+      <div className="compact-project-bar__spacer" aria-hidden />
 
       <div className="compact-project-bar__actions">
         {project ? (

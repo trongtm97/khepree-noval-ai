@@ -10,6 +10,7 @@ import { useT } from '../../i18n';
 import { ModalPortal } from '../overlay';
 import { Button, Select } from '../ui';
 import { loadMappingPreset, saveMappingPreset } from './column-mapping-presets';
+import { summarizeImportPreview } from './import-preview-summary';
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -182,7 +183,26 @@ export function DataImportWizard({
         <div className="data-wizard-body">
           {error ? <div className="banner banner-error">{error}</div> : null}
 
-          {step === 1 ? <p className="nt-muted-text">{t('dataHub.wizard.step1Hint')}</p> : null}
+          {step === 1 ? (
+            <div className="data-wizard-step1">
+              <p className="nt-muted-text">{t('dataHub.wizard.step1Hint')}</p>
+              {section.templateDownload ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    void window.novelTrans.tabular
+                      .downloadTermTemplate({})
+                      .then((r) => onComplete(t('terms.tabularTemplateSaved', { path: r.filePath })))
+                      .catch(() => undefined);
+                  }}
+                >
+                  {t('dataHub.downloadTemplate')}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
 
           {step >= 2 && filePath ? (
             <p className="data-wizard-file">
@@ -245,14 +265,47 @@ export function DataImportWizard({
 
           {step === 4 && preview ? (
             <div className="data-wizard-preview">
-              <p>
-                {t('dataHub.wizard.previewStats', {
-                  total: preview.totalRows,
-                  valid: preview.validCount,
-                  warnings: preview.warningCount,
-                  errors: preview.errorCount,
-                })}
-              </p>
+              <ul className="data-wizard-preview-stats">
+                <li>
+                  <span className="muted">{t('dataHub.wizard.file')}</span>{' '}
+                  <strong>{preview.fileName}</strong>
+                </li>
+                <li>
+                  <span className="muted">{t('dataHub.wizard.rows')}</span>{' '}
+                  <strong>{preview.totalRows}</strong>
+                </li>
+                <li>
+                  <span className="muted">{t('dataHub.wizard.valid')}</span>{' '}
+                  <strong>{preview.validCount}</strong>
+                </li>
+                <li>
+                  <span className="muted">{t('dataHub.wizard.warnings')}</span>{' '}
+                  <strong>{preview.warningCount}</strong>
+                </li>
+                <li>
+                  <span className="muted">{t('dataHub.wizard.errors')}</span>{' '}
+                  <strong>{preview.errorCount}</strong>
+                </li>
+                {(() => {
+                  const s = summarizeImportPreview(preview);
+                  return (
+                    <>
+                      <li>
+                        <span className="muted">{t('dataHub.wizard.willAdd')}</span>{' '}
+                        <strong>{s.willAdd}</strong>
+                      </li>
+                      <li>
+                        <span className="muted">{t('dataHub.wizard.willUpdate')}</span>{' '}
+                        <strong>{s.willUpdate}</strong>
+                      </li>
+                      <li>
+                        <span className="muted">{t('dataHub.wizard.willSkip')}</span>{' '}
+                        <strong>{s.willSkip}</strong>
+                      </li>
+                    </>
+                  );
+                })()}
+              </ul>
               <div className="data-wizard-preview-table">
                 <table>
                   <thead>
@@ -369,7 +422,7 @@ export function DataImportWizard({
             ) : null}
             {step === 6 ? (
               <Button variant="primary" disabled={busy} onClick={() => void commit()}>
-                {t('dataHub.wizard.import')}
+                {t('dataHub.wizard.importConfirm')}
               </Button>
             ) : null}
           </div>

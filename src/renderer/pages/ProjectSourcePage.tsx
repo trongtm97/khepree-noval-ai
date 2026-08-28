@@ -1,22 +1,56 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import type { SourceFolderSettingsDto } from '@shared/schemas/source-folder';
 import type { ProjectDto } from '@shared/schemas/import';
 import type { SourceLanguageDetection } from '@shared/schemas/source-language';
-import { formatLanguagePickerStacked, getLanguageProfile } from '@shared/constants/language-profile';
-import { Button, Card, Input, PageHeader } from '../components/ui';
-import { useT } from '../i18n';
-import { SourceFolderSettingsDrawer } from '../components/source-folder/SourceFolderSettingsDrawer';
-import { HelpContextButton } from '../features/help/HelpContextButton';
+import type { ChapterSummaryDto } from '@shared/schemas/translation-pack';
+import type { JobDto } from '@shared/schemas/job';
+import { getLanguageProfile } from '@shared/constants/language-profile';
+import { JOB_TERMINAL_STATES, type JobState } from '@shared/constants/job';
+import { Button } from '../components/ui';
+import { ProjectSectionHeader } from '../components/shell/ProjectSectionHeader';
 import { SourceWorkbookDialog } from '../components/SourceWorkbookDialog';
-import { SourceLanguageDetectionBanner } from '../components/SourceLanguageDetectionBanner';
+import { SourceFolderSettingsDrawer } from '../components/source-folder/SourceFolderSettingsDrawer';
+import { ChangeFolderDrawer } from '../features/project-chapters/ChangeFolderDrawer';
+import { ChapterListSection } from '../features/project-chapters/ChapterListSection';
+import {
+  SourceLanguageCompact,
+  SourceLanguageRedetectBanner,
+} from '../features/project-chapters/SourceLanguageCompact';
+import { useT } from '../i18n';
+import { useUiShellStore } from '../stores/ui-shell-store';
+
+function buildTranslatingNumbers(jobs: JobDto[], projectId: string): Set<number> {
+  const out = new Set<number>();
+  for (const job of jobs) {
+    if (job.projectId !== projectId) continue;
+    if (JOB_TERMINAL_STATES.has(job.state as JobState)) continue;
+    if (job.chapterFrom == null || job.chapterTo == null) continue;
+    const lo = Math.min(job.chapterFrom, job.chapterTo);
+    const hi = Math.max(job.chapterFrom, job.chapterTo);
+    for (let n = lo; n <= hi; n += 1) out.add(n);
+  }
+  return out;
+}
+
+function formatScanTime(iso: string | null | undefined, locale: string): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
 
 export function ProjectSourcePage() {
   const t = useT();
-  const navigate = useNavigate();
+  const showAdvancedTools = useUiShellStore((s) => s.showAdvancedTools);
   const { projectId = '' } = useParams();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [settings, setSettings] = useState<SourceFolderSettingsDto | null>(null);
   const [summary, setSummary] = useState<{
     filesTotal: number;
@@ -28,18 +62,13 @@ export function ProjectSourcePage() {
     errorCount: number;
     watching: boolean;
   } | null>(null);
+  const [chapters, setChapters] = useState<ChapterSummaryDto[]>([]);
+  const [translatingNumbers, setTranslatingNumbers] = useState<Set<number>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
-  const [newFolderPath, setNewFolderPath] = useState('');
-  const [pendingFolderPreview, setPendingFolderPreview] = useState<{
-    path: string;
-    changeCount: number;
-  } | null>(null);
-  const [tabularMessage, setTabularMessage] = useState<string | null>(null);
+  const [showChangeFolder, setShowChangeFolder] = useState(false);
   const [project, setProject] = useState<ProjectDto | null>(null);
   const [redetectBusy, setRedetectBusy] = useState(false);
-  const [redetectDetection, setRedetectDetection] = useState<SourceLanguageDetection | null>(
-    null,
-  );
+  const [redetectDetection, setRedetectDetection] = useState<SourceLanguageDetection | null>(null);
   const [redetectPending, setRedetectPending] = useState<{
     currentLanguage: string;
     detection: SourceLanguageDetection;
@@ -47,13 +76,17 @@ export function ProjectSourcePage() {
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
-    const [status, projectRes] = await Promise.all([
+    const [status, projectRes, chapterRes, jobsRes] = await Promise.all([
       window.novelTrans.sourceFolder.getStatus(projectId),
       window.novelTrans.projects.get(projectId),
+      window.novelTrans.pack.listChapters(projectId),
+      window.novelTrans.jobs.list(projectId),
     ]);
     setSettings(status.settings);
     setSummary(status.scanSummary);
     setProject(projectRes.project);
+    setChapters(chapterRes.chapters);
+    setTranslatingNumbers(buildTranslatingNumbers(jobsRes.jobs, projectId));
   }, [projectId]);
 
   useEffect(() => {
@@ -77,8 +110,9 @@ export function ProjectSourcePage() {
   };
 
   const importNew = async () => {
-    if (!projectId || !settings) return;
+    if (!projectId || !settings || !summary?.newCount) return;
     setBusy(true);
+    setError(null);
     try {
       const scan = await window.novelTrans.sourceFolder.scan(projectId);
       const nums = scan.scanResult.newChapters.map((c) => c.chapterNumber);
@@ -89,47 +123,9 @@ export function ProjectSourcePage() {
         chapterNumbers: nums,
       });
       await refresh();
+      setMessage(t('chaptersPage.importedNew', { count: nums.length }));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('sourceFolder.importFailed'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const previewChangeFolder = async () => {
-    if (!projectId || !newFolderPath.trim()) return;
-    setBusy(true);
-    try {
-      const preview = await window.novelTrans.sourceFolder.changeFolder({
-        projectId,
-        newFolderPath: newFolderPath.trim(),
-        confirm: false,
-      });
-      setPendingFolderPreview({
-        path: newFolderPath.trim(),
-        changeCount:
-          preview.preview.newChapters.length + preview.preview.modifiedChapters.length,
-      });
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('sourceFolder.changeFailed'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const confirmChangeFolder = async () => {
-    if (!projectId || !pendingFolderPreview) return;
-    setBusy(true);
-    try {
-      await window.novelTrans.sourceFolder.changeFolder({
-        projectId,
-        newFolderPath: pendingFolderPreview.path,
-        confirm: true,
-      });
-      setPendingFolderPreview(null);
-      await refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('sourceFolder.changeFailed'));
     } finally {
       setBusy(false);
     }
@@ -154,18 +150,10 @@ export function ProjectSourcePage() {
       }
       setRedetectPending(null);
       if (!result.changed) {
-        setTabularMessage(t('sourceFolder.redetectUnchanged'));
+        setMessage(t('sourceFolder.redetectUnchanged'));
       } else if (result.applied) {
         await refresh();
-        setTabularMessage(
-          t('createProjectWizard.sourceDetectedTitle') +
-            ': ' +
-            formatLanguagePickerStacked({
-              internationalName: result.detection.internationalName,
-              nativeName: result.detection.nativeName,
-              code: result.detection.detectedLanguage,
-            }).nativeLine,
-        );
+        setMessage(t('createProjectWizard.sourceDetectedTitle'));
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('sourceFolder.redetectFailed'));
@@ -174,187 +162,199 @@ export function ProjectSourcePage() {
     }
   };
 
+  const detection = useMemo((): SourceLanguageDetection | null => {
+    if (redetectDetection) return redetectDetection;
+    if (!project) return null;
+    const profile = getLanguageProfile(project.sourceLanguage);
+    return {
+      detectedLanguage: project.sourceLanguage,
+      confidence: project.sourceLanguageConfidence ?? 0.85,
+      method: project.sourceLanguageDetectionMethod ?? 'LOCAL',
+      internationalName: profile.internationalName,
+      nativeName: profile.nativeName,
+      displayNameVi: profile.displayNameVi,
+      displayNameNative: profile.displayNameNative,
+      hintCode: project.sourceLanguageHint ?? null,
+      hintMismatch: project.hintMismatch ?? false,
+      mixedLanguage: false,
+      secondaryLanguages: [],
+      needsUserConfirm: false,
+    };
+  }, [project, redetectDetection]);
+
+  const needsAttentionCount = useMemo(() => {
+    if (!summary) return 0;
+    return summary.missingCount + summary.conflictCount + summary.errorCount;
+  }, [summary]);
+
   if (!projectId) {
     return <div className="banner banner-error">{t('sourceFolder.noProject')}</div>;
   }
 
+  const overflowActions = [
+    {
+      id: 'watch-settings',
+      label: t('chaptersPage.overflowSettings'),
+      disabled: busy,
+      onClick: () => {
+        setShowSettings(true);
+      },
+    },
+    {
+      id: 'change-folder',
+      label: t('chaptersPage.overflowChangeFolder'),
+      disabled: busy,
+      onClick: () => {
+        setShowChangeFolder(true);
+      },
+    },
+    {
+      id: 'redetect',
+      label: t('chaptersPage.overflowRedetect'),
+      disabled: busy || redetectBusy,
+      onClick: () => {
+        void runRedetect(false);
+      },
+    },
+    ...(showAdvancedTools
+      ? [
+          {
+            id: 'workbook',
+            label: t('chaptersPage.overflowWorkbook'),
+            element: (
+              <SourceWorkbookDialog
+                projectId={projectId}
+                onComplete={(msg) => {
+                  setMessage(msg);
+                  void refresh();
+                }}
+              />
+            ),
+          },
+        ]
+      : []),
+  ];
+
   return (
-    <div>
-      <PageHeader
-        title={t('sourceFolder.title')}
-        description={t('sourceFolder.subtitle')}
-        actions={
-          <>
-            <HelpContextButton articleId="source-file-types" />
-            <Button
-              variant="primary"
-              onClick={() => {
-                navigate(`/projects/${projectId}/translate`);
-              }}
-            >
-              {t('projectNav.openTranslator')}
-            </Button>
-            <Button onClick={() => { navigate('/projects'); }}>{t('sourceFolder.backProjects')}</Button>
-          </>
-        }
+    <div className="project-page chapters-page">
+      <ProjectSectionHeader
+        title={t('chaptersPage.title')}
+        description={t('chaptersPage.subtitle')}
+        helpArticleId="source-file-types"
+        primaryAction={{
+          id: 'scan',
+          label: t('chaptersPage.scanNow'),
+          variant: 'primary',
+          disabled: busy,
+          onClick: () => {
+            void runScan();
+          },
+        }}
+        secondaryAction={{
+          id: 'open-folder',
+          label: t('sourceFolder.openFolder'),
+          disabled: busy,
+          onClick: () => {
+            void window.novelTrans.sourceFolder.openFolder(projectId);
+          },
+        }}
+        overflowActions={overflowActions}
       />
 
       {error ? <div className="banner banner-error">{error}</div> : null}
-      {tabularMessage ? <div className="banner banner-success">{tabularMessage}</div> : null}
+      {message ? <div className="banner banner-success">{message}</div> : null}
 
-      <Card>
-        <h3>{t('sourceFolder.sectionTitle')}</h3>
-        <p><strong>{t('sourceFolder.folderPath')}:</strong> {settings?.sourceFolderPath ?? '—'}</p>
-        <p>
-          <strong>{t('sourceFolder.watchStatus')}:</strong>{' '}
-          {summary?.watching ? t('sourceFolder.watchingOn') : t('sourceFolder.watchingOff')}
-        </p>
-        <p>
-          <strong>{t('sourceFolder.lastScan')}:</strong>{' '}
-          {settings?.lastFolderScanAt
-            ? new Date(settings.lastFolderScanAt).toLocaleString('vi-VN')
-            : '—'}
-        </p>
-        {summary ? (
-          <ul>
-            <li>{t('sourceFolder.statFiles', { count: summary.filesTotal })}</li>
-            <li>{t('sourceFolder.statChapters', { count: summary.recognizedFiles })}</li>
-            <li>{t('sourceFolder.statNew', { count: summary.newCount })}</li>
-            <li>{t('sourceFolder.statModified', { count: summary.modifiedCount })}</li>
-            <li>{t('sourceFolder.statMissing', { count: summary.missingCount })}</li>
-            <li>{t('sourceFolder.statConflicts', { count: summary.conflictCount })}</li>
-            <li>{t('sourceFolder.statErrors', { count: summary.errorCount })}</li>
-          </ul>
-        ) : null}
+      {summary && summary.newCount > 0 ? (
+        <div className="banner banner-info chapters-new-banner">
+          <span>{t('chaptersPage.newChaptersDetected', { count: summary.newCount })}</span>
+          <Button variant="primary" size="sm" disabled={busy} onClick={() => void importNew()}>
+            {t('chaptersPage.importNewChapters', { count: summary.newCount })}
+          </Button>
+        </div>
+      ) : null}
 
-        <div className="btn-row" style={{ marginTop: '1rem' }}>
-          <Button variant="primary" disabled={busy} onClick={() => { void runScan(); }}>
-            {t('sourceFolder.syncNow')}
-          </Button>
-          <Button disabled={busy} onClick={() => { void importNew(); }}>
-            {t('sourceFolder.scanNew')}
-          </Button>
-          <Button disabled={busy} onClick={() => { void window.novelTrans.sourceFolder.openFolder(projectId); }}>
+      <div className="card source-status-bar">
+        <div className="source-status-bar__head">
+          <strong>{t('sourceFolder.sectionTitle')}</strong>
+          <span className={summary?.watching ? 'source-watch-on' : 'source-watch-off muted'}>
+            {summary?.watching ? t('sourceFolder.watchingOn') : t('sourceFolder.watchingOff')}
+          </span>
+        </div>
+        <p className="path-ellipsis source-status-bar__path" title={settings?.sourceFolderPath ?? undefined}>
+          {settings?.sourceFolderPath ?? '—'}
+        </p>
+        <div className="source-status-bar__foot">
+          <Button size="sm" variant="secondary" disabled={busy} onClick={() => void window.novelTrans.sourceFolder.openFolder(projectId)}>
             {t('sourceFolder.openFolder')}
           </Button>
-          <Button disabled={busy} onClick={() => { setShowSettings(true); }}>
-            {t('sourceFolder.settings')}
-          </Button>
+          <span className="muted">
+            {t('chaptersPage.lastScanLabel')}: {formatScanTime(settings?.lastFolderScanAt, 'vi-VN')}
+          </span>
         </div>
+      </div>
 
-        <div className="form-stack" style={{ marginTop: '1.5rem' }}>
-          <label>
-            {t('sourceFolder.changeFolder')}
-            <Input value={newFolderPath} onChange={(e) => { setNewFolderPath(e.target.value); }} />
-          </label>
-          <Button disabled={busy || !newFolderPath.trim()} onClick={() => { void previewChangeFolder(); }}>
-            {t('sourceFolder.applyFolder')}
-          </Button>
-          {pendingFolderPreview ? (
-            <div className="banner banner-warn">
-              <p>{t('sourceFolder.changeConfirm', { count: pendingFolderPreview.changeCount })}</p>
-              <div className="btn-row">
-                <Button variant="primary" disabled={busy} onClick={() => { void confirmChangeFolder(); }}>
-                  {t('actions.confirm')}
-                </Button>
-                <Button disabled={busy} onClick={() => { setPendingFolderPreview(null); }}>
-                  {t('actions.cancel')}
-                </Button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </Card>
-
-      <Card style={{ marginTop: '1rem' }}>
-        <h3>{t('sourceFolder.sourceLanguageSection')}</h3>
-        <p className="muted">{t('sourceFolder.sourceLanguageSectionHelp')}</p>
-        {project ? (
-          <SourceLanguageDetectionBanner
-            detection={
-              redetectDetection ?? (() => {
-                const profile = getLanguageProfile(project.sourceLanguage);
-                return {
-                  detectedLanguage: project.sourceLanguage,
-                  confidence: project.sourceLanguageConfidence ?? 0.85,
-                  method: project.sourceLanguageDetectionMethod ?? 'LOCAL',
-                  internationalName: profile.internationalName,
-                  nativeName: profile.nativeName,
-                  displayNameVi: profile.displayNameVi,
-                  displayNameNative: profile.displayNameNative,
-                  hintCode: project.sourceLanguageHint ?? null,
-                  hintMismatch: project.hintMismatch ?? false,
-                  mixedLanguage: false,
-                  secondaryLanguages: [],
-                  needsUserConfirm: false,
-                };
-              })()
-            }
-            detecting={redetectBusy}
+      {summary ? (
+        <div className="source-metrics-row">
+          <Metric value={summary.recognizedFiles} label={t('chaptersPage.metricChapters')} />
+          <Metric
+            value={summary.newCount}
+            label={t('chaptersPage.metricNew')}
+            quiet={summary.newCount === 0}
           />
-        ) : null}
-        <div className="btn-row" style={{ marginTop: '0.75rem' }}>
-          <Button
-            variant="secondary"
-            disabled={busy || redetectBusy}
-            onClick={() => {
-              void runRedetect(false);
-            }}
-          >
-            {redetectBusy ? t('sourceFolder.redetectRunning') : t('sourceFolder.redetectSourceLanguage')}
-          </Button>
+          <Metric
+            value={summary.modifiedCount}
+            label={t('chaptersPage.metricChanged')}
+            quiet={summary.modifiedCount === 0}
+          />
+          <Metric
+            value={needsAttentionCount}
+            label={t('chaptersPage.metricNeedsAttention')}
+            quiet={needsAttentionCount === 0}
+            highlight={needsAttentionCount > 0}
+          />
         </div>
-        {redetectPending ? (
-          <div className="banner banner-warn" style={{ marginTop: '0.75rem' }}>
-            <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>
-              {t('sourceFolder.redetectChangedTitle')}
-            </p>
-            <p style={{ margin: 0 }}>
-              {t('sourceFolder.redetectChangedBody', {
-                current: redetectPending.currentLanguage,
-                detected: redetectPending.detection.detectedLanguage,
-              })}
-            </p>
-            <div className="btn-row" style={{ marginTop: '0.5rem' }}>
-              <Button
-                variant="primary"
-                disabled={redetectBusy}
-                onClick={() => {
-                  void runRedetect(true);
-                }}
-              >
-                {t('sourceFolder.redetectApply')}
-              </Button>
-              <Button
-                disabled={redetectBusy}
-                onClick={() => {
-                  setRedetectPending(null);
-                }}
-              >
-                {t('sourceFolder.redetectKeepCurrent')}
-              </Button>
-            </div>
-          </div>
-        ) : null}
-      </Card>
+      ) : null}
 
-      <Card style={{ marginTop: '1rem' }}>
-        <h3>{t('sourceWorkbook.sectionTitle')}</h3>
-        <p>{t('sourceWorkbook.sectionDesc')}</p>
-        <SourceWorkbookDialog
-          projectId={projectId}
-          onComplete={(message) => {
-            setTabularMessage(message);
-            void refresh();
+      {detection ? (
+        <SourceLanguageCompact
+          detection={detection}
+          detecting={redetectBusy}
+          onRedetect={() => {
+            void runRedetect(false);
           }}
         />
-      </Card>
+      ) : null}
+
+      {redetectPending ? (
+        <SourceLanguageRedetectBanner
+          pending={redetectPending}
+          busy={redetectBusy}
+          onApply={() => {
+            void runRedetect(true);
+          }}
+          onKeep={() => {
+            setRedetectPending(null);
+          }}
+        />
+      ) : null}
+
+      <ChapterListSection
+        projectId={projectId}
+        editionId={project?.activeEditionId}
+        chapters={chapters}
+        translatingNumbers={translatingNumbers}
+        busy={busy}
+        onMessage={setMessage}
+        onError={setError}
+      />
 
       {showSettings && settings ? (
         <SourceFolderSettingsDrawer
           projectId={projectId}
           settings={settings}
-          onClose={() => { setShowSettings(false); }}
+          onClose={() => {
+            setShowSettings(false);
+          }}
           onSaved={(next) => {
             setSettings(next);
             setShowSettings(false);
@@ -362,6 +362,47 @@ export function ProjectSourcePage() {
           }}
         />
       ) : null}
+
+      <ChangeFolderDrawer
+        open={showChangeFolder}
+        busy={busy}
+        projectId={projectId}
+        currentPath={settings?.sourceFolderPath ?? null}
+        onClose={() => {
+          setShowChangeFolder(false);
+        }}
+        onApplied={() => {
+          void refresh();
+        }}
+        onError={setError}
+      />
+    </div>
+  );
+}
+
+function Metric({
+  value,
+  label,
+  quiet = false,
+  highlight = false,
+}: {
+  value: number;
+  label: string;
+  quiet?: boolean;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={[
+        'source-metric',
+        quiet ? 'source-metric--quiet' : '',
+        highlight ? 'source-metric--highlight' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <span className="source-metric__value">{value}</span>
+      <span className="source-metric__label">{label}</span>
     </div>
   );
 }

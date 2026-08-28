@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Users } from 'lucide-react';
+import { Lock, MoreHorizontal, Users } from 'lucide-react';
 import type { ProjectDto } from '@shared/schemas/import';
 import type {
   CharacterDto,
@@ -8,12 +8,10 @@ import type {
   RelationshipDto,
   StoryStateDto,
 } from '@shared/schemas/memory';
-import { CHARACTER_STATUSES } from '@shared/constants/memory';
 import { useT } from '../i18n';
 import { friendlyError } from '../i18n/errors';
 import { characterStatusLabel } from '../i18n/enums';
 import {
-  PageHeader,
   Button,
   Tabs,
   TabPanel,
@@ -24,72 +22,82 @@ import {
   SectionHeader,
   ErrorPanel,
   Skeleton,
+  SearchInput,
+  IconButton,
 } from '../components/ui';
-import { HelpContextButton } from '../features/help/HelpContextButton';
+import { ProjectSectionHeader } from '../components/shell/ProjectSectionHeader';
 import { TabularImportExportDialog } from '../components/TabularImportExportDialog';
+import { DropdownMenu } from '../components/overlay';
 import { helpArticleForErrorCode } from '../features/help/content';
 import { useUiShellStore } from '../stores/ui-shell-store';
+import { CharacterDetailDrawer } from '../features/characters/CharacterDetailDrawer';
+import {
+  CharacterConflictCard,
+  conflictEntityLabel,
+  conflictFieldLabel,
+} from '../features/characters/CharacterConflictCard';
+import { formatCharacterChapterRange } from '../features/characters/format-chapter-range';
+import {
+  detectDuplicateCharacterGroups,
+  type DuplicateCharacterGroup,
+} from '../features/characters/detect-duplicate-characters';
 
 type Tab = 'characters' | 'relationships' | 'story' | 'conflicts';
 
 export function CharactersPage() {
   const t = useT();
-  const { projectId: routeProjectId } = useParams();
+  const showAdvancedTools = useUiShellStore((s) => s.showAdvancedTools);
+  const { projectId: routeProjectId = '' } = useParams();
   const storeProjectId = useUiShellStore((s) => s.currentProjectId) ?? '';
-  const [projects, setProjects] = useState<ProjectDto[]>([]);
-  const [projectId, setProjectId] = useState(routeProjectId ?? storeProjectId);
+  const projectId = routeProjectId || storeProjectId;
+  const [project, setProject] = useState<ProjectDto | null>(null);
   const [tab, setTab] = useState<Tab>('characters');
   const [characters, setCharacters] = useState<CharacterDto[]>([]);
   const [relationships, setRelationships] = useState<RelationshipDto[]>([]);
   const [storyState, setStoryState] = useState<StoryStateDto | null>(null);
   const [conflicts, setConflicts] = useState<MemoryConflictDto[]>([]);
+  const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [chapterFilter, setChapterFilter] = useState('');
+  const [detailCharacter, setDetailCharacter] = useState<CharacterDto | null>(null);
+  const [dismissedDupes, setDismissedDupes] = useState<Set<string>>(new Set());
+  const [menuState, setMenuState] = useState<{ id: string; anchor: HTMLButtonElement } | null>(
+    null,
+  );
+  const menuAnchorRef = useRef<HTMLButtonElement | null>(null);
+  if (menuState) menuAnchorRef.current = menuState.anchor;
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (routeProjectId) setProjectId(routeProjectId);
-  }, [routeProjectId]);
-
-  useEffect(() => {
-    void window.novelTrans.projects
-      .list()
-      .then((result) => {
-        setProjects(result.projects);
-        if (routeProjectId) {
-          setProjectId(routeProjectId);
-          return;
-        }
-        setProjectId((prev) => prev || result.projects[0]?.id || '');
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [t, routeProjectId]);
-
   const refresh = useCallback(async () => {
     if (!projectId) return;
-    const [charResult, relResult, storyResult, conflictResult] = await Promise.all([
+    const [charResult, relResult, storyResult, conflictResult, projectRes] = await Promise.all([
       window.novelTrans.memory.listCharacters(projectId),
       window.novelTrans.memory.listRelationships({ projectId }),
       window.novelTrans.memory.getStoryState(projectId),
       window.novelTrans.memory.listConflicts(projectId),
+      window.novelTrans.projects.get(projectId),
     ]);
     setCharacters(charResult.characters);
     setRelationships(relResult.relationships);
     setStoryState(storyResult.storyState);
     setConflicts(conflictResult.conflicts);
+    setProject(projectRes.project);
   }, [projectId]);
 
   useEffect(() => {
-    if (!projectId) return;
-    void refresh().catch((err: unknown) => {
-      setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
-    });
+    if (!projectId) {
+      setLoading(false);
+      return;
+    }
+    void refresh()
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
+      })
+      .finally(() => setLoading(false));
   }, [projectId, refresh, t]);
 
   const run = async (action: () => Promise<void>) => {
@@ -106,21 +114,83 @@ export function CharactersPage() {
     }
   };
 
-  const selectedProject = useMemo(
-    () => projects.find((project) => project.id === projectId) ?? null,
-    [projects, projectId],
-  );
+  const duplicateGroups = useMemo(() => {
+    return detectDuplicateCharacterGroups(characters).filter((g) => !dismissedDupes.has(g.id));
+  }, [characters, dismissedDupes]);
+
+  const attentionCount = conflicts.length + duplicateGroups.length;
+
+  const roles = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of characters) {
+      if (c.role?.trim()) set.add(c.role.trim());
+    }
+    return [...set].sort();
+  }, [characters]);
+
+  const filteredCharacters = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const chapterNum = chapterFilter.trim() ? Number(chapterFilter) : null;
+    return characters.filter((c) => {
+      if (roleFilter && (c.role ?? '') !== roleFilter) return false;
+      if (statusFilter && c.status !== statusFilter) return false;
+      if (chapterNum != null && !Number.isNaN(chapterNum)) {
+        const lo = c.firstChapter ?? 0;
+        const hi = c.lastChapter ?? 0;
+        if (chapterNum < lo || chapterNum > hi) return false;
+      }
+      if (!q) return true;
+      const hay = [
+        c.canonicalSourceName ?? c.canonicalName,
+        c.preferredTargetName ?? c.translatedName ?? '',
+        ...c.aliases,
+      ]
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [characters, query, roleFilter, statusFilter, chapterFilter]);
+
+  const menuCharacter = menuState
+    ? characters.find((c) => c.id === menuState.id) ?? null
+    : null;
+
+  const mergeDuplicates = (group: DuplicateCharacterGroup) => {
+    const ok = window.confirm(t('characters.mergeConfirm', { name: group.translatedName }));
+    if (!ok) return;
+    const [keep, ...rest] = group.characters;
+    void run(async () => {
+      const aliases = new Set(keep.aliases);
+      for (const other of rest) {
+        aliases.add(other.canonicalSourceName ?? other.canonicalName);
+        for (const a of other.aliases) aliases.add(a);
+      }
+      await window.novelTrans.memory.upsertCharacter({
+        id: keep.id,
+        projectId,
+        canonicalName: keep.canonicalName,
+        translatedName: keep.translatedName,
+        aliases: [...aliases],
+        role: keep.role,
+        description: keep.description,
+        locked: keep.locked,
+      });
+      setMessage(t('characters.mergeOk'));
+      setDismissedDupes((prev) => new Set(prev).add(group.id));
+    });
+  };
 
   if (loading) {
     return (
-      <div>
-        <PageHeader title={t('characters.title')} description={t('characters.subtitle')} />
+      <div className="project-page">
+        <ProjectSectionHeader title={t('characters.title')} description={t('characters.subtitle')} />
         <Skeleton height={240} />
       </div>
     );
   }
 
   const errInfo = error ? friendlyError(error) : null;
+  const subtitle = t('characters.subtitleCount', { count: characters.length });
 
   const characterColumns = [
     {
@@ -140,33 +210,28 @@ export function CharactersPage() {
     },
     {
       key: 'chapters',
-      header: t('characters.chapters'),
-      render: (c: CharacterDto) =>
-        `${c.firstChapter ?? '?'}–${c.lastChapter ?? '?'}`,
+      header: t('characters.appearance'),
+      render: (c: CharacterDto) => {
+        const range = formatCharacterChapterRange(c.firstChapter, c.lastChapter);
+        return range.isSingle
+          ? t('characters.chapterSingle', { n: range.compact })
+          : range.compact;
+      },
     },
     {
       key: 'status',
       header: t('characters.status'),
-      render: (c: CharacterDto) => (
-        <span className="nt-badge">
-          <span
-            className={`nt-status-dot nt-status-dot--${
-              c.status === 'active' ? 'ready' : c.status === 'deceased' ? 'paused' : 'waiting'
-            }`}
-            aria-hidden
-          />
-          {characterStatusLabel(c.status)}
-        </span>
-      ),
+      render: (c: CharacterDto) => characterStatusLabel(c.status),
     },
     {
       key: 'locked',
-      header: t('characters.locked'),
+      header: '',
+      width: '2.5rem',
       render: (c: CharacterDto) => (
-        <Button
-          size="sm"
-          disabled={busy}
-          onClick={() => {
+        <IconButton
+          label={c.locked ? t('characters.unlock') : t('characters.lock')}
+          onClick={(e) => {
+            e.stopPropagation();
             void run(async () => {
               await window.novelTrans.memory.upsertCharacter({
                 id: c.id,
@@ -177,8 +242,24 @@ export function CharactersPage() {
             });
           }}
         >
-          {c.locked ? t('characters.unlock') : t('characters.lock')}
-        </Button>
+          <Lock size={14} className={c.locked ? 'char-lock-on' : 'char-lock-off'} />
+        </IconButton>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      width: '2.5rem',
+      render: (c: CharacterDto) => (
+        <IconButton
+          label={t('common.moreActions')}
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuState({ id: c.id, anchor: e.currentTarget });
+          }}
+        >
+          <MoreHorizontal size={16} />
+        </IconButton>
       ),
     },
   ];
@@ -205,109 +286,45 @@ export function CharactersPage() {
       render: (r: RelationshipDto) =>
         `${r.validFromChapter ?? '?'}–${r.validToChapter ?? '∞'}`,
     },
-    {
-      key: 'calls',
-      header: t('characters.calls'),
-      render: (r: RelationshipDto) => `${r.aCallsB ?? '—'} / ${r.bCallsA ?? '—'}`,
-    },
-  ];
-
-  const conflictColumns = [
-    {
-      key: 'entity',
-      header: t('characters.entity'),
-      render: (c: MemoryConflictDto) =>
-        `${c.entityType}${c.entityId ? ` (${c.entityId.slice(0, 8)})` : ''}`,
-    },
-    {
-      key: 'field',
-      header: t('characters.field'),
-      render: (c: MemoryConflictDto) => c.fieldKey,
-    },
-    {
-      key: 'existing',
-      header: t('characters.existing'),
-      render: (c: MemoryConflictDto) => c.existingValue ?? '—',
-    },
-    {
-      key: 'proposed',
-      header: t('characters.proposed'),
-      render: (c: MemoryConflictDto) => c.proposedValue ?? '—',
-    },
-    {
-      key: 'actions',
-      header: t('jobs.actions'),
-      render: (c: MemoryConflictDto) => (
-        <div className="btn-row">
-          <Button
-            size="sm"
-            disabled={busy}
-            onClick={() => {
-              void run(async () => {
-                await window.novelTrans.memory.resolveConflict({
-                  conflictId: c.id,
-                  status: 'RESOLVED',
-                });
-              });
-            }}
-          >
-            {t('characters.resolve')}
-          </Button>
-          <Button
-            size="sm"
-            disabled={busy}
-            onClick={() => {
-              void run(async () => {
-                await window.novelTrans.memory.resolveConflict({
-                  conflictId: c.id,
-                  status: 'DISCARDED',
-                });
-              });
-            }}
-          >
-            {t('characters.discard')}
-          </Button>
-        </div>
-      ),
-    },
   ];
 
   return (
-    <div>
-      <PageHeader
+    <div className="project-page characters-page">
+      <ProjectSectionHeader
         title={t('characters.title')}
-        description={t('characters.subtitle')}
-        actions={
-          <>
-            <HelpContextButton articleId="characters" />
-            {routeProjectId ? null : (
-              <Select
-                value={projectId}
-                onChange={(event) => {
-                  setProjectId(event.target.value);
-                }}
-                aria-label={t('translation.selectProject')}
-              >
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.title}
-                  </option>
-                ))}
-              </Select>
-            )}
-            {selectedProject ? (
-              <TabularImportExportDialog
-                dataType="characters"
-                projectId={selectedProject.id}
-                editionId={selectedProject.activeEditionId ?? undefined}
-                onComplete={(msg) => setMessage(msg)}
-              />
-            ) : null}
-          </>
+        description={subtitle}
+        helpArticleId="characters"
+        primaryAction={{
+          id: 'add-character',
+          label: t('characters.addCharacter'),
+          variant: 'primary',
+          disabled: busy || !projectId,
+          onClick: () => {
+            void run(async () => {
+              await window.novelTrans.memory.upsertCharacter({
+                projectId,
+                canonicalName: '新角色',
+                translatedName: 'Nhân vật mới',
+                status: 'active',
+              });
+              setMessage(t('characters.created'));
+            });
+          },
+        }}
+        secondaryAction={
+          project ? (
+            <TabularImportExportDialog
+              dataType="characters"
+              projectId={project.id}
+              editionId={project.activeEditionId ?? undefined}
+              variant="dropdown"
+              onComplete={setMessage}
+            />
+          ) : undefined
         }
       />
 
-      {!selectedProject ? (
+      {!projectId ? (
         <EmptyState
           icon={<Users />}
           title={t('characters.emptyTitle')}
@@ -322,13 +339,11 @@ export function CharactersPage() {
               { id: 'story', label: t('characters.tabStory') },
               {
                 id: 'conflicts',
-                label: t('characters.tabConflicts', { count: conflicts.length }),
+                label: t('characters.tabNeedsAttention', { count: attentionCount }),
               },
             ]}
             value={tab}
-            onChange={(id) => {
-              setTab(id as Tab);
-            }}
+            onChange={(id) => setTab(id as Tab)}
           />
 
           {errInfo ? (
@@ -342,11 +357,52 @@ export function CharactersPage() {
           {message ? <div className="banner banner-info">{message}</div> : null}
 
           <TabPanel active={tab === 'characters'}>
-            <div className="toolbar" style={{ margin: '0.75rem 0' }}>
-              <Button
-                variant="primary"
-                disabled={busy}
-                onClick={() => {
+            <div className="characters-toolbar">
+              <SearchInput
+                placeholder={t('characters.searchPlaceholder')}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <Select
+                value={roleFilter}
+                aria-label={t('characters.role')}
+                onChange={(e) => setRoleFilter(e.target.value)}
+              >
+                <option value="">{t('characters.allRoles')}</option>
+                {roles.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                value={statusFilter}
+                aria-label={t('characters.status')}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="">{t('characters.allStatuses')}</option>
+                <option value="active">{characterStatusLabel('active')}</option>
+                <option value="deceased">{characterStatusLabel('deceased')}</option>
+                <option value="unknown">{characterStatusLabel('unknown')}</option>
+              </Select>
+              <input
+                className="nt-input characters-chapter-filter"
+                type="number"
+                min={1}
+                placeholder={t('characters.chapterFilterPlaceholder')}
+                value={chapterFilter}
+                onChange={(e) => setChapterFilter(e.target.value)}
+              />
+            </div>
+            {filteredCharacters.length === 0 ? (
+              <EmptyState
+                icon={<Users />}
+                title={t('characters.emptyTitle')}
+                description={
+                  showAdvancedTools ? t('characters.emptyDescAdvanced') : t('characters.emptyDesc')
+                }
+                actionLabel={t('characters.addCharacter')}
+                onAction={() => {
                   void run(async () => {
                     await window.novelTrans.memory.upsertCharacter({
                       projectId,
@@ -357,21 +413,13 @@ export function CharactersPage() {
                     setMessage(t('characters.created'));
                   });
                 }}
-              >
-                {t('characters.addCharacter')}
-              </Button>
-            </div>
-            {characters.length === 0 ? (
-              <EmptyState
-                icon={<Users />}
-                title={t('characters.emptyTitle')}
-                description={t('characters.emptyDesc')}
               />
             ) : (
               <DataTable
                 columns={characterColumns}
-                rows={characters}
+                rows={filteredCharacters}
                 rowKey={(row) => row.id}
+                onRowClick={(row) => setDetailCharacter(row)}
               />
             )}
           </TabPanel>
@@ -393,7 +441,7 @@ export function CharactersPage() {
 
           <TabPanel active={tab === 'story'}>
             {storyState ? (
-              <Card as="section" style={{ marginTop: '0.75rem' }}>
+              <Card as="section" className="story-state-card">
                 <SectionHeader title={t('characters.tabStory')} />
                 <p>
                   <strong>{t('characters.chapter')}:</strong>{' '}
@@ -401,71 +449,145 @@ export function CharactersPage() {
                 </p>
                 <p>
                   <strong>{t('characters.summary')}:</strong>{' '}
-                  {storyState.summaryText ?? '—'}
+                  {storyState.summaryText ?? t('bookMetadata.emptyValue')}
                 </p>
-                <p>
-                  <strong>{t('characters.cultivation')}:</strong>{' '}
-                  {storyState.cultivationState
-                    ? JSON.stringify(storyState.cultivationState)
-                    : '—'}
-                </p>
-                <p>
-                  <strong>{t('characters.location')}:</strong>{' '}
-                  {storyState.locationState
-                    ? JSON.stringify(storyState.locationState)
-                    : '—'}
-                </p>
-                <p>
-                  <strong>{t('characters.items')}:</strong>{' '}
-                  {storyState.importantItems
-                    ? JSON.stringify(storyState.importantItems)
-                    : '—'}
-                </p>
+                {!showAdvancedTools ? null : (
+                  <>
+                    <p>
+                      <strong>{t('characters.cultivation')}:</strong>{' '}
+                      {storyState.cultivationState
+                        ? JSON.stringify(storyState.cultivationState)
+                        : '—'}
+                    </p>
+                    <p>
+                      <strong>{t('characters.location')}:</strong>{' '}
+                      {storyState.locationState
+                        ? JSON.stringify(storyState.locationState)
+                        : '—'}
+                    </p>
+                  </>
+                )}
                 <p>
                   <strong>{t('characters.openPlots')}:</strong>{' '}
                   {storyState.unresolvedPlotPoints?.join('; ') ?? '—'}
                 </p>
-                <Button
-                  disabled={busy}
-                  onClick={() => {
-                    void run(async () => {
-                      await window.novelTrans.memory.patchStoryState({
-                        projectId,
-                        summaryText: storyState.summaryText ?? t('charactersExtra.updatedSummary'),
-                        locked: !storyState.locked,
-                      });
-                    });
-                  }}
-                >
-                  {storyState.locked
-                    ? t('characters.unlockStory')
-                    : t('characters.lockStory')}
-                </Button>
               </Card>
             ) : (
-              <EmptyState title={t('common.noData')} />
+              <EmptyState title={t('common.noData')} description={t('characters.emptyStoryDesc')} />
             )}
           </TabPanel>
 
           <TabPanel active={tab === 'conflicts'}>
-            {conflicts.length === 0 ? (
+            {conflicts.length === 0 && duplicateGroups.length === 0 ? (
               <EmptyState title={t('characters.noConflicts')} />
             ) : (
-              <DataTable
-                columns={conflictColumns}
-                rows={conflicts}
-                rowKey={(row) => row.id}
-              />
+              <div className="conflicts-stack">
+                {duplicateGroups.map((group) => (
+                  <div key={group.id} className="card duplicate-suggestion">
+                    <p>
+                      <strong>{t('characters.duplicateMaybe')}</strong>{' '}
+                      {group.characters
+                        .map((c) => c.canonicalSourceName ?? c.canonicalName)
+                        .join(' · ')}
+                    </p>
+                    <p className="muted">
+                      {t('characters.duplicateSameTarget', { name: group.translatedName })}
+                    </p>
+                    <div className="btn-row">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setDetailCharacter(group.characters[0])}
+                      >
+                        {t('characters.compare')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        disabled={busy}
+                        onClick={() => mergeDuplicates(group)}
+                      >
+                        {t('characters.merge')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          setDismissedDupes((prev) => new Set(prev).add(group.id))
+                        }
+                      >
+                        {t('characters.dismiss')}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {conflicts.map((conflict) => (
+                  <CharacterConflictCard
+                    key={conflict.id}
+                    conflict={conflict}
+                    entityLabel={conflictEntityLabel(conflict.entityType, t)}
+                    fieldLabel={conflictFieldLabel(conflict.fieldKey, t)}
+                    busy={busy}
+                    onKeep={() => {
+                      void run(async () => {
+                        await window.novelTrans.memory.resolveConflict({
+                          conflictId: conflict.id,
+                          status: 'DISCARDED',
+                        });
+                      });
+                    }}
+                    onUseNew={() => {
+                      void run(async () => {
+                        await window.novelTrans.memory.resolveConflict({
+                          conflictId: conflict.id,
+                          status: 'RESOLVED',
+                        });
+                      });
+                    }}
+                  />
+                ))}
+              </div>
             )}
           </TabPanel>
         </>
       )}
 
-      <p className="muted" style={{ marginTop: '1rem' }}>
-        {t('characters.statusValues', {
-          values: CHARACTER_STATUSES.map((s) => characterStatusLabel(s)).join(', '),
-        })}
-      </p>
+      <CharacterDetailDrawer
+        open={detailCharacter != null}
+        busy={busy}
+        projectId={projectId}
+        character={detailCharacter}
+        onClose={() => setDetailCharacter(null)}
+        onSaved={() => {
+          setDetailCharacter(null);
+          void refresh();
+        }}
+        onError={setError}
+      />
+
+      {menuCharacter && menuAnchorRef.current ? (
+        <DropdownMenu
+          open={menuState != null}
+          onOpenChange={(open) => {
+            if (!open) setMenuState(null);
+          }}
+          anchorRef={menuAnchorRef}
+          className="translation-menu"
+          placement="bottom-end"
+          minWidth={180}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenuState(null);
+              setDetailCharacter(menuCharacter);
+            }}
+          >
+            {t('actions.edit')}
+          </button>
+        </DropdownMenu>
+      ) : null}
     </div>
   );
 }

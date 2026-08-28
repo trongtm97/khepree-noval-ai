@@ -15,6 +15,7 @@ import {
   SectionHeader,
   ErrorPanel,
   Badge,
+  Switch,
 } from '../components/ui';
 import { HelpContextButton } from '../features/help/HelpContextButton';
 
@@ -58,6 +59,8 @@ export function SettingsPage() {
   const setMode = useThemeStore((state) => state.setMode);
   const density = useUiShellStore((state) => state.density);
   const setDensity = useUiShellStore((state) => state.setDensity);
+  const showAdvancedTools = useUiShellStore((state) => state.showAdvancedTools);
+  const setShowAdvancedTools = useUiShellStore((state) => state.setShowAdvancedTools);
   const [tab, setTab] = useState<SettingsTab>(() =>
     parseSettingsTab(searchParams.get('tab')),
   );
@@ -142,6 +145,21 @@ export function SettingsPage() {
             <option value="comfortable">{t('settings.densityComfortable')}</option>
             <option value="compact">{t('settings.densityCompact')}</option>
           </Select>
+
+          <SectionHeader title={t('settings.advancedUiSection')} />
+          <div className="settings-toggle-row">
+            <div>
+              <strong>{t('settings.showAdvancedTools')}</strong>
+              <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+                {t('settings.showAdvancedToolsHelp')}
+              </p>
+            </div>
+            <Switch
+              checked={showAdvancedTools}
+              label={t('settings.showAdvancedTools')}
+              onChange={setShowAdvancedTools}
+            />
+          </div>
         </Card>
       </TabPanel>
 

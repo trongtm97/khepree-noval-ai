@@ -8,9 +8,9 @@ import { useUiShellStore } from '../stores/ui-shell-store';
 export const PROJECT_TABS = [
   { end: true, key: 'projectNav.overview', segment: '' },
   { end: false, key: 'projectNav.chapters', segment: 'chapters' },
-  { end: false, key: 'projectNav.aiMemory', segment: 'ai-memory' },
   { end: false, key: 'projectNav.terms', segment: 'terms' },
   { end: false, key: 'projectNav.characters', segment: 'characters' },
+  { end: false, key: 'projectNav.aiMemory', segment: 'ai-memory' },
   { end: false, key: 'projectNav.data', segment: 'data' },
 ] as const;
 

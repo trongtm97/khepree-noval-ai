@@ -106,6 +106,8 @@ export const ChapterSummaryDtoSchema = z.object({
   paragraphCount: z.number().int().nonnegative(),
   status: z.string(),
   sourceStatus: z.string().optional(),
+  updatedAt: z.string().optional(),
+  hasTranslation: z.boolean().optional(),
 });
 
 export type ChapterSummaryDto = z.infer<typeof ChapterSummaryDtoSchema>;

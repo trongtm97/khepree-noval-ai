@@ -5,6 +5,7 @@ interface UiShellState {
   sidebarCollapsed: boolean;
   sidebarPinned: boolean;
   density: 'comfortable' | 'compact';
+  showAdvancedTools: boolean;
   currentProjectId: string | null;
   currentProjectName: string | null;
   lastTranslationProjectId: string | null;
@@ -14,6 +15,7 @@ interface UiShellState {
   toggleSidebar: () => void;
   setSidebarPinned: (v: boolean) => void;
   setDensity: (d: 'comfortable' | 'compact') => void;
+  setShowAdvancedTools: (v: boolean) => void;
   setCurrentProject: (id: string | null, name: string | null) => void;
   setLastTranslationSession: (projectId: string | null, chapterId?: string | null) => void;
   setProjectsViewMode: (mode: 'list' | 'grid') => void;
@@ -25,6 +27,7 @@ export const useUiShellStore = create<UiShellState>()(
       sidebarCollapsed: false,
       sidebarPinned: true,
       density: 'comfortable',
+      showAdvancedTools: false,
       currentProjectId: null,
       currentProjectName: null,
       lastTranslationProjectId: null,
@@ -37,6 +40,7 @@ export const useUiShellStore = create<UiShellState>()(
         document.documentElement.dataset.density = density === 'compact' ? 'compact' : 'comfortable';
         set({ density });
       },
+      setShowAdvancedTools: (showAdvancedTools) => set({ showAdvancedTools }),
       setCurrentProject: (currentProjectId, currentProjectName) =>
         set({ currentProjectId, currentProjectName }),
       setLastTranslationSession: (lastTranslationProjectId, chapterId) =>
