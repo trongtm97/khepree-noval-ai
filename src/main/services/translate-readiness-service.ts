@@ -4,6 +4,7 @@ import { NotebookBootstrapService } from '../notebook/notebook-bootstrap-service
 import { NOTEBOOK_CHANNEL_READY } from '@shared/constants/notebook';
 import { logger } from '../logging/logger';
 import { resolveProjectWorker } from './project-worker-resolver';
+import { getAccountAvailabilityService } from './account-availability-service';
 
 export const TRANSLATE_ENSURE_REASONS = [
   'ok',
@@ -87,11 +88,14 @@ export class TranslateReadinessService {
     healIdleWorkers(this.db);
 
     let accountId = this.pickAccountId(projectId, preferredAccountId);
+    const availabilitySvc = getAccountAvailabilityService(this.db);
     if (!accountId) {
+      const preflight = availabilitySvc.preflightMessage();
       return {
         ok: false,
         reason: 'no_account',
         message:
+          preflight ??
           'Chưa có tài khoản Google. Thêm tài khoản và đăng nhập Gemini trước khi dịch.',
         workerAccountId: null,
         notebookStatus: null,
@@ -105,14 +109,17 @@ export class TranslateReadinessService {
     if (loginNeeded) {
       await this.tryOpenBrowser(accountId, 'gemini');
       const session = await this.tryTestSession(accountId);
-      if (!session.usable && !this.isAccountUsable(accountId)) {
+      const availability = availabilitySvc.resolve(accountId);
+      if (!session.usable && !availability.usableForNewJob) {
+        const preflight = availabilitySvc.preflightMessage();
         return {
           ok: false,
           reason: 'needs_google_login',
           message:
-            session.reason === 'BUSY'
+            preflight ??
+            (session.reason === 'BUSY'
               ? 'Tài khoản Google đang bận (trình duyệt mở). Đóng xong bấm dịch lại, hoặc kiểm tra đăng nhập.'
-              : 'Cần đăng nhập Google / Gemini. Đã mở trình duyệt — hoàn tất đăng nhập rồi bấm dịch lại.',
+              : 'Cần đăng nhập Google / Gemini. Đã mở trình duyệt — hoàn tất đăng nhập rồi bấm dịch lại.'),
           workerAccountId: accountId,
           notebookStatus: null,
           usedFallback: true,
@@ -183,21 +190,15 @@ export class TranslateReadinessService {
   }
 
   private accountNeedsLogin(accountId: string): boolean {
-    const account = this.db.googleAccounts.getById(accountId);
-    if (account && needsLoginHeal(account.status)) return true;
-    const worker = this.db.workerStates
-      .listEnabled()
-      .find((w) => w.google_account_id === accountId);
-    return worker != null && needsLoginHeal(worker.health);
+    const availability = getAccountAvailabilityService(this.db).resolve(accountId);
+    return (
+      availability.availability === 'LOGIN_REQUIRED' ||
+      availability.availability === 'NEEDS_ATTENTION'
+    );
   }
 
   private isAccountUsable(accountId: string): boolean {
-    const account = this.db.googleAccounts.getById(accountId);
-    if (account && isUsableHealth(account.status)) return true;
-    const worker = this.db.workerStates
-      .listEnabled()
-      .find((w) => w.google_account_id === accountId);
-    return worker != null && isUsableHealth(worker.health);
+    return getAccountAvailabilityService(this.db).resolve(accountId).usableForNewJob;
   }
 
   private hasWebApiReady(): boolean {

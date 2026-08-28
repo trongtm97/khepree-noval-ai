@@ -1201,6 +1201,270 @@ body {
   align-items: flex-start;
 }
 
+/* --- Google Accounts UX redesign --- */
+.accounts-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.accounts-summary {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  min-height: 4rem;
+  align-items: stretch;
+}
+
+.accounts-summary-item {
+  flex: 1 1 7rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  min-height: 4rem;
+}
+
+.accounts-summary-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.accounts-summary-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.15rem;
+}
+
+.accounts-toolbar {
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.accounts-search-input {
+  flex: 1 1 12rem;
+  max-width: 20rem;
+}
+
+.accounts-security-note {
+  font-size: 0.8rem;
+  margin: 0.5rem 0 0;
+}
+
+.account-row {
+  padding: 0.85rem 1rem;
+  min-height: 6.25rem;
+}
+
+.account-row-layout {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1.4fr) minmax(8rem, 1.2fr) auto;
+  gap: 0.75rem 1rem;
+  align-items: center;
+}
+
+.account-row-left {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.account-row-identity {
+  min-width: 0;
+}
+
+.account-row-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.account-row-title {
+  font-size: 0.95rem;
+  word-break: break-word;
+}
+
+.account-plan-badge {
+  font-size: 0.65rem;
+  text-transform: none;
+}
+
+.account-row-email {
+  display: block;
+  font-size: 0.8rem;
+  margin-top: 0.1rem;
+  word-break: break-all;
+}
+
+.account-row-center {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  min-width: 0;
+}
+
+.account-row-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.account-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+}
+
+.account-primary-actions {
+  flex-wrap: nowrap;
+}
+
+.account-status {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.account-status--ready { color: var(--success-text, #37b24d); }
+.account-status--running { color: var(--accent); }
+.account-status--paused { color: var(--text-secondary); }
+.account-status--login,
+.account-status--limited,
+.account-status--attention { color: var(--warning-text, #f59f00); }
+
+.account-current-work {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.account-current-work-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+}
+
+.account-card-error {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--error-text, #fa5252) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--error-text, #fa5252) 35%, transparent);
+  font-size: 0.85rem;
+}
+
+.account-error-technical {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.account-error-technical summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.account-add-steps {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.account-add-steps li {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.account-add-steps li.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.account-add-steps li.done {
+  color: var(--success-text, #37b24d);
+}
+
+.account-edit-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.account-details-dl {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.account-details-dl > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.account-details-dl dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+}
+
+.account-details-dl dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.account-details-advanced-title {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.account-path-code {
+  display: block;
+  font-size: 0.75rem;
+  word-break: break-all;
+}
+
+.account-plan-submenu {
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--border);
+  margin: 0.25rem 0;
+}
+
+.menu-item-danger {
+  color: var(--error-text, #fa5252) !important;
+}
+
+@media (max-width: 900px) {
+  .account-row-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .account-row-right {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+  }
+}
+
+
 .status-pill {
   font-size: 0.7rem;
   font-weight: 600;

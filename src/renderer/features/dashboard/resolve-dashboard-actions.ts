@@ -18,7 +18,11 @@ export interface DashboardActionItem {
 export interface DashboardActionContext {
   projects: ProjectDto[];
   jobs: JobDto[];
-  accounts: { id: string; status: string }[];
+  accounts: {
+    id: string;
+    status?: string;
+    availability?: { availability: string };
+  }[];
   termsReviewCount: number;
   termCandidatesByProject: Map<string, number>;
   sourceModifiedByProject: Map<string, number>;
@@ -36,9 +40,10 @@ const SEVERITY_RANK: Record<DashboardActionSeverity, number> = {
 export function resolveDashboardActions(ctx: DashboardActionContext): DashboardActionItem[] {
   const items: DashboardActionItem[] = [];
 
-  const loginRequired = ctx.accounts.filter(
-    (a) => a.status === 'LOGIN_REQUIRED' || a.status === 'NEEDS_ATTENTION',
-  );
+  const loginRequired = ctx.accounts.filter((a) => {
+    const avail = a.availability?.availability ?? a.status ?? '';
+    return avail === 'LOGIN_REQUIRED' || avail === 'NEEDS_ATTENTION';
+  });
   if (loginRequired.length > 0) {
     items.push({
       id: 'ai-login',

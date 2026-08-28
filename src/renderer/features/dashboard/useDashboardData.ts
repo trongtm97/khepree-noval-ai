@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { JobDto } from '@shared/schemas/job';
 import type { ProjectDto } from '@shared/schemas/import';
+import type { GoogleAccountDto } from '@shared/schemas/account';
 import { isJobActive } from '@shared/utils/job-progress';
 import { useUiShellStore } from '../../stores/ui-shell-store';
 import { resolvePriorityProject } from './resolve-priority-project';
@@ -20,7 +21,7 @@ import { resolveRecentActivity, type DashboardActivityEvent } from './resolve-re
 export interface DashboardData {
   projects: ProjectDto[];
   jobs: JobDto[];
-  accounts: { id: string; status: string; workerEnabled?: boolean }[];
+  accounts: GoogleAccountDto[];
   priorityProject: ProjectDto | null;
   priorityNewChapterCount: number;
   runningJobs: JobDto[];
@@ -40,9 +41,7 @@ export function useDashboardData(): DashboardData {
 
   const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [jobs, setJobs] = useState<JobDto[]>([]);
-  const [accounts, setAccounts] = useState<{ id: string; status: string; workerEnabled?: boolean }[]>(
-    [],
-  );
+  const [accounts, setAccounts] = useState<GoogleAccountDto[]>([]);
   const [termsReviewCount, setTermsReviewCount] = useState(0);
   const [termCandidatesByProject, setTermCandidatesByProject] = useState<Map<string, number>>(
     new Map(),
@@ -184,7 +183,7 @@ export function useDashboardData(): DashboardData {
     () =>
       resolveDashboardReadiness({
         projects,
-        accounts,
+        accounts: accounts.map((a) => ({ availability: a.availability })),
         hasCompletedJob,
         priorityProject,
       }),

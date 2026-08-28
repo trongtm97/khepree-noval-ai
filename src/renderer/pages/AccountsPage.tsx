@@ -1,59 +1,100 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { GoogleAccountDto } from '@shared/schemas/account';
-import {
-  GOOGLE_ACCOUNT_PLANS,
-  type GoogleAccountPlan,
-} from '@shared/constants/google-account';
+import type { AccountAvailabilitySummary } from '@shared/schemas/account-availability';
+import type { GoogleAccountPlan } from '@shared/constants/google-account';
 import { useT } from '../i18n';
 import { friendlyError } from '../i18n/errors';
-import { statusLabel } from '../i18n/status';
-import { helpArticleForErrorCode } from '../features/help/content';
 import {
   PageHeader,
   Button,
-  Card,
   EmptyState,
-  StatusBadge,
   Dialog,
-  Select,
   Skeleton,
   ErrorPanel,
   Input,
-  Badge,
+  Select,
 } from '../components/ui';
 import { HelpContextButton } from '../features/help/HelpContextButton';
+import { helpArticleForErrorCode } from '../features/help/content';
+import { useNotificationStore } from '../stores/notification-store';
+import { useUiShellStore } from '../stores/ui-shell-store';
+import {
+  AccountsSummary,
+  AccountRow,
+  AddGoogleAccountDialog,
+  EditGoogleAccountDialog,
+  AccountDetailsDrawer,
+  resolveAccountUiState,
+  sortAccounts,
+  matchesAccountFilter,
+  isBrowserSecurityError,
+  type AccountFilter,
+  type AddAccountStep,
+} from '../features/accounts';
 
 export function AccountsPage() {
   const t = useT();
+  const navigate = useNavigate();
+  const addToast = useNotificationStore((s) => s.add);
+  const showAdvanced = useUiShellStore((s) => s.showAdvancedTools);
+
   const [accounts, setAccounts] = useState<GoogleAccountDto[]>([]);
+  const [summary, setSummary] = useState<AccountAvailabilitySummary>({
+    ready: 0,
+    busy: 0,
+    paused: 0,
+    needsAttention: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [emailDraft, setEmailDraft] = useState<Record<string, string>>({});
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
+
+  const [filter, setFilter] = useState<AccountFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [removeTarget, setRemoveTarget] = useState<GoogleAccountDto | null>(null);
-  const [renameTarget, setRenameTarget] = useState<GoogleAccountDto | null>(null);
-  const [renameDraft, setRenameDraft] = useState('');
+  const [editTarget, setEditTarget] = useState<GoogleAccountDto | null>(null);
+  const [detailsTarget, setDetailsTarget] = useState<GoogleAccountDto | null>(null);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [addStep, setAddStep] = useState<AddAccountStep>('create');
+  const [addAccountId, setAddAccountId] = useState<string | null>(null);
+  const [addEmailDraft, setAddEmailDraft] = useState('');
 
   const refresh = useCallback(async () => {
     const result = await window.novelTrans.accounts.list();
     setAccounts(result.accounts);
+    setSummary(result.summary);
   }, []);
 
   useEffect(() => {
     void refresh()
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
+        setLoadError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
       })
       .finally(() => {
         setLoading(false);
       });
   }, [refresh, t]);
 
-  const run = async (accountId: string | null, action: () => Promise<void>) => {
-    setError(null);
-    setMessage(null);
+  const toast = (kind: 'SUCCESS' | 'INFO' | 'ERROR', title: string) => {
+    addToast({ kind, title, description: '', toast: true });
+  };
+
+  const run = async (
+    accountId: string | null,
+    action: () => Promise<void>,
+    options?: { clearCardError?: boolean },
+  ) => {
+    if (options?.clearCardError !== false && accountId) {
+      setCardErrors((prev) => {
+        const { [accountId]: _omit, ...rest } = prev;
+        return rest;
+      });
+    }
     setBusyId(accountId ?? 'global');
     try {
       await action();
@@ -65,50 +106,124 @@ export function AccountsPage() {
           : typeof err === 'string'
             ? err
             : err && typeof err === 'object' && 'message' in err
-              ? String((err).message)
+              ? String(err.message)
               : t('errors.UNKNOWN.title');
-      setError(raw || t('errors.UNKNOWN.title'));
+      const msg = raw || t('errors.UNKNOWN.title');
+      if (accountId) {
+        setCardErrors((prev) => ({ ...prev, [accountId]: msg }));
+      } else {
+        setLoadError(msg);
+      }
     } finally {
       setBusyId(null);
     }
   };
 
-  const addAccount = () => {
+  const startAddAccount = () => {
+    setAddOpen(true);
+    setAddStep('create');
+    setAddAccountId(null);
+    setAddEmailDraft('');
     void run(null, async () => {
       const result = await window.novelTrans.accounts.add({});
-      setMessage(
-        `${t('accounts.loggedIn')} · ${result.account.id.slice(0, 8)}… · ${t('actions.openBrowser')}`,
-      );
-      // Best-effort auto-finish after browser login (no email required when probe works)
+      setAddAccountId(result.account.id);
+      setAddStep('login');
       try {
         await window.novelTrans.accounts.completeLogin(result.account.id, {});
-        setMessage(t('accounts.loggedIn'));
+        setAddStep('verify');
+        setAddOpen(false);
+        toast('SUCCESS', t('accounts.toastAdded'));
       } catch {
-        // User still finishing browser login — they can click Signed in later
+        setAddStep('login');
       }
+    });
+  };
+
+  const handleAddSignedIn = () => {
+    if (!addAccountId) return;
+    void run(addAccountId, async () => {
+      setAddStep('verify');
+      try {
+        await window.novelTrans.accounts.completeLogin(addAccountId, {});
+        setAddOpen(false);
+        toast('SUCCESS', t('accounts.toastAdded'));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/email|detect/i.test(msg)) {
+          setAddStep('email');
+        } else {
+          throw err;
+        }
+      }
+    });
+  };
+
+  const handleAddCompleteWithEmail = () => {
+    if (!addAccountId) return;
+    const email = addEmailDraft.trim();
+    if (!email) return;
+    void run(addAccountId, async () => {
+      await window.novelTrans.accounts.completeLogin(addAccountId, { email });
+      setAddOpen(false);
+      toast('SUCCESS', t('accounts.toastAdded'));
+    });
+  };
+
+  const handleAddReopenBrowser = () => {
+    if (!addAccountId) return;
+    void run(addAccountId, async () => {
+      await window.novelTrans.accounts.openBrowser(addAccountId, 'gemini');
     });
   };
 
   const confirmRemove = () => {
     if (!removeTarget) return;
     const account = removeTarget;
+    if (!account.availability.canRemove) {
+      setCardErrors((prev) => ({
+        ...prev,
+        [account.id]: t('accounts.deleteBlockedBusy'),
+      }));
+      setRemoveTarget(null);
+      return;
+    }
     setRemoveTarget(null);
     void run(account.id, async () => {
       await window.novelTrans.accounts.remove(account.id);
-      setMessage(t('accounts.deleteAccount'));
+      toast('SUCCESS', t('accounts.toastDeleted'));
     });
   };
 
-  const confirmRename = () => {
-    if (!renameTarget) return;
-    const label = renameDraft.trim();
-    if (!label) return;
-    const account = renameTarget;
-    setRenameTarget(null);
+  const handleEditConfirm = (data: {
+    label: string;
+    plan: GoogleAccountPlan;
+    notes: string;
+  }) => {
+    if (!editTarget) return;
+    const account = editTarget;
+    setEditTarget(null);
     void run(account.id, async () => {
-      await window.novelTrans.accounts.rename(account.id, label);
+      await window.novelTrans.accounts.rename(account.id, data.label);
+      if (data.plan !== account.plan) {
+        await window.novelTrans.accounts.setPlan(account.id, data.plan);
+      }
+      const prevNotes = account.notes ?? '';
+      if (data.notes !== prevNotes) {
+        await window.novelTrans.accounts.setNotes(account.id, data.notes || null);
+      }
+      toast('SUCCESS', t('accounts.toastUpdated'));
     });
   };
+
+  const sortedAccounts = useMemo(() => sortAccounts(accounts), [accounts]);
+
+  const filteredAccounts = useMemo(
+    () =>
+      sortedAccounts.filter((account) =>
+        matchesAccountFilter(account, filter, searchQuery),
+      ),
+    [sortedAccounts, filter, searchQuery],
+  );
 
   if (loading) {
     return (
@@ -116,33 +231,29 @@ export function AccountsPage() {
         <PageHeader title={t('accounts.title')} description={t('accounts.subtitle')} />
         <div className="account-list">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} height={180} />
+            <Skeleton key={i} height={120} />
           ))}
         </div>
       </div>
     );
   }
 
-  const errInfo = error ? friendlyError(error) : null;
+  const errInfo = loadError ? friendlyError(loadError) : null;
 
   return (
-    <div>
+    <div className="accounts-page">
       <PageHeader
         title={t('accounts.title')}
         description={t('accounts.subtitle')}
         actions={
           <>
             <HelpContextButton articleId="google-accounts" />
-            <Button variant="primary" disabled={busyId !== null} onClick={addAccount}>
+            <Button variant="primary" disabled={busyId !== null} onClick={startAddAccount}>
               {t('actions.addGoogleAccount')}
             </Button>
           </>
         }
       />
-
-      <p className="muted accounts-login-hint" role="note">
-        {t('accounts.browserNotSecureHint')}
-      </p>
 
       {errInfo ? (
         <ErrorPanel
@@ -153,7 +264,6 @@ export function AccountsPage() {
           actions={[{ label: t('actions.retry'), onClick: () => void refresh(), primary: true }]}
         />
       ) : null}
-      {message ? <div className="banner banner-info">{message}</div> : null}
 
       {accounts.length === 0 ? (
         <EmptyState
@@ -161,256 +271,148 @@ export function AccountsPage() {
           title={t('accounts.emptyTitle')}
           description={t('accounts.emptyDesc')}
           actionLabel={t('actions.addGoogleAccount')}
-          onAction={addAccount}
+          onAction={startAddAccount}
         />
       ) : (
-        <div className="account-list">
-          {accounts.map((account) => {
-            const busy = busyId === account.id || busyId === 'global';
-            return (
-              <Card key={account.id} className="account-card">
-                <header className="account-card-header">
-                  <div className="account-identity">
-                    {account.avatarUrl ? (
-                      <img
-                        className="account-avatar"
-                        src={account.avatarUrl}
-                        alt=""
-                        width={40}
-                        height={40}
-                      />
-                    ) : (
-                      <div className="account-avatar placeholder" aria-hidden>
-                        {(account.displayName || '?').slice(0, 1).toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <h3 style={{ margin: 0 }}>{account.displayName || account.label}</h3>
-                      <p className="muted" style={{ margin: '0.15rem 0 0' }}>
-                        {account.email ??
-                          (account.status === 'READY' || account.status === 'BUSY'
-                            ? t('accounts.emailMissing')
-                            : t('status.loginRequired'))}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="account-badges btn-row">
-                    <StatusBadge status={account.status} />
-                    <Badge tone="accent">{account.plan}</Badge>
-                    {!account.workerEnabled ? (
-                      <Badge tone="warning">{t('status.paused')}</Badge>
-                    ) : (
-                      <Badge tone="success">{t('accounts.ready')}</Badge>
-                    )}
-                  </div>
-                </header>
+        <>
+          <AccountsSummary counts={summary} />
 
-                <dl className="account-meta">
-                  <div>
-                    <dt>{t('accounts.geminiStatus')}</dt>
-                    <dd>{statusLabel(account.status)}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('accounts.browserProfile')}</dt>
-                    <dd title={account.browserProfilePath}>
-                      <code>{account.browserProfilePath}</code>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>{t('aiPanel.plan')}</dt>
-                    <dd>{account.plan}</dd>
-                  </div>
-                  <div>
-                    <dt>{t('accounts.workerState')}</dt>
-                    <dd>
-                      {account.workerEnabled ? t('accounts.ready') : t('status.paused')}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>{t('accounts.lastUsed')}</dt>
-                    <dd>{account.lastUsedAt ?? '—'}</dd>
-                  </div>
-                </dl>
+          {accounts.length > 5 ? (
+            <div className="accounts-toolbar btn-row">
+              <Input
+                type="search"
+                placeholder={t('accounts.searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); }}
+                className="accounts-search-input"
+              />
+              <Select
+                value={filter}
+                onChange={(e) => { setFilter(e.target.value as AccountFilter); }}
+                aria-label={t('accounts.filterLabel')}
+              >
+                <option value="all">{t('accounts.filterAll')}</option>
+                <option value="ready">{t('accounts.filterReady')}</option>
+                <option value="busy">{t('accounts.filterBusy')}</option>
+                <option value="attention">{t('accounts.filterAttention')}</option>
+                <option value="paused">{t('accounts.filterPaused')}</option>
+              </Select>
+            </div>
+          ) : null}
 
-                {account.notes ? <p className="account-notes">{account.notes}</p> : null}
+          <div className="account-list">
+            {filteredAccounts.map((account) => {
+              const state = resolveAccountUiState(account);
+              const busy = busyId === account.id || busyId === 'global';
 
-                {account.profileLease ? (
-                  <p className="account-lease-busy" role="status">
-                    {t('accounts.profileInUseBy', { label: account.profileLease.label })}
-                  </p>
-                ) : null}
-
-                <div className="account-controls btn-row" style={{ flexWrap: 'wrap' }}>
-                  <label className="inline-field">
-                    {t('aiPanel.plan')}
-                    <Select
-                      value={account.plan}
-                      disabled={busy}
-                      onChange={(event) => {
-                        const plan = event.target.value as GoogleAccountPlan;
-                        void run(account.id, async () => {
-                          await window.novelTrans.accounts.setPlan(account.id, plan);
-                        });
-                      }}
-                    >
-                      {GOOGLE_ACCOUNT_PLANS.map((plan) => (
-                        <option key={plan} value={plan}>
-                          {plan}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-
-                  <Button
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => {
-                      setRenameDraft(account.label);
-                      setRenameTarget(account);
-                    }}
-                  >
-                    {t('actions.edit')}
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => {
+              return (
+                <AccountRow
+                  key={account.id}
+                  account={account}
+                  busy={busy}
+                  showNotebook={showAdvanced}
+                  cardError={cardErrors[account.id] ?? null}
+                  onOpenGemini={() => {
+                    void run(account.id, async () => {
+                      await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
+                    });
+                  }}
+                  onCheck={() => {
+                    void run(account.id, async () => {
+                      const result = await window.novelTrans.accounts.testSession(account.id);
+                      if (result.reason === 'BROWSER_NOT_SECURE') {
+                        setCardErrors((prev) => ({
+                          ...prev,
+                          [account.id]: t('accounts.browserNotSecureFriendly'),
+                        }));
+                        return;
+                      }
+                      toast(
+                        result.usable ? 'SUCCESS' : 'ERROR',
+                        result.usable
+                          ? t('accounts.toastCheckOk')
+                          : t('accounts.toastCheckFailed'),
+                      );
+                    }, { clearCardError: false });
+                  }}
+                  onLogin={() => {
+                    void run(account.id, async () => {
+                      await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
+                    });
+                  }}
+                  onHandle={() => {
+                    if (state === 'login') {
                       void run(account.id, async () => {
-                        try {
-                          await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
-                          setMessage(t('actions.openBrowser'));
-                        } catch (err: unknown) {
-                          const msg = err instanceof Error ? err.message : String(err);
-                          if (/PROFILE_BUSY/i.test(msg)) {
-                            setError(msg.replace(/^PROFILE_BUSY:\s*/i, ''));
-                            return;
-                          }
-                          if (
-                            /BROWSER_NOT_SECURE|không an toàn|may not be secure|Chromium Playwright|NTS_BROWSER_ENGINE/i.test(
-                              msg,
-                            )
-                          ) {
-                            setError(`${msg}\n${t('accounts.browserNotSecureHint')}`);
-                            return;
-                          }
-                          throw err;
-                        }
+                        await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
                       });
-                    }}
-                  >
-                    {t('actions.openBrowser')}
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => {
+                    } else {
                       void run(account.id, async () => {
                         const result = await window.novelTrans.accounts.testSession(account.id);
-                        if (result.reason === 'BROWSER_NOT_SECURE') {
-                          setError(t('accounts.browserNotSecureHint'));
-                          setMessage(
-                            `${statusLabel('BROWSER_NOT_SECURE')}: BROWSER_NOT_SECURE`,
-                          );
+                        if (!result.usable) {
+                          await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
+                        }
+                      });
+                    }
+                  }}
+                  onResume={() => {
+                    void run(account.id, async () => {
+                      await window.novelTrans.accounts.enable(account.id);
+                      toast('SUCCESS', t('accounts.toastResumed'));
+                    });
+                  }}
+                  onPause={() => {
+                    void run(account.id, async () => {
+                      await window.novelTrans.accounts.disable(account.id);
+                      toast('SUCCESS', t('accounts.toastPaused'));
+                    });
+                  }}
+                  onRename={() => { setEditTarget(account); }}
+                  onChangePlan={(plan) => {
+                    void run(account.id, async () => {
+                      await window.novelTrans.accounts.setPlan(account.id, plan);
+                      toast('SUCCESS', t('accounts.toastPlanChanged'));
+                    });
+                  }}
+                  onEditNotes={() => { setEditTarget(account); }}
+                  onOpenNotebook={() => {
+                    void run(account.id, async () => {
+                      await window.novelTrans.accounts.openBrowser(account.id, 'notebook');
+                    });
+                  }}
+                  onDetails={() => { setDetailsTarget(account); }}
+                  onDelete={() => { setRemoveTarget(account); }}
+                  onReopenBrowser={() => {
+                    void run(account.id, async () => {
+                      try {
+                        await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
+                      } catch (err: unknown) {
+                        const msg = err instanceof Error ? err.message : String(err);
+                        if (isBrowserSecurityError(msg)) {
+                          setCardErrors((prev) => ({
+                            ...prev,
+                            [account.id]: msg,
+                          }));
                           return;
                         }
-                        setMessage(
-                          result.usable
-                            ? `${t('accounts.ready')}${result.email ? ` (${result.email})` : ''}`
-                            : `${statusLabel(result.reason ?? 'LOGIN_REQUIRED')}${result.reason && result.reason !== 'BUSY' ? `: ${result.reason}` : ''}`,
-                        );
-                      });
-                    }}
-                  >
-                    {t('actions.check')}
-                  </Button>
+                        throw err;
+                      }
+                    }, { clearCardError: false });
+                  }}
+                  onViewGuide={() => {
+                    navigate('/help/google-accounts');
+                  }}
+                />
+              );
+            })}
+          </div>
 
-                  <div className="complete-login-row btn-row">
-                    {account.status !== 'READY' && !account.email ? (
-                      <Input
-                        type="email"
-                        placeholder={t('accounts.emailPlaceholder')}
-                        value={emailDraft[account.id] ?? ''}
-                        disabled={busy}
-                        onChange={(event) => {
-                          setEmailDraft((prev) => ({
-                            ...prev,
-                            [account.id]: event.target.value,
-                          }));
-                        }}
-                      />
-                    ) : null}
-                    {account.status !== 'READY' ? (
-                      <Button
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => {
-                          void run(account.id, async () => {
-                            const draft = emailDraft[account.id];
-                            const email = typeof draft === 'string' ? draft.trim() : '';
-                            try {
-                              await window.novelTrans.accounts.completeLogin(account.id, {
-                                email:
-                                  email.length > 0
-                                    ? email
-                                    : account.email ?? undefined,
-                              });
-                              setMessage(t('accounts.loggedIn'));
-                            } catch (err: unknown) {
-                              if (!email && !account.email) {
-                                throw new Error(t('accounts.emailRequiredToFinish'));
-                              }
-                              throw err;
-                            }
-                          });
-                        }}
-                      >
-                        {t('accounts.loggedIn')}
-                      </Button>
-                    ) : null}
-                  </div>
-
-                  {account.workerEnabled ? (
-                    <Button
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => {
-                        void run(account.id, async () => {
-                          await window.novelTrans.accounts.disable(account.id);
-                        });
-                      }}
-                    >
-                      {t('actions.pause')}
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => {
-                        void run(account.id, async () => {
-                          await window.novelTrans.accounts.enable(account.id);
-                        });
-                      }}
-                    >
-                      {t('actions.resume')}
-                    </Button>
-                  )}
-
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    disabled={busy}
-                    onClick={() => { setRemoveTarget(account); }}
-                  >
-                    {t('accounts.deleteAccount')}
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+          {filteredAccounts.length === 0 && accounts.length > 0 ? (
+            <p className="muted accounts-no-results">{t('accounts.noFilterResults')}</p>
+          ) : null}
+        </>
       )}
+
+      <p className="muted accounts-security-note">{t('accounts.passwordNote')}</p>
 
       <Dialog
         open={removeTarget !== null}
@@ -426,24 +428,39 @@ export function AccountsPage() {
         onCancel={() => { setRemoveTarget(null); }}
       />
 
-      <Dialog
-        open={renameTarget !== null}
-        title={t('actions.edit')}
-        confirmLabel={t('actions.confirm')}
-        cancelLabel={t('actions.cancel')}
+      <EditGoogleAccountDialog
+        account={editTarget}
         busy={busyId !== null}
-        onConfirm={confirmRename}
-        onCancel={() => { setRenameTarget(null); }}
-      >
-        <Input
-          value={renameDraft}
-          onChange={(e) => { setRenameDraft(e.target.value); }}
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') confirmRename();
-          }}
-        />
-      </Dialog>
+        onConfirm={handleEditConfirm}
+        onCancel={() => { setEditTarget(null); }}
+      />
+
+      <AccountDetailsDrawer
+        account={detailsTarget}
+        showAdvanced={showAdvanced}
+        onClose={() => { setDetailsTarget(null); }}
+        onCopyPath={(path) => {
+          void navigator.clipboard.writeText(path);
+          toast('SUCCESS', t('accounts.toastCopied'));
+        }}
+      />
+
+      <AddGoogleAccountDialog
+        open={addOpen}
+        step={addStep}
+        accountId={addAccountId}
+        busy={busyId !== null}
+        emailDraft={addEmailDraft}
+        onEmailDraftChange={setAddEmailDraft}
+        onSignedIn={handleAddSignedIn}
+        onReopenBrowser={handleAddReopenBrowser}
+        onCompleteWithEmail={handleAddCompleteWithEmail}
+        onCancel={() => {
+          setAddOpen(false);
+          setAddStep('create');
+          setAddAccountId(null);
+        }}
+      />
     </div>
   );
 }

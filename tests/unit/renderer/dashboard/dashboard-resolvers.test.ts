@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { mockAccountAvailability } from '../../../helpers/account-availability-fixtures';
 import { resolveBreadcrumb } from '../../../../src/renderer/features/dashboard/resolve-breadcrumb';
 import {
   resolveDashboardReadiness,
@@ -116,7 +117,7 @@ describe('resolveDashboardReadiness', () => {
   it('auto-completes onboarding when project + translation + AI ready', () => {
     const readiness = resolveDashboardReadiness({
       projects: [project({ id: 'x', title: 'X' })],
-      accounts: [{ status: 'READY', workerEnabled: true }],
+      accounts: [{ availability: mockAccountAvailability({ availability: 'READY' }) }],
       hasCompletedJob: false,
       priorityProject: project({ id: 'x', title: 'X', translatedChapterCount: 1 }),
     });
@@ -138,7 +139,7 @@ describe('resolveDashboardReadiness', () => {
           },
         }),
       ],
-      accounts: [{ status: 'READY', workerEnabled: true }],
+      accounts: [{ availability: mockAccountAvailability({ availability: 'READY' }) }],
       hasCompletedJob: true,
     });
     expect(readiness.localMemoryReady).toBe(true);
@@ -149,7 +150,7 @@ describe('resolveOnboardingSteps', () => {
   it('excludes notebook as required step', () => {
     const steps = resolveOnboardingSteps({
       projects: [project({ id: 'x', title: 'X' })],
-      accounts: [{ status: 'READY', workerEnabled: true }],
+      accounts: [{ availability: mockAccountAvailability({ availability: 'READY' }) }],
       hasCompletedJob: true,
     });
     expect(steps.map((s: { id: string }) => s.id)).toEqual(['ai', 'project', 'source', 'translation']);
@@ -161,7 +162,7 @@ describe('resolveDashboardActions', () => {
     const actions = resolveDashboardActions({
       projects: [project({ id: 'x', title: 'X' })],
       jobs: [],
-      accounts: [{ id: 'a1', status: 'READY' }],
+      accounts: [{ id: 'a1', availability: mockAccountAvailability({ availability: 'READY' }) }],
       termsReviewCount: 0,
       termCandidatesByProject: new Map(),
       sourceModifiedByProject: new Map(),
@@ -174,7 +175,7 @@ describe('resolveDashboardActions', () => {
     const actions = resolveDashboardActions({
       projects: [project({ id: 'x', title: 'X' })],
       jobs: [],
-      accounts: [{ id: 'a1', status: 'LOGIN_REQUIRED' }],
+      accounts: [{ id: 'a1', availability: mockAccountAvailability({ availability: 'LOGIN_REQUIRED', uiLane: 'login' }) }],
       termsReviewCount: 5,
       termCandidatesByProject: new Map(),
       sourceModifiedByProject: new Map(),
@@ -200,7 +201,7 @@ describe('resolveDashboardActions', () => {
         }),
       ],
       jobs: [],
-      accounts: [{ id: 'a1', status: 'READY' }],
+      accounts: [{ id: 'a1', availability: mockAccountAvailability({ availability: 'READY' }) }],
       termsReviewCount: 0,
       termCandidatesByProject: new Map(),
       sourceModifiedByProject: new Map(),

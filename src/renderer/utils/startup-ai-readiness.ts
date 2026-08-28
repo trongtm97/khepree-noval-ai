@@ -1,4 +1,6 @@
 /** Issues surfaced on app open — before the user clicks Translate. */
+import type { AccountAvailabilityDto } from '@shared/schemas/account-availability';
+
 export type StartupAiIssue =
   | 'no_google_account'
   | 'google_needs_login'
@@ -7,7 +9,7 @@ export type StartupAiIssue =
   | 'check_failed';
 
 export interface StartupAiReadinessInput {
-  googleAccounts: { status: string; workerEnabled?: boolean }[];
+  googleAccounts: { availability: AccountAvailabilityDto }[];
   /** Health row for Gemini Web API only (Playwright generic health is always false). */
   webApiHealth: { ok: boolean; status: string; message: string } | null;
   webApiAccounts: { status: string }[];
@@ -24,16 +26,6 @@ function upper(value: string | null | undefined): string {
   return (value ?? '').toUpperCase();
 }
 
-function isUsableGoogle(status: string | null | undefined): boolean {
-  const s = upper(status);
-  return s === 'READY' || s === 'BUSY';
-}
-
-function needsGoogleLogin(status: string | null | undefined): boolean {
-  const s = upper(status);
-  return s === 'LOGIN_REQUIRED' || s === 'NEEDS_ATTENTION';
-}
-
 function isWebApiReady(input: StartupAiReadinessInput): boolean {
   if (input.webApiHealth?.ok) return true;
   const accountReady = input.webApiAccounts.some((a) => upper(a.status) === 'READY');
@@ -42,18 +34,22 @@ function isWebApiReady(input: StartupAiReadinessInput): boolean {
 
 /**
  * Lightweight startup gate: Google session + at least one usable AI channel signal.
- * Does not open browsers or provision notebooks.
+ * Uses canonical account availability — not raw account.status.
  */
 export function evaluateStartupAiReadiness(
   input: StartupAiReadinessInput,
 ): StartupAiReadinessResult {
   const issues: StartupAiIssue[] = [];
-  const enabledGoogle = input.googleAccounts.filter((a) => a.workerEnabled !== false);
+  const enabledGoogle = input.googleAccounts.filter(
+    (a) => a.availability.availability !== 'PAUSED',
+  );
 
   if (enabledGoogle.length === 0) {
     issues.push('no_google_account');
-  } else if (!enabledGoogle.some((a) => isUsableGoogle(a.status))) {
-    if (enabledGoogle.some((a) => needsGoogleLogin(a.status))) {
+  } else if (!enabledGoogle.some((a) => a.availability.usableForNewJob)) {
+    if (
+      enabledGoogle.some((a) => a.availability.availability === 'LOGIN_REQUIRED')
+    ) {
       issues.push('google_needs_login');
     } else {
       issues.push('no_google_account');

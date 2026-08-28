@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateStartupAiReadiness } from '../../../src/renderer/utils/startup-ai-readiness';
+import { mockAccountAvailability } from '../../helpers/account-availability-fixtures';
 
 describe('evaluateStartupAiReadiness', () => {
   const ready = {
-    googleAccounts: [{ status: 'READY' }],
+    googleAccounts: [{ availability: mockAccountAvailability({ availability: 'READY' }) }],
     webApiHealth: { ok: true, status: 'READY', message: 'ok' },
     webApiAccounts: [{ status: 'READY' }],
     workerRunning: true,
@@ -34,7 +35,9 @@ describe('evaluateStartupAiReadiness', () => {
   it('fails google_needs_login', () => {
     const result = evaluateStartupAiReadiness({
       ...ready,
-      googleAccounts: [{ status: 'LOGIN_REQUIRED' }],
+      googleAccounts: [
+        { availability: mockAccountAvailability({ availability: 'LOGIN_REQUIRED', uiLane: 'login' }) },
+      ],
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.issues).toContain('google_needs_login');
@@ -77,10 +80,12 @@ describe('evaluateStartupAiReadiness', () => {
     if (!result.ok) expect(result.issues).toContain('no_ai_provider');
   });
 
-  it('ignores workerEnabled=false google accounts', () => {
+  it('ignores paused google accounts', () => {
     const result = evaluateStartupAiReadiness({
       ...ready,
-      googleAccounts: [{ status: 'READY', workerEnabled: false }],
+      googleAccounts: [
+        { availability: mockAccountAvailability({ availability: 'PAUSED', uiLane: 'paused' }) },
+      ],
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.issues).toContain('no_google_account');

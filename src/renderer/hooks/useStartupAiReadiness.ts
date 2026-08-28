@@ -137,8 +137,7 @@ export function useStartupAiReadiness(intervalMs = 60_000): StartupAiReadinessSt
 
       const next = evaluateStartupAiReadiness({
         googleAccounts: (accountsRes?.accounts ?? []).map((a) => ({
-          status: a.status,
-          workerEnabled: a.workerEnabled,
+          availability: a.availability,
         })),
         webApiHealth: webApiHealth
           ? {

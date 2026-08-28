@@ -94,6 +94,8 @@ import { assertIpcAuditComplete } from '../security/ipc-audit';
 import { getSecretStorage, getAuditLog } from '../security';
 import { getAccountWorkerService } from '../services/account-worker-singleton';
 import { toGoogleAccountDto } from '../services/account-dto';
+import { getAccountAvailabilityService } from '../services/account-availability-service';
+import { getDatabase } from '../db/connection';
 import { getDatabase } from '../db/connection';
 import { toProjectDto, toProjectDtoFromDb } from '../services/project-dto';
 import {
@@ -425,7 +427,13 @@ function accountDto(accountId: string) {
   if (!detail) {
     throw new Error(`Account not found: ${accountId}`);
   }
-  return GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail));
+  const availability = getAccountAvailabilityService(getDatabase()).resolve(accountId);
+  return GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail, availability));
+}
+
+function accountDtoFromDetail(detail: NonNullable<ReturnType<typeof getAccountWorkerService>['getAccount']>) {
+  const availability = getAccountAvailabilityService(getDatabase()).resolve(detail.id);
+  return GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail, availability));
 }
 
 export function registerIpcHandlers(): void {
@@ -511,10 +519,19 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.ACCOUNT_LIST,
     createIpcHandlerNoArg(() => {
+      const availabilitySvc = getAccountAvailabilityService(getDatabase());
+      const byId = availabilitySvc.resolveAll();
       const accounts = getAccountWorkerService()
         .listAccounts()
-        .map((row) => GoogleAccountDtoSchema.parse(toGoogleAccountDto(row)));
-      return AccountListResponseSchema.parse({ accounts });
+        .map((row) =>
+          GoogleAccountDtoSchema.parse(
+            toGoogleAccountDto(row, byId.get(row.id)!),
+          ),
+        );
+      return AccountListResponseSchema.parse({
+        accounts,
+        summary: availabilitySvc.summarize(),
+      });
     }, AccountListResponseSchema),
   );
 
@@ -534,7 +551,7 @@ export function registerIpcHandlers(): void {
         skipBrowser: request.skipBrowser,
       });
       return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
+        account: accountDtoFromDetail(detail),
       });
     }),
   );
@@ -544,7 +561,7 @@ export function registerIpcHandlers(): void {
     createIpcHandler(AccountRenameRequestSchema, (request) => {
       const detail = getAccountWorkerService().rename(request.accountId, request.label);
       return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
+        account: accountDtoFromDetail(detail),
       });
     }),
   );
@@ -554,7 +571,7 @@ export function registerIpcHandlers(): void {
     createIpcHandler(AccountSetPlanRequestSchema, (request) => {
       const detail = getAccountWorkerService().setPlan(request.accountId, request.plan);
       return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
+        account: accountDtoFromDetail(detail),
       });
     }),
   );
@@ -564,7 +581,7 @@ export function registerIpcHandlers(): void {
     createIpcHandler(AccountSetNotesRequestSchema, (request) => {
       const detail = getAccountWorkerService().setNotes(request.accountId, request.notes);
       return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
+        account: accountDtoFromDetail(detail),
       });
     }),
   );
@@ -577,7 +594,7 @@ export function registerIpcHandlers(): void {
         request.target ?? 'gemini',
       );
       return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
+        account: accountDtoFromDetail(detail),
       });
     }),
   );
@@ -587,7 +604,7 @@ export function registerIpcHandlers(): void {
     createIpcHandler(AccountIdRequestSchema, async (request) => {
       const detail = await getAccountWorkerService().closeBrowser(request.accountId);
       return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
+        account: accountDtoFromDetail(detail),
       });
     }),
   );
@@ -597,7 +614,7 @@ export function registerIpcHandlers(): void {
     createIpcHandler(AccountIdRequestSchema, async (request) => {
       const result = await getAccountWorkerService().testSession(request.accountId);
       return AccountTestSessionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(result.account)),
+        account: accountDtoFromDetail(result.account),
         usable: result.usable,
         email: result.email,
         reason: result.reason,
@@ -613,7 +630,7 @@ export function registerIpcHandlers(): void {
         label: request.label,
       });
       return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
+        account: accountDtoFromDetail(detail),
       });
     }),
   );
@@ -623,7 +640,7 @@ export function registerIpcHandlers(): void {
     createIpcHandler(AccountIdRequestSchema, (request) => {
       const detail = getAccountWorkerService().disableWorker(request.accountId);
       return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
+        account: accountDtoFromDetail(detail),
       });
     }),
   );
@@ -633,7 +650,7 @@ export function registerIpcHandlers(): void {
     createIpcHandler(AccountIdRequestSchema, (request) => {
       const detail = getAccountWorkerService().enableWorker(request.accountId);
       return AccountActionResponseSchema.parse({
-        account: GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail)),
+        account: accountDtoFromDetail(detail),
       });
     }),
   );

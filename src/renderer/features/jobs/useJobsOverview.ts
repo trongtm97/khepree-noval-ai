@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JobDto } from '@shared/schemas/job';
 import type { ProjectDto } from '@shared/schemas/import';
 import type { GoogleAccountDto } from '@shared/schemas/account';
-import { getUsableWorkerCount } from '@shared/utils/worker-usability';
+import { getUsableWorkerCount, countUsableAccounts } from '@shared/utils/worker-usability';
 import { useT } from '../../i18n';
 import {
   type SchedulerSnap,
@@ -147,8 +147,11 @@ export function useJobsOverview(): JobsOverviewData {
   const waitingCount = useMemo(() => countWaitingJobs(jobs), [jobs]);
   const pausedCount = useMemo(() => countPausedJobs(jobs), [jobs]);
   const usableWorkers = useMemo(
-    () => getUsableWorkerCount(workers, accountById),
-    [workers, accountById],
+    () =>
+      accounts.length > 0
+        ? countUsableAccounts(accounts)
+        : getUsableWorkerCount(workers, accountById),
+    [workers, accountById, accounts],
   );
   const runningCount = scheduler?.inFlight ?? runningJobs.length;
 

@@ -161,6 +161,9 @@ export function accountLaneStatus(
   worker: WorkerRow,
   account: GoogleAccountDto | undefined,
 ): AccountLaneStatus {
+  if (account?.availability) {
+    return account.availability.uiLane;
+  }
   if (account?.workerEnabled === false) return 'paused';
   const accountStatus = (account?.status ?? '').toUpperCase();
   if (accountStatus === 'LOGIN_REQUIRED') return 'login';

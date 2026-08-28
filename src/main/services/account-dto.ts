@@ -1,10 +1,14 @@
 import type { GoogleAccountDetail } from '../db/repositories/google-account-repository';
 import type { GoogleAccountDto } from '@shared/schemas/account';
 import type { GoogleAccountPlan, GoogleAccountStatus } from '@shared/constants/google-account';
+import type { AccountAvailabilityDto } from '@shared/schemas/account-availability';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
 import { profileLockManager } from '../automation/browser-runner/profile-lock';
 
-export function toGoogleAccountDto(detail: GoogleAccountDetail): GoogleAccountDto {
+export function toGoogleAccountDto(
+  detail: GoogleAccountDetail,
+  availability: AccountAvailabilityDto,
+): GoogleAccountDto {
   const browserProfilePath = detail.profile_dir_name
     ? browserProfileManager.resolveProfilePath(detail.profile_dir_name)
     : '';
@@ -28,6 +32,7 @@ export function toGoogleAccountDto(detail: GoogleAccountDetail): GoogleAccountDt
     assignedProjects: detail.assigned_project_titles,
     createdAt: detail.created_at,
     updatedAt: detail.updated_at,
+    availability,
     profileLease: lease
       ? {
           ownerId: lease.ownerId,

@@ -1,4 +1,6 @@
-/** Renderer-side mirror of worker-pool eligibility (no profile lock / runtime probes). */
+/** Renderer-side mirror of main-process account availability (from DTO). */
+
+import type { AccountAvailabilityDto } from '@shared/schemas/account-availability';
 
 export interface WorkerUsabilitySnap {
   id: string;
@@ -11,6 +13,7 @@ export interface AccountUsabilitySnap {
   id: string;
   status: string;
   workerEnabled: boolean;
+  availability?: AccountAvailabilityDto;
 }
 
 export function isUsableWorker(
@@ -18,6 +21,10 @@ export function isUsableWorker(
   account: AccountUsabilitySnap | undefined,
   now = Date.now(),
 ): boolean {
+  if (account?.availability) {
+    return account.availability.usableForNewJob;
+  }
+  // Legacy fallback when availability missing (tests/mocks).
   if (!account || account.workerEnabled === false) return false;
 
   const health = worker.health.toUpperCase();
@@ -54,4 +61,10 @@ export function getUsableWorkerCount(
   now = Date.now(),
 ): number {
   return workers.filter((w) => isUsableWorker(w, accountById.get(w.accountId), now)).length;
+}
+
+export function countUsableAccounts(
+  accounts: Array<{ availability: AccountAvailabilityDto }>,
+): number {
+  return accounts.filter((a) => a.availability.usableForNewJob).length;
 }

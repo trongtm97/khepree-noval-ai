@@ -3,6 +3,7 @@ import {
   GOOGLE_ACCOUNT_PLANS,
   GOOGLE_ACCOUNT_STATUSES,
 } from '../constants/google-account';
+import { AccountAvailabilitySchema, AccountAvailabilitySummarySchema } from './account-availability';
 
 export const GoogleAccountDtoSchema = z.object({
   id: z.string().uuid(),
@@ -21,6 +22,8 @@ export const GoogleAccountDtoSchema = z.object({
   assignedProjects: z.array(z.string()),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /** Canonical readiness — resolved in main process. */
+  availability: AccountAvailabilitySchema,
   /** Active process-aware profile lease, if any. */
   profileLease: z
     .object({
@@ -38,6 +41,7 @@ export type GoogleAccountDto = z.infer<typeof GoogleAccountDtoSchema>;
 
 export const AccountListResponseSchema = z.object({
   accounts: z.array(GoogleAccountDtoSchema),
+  summary: AccountAvailabilitySummarySchema,
 });
 
 export const AccountIdRequestSchema = z.object({

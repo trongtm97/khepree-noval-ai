@@ -1,8 +1,12 @@
 import type { ProjectDto } from '@shared/schemas/import';
+import type {
+  AccountAvailabilityDto,
+  AccountAvailabilitySummary,
+} from '@shared/schemas/account-availability';
+import { countUsableForNewJob } from '@shared/utils/account-availability';
 
 export interface AccountReadinessInput {
-  status: string;
-  workerEnabled?: boolean;
+  availability: AccountAvailabilityDto;
 }
 
 export interface DashboardReadiness {
@@ -14,6 +18,7 @@ export interface DashboardReadiness {
   hasTranslation: boolean;
   needsAction: boolean;
   onboardingComplete: boolean;
+  accountSummary: AccountAvailabilitySummary;
 }
 
 export interface OnboardingStep {
@@ -21,7 +26,7 @@ export interface OnboardingStep {
   done: boolean;
 }
 
-/** Single source for onboarding + dashboard readiness — not per-widget inference. */
+/** Single source for onboarding + dashboard readiness — uses canonical availability DTO. */
 export function resolveDashboardReadiness(input: {
   projects: ProjectDto[];
   accounts: AccountReadinessInput[];
@@ -33,20 +38,34 @@ export function resolveDashboardReadiness(input: {
   const hasTranslation =
     projects.some((p) => (p.translatedChapterCount ?? 0) > 0) || hasCompletedJob;
 
-  const geminiReady = accounts.some(
-    (a) => a.status === 'READY' && a.workerEnabled !== false,
-  );
+  const usable = countUsableForNewJob(accounts.map((a) => ({ availability: a.availability })));
   const needsLogin = accounts.some(
-    (a) => a.status === 'LOGIN_REQUIRED' || a.status === 'NEEDS_ATTENTION',
+    (a) => a.availability.availability === 'LOGIN_REQUIRED',
   );
-  const aiReady = geminiReady && !needsLogin;
+  const needsAttention = accounts.some(
+    (a) =>
+      a.availability.availability === 'NEEDS_ATTENTION' ||
+      a.availability.availability === 'UNAVAILABLE',
+  );
+  const aiReady = usable > 0 && !needsLogin && !needsAttention;
+
+  const accountSummary: AccountAvailabilitySummary = {
+    ready: accounts.filter((a) => a.availability.availability === 'READY').length,
+    busy: accounts.filter((a) => a.availability.availability === 'BUSY').length,
+    paused: accounts.filter((a) => a.availability.availability === 'PAUSED').length,
+    needsAttention: accounts.filter(
+      (a) =>
+        a.availability.availability !== 'READY' &&
+        a.availability.availability !== 'BUSY' &&
+        a.availability.availability !== 'PAUSED',
+    ).length,
+  };
 
   const project = priorityProject ?? projects.find((p) => p.status !== 'archived') ?? null;
   const sourceReady = project?.health?.source === 'ok';
   const hasSource =
     project?.health?.source === 'ok' || project?.health?.source === 'warn';
 
-  // Local memory auto-inits; only flag when verified mismatch genuinely blocks translation.
   const memoryStale =
     project?.health?.memoryVersion != null && !project.health.memoryVerified;
   const localMemoryReady = !memoryStale;
@@ -68,6 +87,7 @@ export function resolveDashboardReadiness(input: {
     hasTranslation,
     needsAction,
     onboardingComplete,
+    accountSummary,
   };
 }
 
