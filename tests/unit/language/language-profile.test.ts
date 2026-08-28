@@ -4,6 +4,7 @@ import {
   DEFAULT_TARGET_LANGUAGE,
   canSwapLanguages,
   formatLanguagePairLabel,
+  formatLanguagePairInline,
   formatLanguagePairStacked,
   getLanguageProfile,
   languageCompactLabel,
@@ -64,6 +65,13 @@ describe('LanguageProfile registry', () => {
     const stacked = formatLanguagePairStacked('zh-Hans', 'vi');
     expect(stacked.internationalLine).toBe('Chinese (Simplified) → Vietnamese');
     expect(stacked.nativeLine).toBe('简体中文 · zh-Hans → Tiếng Việt · vi');
+  });
+
+  it('inline pair label combines intl/native/code on one line', () => {
+    const inline = formatLanguagePairInline('zh-Hans', 'vi');
+    expect(inline).toContain('Chinese (Simplified) / 简体中文 · zh-Hans');
+    expect(inline).toContain('Vietnamese / Tiếng Việt · vi');
+    expect(inline).toContain('→');
   });
 
   it('normalizes legacy zh → zh-Hans; defaults remain Chinese→Vietnamese', () => {

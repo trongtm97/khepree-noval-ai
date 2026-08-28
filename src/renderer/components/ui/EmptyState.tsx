@@ -7,9 +7,19 @@ interface EmptyStateProps {
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
 }
 
-export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
+export function EmptyState({
+  icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
+}: EmptyStateProps) {
   return (
     <div className="nt-empty">
       {icon}
@@ -19,6 +29,11 @@ export function EmptyState({ icon, title, description, actionLabel, onAction }: 
         <Button variant="primary" onClick={onAction}>
           {actionLabel}
         </Button>
+      ) : null}
+      {secondaryActionLabel && onSecondaryAction ? (
+        <button type="button" className="nt-empty-secondary" onClick={onSecondaryAction}>
+          {secondaryActionLabel}
+        </button>
       ) : null}
     </div>
   );

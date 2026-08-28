@@ -132,6 +132,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
 
   const unread = notifications.filter((n) => !n.read).length;
   const inProject = isProjectWorkspacePath(location.pathname);
+  const isProjectsList = location.pathname === '/projects';
   const pageKey = inProject
     ? projectTabKeyFromPath(location.pathname)
     : (ROUTE_TITLE[location.pathname] ??
@@ -246,14 +247,14 @@ export function AppShell({ children, appInfo }: AppShellProps) {
             <div className="topbar-breadcrumb">
               {inProject && currentProjectName ? (
                 <>
-                  <strong>{currentProjectName}</strong>
+                  <span>{t('nav.projects')}</span>
                   <span aria-hidden>/</span>
-                  <span>{t(pageKey)}</span>
+                  <strong>{currentProjectName}</strong>
                 </>
               ) : (
                 <>
                   <strong>{t(pageKey)}</strong>
-                  {currentProjectName ? (
+                  {currentProjectName && !isProjectsList ? (
                     <>
                       <span aria-hidden>/</span>
                       <span>{currentProjectName}</span>

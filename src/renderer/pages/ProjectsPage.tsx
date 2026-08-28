@@ -1,51 +1,49 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderOpen, LayoutGrid, List } from 'lucide-react';
+import { FolderOpen } from 'lucide-react';
+import type { JobDto } from '@shared/schemas/job';
 import type { ProjectDto } from '@shared/schemas/import';
+import { isJobActive } from '@shared/utils/job-progress';
 import { CreateProjectWizard } from '../components/CreateProjectWizard';
 import { ImportWizard } from '../components/ImportWizard';
+import { ModalPortal } from '../components/overlay';
 import { useT } from '../i18n';
-import { statusLabel } from '../i18n/status';
-import {
-  PageHeader,
-  Button,
-  SearchInput,
-  Select,
-  EmptyState,
-  Card,
-  ProgressBar,
-  Badge,
-  IconButton,
-  Skeleton,
-  Dialog,
-} from '../components/ui';
+import { EmptyState, Dialog, Skeleton } from '../components/ui';
 import { useUiShellStore } from '../stores/ui-shell-store';
-import { HelpContextButton } from '../features/help/HelpContextButton';
 import { confirmDangerous } from '../utils/confirm-dangerous';
-import { LanguagePairLabel } from '../components/LanguagePairLabel';
-
-type SortKey = 'updated' | 'name' | 'progress';
-type ViewMode = 'grid' | 'list';
+import { ProjectsPageHeader } from '../features/projects/ProjectsPageHeader';
+import { ProjectsToolbar } from '../features/projects/ProjectsToolbar';
+import { ProjectGridCard, ProjectListItem } from '../features/projects/ProjectCard';
+import {
+  resolveProjectDisplayState,
+  sortProjectsByProgress,
+} from '../features/projects/project-status';
 
 export function ProjectsPage() {
   const t = useT();
   const navigate = useNavigate();
   const setCurrentProject = useUiShellStore((s) => s.setCurrentProject);
   const currentProjectId = useUiShellStore((s) => s.currentProjectId);
+  const view = useUiShellStore((s) => s.projectsViewMode);
+  const setProjectsViewMode = useUiShellStore((s) => s.setProjectsViewMode);
   const [projects, setProjects] = useState<ProjectDto[]>([]);
+  const [jobs, setJobs] = useState<JobDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showLegacyImport, setShowLegacyImport] = useState(false);
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<SortKey>('updated');
-  const [view, setView] = useState<ViewMode>('grid');
+  const [sort, setSort] = useState<'updated' | 'name' | 'progress'>('updated');
   const [removeTarget, setRemoveTarget] = useState<ProjectDto | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const refresh = useCallback(async () => {
-    const result = await window.novelTrans.projects.list();
-    setProjects(result.projects);
+    const [projectRes, jobRes] = await Promise.all([
+      window.novelTrans.projects.list(),
+      window.novelTrans.jobs.list(undefined),
+    ]);
+    setProjects(projectRes.projects);
+    setJobs(jobRes.jobs);
   }, []);
 
   useEffect(() => {
@@ -53,23 +51,101 @@ export function ProjectsPage() {
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
       })
-      .finally(() => { setLoading(false); });
+      .finally(() => {
+        setLoading(false);
+      });
   }, [refresh, t]);
+
+  const activeJobsByProject = useMemo(() => {
+    const map = new Map<string, JobDto>();
+    for (const job of jobs) {
+      if (!isJobActive(job.state)) continue;
+      const existing = map.get(job.projectId);
+      if (!existing || job.updatedAt.localeCompare(existing.updatedAt) > 0) {
+        map.set(job.projectId, job);
+      }
+    }
+    return map;
+  }, [jobs]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = projects.filter((p) => !q || p.title.toLowerCase().includes(q));
     list = [...list].sort((a, b) => {
       if (sort === 'name') return a.title.localeCompare(b.title, 'vi');
-      if (sort === 'progress') return (b.sourceChapterCount ?? 0) - (a.sourceChapterCount ?? 0);
+      if (sort === 'progress') return sortProjectsByProgress(a, b);
       return b.updatedAt.localeCompare(a.updatedAt);
     });
     return list;
   }, [projects, query, sort]);
 
+  const summary = useMemo(() => {
+    const chapterCount = projects.reduce((s, p) => s + (p.sourceChapterCount ?? 0), 0);
+    let needsAttention = 0;
+    let activeCount = 0;
+    for (const project of projects) {
+      const job = activeJobsByProject.get(project.id);
+      const state = resolveProjectDisplayState(project, job);
+      if (state.status === 'error' || state.status === 'needs_setup') {
+        needsAttention += 1;
+      }
+      if (state.status === 'translating' || state.status === 'ready') {
+        activeCount += 1;
+      }
+    }
+    return {
+      chapterCount,
+      needsAttention,
+      activeCount,
+    };
+  }, [projects, activeJobsByProject]);
+
   const openProject = (project: ProjectDto) => {
     setCurrentProject(project.id, project.title);
     navigate(`/projects/${project.id}`);
+  };
+
+  const continueTranslate = (project: ProjectDto) => {
+    setCurrentProject(project.id, project.title);
+    navigate(`/projects/${project.id}/translate`);
+  };
+
+  const handleRestoreBackup = () => {
+    void (async () => {
+      try {
+        const pick = await window.novelTrans.portability.selectBackupPath();
+        if (pick.canceled || !pick.filePath) return;
+        const preview = await window.novelTrans.portability.previewRestore({
+          archivePath: pick.filePath,
+        });
+        if (!preview.compatible) {
+          setError(
+            t('portability.restoreWarnings', {
+              warnings: preview.warnings.join('; ') || 'incompatible',
+            }),
+          );
+          return;
+        }
+        const ok = confirmDangerous(
+          t('projects.restoreConfirm', {
+            kind: preview.manifest.kind,
+            title: preview.manifest.projectTitle ?? '—',
+            version: String(preview.manifest.schemaVersion),
+          }),
+        );
+        if (!ok) return;
+        const result = await window.novelTrans.portability.restoreBackup({
+          archivePath: pick.filePath,
+          confirmOverwrite: true,
+        });
+        await refresh();
+        if (result.requiresRestart) {
+          setError(t('portability.restoreNeedsRestart'));
+        }
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : t('portability.restoreFailed'));
+      }
+    })();
   };
 
   const confirmRemove = () => {
@@ -93,13 +169,32 @@ export function ProjectsPage() {
     })();
   };
 
+  const cardProps = {
+    onOpenProject: openProject,
+    onContinueTranslate: continueTranslate,
+    onDelete: setRemoveTarget,
+    onSetCurrentProject: setCurrentProject,
+  };
+
   if (loading) {
     return (
-      <div>
-        <PageHeader title={t('projects.title')} />
-        <div className="project-grid">
+      <div className="projects-page">
+        <ProjectsPageHeader
+          projectCount={0}
+          chapterCount={0}
+          needsAttentionCount={0}
+          activeCount={0}
+          onCreate={() => {
+            setShowCreate(true);
+          }}
+          onImportLegacy={() => {
+            setShowLegacyImport(true);
+          }}
+          onRestoreBackup={handleRestoreBackup}
+        />
+        <div className="project-list">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} height={160} />
+            <Skeleton key={i} height={140} />
           ))}
         </div>
       </div>
@@ -107,208 +202,122 @@ export function ProjectsPage() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title={t('projects.title')}
-        description={t('projects.subtitle')}
-        actions={
-          <>
-            <HelpContextButton articleId="import-novel" />
-            <Button variant="primary" onClick={() => { setShowCreate(true); }}>
-              {t('actions.createProject')}
-            </Button>
-            <Button onClick={() => { setShowLegacyImport(true); }}>
-              {t('actions.importLegacy')}
-            </Button>
-            <Button
-              onClick={() => {
-                void (async () => {
-                  try {
-                    const pick = await window.novelTrans.portability.selectBackupPath();
-                    if (pick.canceled || !pick.filePath) return;
-                    const preview = await window.novelTrans.portability.previewRestore({
-                      archivePath: pick.filePath,
-                    });
-                    if (!preview.compatible) {
-                      setError(
-                        t('portability.restoreWarnings', {
-                          warnings: preview.warnings.join('; ') || 'incompatible',
-                        }),
-                      );
-                      return;
-                    }
-                    const ok = confirmDangerous(
-                      `${preview.manifest.kind} · ${preview.manifest.projectTitle ?? '—'} · schema v${preview.manifest.schemaVersion}\n\nRestore?`,
-                    );
-                    if (!ok) return;
-                    const result = await window.novelTrans.portability.restoreBackup({
-                      archivePath: pick.filePath,
-                      confirmOverwrite: true,
-                    });
-                    await refresh();
-                    if (result.requiresRestart) {
-                      setError(t('portability.restoreNeedsRestart'));
-                    }
-                  } catch (err: unknown) {
-                    setError(err instanceof Error ? err.message : t('portability.restoreFailed'));
-                  }
-                })();
-              }}
-            >
-              {t('actions.openBackup')}
-            </Button>
-          </>
-        }
+    <div className="projects-page">
+      <ProjectsPageHeader
+        projectCount={projects.length}
+        chapterCount={summary.chapterCount}
+        needsAttentionCount={summary.needsAttention}
+        activeCount={summary.activeCount}
+        onCreate={() => {
+          setShowCreate(true);
+        }}
+        onImportLegacy={() => {
+          setShowLegacyImport(true);
+        }}
+        onRestoreBackup={handleRestoreBackup}
       />
 
       {error ? <div className="banner banner-error">{error}</div> : null}
 
-      {showCreate ? (
+      <ModalPortal
+        open={showCreate}
+        onBackdropClick={() => {
+          setShowCreate(false);
+        }}
+        contentClassName="projects-wizard-modal"
+      >
         <CreateProjectWizard
-          onCancel={() => { setShowCreate(false); }}
+          onCancel={() => {
+            setShowCreate(false);
+          }}
           onComplete={async () => {
             setShowCreate(false);
             await refresh();
           }}
-          onError={(message) => { setError(message); }}
+          onError={(message) => {
+            setError(message);
+          }}
         />
-      ) : null}
+      </ModalPortal>
 
-      {showLegacyImport ? (
+      <ModalPortal
+        open={showLegacyImport}
+        onBackdropClick={() => {
+          setShowLegacyImport(false);
+        }}
+        contentClassName="projects-wizard-modal"
+      >
         <ImportWizard
-          onCancel={() => { setShowLegacyImport(false); }}
+          onCancel={() => {
+            setShowLegacyImport(false);
+          }}
           onComplete={async () => {
             setShowLegacyImport(false);
             await refresh();
           }}
-          onError={(message) => { setError(message); }}
+          onError={(message) => {
+            setError(message);
+          }}
         />
-      ) : null}
+      </ModalPortal>
 
       {projects.length === 0 && !showCreate && !showLegacyImport ? (
         <EmptyState
           icon={<FolderOpen />}
           title={t('projects.emptyTitle')}
-          description={t('projects.emptyDesc')}
+          description={t('projects.emptyDescNew')}
           actionLabel={t('actions.createProject')}
-          onAction={() => { setShowCreate(true); }}
+          onAction={() => {
+            setShowCreate(true);
+          }}
+          secondaryActionLabel={t('actions.importOldProject')}
+          onSecondaryAction={() => {
+            setShowLegacyImport(true);
+          }}
         />
       ) : (
         <>
-          <div className="btn-row" style={{ marginBottom: '1rem' }}>
-            <div style={{ flex: 1, maxWidth: 280 }}>
-              <SearchInput
-                placeholder={t('projects.searchPlaceholder')}
-                value={query}
-                onChange={(e) => { setQuery(e.target.value); }}
-              />
-            </div>
-            <Select value={sort} onChange={(e) => { setSort(e.target.value as SortKey); }}>
-              <option value="updated">{t('projects.sortUpdated')}</option>
-              <option value="name">{t('projects.sortName')}</option>
-              <option value="progress">{t('projects.sortProgress')}</option>
-            </Select>
-            <IconButton
-              label={t('projects.viewGrid')}
-              active={view === 'grid'}
-              onClick={() => { setView('grid'); }}
-            >
-              <LayoutGrid size={16} />
-            </IconButton>
-            <IconButton
-              label={t('projects.viewList')}
-              active={view === 'list'}
-              onClick={() => { setView('list'); }}
-            >
-              <List size={16} />
-            </IconButton>
-          </div>
+          <ProjectsToolbar
+            query={query}
+            onQueryChange={setQuery}
+            sort={sort}
+            onSortChange={setSort}
+            view={view}
+            onViewChange={setProjectsViewMode}
+          />
 
-          <div className={view === 'grid' ? 'project-grid' : 'project-list'}>
-            {filtered.map((project) => {
-              const total = project.sourceChapterCount ?? 0;
-              const done = project.translatedChapterCount ?? 0;
-              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-              return (
-                <Card key={project.id}>
-                  <div className="page-header-row">
-                    <div>
-                      <h3 style={{ margin: 0 }}>{project.title}</h3>
-                      <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-                        <LanguagePairLabel
-                          sourceLanguage={project.sourceLanguage}
-                          targetLanguage={project.targetLanguage}
-                        />
-                      </p>
-                    </div>
-                    <Badge tone="accent">{statusLabel(project.status)}</Badge>
-                  </div>
-                  <p style={{ margin: '0.75rem 0 0.35rem' }}>
-                    {t('projects.totalChapters', {
-                      done: String(done),
-                      total: String(total),
-                    })}
-                  </p>
-                  <ProgressBar value={pct} label={project.title} />
-                  <p className="muted" style={{ fontSize: 'var(--font-small)', marginTop: '0.5rem' }}>
-                    {t('projects.notebook')}:{' '}
-                    {project.health?.notebook === 'ok'
-                      ? t('projects.notebookConnected')
-                      : project.health?.notebook === 'warn'
-                        ? t('projects.notebookPending')
-                        : t('projects.notebookMissing')}
-                  </p>
-                  <div className="project-card-actions">
-                    <Button variant="secondary" onClick={() => { openProject(project); }}>
-                      {t('actions.openProject')}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setCurrentProject(project.id, project.title);
-                        navigate(`/projects/${project.id}/translate`);
-                      }}
-                    >
-                      {t('actions.continueTranslate')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setCurrentProject(project.id, project.title);
-                        navigate(`/projects/${project.id}/ai-memory`);
-                      }}
-                    >
-                      {t('projects.aiMemory')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setCurrentProject(project.id, project.title);
-                        navigate(`/projects/${project.id}`);
-                      }}
-                    >
-                      {t('actions.bookInfo')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setCurrentProject(project.id, project.title);
-                        navigate(`/projects/${project.id}/chapters`);
-                      }}
-                    >
-                      {t('actions.sourceFolder')}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      disabled={deleting}
-                      onClick={() => { setRemoveTarget(project); }}
-                    >
-                      {t('projects.deleteProject')}
-                    </Button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          {filtered.length === 0 ? (
+            <EmptyState
+              title={t('projects.searchEmptyTitle')}
+              description={t('projects.searchEmptyDesc')}
+              actionLabel={t('projects.clearSearch')}
+              onAction={() => {
+                setQuery('');
+              }}
+            />
+          ) : (
+            <div
+              className={
+                view === 'grid' ? 'project-grid projects-grid' : 'project-list projects-list'
+              }
+            >
+              {filtered.map((project) => {
+                const activeJob = activeJobsByProject.get(project.id);
+                const isCurrent = currentProjectId === project.id;
+                const shared = {
+                  project,
+                  activeJob,
+                  isCurrent,
+                  ...cardProps,
+                };
+                return view === 'list' ? (
+                  <ProjectListItem key={project.id} {...shared} />
+                ) : (
+                  <ProjectGridCard key={project.id} {...shared} />
+                );
+              })}
+            </div>
+          )}
         </>
       )}
 

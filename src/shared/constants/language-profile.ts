@@ -252,6 +252,22 @@ export function formatLanguagePairStacked(
   return formatLanguagePairStackedFromProfiles(source, target);
 }
 
+function formatLanguageSideInline(
+  profile: Pick<LanguageProfile, 'internationalName' | 'nativeName' | 'code'>,
+): string {
+  return `${profile.internationalName} / ${profile.nativeName} · ${profile.code}`;
+}
+
+/** Single-line pair for project list rows. */
+export function formatLanguagePairInline(
+  sourceCode: string,
+  targetCode: string,
+): string {
+  const source = getLanguageProfile(sourceCode);
+  const target = getLanguageProfile(targetCode);
+  return `${formatLanguageSideInline(source)} → ${formatLanguageSideInline(target)}`;
+}
+
 /**
  * @deprecated Prefer formatTranslationTaskHeader from translation-style-model.
  */

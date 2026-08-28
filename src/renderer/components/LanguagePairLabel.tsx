@@ -1,9 +1,10 @@
 import {
+  formatLanguagePairInline,
   formatLanguagePairLabel,
   formatLanguagePairStacked,
 } from '@shared/constants/language-profile';
 
-/** Language pair for UI — stacked (full) or compact (native names only). */
+/** Language pair for UI — stacked, compact, or inline (project list). */
 export function LanguagePairLabel({
   sourceLanguage,
   targetLanguage,
@@ -13,12 +14,26 @@ export function LanguagePairLabel({
   sourceLanguage: string;
   targetLanguage: string;
   className?: string;
-  variant?: 'stacked' | 'compact';
+  variant?: 'stacked' | 'compact' | 'inline';
 }) {
   if (variant === 'compact') {
     return (
       <span className={className ?? 'language-pair-label'} dir="auto">
         {formatLanguagePairLabel(sourceLanguage, targetLanguage)}
+      </span>
+    );
+  }
+
+  if (variant === 'inline') {
+    return (
+      <span
+        className={[className ?? 'language-pair-label', 'language-pair-label--inline']
+          .filter(Boolean)
+          .join(' ')}
+        dir="auto"
+        title={formatLanguagePairInline(sourceLanguage, targetLanguage)}
+      >
+        {formatLanguagePairInline(sourceLanguage, targetLanguage)}
       </span>
     );
   }
