@@ -1,22 +1,17 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import type { ProjectDto } from '@shared/schemas/import';
 import { useT } from '../i18n';
-import { Button } from '../components/ui';
-import { LanguagePairLabel } from '../components/LanguagePairLabel';
-import { EditionSwitcher } from '../components/EditionSwitcher';
+import { CompactProjectBar } from '../components/shell/CompactProjectBar';
 import { useUiShellStore } from '../stores/ui-shell-store';
 
-const PROJECT_TABS = [
+export const PROJECT_TABS = [
   { end: true, key: 'projectNav.overview', segment: '' },
   { end: false, key: 'projectNav.chapters', segment: 'chapters' },
-  { end: false, key: 'projectNav.translate', segment: 'translate' },
   { end: false, key: 'projectNav.aiMemory', segment: 'ai-memory' },
   { end: false, key: 'projectNav.terms', segment: 'terms' },
   { end: false, key: 'projectNav.characters', segment: 'characters' },
   { end: false, key: 'projectNav.data', segment: 'data' },
-  { end: false, key: 'projectNav.export', segment: 'export' },
 ] as const;
 
 export function projectTabKeyFromPath(pathname: string): string {
@@ -24,7 +19,7 @@ export function projectTabKeyFromPath(pathname: string): string {
   const segment = match?.[1] ?? '';
   if (!segment || segment === 'info') return 'projectNav.overview';
   if (segment === 'source' || segment === 'chapters') return 'projectNav.chapters';
-  if (segment === 'translate') return 'projectNav.translate';
+  if (segment === 'translate') return 'nav.translation';
   if (segment === 'ai-memory') return 'projectNav.aiMemory';
   if (segment === 'terms') return 'projectNav.terms';
   if (segment === 'characters') return 'projectNav.characters';
@@ -43,7 +38,6 @@ export function isProjectTranslatePath(pathname: string): boolean {
 
 export function ProjectWorkspace() {
   const t = useT();
-  const navigate = useNavigate();
   const location = useLocation();
   const { projectId = '' } = useParams();
   const currentProjectName = useUiShellStore((s) => s.currentProjectName);
@@ -69,46 +63,26 @@ export function ProjectWorkspace() {
   }, [projectId, setCurrentProject]);
 
   const base = `/projects/${projectId}`;
-  const flush = isProjectTranslatePath(location.pathname);
+  const translationFocus = isProjectTranslatePath(location.pathname);
   const title = project?.title ?? currentProjectName ?? t('projectNav.untitled');
 
-  return (
-    <div className={flush ? 'project-workspace project-workspace--flush' : 'project-workspace'}>
-      <div className="project-workspace-header">
-        <div className="project-workspace-title-row">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              navigate('/projects');
-            }}
-          >
-            <ArrowLeft size={16} aria-hidden />
-            {t('projectNav.backToProjects')}
-          </Button>
-          <h1 className="project-workspace-title">{title}</h1>
-        </div>
+  if (translationFocus) {
+    return (
+      <div className="project-workspace project-workspace--translation-focus">
+        <Outlet />
+      </div>
+    );
+  }
 
-        {project ? (
-          <div className="project-workspace-pair-row">
-            <LanguagePairLabel
-              sourceLanguage={project.sourceLanguage}
-              targetLanguage={project.targetLanguage}
-              className="project-workspace-pair"
-            />
-            <EditionSwitcher
-              projectId={project.id}
-              sourceLanguage={project.sourceLanguage}
-              onChanged={(targetLanguage, activeEditionId) => {
-                setProject((prev) =>
-                  prev
-                    ? { ...prev, targetLanguage, activeEditionId }
-                    : prev,
-                );
-              }}
-            />
-          </div>
-        ) : null}
+  return (
+    <div className="project-workspace">
+      <div className="project-workspace-header">
+        <CompactProjectBar
+          project={project}
+          title={title}
+          projectId={projectId}
+          onProjectChange={setProject}
+        />
 
         <nav className="project-workspace-tabs" aria-label={t('projectNav.tabsLabel')}>
           {PROJECT_TABS.map((tab) => {

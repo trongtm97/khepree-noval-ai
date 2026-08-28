@@ -11,6 +11,7 @@ import { ProjectSourcePage } from './pages/ProjectSourcePage';
 import { ProjectInfoPage } from './pages/ProjectInfoPage';
 import { AiMemoryPage } from './pages/AiMemoryPage';
 import { TranslationEditorPage } from './pages/TranslationEditorPage';
+import { TranslationPickPage } from './pages/TranslationPickPage';
 import { PortabilityPage } from './pages/PortabilityPage';
 import { ProjectDataPage } from './pages/ProjectDataPage';
 import { TermsPage } from './pages/TermsPage';
@@ -139,6 +140,7 @@ export function App() {
               <Route path="source" element={<Navigate to="../chapters" replace />} />
             </Route>
 
+            <Route path="/translation/pick" element={<TranslationPickPage />} />
             <Route path="/translation" element={<ProjectScopedRedirect tab="translate" />} />
             <Route path="/editor" element={<ProjectScopedRedirect tab="translate" />} />
             <Route path="/ai-memory" element={<ProjectScopedRedirect tab="ai-memory" />} />

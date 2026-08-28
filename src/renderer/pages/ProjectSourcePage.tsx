@@ -186,6 +186,14 @@ export function ProjectSourcePage() {
         actions={
           <>
             <HelpContextButton articleId="source-file-types" />
+            <Button
+              variant="primary"
+              onClick={() => {
+                navigate(`/projects/${projectId}/translate`);
+              }}
+            >
+              {t('projectNav.openTranslator')}
+            </Button>
             <Button onClick={() => { navigate('/projects'); }}>{t('sourceFolder.backProjects')}</Button>
           </>
         }

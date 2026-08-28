@@ -7,11 +7,14 @@ interface UiShellState {
   density: 'comfortable' | 'compact';
   currentProjectId: string | null;
   currentProjectName: string | null;
+  lastTranslationProjectId: string | null;
+  lastTranslationChapterId: string | null;
   setSidebarCollapsed: (v: boolean) => void;
   toggleSidebar: () => void;
   setSidebarPinned: (v: boolean) => void;
   setDensity: (d: 'comfortable' | 'compact') => void;
   setCurrentProject: (id: string | null, name: string | null) => void;
+  setLastTranslationSession: (projectId: string | null, chapterId?: string | null) => void;
 }
 
 export const useUiShellStore = create<UiShellState>()(
@@ -22,6 +25,8 @@ export const useUiShellStore = create<UiShellState>()(
       density: 'comfortable',
       currentProjectId: null,
       currentProjectName: null,
+      lastTranslationProjectId: null,
+      lastTranslationChapterId: null,
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setSidebarPinned: (sidebarPinned) => set({ sidebarPinned }),
@@ -31,6 +36,15 @@ export const useUiShellStore = create<UiShellState>()(
       },
       setCurrentProject: (currentProjectId, currentProjectName) =>
         set({ currentProjectId, currentProjectName }),
+      setLastTranslationSession: (lastTranslationProjectId, chapterId) =>
+        set((state) => ({
+          lastTranslationProjectId,
+          ...(chapterId !== undefined
+            ? { lastTranslationChapterId: chapterId }
+            : state.lastTranslationProjectId !== lastTranslationProjectId
+              ? { lastTranslationChapterId: null }
+              : {}),
+        })),
     }),
     { name: 'noveltrans-ui-shell' },
   ),

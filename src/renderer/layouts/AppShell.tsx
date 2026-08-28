@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import {
   LayoutDashboard,
   FolderKanban,
+  Languages,
   ListTodo,
   Settings,
   PanelLeftClose,
@@ -24,10 +25,15 @@ import { useSystemStatusPoll } from '../hooks/useSystemStatusPoll';
 import { useStartupAiReadiness } from '../hooks/useStartupAiReadiness';
 import { useSourceFolderEvents } from '../hooks/useSourceFolderEvents';
 import {
-  isProjectTranslatePath,
   isProjectWorkspacePath,
   projectTabKeyFromPath,
 } from './ProjectWorkspace';
+import {
+  isTranslationFocusPath,
+  isTranslationNavActive,
+  resolveTranslationDestination,
+} from './translation-shell-mode';
+import { useTranslationWorkspaceStore } from '../stores/translation-workspace-store';
 
 interface AppShellProps {
   children: ReactNode;
@@ -37,6 +43,7 @@ interface AppShellProps {
 const PRIMARY_NAV = [
   { to: '/', key: 'nav.dashboard', icon: LayoutDashboard, end: true },
   { to: '/projects', key: 'nav.projects', icon: FolderKanban },
+  { to: '__translation__', key: 'nav.translation', icon: Languages, translation: true },
   { to: '/jobs', key: 'nav.jobs', icon: ListTodo },
 ] as const;
 
@@ -50,6 +57,7 @@ const ROUTE_TITLE: Record<string, string> = {
   '/': 'nav.dashboard',
   '/projects': 'nav.projects',
   '/translation': 'nav.translation',
+  '/translation/pick': 'nav.translation',
   '/editor': 'nav.translation',
   '/accounts': 'nav.accounts',
   '/jobs': 'nav.jobs',
@@ -73,6 +81,8 @@ export function AppShell({ children, appInfo }: AppShellProps) {
     sidebarPinned,
     density,
     currentProjectName,
+    currentProjectId,
+    lastTranslationProjectId,
     toggleSidebar,
   } = useUiShellStore();
   const notifications = useNotificationStore((s) => s.items);
@@ -84,6 +94,10 @@ export function AppShell({ children, appInfo }: AppShellProps) {
   const startupAi = useStartupAiReadiness();
   useSourceFolderEvents();
 
+  const editorFocusMode = useTranslationWorkspaceStore((s) => s.focusMode);
+  const translationFocus =
+    isTranslationFocusPath(location.pathname) || editorFocusMode;
+
   useEffect(() => {
     applyDensity(density);
   }, [density]);
@@ -93,6 +107,11 @@ export function AppShell({ children, appInfo }: AppShellProps) {
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault();
         navigate('/settings');
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        toggleSidebar();
         return;
       }
       if (e.key === 'F1') {
@@ -110,7 +129,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
     return () => {
       window.removeEventListener('keydown', onKey);
     };
-  }, [navigate, location.pathname]);
+  }, [navigate, location.pathname, toggleSidebar]);
 
   const unread = notifications.filter((n) => !n.read).length;
   const inProject = isProjectWorkspacePath(location.pathname);
@@ -118,17 +137,15 @@ export function AppShell({ children, appInfo }: AppShellProps) {
     ? projectTabKeyFromPath(location.pathname)
     : (ROUTE_TITLE[location.pathname] ??
       (location.pathname.startsWith('/projects') ? 'nav.projects' : 'nav.dashboard'));
-  const flush =
-    location.pathname === '/translation' ||
-    location.pathname === '/editor' ||
-    isProjectTranslatePath(location.pathname);
+  const flush = translationFocus;
 
   const shellClass = useMemo(() => {
     const parts = ['app-shell'];
     if (sidebarCollapsed) parts.push('sidebar-collapsed');
     if (sidebarPinned) parts.push('sidebar-pinned');
+    if (editorFocusMode) parts.push('app-shell--editor-focus');
     return parts.join(' ');
-  }, [sidebarCollapsed, sidebarPinned]);
+  }, [sidebarCollapsed, sidebarPinned, translationFocus, editorFocusMode]);
 
   const navActive = (to: string, isActive: boolean) => {
     if (to === '/projects') {
@@ -137,7 +154,18 @@ export function AppShell({ children, appInfo }: AppShellProps) {
     if (to === '/jobs') {
       return isActive || location.pathname.startsWith('/jobs');
     }
+    if (to === '__translation__') {
+      return isTranslationNavActive(location.pathname);
+    }
     return isActive;
+  };
+
+  const goTranslation = () => {
+    const dest = resolveTranslationDestination({
+      lastTranslationProjectId,
+      currentProjectId,
+    });
+    navigate(dest.path);
   };
 
   return (
@@ -159,6 +187,26 @@ export function AppShell({ children, appInfo }: AppShellProps) {
         <nav className="sidebar-nav" aria-label={t('common.mainNav')}>
           {PRIMARY_NAV.map((item) => {
             const Icon = item.icon;
+            if (item.to === '__translation__') {
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={
+                    navActive(item.to, false)
+                      ? 'nav-link nav-link--translation active'
+                      : 'nav-link nav-link--translation'
+                  }
+                  title={t(item.key)}
+                  aria-label={t(item.key)}
+                  aria-current={navActive(item.to, false) ? 'page' : undefined}
+                  onClick={goTranslation}
+                >
+                  <Icon aria-hidden />
+                  <span>{t(item.key)}</span>
+                </button>
+              );
+            }
             return (
               <NavLink
                 key={item.key}
@@ -192,28 +240,34 @@ export function AppShell({ children, appInfo }: AppShellProps) {
         </nav>
       </aside>
 
-      <header className="topbar">
-        <div className="topbar-left">
-          <div className="topbar-breadcrumb">
-            {inProject && currentProjectName ? (
-              <>
-                <strong>{currentProjectName}</strong>
-                <span aria-hidden>/</span>
-                <span>{t(pageKey)}</span>
-              </>
-            ) : (
-              <>
-                <strong>{t(pageKey)}</strong>
-                {currentProjectName ? (
-                  <>
-                    <span aria-hidden>/</span>
-                    <span>{currentProjectName}</span>
-                  </>
-                ) : null}
-              </>
-            )}
+      <header className={translationFocus ? 'topbar topbar--compact' : 'topbar'}>
+        {!translationFocus ? (
+          <div className="topbar-left">
+            <div className="topbar-breadcrumb">
+              {inProject && currentProjectName ? (
+                <>
+                  <strong>{currentProjectName}</strong>
+                  <span aria-hidden>/</span>
+                  <span>{t(pageKey)}</span>
+                </>
+              ) : (
+                <>
+                  <strong>{t(pageKey)}</strong>
+                  {currentProjectName ? (
+                    <>
+                      <span aria-hidden>/</span>
+                      <span>{currentProjectName}</span>
+                    </>
+                  ) : null}
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="topbar-left">
+            <span className="topbar-location muted">{t('nav.translation')}</span>
+          </div>
+        )}
         <div className="topbar-right">
           <button
             type="button"
@@ -271,7 +325,8 @@ export function AppShell({ children, appInfo }: AppShellProps) {
         startupAi.result &&
         !startupAi.result.ok &&
         !startupAi.checking &&
-        startupAi.title ? (
+        startupAi.title &&
+        !translationFocus ? (
           <div
             className="banner banner-error startup-ai-banner"
             style={{ margin: '0.75rem 1rem 0' }}
@@ -341,24 +396,26 @@ export function AppShell({ children, appInfo }: AppShellProps) {
         {children}
       </main>
 
-      <footer className="statusbar">
-        <span>{t('app.name')}</span>
-        <span className="statusbar-sep">|</span>
-        <span>{t('statusbar.dbReady')}</span>
-        <span className="statusbar-sep">|</span>
-        <span>
-          {t('statusbar.streamsRunning', { count: status.jobsRunning })}
-        </span>
-        <span className="statusbar-sep">|</span>
-        <span>
-          {t('statusbar.accountsReady', {
-            ready: status.accountsReady,
-            total: status.workersTotal,
-          })}
-        </span>
-        <span className="statusbar-sep">|</span>
-        <span>{t('statusbar.version', { version: appInfo.version })}</span>
-      </footer>
+      {!translationFocus ? (
+        <footer className="statusbar">
+          <span>{t('app.name')}</span>
+          <span className="statusbar-sep">|</span>
+          <span>{t('statusbar.dbReady')}</span>
+          <span className="statusbar-sep">|</span>
+          <span>
+            {t('statusbar.streamsRunning', { count: status.jobsRunning })}
+          </span>
+          <span className="statusbar-sep">|</span>
+          <span>
+            {t('statusbar.accountsReady', {
+              ready: status.accountsReady,
+              total: status.workersTotal,
+            })}
+          </span>
+          <span className="statusbar-sep">|</span>
+          <span>{t('statusbar.version', { version: appInfo.version })}</span>
+        </footer>
+      ) : null}
 
       <Drawer
         open={notifOpen}

@@ -45,11 +45,17 @@
   --waiting: #717784;
   --paused: #717784;
 
-  --titlebar-height: 32px;
-  --sidebar-width: 240px;
-  --sidebar-collapsed-width: 56px;
-  --topbar-height: 48px;
-  --statusbar-height: 28px;
+  --titlebar-height: 30px;
+  --sidebar-width: 200px;
+  --sidebar-collapsed-width: 52px;
+  --topbar-height: 36px;
+  --topbar-height-compact: 32px;
+  --statusbar-height: 22px;
+  --project-bar-height: 44px;
+  --project-tabs-height: 34px;
+  --toolbar-height: 40px;
+  --chapter-rail-width: 200px;
+  --context-rail-width: 2.25rem;
 
   --radius-sm: 6px;
   --radius-md: 8px;

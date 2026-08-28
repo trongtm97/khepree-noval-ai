@@ -88,16 +88,24 @@ export function ProjectInfoPage() {
   );
 
   return (
-    <div className="page">
-      <div className="page-header-row">
-        <h1>{t('bookMetadata.pageTitle')}</h1>
+    <div className="page page--compact-header">
+      <div className="page-toolbar-row">
+        <span className="page-toolbar-title">{t('bookMetadata.pageTitle')}</span>
         <div className="btn-row">
           <HelpContextButton articleId="project-info" />
+          <Button
+            variant="primary"
+            onClick={() => {
+              navigate(`/projects/${projectId}/translate`);
+            }}
+          >
+            {t('projectNav.openTranslator')}
+          </Button>
           <Button onClick={() => { navigate(`/projects/${projectId}/chapters`); }}>
             {t('bookMetadata.viewSource')}
           </Button>
           {!editing ? (
-            <Button variant="primary" onClick={() => { setEditing(true); }}>
+            <Button onClick={() => { setEditing(true); }}>
               {t('actions.edit')}
             </Button>
           ) : (

@@ -1,8 +1,9 @@
+import { Brain } from 'lucide-react';
 import type { EditorContextResponseSchema } from '@shared/schemas/translation-editor';
 import type { z } from 'zod';
 import { useT } from '../../i18n';
 import { EditorContextPanel } from '../editor/EditorContextPanel';
-import { Button } from '../ui';
+import { Button, IconButton } from '../ui';
 
 type EditorContext = z.infer<typeof EditorContextResponseSchema>;
 
@@ -12,25 +13,26 @@ export interface ContextDrawerProps {
   onToggle: () => void;
 }
 
-/** Right drawer — collapsed by default for translator focus. */
+/** Right context panel — collapsed icon rail by default. */
 export function ContextDrawer({ context, collapsed, onToggle }: ContextDrawerProps) {
   const t = useT();
 
   if (collapsed) {
     return (
-      <button
-        type="button"
-        className="translation-context-rail"
-        onClick={onToggle}
-        aria-expanded={false}
-      >
-        {t('translation.showContext')}
-      </button>
+      <div className="translation-context-rail-wrap">
+        <IconButton
+          label={t('translation.contextTooltip')}
+          className="translation-context-rail"
+          onClick={onToggle}
+        >
+          <Brain size={18} aria-hidden />
+        </IconButton>
+      </div>
     );
   }
 
   return (
-    <aside className="translation-context" aria-label={t('translation.info')}>
+    <aside className="translation-context" aria-label={t('translation.contextTooltip')}>
       <div className="translation-context__header">
         <strong>{t('translation.info')}</strong>
         <Button size="sm" variant="ghost" onClick={onToggle}>
