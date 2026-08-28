@@ -137,6 +137,8 @@ const api: NovelTransApi = {
   },
   terms: {
     search: (filters) => invokeChannel(IPC_CHANNELS.TERM_SEARCH, filters ?? {}),
+    countByProject: (projectId) =>
+      invokeChannel(IPC_CHANNELS.TERM_COUNT_BY_PROJECT, { projectId }),
     reviewQueue: () => invokeChannel(IPC_CHANNELS.TERM_REVIEW_QUEUE),
     get: (termId) => invokeChannel(IPC_CHANNELS.TERM_GET, { termId }),
     upsert: (input) => invokeChannel(IPC_CHANNELS.TERM_UPSERT, input),

@@ -466,6 +466,20 @@ export class TermRepository extends BaseRepository {
       .all(projectId, projectId) as TermRow[];
   }
 
+  countByProject(projectId: string): number {
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(DISTINCT t.id) AS count FROM terms t
+         WHERE t.deleted_at IS NULL
+           AND (
+             (t.scope = 'PROJECT' AND t.scope_ref = ?)
+             OR t.id IN (SELECT term_id FROM project_terms WHERE project_id = ?)
+           )`,
+      )
+      .get(projectId, projectId) as { count: number };
+    return row.count;
+  }
+
   search(filters: TermSearchFilters): TermRow[] {
     const limit = filters.limit ?? 100;
     const offset = filters.offset ?? 0;

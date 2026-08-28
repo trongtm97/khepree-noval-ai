@@ -147,6 +147,7 @@ import {
   TermCandidateListRequestSchema,
   TermCandidateListResponseSchema,
   TermCandidateReviewRequestSchema,
+  TermCountByProjectResponseSchema,
   TermExportRequestSchema,
   TermExportResponseSchema,
   TermGetRequestSchema,
@@ -1211,6 +1212,14 @@ export function registerIpcHandlers(): void {
         offset: request.offset,
       });
       return TermListResponseSchema.parse({ terms });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TERM_COUNT_BY_PROJECT,
+    createIpcHandler(ProjectIdRequestSchema, (request) => {
+      const count = getTermService().countByProject(request.projectId);
+      return TermCountByProjectResponseSchema.parse({ count });
     }),
   );
 

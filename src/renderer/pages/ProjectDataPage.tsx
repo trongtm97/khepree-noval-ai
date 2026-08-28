@@ -46,11 +46,11 @@ export function ProjectDataPage() {
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
-    const [{ project: p }, charResult, relResult, terms, bootstrap, hist] = await Promise.all([
+    const [{ project: p }, charResult, relResult, termCount, bootstrap, hist] = await Promise.all([
       window.novelTrans.projects.get(projectId),
       window.novelTrans.memory.listCharacters(projectId),
       window.novelTrans.memory.listRelationships({ projectId }),
-      window.novelTrans.terms.search({ projectId, limit: 5000 }),
+      window.novelTrans.terms.countByProject(projectId),
       window.novelTrans.notebook.getBootstrapStatus(projectId).catch(() => null),
       window.novelTrans.tabular.listHistory({ projectId }),
     ]);
@@ -58,7 +58,7 @@ export function ProjectDataPage() {
     setHistory(hist.entries);
     setCounts({
       translations: p.translatedChapterCount ?? 0,
-      terms: terms.terms.length,
+      terms: termCount.count,
       characters: charResult.characters.length + relResult.relationships.length,
       knowledge:
         (bootstrap?.termCandidateCount ?? 0) +

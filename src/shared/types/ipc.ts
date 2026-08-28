@@ -462,6 +462,7 @@ export interface NovelTransApi {
       limit?: number;
       offset?: number;
     }) => Promise<{ terms: TermDto[] }>;
+    countByProject: (projectId: string) => Promise<{ count: number }>;
     reviewQueue: () => Promise<{ terms: TermDto[] }>;
     get: (termId: string) => Promise<{ term: TermDto }>;
     upsert: (input: {

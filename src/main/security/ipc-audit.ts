@@ -484,6 +484,15 @@ export const IPC_CHANNEL_AUDIT: readonly IpcChannelAudit[] = [
     notes: 'Search term vault with filters',
   },
   {
+    channel: IPC_CHANNELS.TERM_COUNT_BY_PROJECT,
+    permission: 'manage_terms',
+    allowsFilesystem: false,
+    allowsShell: false,
+    allowsDbQuery: true,
+    allowsSecrets: noSecrets,
+    notes: 'Count terms linked to a project',
+  },
+  {
     channel: IPC_CHANNELS.TERM_GET,
     permission: 'manage_terms',
     allowsFilesystem: false,

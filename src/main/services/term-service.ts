@@ -23,6 +23,10 @@ export class TermService {
     return rows.map((row) => this.toDto(row));
   }
 
+  countByProject(projectId: string): number {
+    return getDatabase().terms.countByProject(projectId);
+  }
+
   listReviewQueue(limit = 100): TermDto[] {
     return getDatabase()
       .terms.listReviewQueue(limit)

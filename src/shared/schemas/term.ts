@@ -84,6 +84,10 @@ export const TermListResponseSchema = z.object({
   terms: z.array(TermDtoSchema),
 });
 
+export const TermCountByProjectResponseSchema = z.object({
+  count: z.number().int().nonnegative(),
+});
+
 export const TermGetRequestSchema = z.object({
   termId: z.string().uuid(),
 });

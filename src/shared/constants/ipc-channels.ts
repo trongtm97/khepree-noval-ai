@@ -57,6 +57,7 @@ export const IPC_CHANNELS = {
   BOOK_METADATA_LIST_DOCUMENTS: 'bookMetadata:listDocuments',
   BOOK_METADATA_SYNC_PROFILE: 'bookMetadata:syncProfile',
   TERM_SEARCH: 'term:search',
+  TERM_COUNT_BY_PROJECT: 'term:countByProject',
   TERM_GET: 'term:get',
   TERM_UPSERT: 'term:upsert',
   TERM_REVIEW: 'term:review',
