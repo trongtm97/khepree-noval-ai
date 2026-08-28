@@ -1,6 +1,10 @@
 import type { KnowledgeFileKey } from '@shared/constants/notebooklm-preprocess';
 import { KNOWLEDGE_FILE_KEYS } from '@shared/constants/notebooklm-preprocess';
 import { getLanguageProfile } from '@shared/constants/language-profile';
+import {
+  formatBootstrapEditionHeaders,
+  formatBootstrapPairSummary,
+} from './bootstrap-prompt-language';
 
 export interface PreprocessPromptInput {
   projectTitle: string;
@@ -17,6 +21,11 @@ export interface PreprocessPromptInput {
 export function buildFullNovelPreprocessPrompt(input: PreprocessPromptInput): string {
   const source = getLanguageProfile(input.sourceLanguage);
   const target = getLanguageProfile(input.targetLanguage);
+  const { sourceHeader, targetHeader, scriptLines } = formatBootstrapEditionHeaders(
+    input.sourceLanguage,
+    input.targetLanguage,
+  );
+  const pairSummary = formatBootstrapPairSummary(input.sourceLanguage, input.targetLanguage);
   const partsList =
     input.partFileNames.length > 0
       ? input.partFileNames.map((n) => `- ${n}`).join('\n')
@@ -29,22 +38,25 @@ export function buildFullNovelPreprocessPrompt(input: PreprocessPromptInput): st
   return [
     '# FULL NOVEL PREPROCESS — DO NOT TRANSLATE THE NOVEL',
     '',
-    `SOURCE_LANGUAGE: ${source.displayNameNative} (${input.sourceLanguage})`,
-    `TARGET_LANGUAGE: ${target.displayNameNative} (${input.targetLanguage})`,
+    sourceHeader,
+    targetHeader,
+    ...scriptLines,
     '',
-    `You are preparing memory for a novel translation project: ${source.displayNameNative} → ${target.displayNameNative} (NovelTrans).`,
-    `Analyze the uploaded novel source files written in ${source.displayNameNative}.`,
-    `DO NOT translate chapter prose into ${target.displayNameNative}.`,
+    `Prepare memory for a novel translation project (${pairSummary}, NovelTrans).`,
+    `Analyze uploaded source files in the source language profile above.`,
+    'DO NOT translate chapter prose into the target edition language.',
     'DO NOT invent characters, terms, relationships, or world facts that do not appear in the sources.',
     'Empty sections are allowed when evidence is missing.',
-    'Analysis output prefers structured, language-neutral facts.',
-    `Target-language terminology (preferred names / translations) MUST use ${target.displayNameNative} only.`,
+    'Prefer language-neutral story facts; target-edition names and forms of address belong in the target edition layer only.',
+    `Preferred names and term translations MUST use the target edition language (${target.internationalName}).`,
+    'Do not guess gender — omit or mark unknown when source does not establish it.',
+    'Relationship facts (type, description, valid_from/valid_to) are language-neutral; a_calls_b / b_calls_a are edition-scoped.',
     '',
     '## Book metadata (hints)',
     `- Title: ${input.projectTitle}`,
     `- Author: ${input.author?.trim() ?? '(unknown)'}`,
     `- Genre: ${input.genre?.trim() ?? '(unknown)'}`,
-    `- Language pair: ${source.displayNameNative} → ${target.displayNameNative}`,
+    `- Language pair: ${pairSummary}`,
     '',
     '## Sources to use (already uploaded to this notebook)',
     partsList,
@@ -73,18 +85,20 @@ export function buildFullNovelPreprocessPrompt(input: PreprocessPromptInput): st
     '',
     '### 02_PROJECT_TERMS.md',
     `- Start with "# ${input.projectTitle} — Terms"`,
-    `- Bullets: \`sourceText → targetText (TYPE)\` e.g. CHARACTER / SKILL / PLACE / ITEM / OTHER`,
-    `- targetText MUST be in ${target.displayNameNative}.`,
-    '- Prefer frequent / plot-critical terms; mark uncertain with lower confidence in prose notes if needed.',
+    `- Bullets: \`source → preferred_target (TYPE)\` e.g. CHARACTER / SKILL / PLACE / ITEM / OTHER`,
+    `- preferred_target MUST be in the target edition language.`,
+    '- Optional transliteration when source policy requires (pinyin, romaji, etc.); omit when unnecessary.',
+    '- Prefer frequent / plot-critical terms; short evidence note when uncertain.',
     '',
     '### 03_CHARACTERS.md',
     `- Start with "# ${input.projectTitle} — Characters"`,
-    '- One `## CanonicalSourceName` section per major character: Preferred target name, Gender, Role, Aliases, short description.',
-    `- Preferred target name MUST be in ${target.displayNameNative}.`,
+    '- One `## CanonicalSourceName` section per major character: canonical source name, source aliases, role, gender_if_explicit (or unknown), preferred_target_name, short neutral description, evidence chapter.',
+    `- preferred_target_name MUST be in the target edition language — use preferred_target_name, not locale-specific legacy field names.`,
     '',
     '### 04_RELATIONSHIPS.md',
     `- Start with "# ${input.projectTitle} — Relationships"`,
-    '- Bullets or short sections: A — B: type; how A calls B / B calls A when known.',
+    '- Language-neutral: A — B: relationship_type, description/fact, valid_from, valid_to.',
+    '- Target-edition: how A calls B / how B calls A when known (edition-scoped forms of address).',
     '',
     '### 05_STORY_STATE.md',
     `- Start with "# ${input.projectTitle} — Story state"`,

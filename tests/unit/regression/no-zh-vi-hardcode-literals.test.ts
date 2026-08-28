@@ -21,6 +21,10 @@ const BANNED = [
     name: 'preferred_vi',
     re: /preferred_vi/,
   },
+  {
+    name: 'into Vietnamese (prompt hardcode)',
+    re: /into Vietnamese/,
+  },
 ] as const;
 
 /** Paths under src/ that may still mention preferred_vi (DB/JSON compat only). */

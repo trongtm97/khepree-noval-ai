@@ -1,0 +1,3675 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap ar → vi > golden-bootstrap-ar-vi 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Arabic / العربية (ar)
+Target edition: Vietnamese / Tiếng Việt (vi)
+
+Analyze early chapters to SEED memory for a novel translation (Arabic → Vietnamese).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap de → fr > golden-bootstrap-de-fr 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: German / Deutsch (de)
+Target edition: French / Français (fr)
+
+Analyze early chapters to SEED memory for a novel translation (German → French).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap en → es > golden-bootstrap-en-es 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: English / English (en)
+Target edition: Spanish / Español (es)
+
+Analyze early chapters to SEED memory for a novel translation (English → Spanish).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap en → vi > golden-bootstrap-en-vi 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: English / English (en)
+Target edition: Vietnamese / Tiếng Việt (vi)
+
+Analyze early chapters to SEED memory for a novel translation (English → Vietnamese).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap fa → en > golden-bootstrap-fa-en 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Persian / فارسی (fa)
+Target edition: English / English (en)
+
+Analyze early chapters to SEED memory for a novel translation (Persian → English).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap fr → de > golden-bootstrap-fr-de 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: French / Français (fr)
+Target edition: German / Deutsch (de)
+
+Analyze early chapters to SEED memory for a novel translation (French → German).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap hi → en > golden-bootstrap-hi-en 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Hindi / हिन्दी (hi)
+Target edition: English / English (en)
+
+Analyze early chapters to SEED memory for a novel translation (Hindi → English).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap id → en > golden-bootstrap-id-en 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Indonesian / Bahasa Indonesia (id)
+Target edition: English / English (en)
+
+Analyze early chapters to SEED memory for a novel translation (Indonesian → English).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap ja → en > golden-bootstrap-ja-en 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Japanese / 日本語 (ja)
+Target edition: English / English (en)
+
+Analyze early chapters to SEED memory for a novel translation (Japanese → English).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap ja → vi > golden-bootstrap-ja-vi 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Japanese / 日本語 (ja)
+Target edition: Vietnamese / Tiếng Việt (vi)
+
+Analyze early chapters to SEED memory for a novel translation (Japanese → Vietnamese).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap ko → en > golden-bootstrap-ko-en 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Korean / 한국어 (ko)
+Target edition: English / English (en)
+
+Analyze early chapters to SEED memory for a novel translation (Korean → English).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap ko → vi > golden-bootstrap-ko-vi 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Korean / 한국어 (ko)
+Target edition: Vietnamese / Tiếng Việt (vi)
+
+Analyze early chapters to SEED memory for a novel translation (Korean → Vietnamese).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap ru → vi > golden-bootstrap-ru-vi 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Russian / Русский (ru)
+Target edition: Vietnamese / Tiếng Việt (vi)
+
+Analyze early chapters to SEED memory for a novel translation (Russian → Vietnamese).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap th → vi > golden-bootstrap-th-vi 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Thai / ไทย (th)
+Target edition: Vietnamese / Tiếng Việt (vi)
+
+Analyze early chapters to SEED memory for a novel translation (Thai → Vietnamese).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap uk → en > golden-bootstrap-uk-en 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Ukrainian / Українська (uk)
+Target edition: English / English (en)
+
+Analyze early chapters to SEED memory for a novel translation (Ukrainian → English).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap ur → vi > golden-bootstrap-ur-vi 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Urdu / اردو (ur)
+Target edition: Vietnamese / Tiếng Việt (vi)
+
+Analyze early chapters to SEED memory for a novel translation (Urdu → Vietnamese).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap zh-Hans → vi > golden-bootstrap-zh-Hans-vi 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Chinese (Simplified) / 简体中文 (zh-Hans)
+Target edition: Vietnamese / Tiếng Việt (vi)
+
+Analyze early chapters to SEED memory for a novel translation (Chinese (Simplified) → Vietnamese).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — BOOTSTRAP > bootstrap zh-Hant → en > golden-bootstrap-zh-Hant-en 1`] = `
+"# BOOTSTRAP ANALYSIS — DO NOT TRANSLATE THE NOVEL
+
+Source: Chinese (Traditional) / 繁體中文 (zh-Hant)
+Target edition: English / English (en)
+
+Analyze early chapters to SEED memory for a novel translation (Chinese (Traditional) → English).
+DO NOT TRANSLATE chapter prose into the target edition language.
+DO NOT return paragraph translations.
+DO NOT invent characters, relationships, or world facts that do not appear in the input.
+Empty arrays are valid when evidence is missing.
+
+## Story facts vs target-edition choices
+- Language-neutral story facts: canonical source names, roles, relationship types, descriptions, locations in source form, timeline, plot threads.
+- Target-edition choices: preferred_target_name, term preferred_target, a_calls_b / b_calls_a (forms of address vary by edition).
+- Do not store target-language prose as universal story facts.
+
+## Book profile
+# Book
+
+## Translation rules (context only)
+# Rules
+
+## KNOWN TERMINOLOGY (respect; do not re-ask or contradict locked terms)
+(none matched)
+
+## Chapters to analyze
+### Chapter 1 — Ch1
+sample source
+
+## Gender
+- gender_if_explicit: only when source text or source-language name clearly establishes gender.
+- If not established: null or "unknown". Do not infer from stereotypes or translated names.
+
+## Relationships
+- Language-neutral: relationship_type, description (fact), valid_from_chapter, valid_to_chapter.
+- Target-edition (this target only): a_calls_b, b_calls_a (edition-scoped forms of address).
+
+## Evidence (short identifiers only)
+- For important discoveries include evidence_chapter, evidence_source_name (short), confidence.
+- Optional evidence: one short phrase — no long source quotations.
+
+## Output
+Return ONE JSON object only (no markdown fences preferred) with this shape:
+{
+  "characters": [{
+    "canonical_source_name", "source_aliases", "role", "gender_if_explicit",
+    "first_seen_chapter", "confidence", "evidence", "evidence_chapter", "evidence_source_name",
+    "preferred_target_name"
+  }],
+  "relationships": [{
+    "character_a", "character_b", "relationship_type", "description",
+    "valid_from_chapter", "valid_to_chapter", "confidence",
+    "a_calls_b", "b_calls_a"
+  }],
+  "terms": [{
+    "source", "preferred_target", "category", "first_seen_chapter", "confidence",
+    "transliteration", "transliterationSystem", "evidence_chapter", "evidence_source_name", "notes"
+  }],
+  "world_knowledge": { "cultivation_system", "sects", "locations", "organizations", "items", "rules" },
+  "story_state": { "through_chapter", "current_locations", "current_goals", "current_conflicts", "open_plot_threads", "summary" },
+  "recent_context": { "through_chapter", "important_events" }
+}
+
+preferred_target_name and term preferred_target MUST be in the target edition language.
+Do NOT emit sourceLanguage, targetLanguage, editionId, sourceText, or targetText — the application attaches language pair and edition at persist.
+Never use locale-specific JSON field names for target names.
+transliteration / transliterationSystem: only when needed (e.g. pinyin for Chinese, romaji when policy requires); omit otherwise.
+Only include entities that appear in the chapters above.
+story_state reflects state at the END of the analyzed window only (locations, cultivation, items, open plot, timeline — not stylistic translation choices)."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot ar → vi > golden-task-header-ar-vi 1`] = `
+"## Task
+Source language:
+Arabic / العربية (ar)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Arabic / العربية (ar) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot de → fr > golden-task-header-de-fr 1`] = `
+"## Task
+Source language:
+German / Deutsch (de)
+
+Detected from source content.
+
+Target language:
+French / Français (fr)
+
+This is the required output language.
+
+Translate:
+German / Deutsch (de) → French / Français (fr)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot en → es > golden-task-header-en-es 1`] = `
+"## Task
+Source language:
+English / English (en)
+
+Detected from source content.
+
+Target language:
+Spanish / Español (es)
+
+This is the required output language.
+
+Translate:
+English / English (en) → Spanish / Español (es)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot en → vi > golden-task-header-en-vi 1`] = `
+"## Task
+Source language:
+English / English (en)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+English / English (en) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot fa → en > golden-task-header-fa-en 1`] = `
+"## Task
+Source language:
+Persian / فارسی (fa)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Persian / فارسی (fa) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot fr → de > golden-task-header-fr-de 1`] = `
+"## Task
+Source language:
+French / Français (fr)
+
+Detected from source content.
+
+Target language:
+German / Deutsch (de)
+
+This is the required output language.
+
+Translate:
+French / Français (fr) → German / Deutsch (de)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot hi → en > golden-task-header-hi-en 1`] = `
+"## Task
+Source language:
+Hindi / हिन्दी (hi)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Hindi / हिन्दी (hi) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot id → en > golden-task-header-id-en 1`] = `
+"## Task
+Source language:
+Indonesian / Bahasa Indonesia (id)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Indonesian / Bahasa Indonesia (id) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot ja → en > golden-task-header-ja-en 1`] = `
+"## Task
+Source language:
+Japanese / 日本語 (ja)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Japanese / 日本語 (ja) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot ja → vi > golden-task-header-ja-vi 1`] = `
+"## Task
+Source language:
+Japanese / 日本語 (ja)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Japanese / 日本語 (ja) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot ko → en > golden-task-header-ko-en 1`] = `
+"## Task
+Source language:
+Korean / 한국어 (ko)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Korean / 한국어 (ko) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot ko → vi > golden-task-header-ko-vi 1`] = `
+"## Task
+Source language:
+Korean / 한국어 (ko)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Korean / 한국어 (ko) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot ru → vi > golden-task-header-ru-vi 1`] = `
+"## Task
+Source language:
+Russian / Русский (ru)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Russian / Русский (ru) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot th → vi > golden-task-header-th-vi 1`] = `
+"## Task
+Source language:
+Thai / ไทย (th)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Thai / ไทย (th) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot uk → en > golden-task-header-uk-en 1`] = `
+"## Task
+Source language:
+Ukrainian / Українська (uk)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Ukrainian / Українська (uk) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot ur → vi > golden-task-header-ur-vi 1`] = `
+"## Task
+Source language:
+Urdu / اردو (ur)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Urdu / اردو (ur) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot zh-Hans → vi > golden-task-header-zh-Hans-vi 1`] = `
+"## Task
+Source language:
+Chinese (Simplified) / 简体中文 (zh-Hans)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Chinese (Simplified) / 简体中文 (zh-Hans) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — TRANSLATE task header > snapshot zh-Hant → en > golden-task-header-zh-Hant-en 1`] = `
+"## Task
+Source language:
+Chinese (Traditional) / 繁體中文 (zh-Hant)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Chinese (Traditional) / 繁體中文 (zh-Hant) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack ar → vi > golden-translate-pack-ar-vi 1`] = `
+"## Task
+Source language:
+Arabic / العربية (ar)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Arabic / العربية (ar) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Arabic source: gender and number agreement in the source should inform target wording.
+- Religious or cultural formulas: translate faithfully; do not omit or modernize without source support.
+- Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+- Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+- Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+- Avoid English or Chinese sentence skeletons in Vietnamese output.
+- Source is RTL script: read names and formulas in source order; do not mirror incorrectly in target.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack de → fr > golden-translate-pack-de-fr 1`] = `
+"## Task
+Source language:
+German / Deutsch (de)
+
+Detected from source content.
+
+Target language:
+French / Français (fr)
+
+This is the required output language.
+
+Translate:
+German / Deutsch (de) → French / Français (fr)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Preserve explicit subjects and tense/aspect as stated in the source.
+- Keep proper nouns and titles exact unless a locked target form exists.
+- French target: natural register and liaison-friendly phrasing; keep titles consistent.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Français.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack en → es > golden-translate-pack-en-es 1`] = `
+"## Task
+Source language:
+English / English (en)
+
+Detected from source content.
+
+Target language:
+Spanish / Español (es)
+
+This is the required output language.
+
+Translate:
+English / English (en) → Spanish / Español (es)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- English source: preserve tense, modality, and explicit references as written.
+- Spanish target: natural spoken dialogue; preserve gender agreement in target grammar.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Español.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack en → vi > golden-translate-pack-en-vi 1`] = `
+"## Task
+Source language:
+English / English (en)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+English / English (en) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- English source: preserve tense, modality, and explicit references as written.
+- Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+- Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+- Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+- Avoid English or Chinese sentence skeletons in Vietnamese output.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack fa → en > golden-translate-pack-fa-en 1`] = `
+"## Task
+Source language:
+Persian / فارسی (fa)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Persian / فارسی (fa) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Persian source: register and politeness markers matter; preserve distance between speakers.
+- English target: use natural contemporary prose unless the genre demands archaic register.
+- Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+- Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+- Source is RTL script: read names and formulas in source order; do not mirror incorrectly in target.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack fr → de > golden-translate-pack-fr-de 1`] = `
+"## Task
+Source language:
+French / Français (fr)
+
+Detected from source content.
+
+Target language:
+German / Deutsch (de)
+
+This is the required output language.
+
+Translate:
+French / Français (fr) → German / Deutsch (de)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Preserve gender and agreement cues carried by the source wording.
+- Keep titles, ranks, and formal address consistent with memory.
+- German target: preserve compound terminology; use natural German sentence structure.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Deutsch.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack hi → en > golden-translate-pack-hi-en 1`] = `
+"## Task
+Source language:
+Hindi / हिन्दी (hi)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Hindi / हिन्दी (hi) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Hindi source: respect honorifics and respectful address in dialogue.
+- English target: use natural contemporary prose unless the genre demands archaic register.
+- Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+- Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack id → en > golden-translate-pack-id-en 1`] = `
+"## Task
+Source language:
+Indonesian / Bahasa Indonesia (id)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Indonesian / Bahasa Indonesia (id) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Read the source for what it states; do not add unstated facts or clarifications.
+- Preserve semantic ambiguity when the source leaves identity or reference unclear.
+- English target: use natural contemporary prose unless the genre demands archaic register.
+- Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+- Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack ja → en > golden-translate-pack-ja-en 1`] = `
+"## Task
+Source language:
+Japanese / 日本語 (ja)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Japanese / 日本語 (ja) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Japanese source: subjects may be omitted; do not invent pronouns when the source leaves identity ambiguous.
+- Honorifics and speech level (-san, -sama, -kun, -chan, keigo) carry social meaning — preserve nuance.
+- Preserve name order policy from locked terms (family/given).
+- Onomatopoeia and affect particles: convey tone in the target without inventing plot.
+- English target: use natural contemporary prose unless the genre demands archaic register.
+- Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+- Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+- Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+- ja→en: honorifics (-san, -sama, -kun, -chan): keep or gloss consistently per Project Terms; do not drop without reason.
+- ja→en: preserve name order policy from locked terms (family/given).
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack ja → vi > golden-translate-pack-ja-vi 1`] = `
+"## Task
+Source language:
+Japanese / 日本語 (ja)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Japanese / 日本語 (ja) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Japanese source: subjects may be omitted; do not invent pronouns when the source leaves identity ambiguous.
+- Honorifics and speech level (-san, -sama, -kun, -chan, keigo) carry social meaning — preserve nuance.
+- Preserve name order policy from locked terms (family/given).
+- Onomatopoeia and affect particles: convey tone in the target without inventing plot.
+- Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+- Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+- Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+- Avoid English or Chinese sentence skeletons in Vietnamese output.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+- Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack ko → en > golden-translate-pack-ko-en 1`] = `
+"## Task
+Source language:
+Korean / 한국어 (ko)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Korean / 한국어 (ko) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Korean source: speech levels and honorifics encode social distance — preserve relative status.
+- Subjects may be omitted; do not invent pronouns when identity is ambiguous.
+- Name and address forms must follow locked Project Terms and relationship memory.
+- English target: use natural contemporary prose unless the genre demands archaic register.
+- Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+- Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+- Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack ko → vi > golden-translate-pack-ko-vi 1`] = `
+"## Task
+Source language:
+Korean / 한국어 (ko)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Korean / 한국어 (ko) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Korean source: speech levels and honorifics encode social distance — preserve relative status.
+- Subjects may be omitted; do not invent pronouns when identity is ambiguous.
+- Name and address forms must follow locked Project Terms and relationship memory.
+- Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+- Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+- Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+- Avoid English or Chinese sentence skeletons in Vietnamese output.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+- Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack ru → vi > golden-translate-pack-ru-vi 1`] = `
+"## Task
+Source language:
+Russian / Русский (ru)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Russian / Русский (ru) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Russian source: aspect and case information should inform target phrasing where relevant.
+- Patronymics and name variants: follow locked Project Terms.
+- Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+- Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+- Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+- Avoid English or Chinese sentence skeletons in Vietnamese output.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack th → vi > golden-translate-pack-th-vi 1`] = `
+"## Task
+Source language:
+Thai / ไทย (th)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Thai / ไทย (th) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Thai source: particles and politeness markers carry social meaning — preserve register.
+- Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+- Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+- Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+- Avoid English or Chinese sentence skeletons in Vietnamese output.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack uk → en > golden-translate-pack-uk-en 1`] = `
+"## Task
+Source language:
+Ukrainian / Українська (uk)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Ukrainian / Українська (uk) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Ukrainian source: aspect and case cues should inform target phrasing where relevant.
+- Name variants: follow locked Project Terms.
+- English target: use natural contemporary prose unless the genre demands archaic register.
+- Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+- Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack ur → vi > golden-translate-pack-ur-vi 1`] = `
+"## Task
+Source language:
+Urdu / اردو (ur)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Urdu / اردو (ur) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Preserve gender/number agreement and register (formal vs colloquial) from the source.
+- Handle embedded religious or cultural expressions faithfully; do not secularize unless the source does.
+- Keep personal names and titles consistent with locked terms.
+- Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+- Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+- Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+- Avoid English or Chinese sentence skeletons in Vietnamese output.
+- Source is RTL script: read names and formulas in source order; do not mirror incorrectly in target.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack zh-Hans → vi > golden-translate-pack-zh-Hans-vi 1`] = `
+"## Task
+Source language:
+Chinese (Simplified) / 简体中文 (zh-Hans)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Chinese (Simplified) / 简体中文 (zh-Hans) → Vietnamese / Tiếng Việt (vi)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Simplified Chinese source: implicit subjects and aspect are common; do not over-explicitize.
+- Treat idioms and chengyu by meaning; avoid literal calques unless locked terms require a form.
+- Classical or cultivation titles: use locked Project Terms; do not freestyle readings.
+- Segment names and titles per locked terms; do not merge or split han compounds arbitrarily.
+- Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+- Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+- Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+- Avoid English or Chinese sentence skeletons in Vietnamese output.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+- Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+- zh→vi: prefer established Hán-Việt (Sino-Vietnamese) readings for names and terms when locked terms allow.
+- zh→vi: keep classical / cultivation titles consistent with Project Terms; do not freestyle Hán-Việt.
+- zh-Hans→vi: source is Simplified Chinese; do not invent Traditional variants in the target.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;
+
+exports[`Golden prompt matrix — full TRANSLATE pack sections > pack zh-Hant → en > golden-translate-pack-zh-Hant-en 1`] = `
+"## Task
+Source language:
+Chinese (Traditional) / 繁體中文 (zh-Hant)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Chinese (Traditional) / 繁體中文 (zh-Hant) → English / English (en)
+
+Style: balanced
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.
+Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.
+## Knowledge Priority
+If conflict:
+1. This Translation Pack explicit instruction
+2. HOT MEMORY (recent SQLite changes)
+3. LOCKED PROJECT TERM
+4. Local Knowledge Engine context in this pack
+5. Model general knowledge (lowest)
+Do not let general knowledge override locked project terms.
+
+## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
+- Balance accuracy and natural target-language readability.
+- Preserve proper nouns via locked/active terms.
+- Keep tone consistent with previous chapters.
+- Traditional Chinese source: same interpretation discipline as Simplified; script is Traditional.
+- Preserve classical register when the source uses it; do not modernize diction unless the source does.
+- English target: use natural contemporary prose unless the genre demands archaic register.
+- Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+- Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+- Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;

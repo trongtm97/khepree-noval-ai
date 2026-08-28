@@ -3,7 +3,13 @@
  * Chinese-specific rules live ONLY in LanguagePairRules for zh→* pairs — never in core fidelity/genre.
  */
 
-import { getLanguageProfile, normalizeLanguageCode } from './language-profile';
+import {
+  formatAiLanguageIdentityFromProfile,
+  formatTargetScriptMetadataLines,
+  getLanguageProfile,
+} from './language-profile';
+import { resolvePairOverrideRules } from './translation-prompt-policy/pair-overrides';
+import { resolveTranslationPromptPolicy } from './translation-prompt-policy/resolver';
 
 export const FIDELITY_PROFILES = ['LITERAL', 'BALANCED', 'NATURAL'] as const;
 export type FidelityProfile = (typeof FIDELITY_PROFILES)[number];
@@ -73,7 +79,7 @@ export const GENRE_RULES: Record<GenreProfile, string[]> = {
   FANTASY: [
     'Keep magic system / creature terms consistent with locked terms.',
     'Preserve worldbuilding proper nouns exactly as given.',
-    'Do not invent lore beyond Notebook + pack context.',
+    'Do not invent lore beyond the supplied project/local context.',
   ],
   SCI_FI: [
     'Keep tech jargon and ship/org names consistent.',
@@ -105,7 +111,7 @@ export const GENRE_RULES: Record<GenreProfile, string[]> = {
 
 /**
  * Pair-specific overrides — NOT core fidelity/genre.
- * Family keys (zh→vi) match any zh-* source when exact key misses.
+ * @deprecated Prefer resolvePairOverrideRules from translation-prompt-policy.
  */
 export const LANGUAGE_PAIR_RULES: LanguagePairRuleSet[] = [
   {
@@ -132,20 +138,6 @@ export const LANGUAGE_PAIR_RULES: LanguagePairRuleSet[] = [
     rules: [
       'Honorifics (-san, -sama, -kun, -chan): keep or gloss consistently per Project Terms; do not drop without reason.',
       'Preserve name order policy from locked terms (family/given).',
-    ],
-  },
-  {
-    key: 'ko→vi',
-    rules: [
-      'Korean forms of address / speech levels: keep consistent with memory; do not flatten honorific distance.',
-      'Name romanization must follow locked Project Terms.',
-    ],
-  },
-  {
-    key: 'en→vi',
-    rules: [
-      'Natural Vietnamese dialogue; avoid stiff calques from English syntax.',
-      'Keep English proper nouns / brands exact unless a locked Vietnamese form exists.',
     ],
   },
 ];
@@ -194,45 +186,32 @@ export function resolveStyleModel(
   }
 }
 
-function languageFamily(code: string): string {
-  const n = normalizeLanguageCode(code);
-  if (n.startsWith('zh')) return 'zh';
-  return n.split('-')[0] ?? n;
-}
-
 export function resolveLanguagePairRules(
   sourceLanguage: string,
   targetLanguage: string,
 ): string[] {
-  const source = normalizeLanguageCode(sourceLanguage);
-  const target = normalizeLanguageCode(targetLanguage);
-  const exact = `${source}→${target}`;
-  const family = `${languageFamily(source)}→${languageFamily(target)}`;
-  const out: string[] = [];
-  for (const set of LANGUAGE_PAIR_RULES) {
-    if (set.key === exact || set.key === family) {
-      out.push(...set.rules);
-    }
-  }
-  return out;
+  return resolvePairOverrideRules(sourceLanguage, targetLanguage);
 }
 
-/** Compose prompt critical rules: fidelity → genre → pair overrides. */
+/** Compose prompt critical rules via layered TranslationPromptPolicy. */
 export function composeTranslationStyleRules(input: {
   style?: string | null;
   fidelity?: FidelityProfile | null;
   genre?: GenreProfile | null;
   sourceLanguage: string;
   targetLanguage: string;
+  projectRules?: string[];
+  editionRules?: string[];
 }): string[] {
-  const resolved = resolveStyleModel(input.style);
-  const fidelity = input.fidelity ?? resolved.fidelity;
-  const genre = input.genre ?? resolved.genre;
-  return [
-    ...FIDELITY_RULES[fidelity],
-    ...GENRE_RULES[genre],
-    ...resolveLanguagePairRules(input.sourceLanguage, input.targetLanguage),
-  ];
+  return resolveTranslationPromptPolicy({
+    sourceLanguage: input.sourceLanguage,
+    targetLanguage: input.targetLanguage,
+    style: input.style,
+    fidelity: input.fidelity,
+    genre: input.genre,
+    projectRules: input.projectRules,
+    editionRules: input.editionRules,
+  }).rules;
 }
 
 /** Resolve translation style preset from project_settings.style_config JSON. */
@@ -253,33 +232,55 @@ export function resolveProjectTranslationStyle(
   }
 }
 
-/** Prompt display name for a language code. */
+/** Prompt display name for a language code (AI identity line). */
 export function languageDisplayName(code: string): string {
-  return getLanguageProfile(code).displayNameNative;
+  return formatAiLanguageIdentityFromProfile(getLanguageProfile(code));
 }
 
 /**
- * Canonical translation task header — never hardcodes Chinese/Vietnamese.
+ * Canonical translation task header — International / Native (BCP-47); never hardcodes pair labels.
  */
 export function formatTranslationTaskHeader(input: {
   sourceLanguage: string;
   targetLanguage: string;
   styleLabel?: string;
   range: string;
+  /** When source detection flagged embedded foreign material. */
+  sourceMixedLanguage?: boolean;
 }): string {
-  const sourceName = languageDisplayName(input.sourceLanguage);
-  const targetName = languageDisplayName(input.targetLanguage);
+  const source = getLanguageProfile(input.sourceLanguage);
+  const target = getLanguageProfile(input.targetLanguage);
+  const sourceLabel = formatAiLanguageIdentityFromProfile(source);
+  const targetLabel = formatAiLanguageIdentityFromProfile(target);
+
   const lines = [
     '## Task',
     'Source language:',
-    sourceName,
+    sourceLabel,
+    '',
+    'Detected from source content.',
     '',
     'Target language:',
-    targetName,
+    targetLabel,
     '',
-    'Translate:',
-    `${sourceName} → ${targetName}`,
+    'This is the required output language.',
   ];
+
+  const scriptMeta = formatTargetScriptMetadataLines(target);
+  if (scriptMeta.length) {
+    lines.push('', ...scriptMeta);
+  }
+
+  if (input.sourceMixedLanguage) {
+    lines.push(
+      '',
+      'The source contains embedded material in additional languages.',
+      `Treat primary language as ${source.internationalName}, but interpret each embedded segment according to its actual language.`,
+    );
+  }
+
+  lines.push('', 'Translate:', `${sourceLabel} → ${targetLabel}`);
+
   if (input.styleLabel) {
     lines.push('', `Style: ${input.styleLabel}`);
   }
@@ -288,16 +289,42 @@ export function formatTranslationTaskHeader(input: {
   return lines.join('\n');
 }
 
-/** Short pair line for repair / continuation preamble. */
+/** Short pair block for repair / continuation preamble. */
 export function formatLanguagePairPreamble(
   sourceLanguage: string,
   targetLanguage: string,
+  options?: { sourceMixedLanguage?: boolean },
 ): string {
-  const sourceName = languageDisplayName(sourceLanguage);
-  const targetName = languageDisplayName(targetLanguage);
-  return [
-    `Source language: ${sourceName} (${normalizeLanguageCode(sourceLanguage)})`,
-    `Target language: ${targetName} (${normalizeLanguageCode(targetLanguage)})`,
-    `Translate: ${sourceName} → ${targetName}`,
-  ].join('\n');
+  const source = getLanguageProfile(sourceLanguage);
+  const target = getLanguageProfile(targetLanguage);
+  const sourceLabel = formatAiLanguageIdentityFromProfile(source);
+  const targetLabel = formatAiLanguageIdentityFromProfile(target);
+
+  const lines = [
+    'Source language:',
+    sourceLabel,
+    '',
+    'Detected from source content.',
+    '',
+    'Target language:',
+    targetLabel,
+    '',
+    'This is the required output language.',
+  ];
+
+  const scriptMeta = formatTargetScriptMetadataLines(target);
+  if (scriptMeta.length) {
+    lines.push('', ...scriptMeta);
+  }
+
+  if (options?.sourceMixedLanguage) {
+    lines.push(
+      '',
+      'The source contains embedded material in additional languages.',
+      `Treat primary language as ${source.internationalName}, but interpret each embedded segment according to its actual language.`,
+    );
+  }
+
+  lines.push('', 'Translate:', `${sourceLabel} → ${targetLabel}`);
+  return lines.join('\n');
 }

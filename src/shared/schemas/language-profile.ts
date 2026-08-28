@@ -2,6 +2,8 @@ import { z } from 'zod';
 import {
   AI_SUPPORT_TIERS,
   LANGUAGE_AUTO,
+  NOVELTRANS_VERIFICATION_LEVELS,
+  PROVIDER_SUPPORT_LEVELS,
   PUNCTUATION_PROFILES,
   QUOTE_STYLES,
   REGION_GROUPS,
@@ -19,6 +21,8 @@ export const LanguageProfileDtoSchema = z.object({
   script: z.string().min(1).max(16),
   direction: z.enum(TEXT_DIRECTIONS),
   regionGroup: z.enum(REGION_GROUPS),
+  providerSupport: z.enum(PROVIDER_SUPPORT_LEVELS),
+  novelTransVerification: z.enum(NOVELTRANS_VERIFICATION_LEVELS),
   aiSupportTier: z.enum(AI_SUPPORT_TIERS),
   segmentationStrategy: z.enum(SEGMENTATION_STRATEGIES),
   quoteStyle: z.enum(QUOTE_STYLES),

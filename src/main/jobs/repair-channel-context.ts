@@ -15,6 +15,10 @@ export interface RepairChannelContext {
   knowledgeVersion: number | null;
   /** Frozen local context from initial translate send. */
   localContextSnapshot?: string | null;
+  sourceLanguage?: string | null;
+  targetLanguage?: string | null;
+  editionId?: string | null;
+  stylePolicyHash?: string | null;
 }
 
 export const REPAIR_CHANNEL_EMPTY: RepairChannelContext = {
@@ -25,6 +29,10 @@ export const REPAIR_CHANNEL_EMPTY: RepairChannelContext = {
   packMode: null,
   knowledgeVersion: null,
   localContextSnapshot: null,
+  sourceLanguage: null,
+  targetLanguage: null,
+  editionId: null,
+  stylePolicyHash: null,
 };
 
 /** Read channel fields from job.progress JSON. */
@@ -56,6 +64,32 @@ export function readRepairChannelFromProgress(
               : null,
       localContextSnapshot:
         typeof p.localContextSnapshot === 'string' ? p.localContextSnapshot : null,
+      sourceLanguage:
+        typeof p.repairSourceLanguage === 'string'
+          ? p.repairSourceLanguage
+          : typeof p.sourceLanguage === 'string'
+            ? p.sourceLanguage
+            : null,
+      targetLanguage:
+        typeof p.repairTargetLanguage === 'string'
+          ? p.repairTargetLanguage
+          : typeof p.targetLanguage === 'string'
+            ? p.targetLanguage
+            : null,
+      editionId:
+        typeof p.repairEditionId === 'string'
+          ? p.repairEditionId
+          : p.repairEditionId === null
+            ? null
+            : typeof p.editionId === 'string'
+              ? p.editionId
+              : null,
+      stylePolicyHash:
+        typeof p.stylePolicyHash === 'string'
+          ? p.stylePolicyHash
+          : typeof p.promptHash === 'string'
+            ? p.promptHash
+            : null,
     };
   } catch {
     return { ...REPAIR_CHANNEL_EMPTY };
@@ -73,6 +107,13 @@ export function channelSnapshotForAttempt(
     packMode: channel.packMode,
     knowledgeVersion: channel.knowledgeVersion,
     localContextSnapshot: channel.localContextSnapshot ?? null,
+    repairSourceLanguage: channel.sourceLanguage ?? null,
+    repairTargetLanguage: channel.targetLanguage ?? null,
+    sourceLanguage: channel.sourceLanguage ?? null,
+    targetLanguage: channel.targetLanguage ?? null,
+    repairEditionId: channel.editionId ?? null,
+    stylePolicyHash: channel.stylePolicyHash ?? null,
+    promptHash: channel.stylePolicyHash ?? null,
   };
 }
 

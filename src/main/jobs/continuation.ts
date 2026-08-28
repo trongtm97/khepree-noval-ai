@@ -11,12 +11,9 @@ import {
   CONTINUATION_REPAIR_THRESHOLD,
   DEFAULT_MAX_CONTINUATION_ATTEMPTS,
 } from '@shared/constants/job';
-import {
-  DEFAULT_SOURCE_LANGUAGE,
-  DEFAULT_TARGET_LANGUAGE,
-} from '@shared/constants/language-profile';
 import { formatLanguagePairPreamble } from '@shared/constants/translation-style-model';
 import { buildMergedTranslationProtocol } from './translate-chunking';
+import { requireRepairLanguagePair } from './repair-language-pair';
 
 export { detectOutputIncomplete as isRawOutputIncomplete };
 
@@ -110,21 +107,34 @@ export function buildContinuationPrompt(input: {
   fromParagraphId: string;
   batchParagraphs: RepairParagraph[];
   remainingParagraphIds: string[];
-  sourceLanguage?: string;
-  targetLanguage?: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  /** Last 1–2 accepted target paragraphs for continuity. */
+  continuationTargetContext?: { paragraphId: string; targetText: string }[];
 }): string {
+  const { sourceLanguage, targetLanguage } = requireRepairLanguagePair(input);
+
   const remaining = new Set(input.remainingParagraphIds);
   const sourceBlock = input.batchParagraphs
     .filter((p) => remaining.has(p.paragraphId))
     .map((p) => `${p.paragraphId} ${p.sourceText}`)
     .join('\n');
 
+  const continuityBlock =
+    input.continuationTargetContext && input.continuationTargetContext.length > 0
+      ? [
+          '### Previous translated context (do NOT repeat)',
+          ...input.continuationTargetContext.map(
+            (t) => `${t.paragraphId} ${t.targetText}`,
+          ),
+          '',
+        ].join('\n')
+      : '';
+
   return [
-    formatLanguagePairPreamble(
-      input.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE,
-      input.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
-    ),
+    formatLanguagePairPreamble(sourceLanguage, targetLanguage),
     '',
+    continuityBlock,
     `Continue from ${input.fromParagraphId}.`,
     'Do not repeat paragraphs already translated.',
     'Return only the remaining part.',
@@ -134,7 +144,9 @@ export function buildContinuationPrompt(input: {
     '',
     'Source paragraphs (remaining):',
     sourceBlock,
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 /** Merge by paragraph ID; first occurrence wins (dedupe continuation repeats). */
@@ -219,6 +231,9 @@ export interface ContinuationLoopInput {
   batchParagraphs: RepairParagraph[];
   sourceParagraphIds: string[];
   initialRaw: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  continuationTargetContext?: { paragraphId: string; targetText: string }[];
   maxAttempts?: number;
   sendContinuation: ContinuationSender;
   persistPartial?: (raw: string, meta: { round: number; label: string }) => void;
@@ -282,10 +297,17 @@ export async function runContinuationLoop(
       phase: 'continuation',
     });
 
+    const langs = requireRepairLanguagePair({
+      sourceLanguage: input.sourceLanguage,
+      targetLanguage: input.targetLanguage,
+    });
     const prompt = buildContinuationPrompt({
       fromParagraphId: fromId,
       batchParagraphs: input.batchParagraphs,
       remainingParagraphIds: remainingIds,
+      sourceLanguage: langs.sourceLanguage,
+      targetLanguage: langs.targetLanguage,
+      continuationTargetContext: input.continuationTargetContext,
     });
 
     const sent = await input.sendContinuation(prompt, `cont-${continuationRounds}`);

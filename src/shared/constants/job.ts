@@ -115,6 +115,7 @@ export const REPAIR_PROMPT_MODES = [
   'translation_empty',
   'translation_corrupt',
   'malformed_full',
+  'protocol_recovery',
   'term_violation',
   'deltas_only',
   'continuation',

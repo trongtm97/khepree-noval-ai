@@ -2,10 +2,6 @@ import type { QaResult, ParsedBatchResult } from '@shared/schemas/output-protoco
 import type { RepairPromptPlan } from '@shared/schemas/job';
 import type { RepairReason } from '@shared/constants/job';
 import { CONTINUATION_REPAIR_THRESHOLD } from '@shared/constants/job';
-import {
-  DEFAULT_SOURCE_LANGUAGE,
-  DEFAULT_TARGET_LANGUAGE,
-} from '@shared/constants/language-profile';
 import { formatLanguagePairPreamble } from '@shared/constants/translation-style-model';
 import { buildRepairPack } from './repair-pack-builder';
 import { TERM_DELTA_JSON_SCHEMA, MEMORY_DELTA_JSON_SCHEMA } from '@shared/schemas/term-delta';
@@ -14,6 +10,8 @@ import {
   findLastCompleteParagraphId,
   nextParagraphAfter,
 } from './continuation';
+import type { RepairTranslationContext, RepairNeighborTranslation } from './repair-translation-context';
+import { requireRepairLanguagePair } from './repair-language-pair';
 
 export interface RepairParagraph {
   paragraphId: string;
@@ -27,18 +25,48 @@ export interface RepairStrategyContext {
   batchParagraphs: RepairParagraph[];
   /** Locked preferred terms for TERM_VIOLATION prompts. */
   lockedTermHints?: { source: string; preferred: string; paragraphIds: string[] }[];
-  sourceLanguage?: string;
-  targetLanguage?: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  editionId?: string | null;
+  /** Neighbor target lines already accepted in this batch. */
+  neighborTargetTranslations?: RepairNeighborTranslation[];
+  /** Continuation continuity — last accepted target paragraphs. */
+  continuationTargetContext?: RepairNeighborTranslation[];
+  repairContext?: RepairTranslationContext;
 }
 
 function pairLangs(ctx: RepairStrategyContext): {
   sourceLanguage: string;
   targetLanguage: string;
 } {
+  return requireRepairLanguagePair({
+    sourceLanguage: ctx.sourceLanguage,
+    targetLanguage: ctx.targetLanguage,
+  });
+}
+
+function buildPackInput(
+  ctx: RepairStrategyContext,
+  missingParagraphIds: string[],
+) {
   return {
-    sourceLanguage: ctx.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE,
-    targetLanguage: ctx.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
+    missingParagraphIds,
+    batchParagraphs: ctx.batchParagraphs,
+    ...pairLangs(ctx),
+    neighborTargetTranslations: ctx.neighborTargetTranslations,
   };
+}
+
+function extractInvalidDeltaPayload(parsed: ParsedBatchResult): string {
+  const lines = parsed.warnings
+    .filter(
+      (w) =>
+        w.section === 'TERM_DELTA' ||
+        w.section === 'MEMORY_DELTA' ||
+        /TERM_DELTA|MEMORY_DELTA/i.test(w.message),
+    )
+    .map((w) => w.message);
+  return lines.length ? lines.join('\n') : '';
 }
 
 export interface RepairStrategy {
@@ -78,10 +106,16 @@ export function classifyRepairReason(
   if (
     qa.errors.some(
       (e) =>
-        e.code === 'locked_term_missing' || e.code === 'locked_term_forbidden_variant',
+        e.code === 'locked_term_missing' ||
+        e.code === 'locked_term_forbidden_variant' ||
+        e.code === 'edition_term_leak',
     )
   ) {
     return 'TERM_VIOLATION';
+  }
+
+  if (qa.errors.some((e) => e.code === 'target_language_mismatch')) {
+    return 'CORRUPT_PARAGRAPH';
   }
 
   if (qa.emptyParagraphIds.length > 0) {
@@ -102,9 +136,56 @@ export function classifyRepairReason(
     return 'MISSING_PARAGRAPH';
   }
 
-  // duplicate/unknown: handled by normalizeParsedTranslations in repair-loop — not AI repair.
-
   return null;
+}
+
+function canProtocolRecover(ctx: RepairStrategyContext): boolean {
+  return (
+    ctx.parsed.translations.some((t) => t.text.trim()) &&
+    ctx.qa.missingParagraphIds.length === 0 &&
+    ctx.qa.emptyParagraphIds.length === 0 &&
+    ctx.qa.corruptParagraphIds.length === 0
+  );
+}
+
+function buildProtocolRecoveryPlan(ctx: RepairStrategyContext): RepairPromptPlan {
+  const langs = pairLangs(ctx);
+  const existingBlock = ctx.parsed.translations
+    .filter((t) => t.text.trim())
+    .map((t) => `${t.paragraphId} ${t.text}`)
+    .join('\n');
+
+  return {
+    mode: 'protocol_recovery',
+    reason: 'MALFORMED_OUTPUT',
+    prompt: [
+      formatLanguagePairPreamble(langs.sourceLanguage, langs.targetLanguage),
+      '',
+      'Previous output contained valid translations but malformed protocol structure.',
+      'Do NOT change translation prose. Re-wrap the SAME text in the required protocol sections.',
+      '',
+      'Existing translations (preserve text exactly):',
+      existingBlock,
+      '',
+      'Return EXACTLY these sections with proper closing tags. No markdown fences.',
+      '',
+      '<TRANSLATION>',
+      '[C000001:P000001] ...',
+      '</TRANSLATION>',
+      '<TERM_DELTA>',
+      '[]',
+      '</TERM_DELTA>',
+      '<MEMORY_DELTA>',
+      '[]',
+      '</MEMORY_DELTA>',
+      '',
+      'Use [] for deltas unless this batch has new supported evidence — do not invent from schema alone.',
+    ].join('\n'),
+    targetParagraphIds: ctx.parsed.translations
+      .filter((t) => t.text.trim())
+      .map((t) => t.paragraphId),
+    retranslate: false,
+  };
 }
 
 export const missingParagraphStrategy: RepairStrategy = {
@@ -113,11 +194,7 @@ export const missingParagraphStrategy: RepairStrategy = {
     return ctx.qa.missingParagraphIds.length > 0;
   },
   buildPlan(ctx) {
-    const pack = buildRepairPack({
-      missingParagraphIds: ctx.qa.missingParagraphIds,
-      batchParagraphs: ctx.batchParagraphs,
-      ...pairLangs(ctx),
-    });
+    const pack = buildRepairPack(buildPackInput(ctx, ctx.qa.missingParagraphIds));
     return {
       mode: 'translation_missing',
       reason: 'MISSING_PARAGRAPH',
@@ -134,11 +211,7 @@ export const emptyParagraphStrategy: RepairStrategy = {
     return ctx.qa.emptyParagraphIds.length > 0;
   },
   buildPlan(ctx) {
-    const pack = buildRepairPack({
-      missingParagraphIds: ctx.qa.emptyParagraphIds,
-      batchParagraphs: ctx.batchParagraphs,
-      ...pairLangs(ctx),
-    });
+    const pack = buildRepairPack(buildPackInput(ctx, ctx.qa.emptyParagraphIds));
     return {
       mode: 'translation_empty',
       reason: 'EMPTY_PARAGRAPH',
@@ -160,11 +233,7 @@ export const corruptParagraphStrategy: RepairStrategy = {
     return ctx.qa.corruptParagraphIds.length > 0;
   },
   buildPlan(ctx) {
-    const pack = buildRepairPack({
-      missingParagraphIds: ctx.qa.corruptParagraphIds,
-      batchParagraphs: ctx.batchParagraphs,
-      ...pairLangs(ctx),
-    });
+    const pack = buildRepairPack(buildPackInput(ctx, ctx.qa.corruptParagraphIds));
     return {
       mode: 'translation_corrupt',
       reason: 'CORRUPT_PARAGRAPH',
@@ -191,13 +260,12 @@ export const malformedOutputStrategy: RepairStrategy = {
     );
   },
   buildPlan(ctx) {
-    // If we already have some good lines, only ask for missing; else full protocol re-request
+    if (canProtocolRecover(ctx)) {
+      return buildProtocolRecoveryPlan(ctx);
+    }
+
     if (ctx.qa.missingParagraphIds.length > 0 && ctx.parsed.translations.length > 0) {
-      const pack = buildRepairPack({
-        missingParagraphIds: ctx.qa.missingParagraphIds,
-        batchParagraphs: ctx.batchParagraphs,
-        ...pairLangs(ctx),
-      });
+      const pack = buildRepairPack(buildPackInput(ctx, ctx.qa.missingParagraphIds));
       return {
         mode: 'malformed_full',
         reason: 'MALFORMED_OUTPUT',
@@ -249,39 +317,50 @@ export const termViolationStrategy: RepairStrategy = {
     );
   },
   buildPlan(ctx) {
+    const termErrors = ctx.qa.errors.filter(
+      (e) =>
+        e.code === 'locked_term_missing' || e.code === 'locked_term_forbidden_variant',
+    );
     const paraIds = [
       ...new Set(
-        ctx.qa.errors
-          .filter(
-            (e) =>
-              e.code === 'locked_term_missing' ||
-              e.code === 'locked_term_forbidden_variant',
-          )
+        termErrors
           .map((e) => e.paragraphId)
           .filter((id): id is string => Boolean(id)),
       ),
     ];
 
-    const pack = buildRepairPack({
-      missingParagraphIds: paraIds.length > 0 ? paraIds : ctx.qa.missingParagraphIds,
-      batchParagraphs: ctx.batchParagraphs,
-      ...pairLangs(ctx),
-    });
+    const pack = buildRepairPack(
+      buildPackInput(
+        ctx,
+        paraIds.length > 0 ? paraIds : ctx.qa.missingParagraphIds,
+      ),
+    );
 
     const termLines =
-      ctx.lockedTermHints
-        ?.map((t) => `- ${t.source} → MUST use exactly: "${t.preferred}"`)
-        .join('\n') ?? '(see project locked terms)';
+      ctx.lockedTermHints?.map((t) => {
+        const ids =
+          t.paragraphIds.length > 0
+            ? t.paragraphIds.join(', ')
+            : termErrors
+                .filter((e) => e.termSource === t.source)
+                .map((e) => e.paragraphId)
+                .filter(Boolean)
+                .join(', ');
+        return `- source: ${t.source} → required target: "${t.preferred}" (affected IDs: ${ids || 'see QA'})`;
+      }) ??
+      termErrors.map((e) =>
+        `- source: ${e.termSource ?? '?'} → required target: "${e.expected ?? '?'}" (affected ID: ${e.paragraphId ?? '?'})${e.found ? `; found: "${e.found}"` : ''}`,
+      );
 
     return {
       mode: 'term_violation',
       reason: 'TERM_VIOLATION',
       prompt: [
         'Locked-term QA failed. Re-translate ONLY the affected paragraphs.',
-        'Use locked preferred translations EXACTLY. Do not use forbidden variants.',
+        'Use the required target form exactly (language-aware — do not force English casing rules on non-English targets).',
         '',
         'Locked terms:',
-        termLines,
+        termLines.join('\n'),
         '',
         pack.prompt,
       ].join('\n'),
@@ -291,10 +370,6 @@ export const termViolationStrategy: RepairStrategy = {
   },
 };
 
-/**
- * JSON invalid for deltas — do NOT re-translate.
- * Ask only for TERM_DELTA / MEMORY_DELTA with correct schema.
- */
 export const memoryJsonInvalidStrategy: RepairStrategy = {
   reason: 'MEMORY_JSON_INVALID',
   builds(ctx) {
@@ -305,15 +380,26 @@ export const memoryJsonInvalidStrategy: RepairStrategy = {
       )
     );
   },
-  buildPlan(_ctx) {
+  buildPlan(ctx) {
+    const langs = pairLangs(ctx);
+    const invalidPayload = extractInvalidDeltaPayload(ctx.parsed);
+    const editionLine =
+      ctx.editionId != null ? `Edition ID: ${ctx.editionId}` : 'Edition ID: (from job)';
+
     return {
       mode: 'deltas_only',
       reason: 'MEMORY_JSON_INVALID',
       prompt: [
+        formatLanguagePairPreamble(langs.sourceLanguage, langs.targetLanguage),
+        editionLine,
+        '',
         'Previous TERM_DELTA / MEMORY_DELTA JSON was invalid.',
-        'Do NOT re-translate paragraphs.',
+        'Do NOT re-translate paragraphs — valid translations must not be regenerated.',
         'Return ONLY these two sections with valid JSON arrays matching the schema.',
-        'Empty arrays are allowed: []',
+        'Use [] when no new evidence — do not manufacture entries from schema alone.',
+        '',
+        'Invalid or discarded delta evidence:',
+        invalidPayload || '(payload not recoverable — return empty arrays unless evidence exists)',
         '',
         '<TERM_DELTA>',
         '[]',
@@ -344,6 +430,7 @@ export const outputIncompleteStrategy: RepairStrategy = {
     );
   },
   buildPlan(ctx) {
+    const langs = pairLangs(ctx);
     const lastComplete = findLastCompleteParagraphId(
       ctx.batchParagraphs.map((p) => p.paragraphId),
       ctx.parsed.translations,
@@ -357,7 +444,9 @@ export const outputIncompleteStrategy: RepairStrategy = {
       fromParagraphId: fromId,
       batchParagraphs: ctx.batchParagraphs,
       remainingParagraphIds: ctx.qa.missingParagraphIds,
-      ...pairLangs(ctx),
+      sourceLanguage: langs.sourceLanguage,
+      targetLanguage: langs.targetLanguage,
+      continuationTargetContext: ctx.continuationTargetContext,
     });
     return {
       mode: 'continuation',

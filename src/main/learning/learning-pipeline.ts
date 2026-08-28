@@ -3,6 +3,7 @@ import type { DatabaseManager } from '../db/database-manager';
 import { withTransaction } from '../db/transaction';
 import { applyMemoryDelta, type MemoryDeltaApplyResult } from '../memory/memory-delta-processor';
 import { resolveEditionFromJob } from '../memory/edition-memory';
+import { resolveForProjectEdition } from '../services/translation-language-resolver';
 import { applyTermDelta, type TermDeltaApplyResult } from './term-delta-processor';
 import { compactProjectMemory, type CompactMemoryResult } from './memory-compactor';
 import { NotebookKnowledgeBuilder } from '../notebook/knowledge-builder';
@@ -94,16 +95,24 @@ export async function runLearningPipeline(
     chapter?.source_text?.slice(0, 500) ??
     null;
 
+  const edition = resolveEditionFromJob(db, input.projectId, input.jobId);
+  const pair = resolveForProjectEdition(db, {
+    projectId: input.projectId,
+    editionId: edition.editionId,
+  });
+
   const applied = withTransaction(db.getConnection(), () => {
     const terms = applyTermDelta(db, input.parsed.termDeltas, {
       projectId: input.projectId,
+      editionId: pair.editionId,
+      sourceLanguage: pair.sourceLanguage,
+      targetLanguage: pair.targetLanguage,
       chapterId: chapter?.id ?? null,
       chapterNumber,
       sourceContext,
       jobId: input.jobId,
     });
 
-    const edition = resolveEditionFromJob(db, input.projectId, input.jobId);
     const memory = applyMemoryDelta(
       db,
       input.projectId,

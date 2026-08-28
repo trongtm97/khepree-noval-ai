@@ -9,7 +9,6 @@ import {
   normalizePackMode,
   type PackMode,
 } from '@shared/constants/pack-mode';
-import { DEFAULT_NOTEBOOK_SETTINGS } from '@shared/constants/knowledge';
 import type {
   ChapterSummaryDto,
   TranslationPackDto,
@@ -19,10 +18,6 @@ import {
   buildTranslationPack,
   countHotDeltaLines,
 } from '../prompt/translation-pack-builder';
-import {
-  resolveTranslationPackMode,
-  type PackModeDecision,
-} from '../prompt/pack-mode-resolver';
 import { getMemoryService } from './memory-service-singleton';
 import { DEFAULT_CONTEXT_TOKEN_BUDGET } from '@shared/constants/memory';
 import { buildActiveHotMemoryText } from '../notebook/hot-memory-builder';
@@ -32,10 +27,19 @@ import {
   getProjectKnowledgeVersion,
   resolveJobKnowledgeSnapshot,
 } from '../knowledge/knowledge-version';
+import { resolveForProjectEdition } from './translation-language-resolver';
 
 export interface TranslationPackBuildResult extends TranslationPackDto {
   packMode: PackMode;
-  packTelemetry: PackModeDecision & { hotDeltaCount: number };
+  packTelemetry: {
+    packMode: PackMode;
+    notebookId: string | null;
+    localKnowledgeVersion: number;
+    notebookVerifiedVersion: number;
+    sourceGroundingConfirmed: boolean;
+    reason: string;
+    hotDeltaCount: number;
+  };
 }
 
 export class TranslationPackService {
@@ -79,10 +83,10 @@ export class TranslationPackService {
     /** Default local_context. notebook_assisted only when explicit. */
     packMode?: PackMode | 'slim' | 'hybrid' | 'fat';
     googleAccountId?: string | null;
-    /** Telemetry only — does not change pack content (Phase 4 provider-neutral). */
+    /** Telemetry only — does not change pack content. */
     providerType?: string | null;
     editionId?: string;
-    /** @deprecated No effect — always local context. */
+    /** @deprecated No effect — always local context unless notebook_assisted. */
     forceFatPack?: boolean;
     /** Stamp wave snapshot / job start version for parallel waves. */
     jobId?: string;
@@ -102,31 +106,30 @@ export class TranslationPackService {
       throw new Error(`Project not found: ${input.projectId}`);
     }
 
-    const settings = loadNotebookSettings(db, input.projectId);
-    const preferNotebook = input.packMode === 'notebook_assisted';
-    const snapshotVersion = input.jobId
-      ? resolveJobKnowledgeSnapshot(db, input.jobId, input.projectId)
-      : getProjectKnowledgeVersion(db, input.projectId);
-    const decision = resolveTranslationPackMode(db, {
+    const languagePair = resolveForProjectEdition(db, {
       projectId: input.projectId,
-      accountId: input.googleAccountId,
-      providerType: input.providerType,
-      preferNotebookPack: preferNotebook,
+      editionId: input.editionId,
     });
-    const decisionWithSnapshot = {
-      ...decision,
-      localKnowledgeVersion: snapshotVersion,
-    };
 
     const packMode: PackMode =
       input.packMode && isPackMode(input.packMode)
         ? input.packMode
         : input.packMode
           ? normalizePackMode(input.packMode)
-          : decision.packMode;
+          : 'local_context';
+
+    const snapshotVersion = input.jobId
+      ? resolveJobKnowledgeSnapshot(db, input.jobId, input.projectId)
+      : getProjectKnowledgeVersion(db, input.projectId);
 
     const tokenBudget = input.tokenBudget ?? DEFAULT_CONTEXT_TOKEN_BUDGET;
-    const edition = resolveEditionMemoryContext(db, input.projectId, input.editionId);
+    const edition = resolveEditionMemoryContext(
+      db,
+      input.projectId,
+      languagePair.editionId,
+    );
+
+    const settings = loadNotebookSettings(db, input.projectId);
 
     const context = getMemoryService().buildContext({
       projectId: input.projectId,
@@ -142,8 +145,6 @@ export class TranslationPackService {
       localLearningMode: true,
     });
 
-    const editionRow = db.translationEditions.getById(edition.editionId);
-
     const pack = buildTranslationPack(db, {
       projectId: input.projectId,
       chapterIds: input.chapterIds,
@@ -157,8 +158,9 @@ export class TranslationPackService {
       paragraphIds: input.paragraphIds,
       packMode,
       hotMemoryOverride: hotOverride || undefined,
-      sourceLanguage: project.source_language ?? undefined,
-      targetLanguage: editionRow?.target_language ?? project.target_language ?? undefined,
+      sourceLanguage: languagePair.sourceLanguage,
+      targetLanguage: languagePair.targetLanguage,
+      editionId: languagePair.editionId,
     });
 
     const hotDeltaCount = countHotDeltaLines(pack.sections.hotMemoryDelta);
@@ -167,12 +169,17 @@ export class TranslationPackService {
       ...pack,
       packMode,
       packTelemetry: {
-        ...decisionWithSnapshot,
         packMode,
+        notebookId: packMode === 'notebook_assisted' ? input.googleAccountId ?? null : null,
+        localKnowledgeVersion: snapshotVersion,
+        notebookVerifiedVersion: 0,
+        sourceGroundingConfirmed: false,
+        reason:
+          packMode === 'notebook_assisted'
+            ? 'notebook_assisted_explicit'
+            : 'local_context_default',
         hotDeltaCount,
       },
     };
   }
 }
-
-export { DEFAULT_NOTEBOOK_SETTINGS };

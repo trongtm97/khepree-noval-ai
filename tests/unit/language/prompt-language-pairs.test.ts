@@ -7,7 +7,12 @@ import {
   resolveProjectTranslationStyle,
   resolveStyleModel,
 } from '@shared/constants/translation-style-model';
+import {
+  resolveSourceLanguageRules,
+  resolveTargetLanguageRules,
+} from '@shared/constants/translation-prompt-policy';
 import { OUTPUT_PROTOCOL_BLOCK } from '@shared/constants/translation-pack';
+import { formatAiLanguageIdentity } from '@shared/constants/language-profile';
 import { assemblePackSections } from '@main/prompt/translation-pack-builder';
 import { buildRepairPack } from '@main/jobs/repair-pack-builder';
 import { buildContinuationPrompt } from '@main/jobs/continuation';
@@ -26,8 +31,14 @@ const EMPTY_CONTEXT: MemoryContextDto = {
 
 const PAIRS: [string, string][] = [
   ['zh-Hans', 'vi'],
-  ['en', 'vi'],
   ['ja', 'en'],
+  ['ko', 'vi'],
+  ['en', 'es'],
+  ['fr', 'de'],
+  ['ar', 'vi'],
+  ['fa', 'en'],
+  ['uk', 'pl'],
+  ['en', 'vi'],
   ['vi', 'en'],
   ['es', 'vi'],
 ];
@@ -56,15 +67,16 @@ describe('style model: fidelity / genre / pair rules', () => {
     expect(rules.every((r) => !/Chinese|Vietnamese|Hán-Việt/i.test(r))).toBe(true);
   });
 
-  it('zh→vi pair rules include Hán-Việt policy; ja→en honorifics; en→vi dialogue', () => {
+  it('zh→vi pair overrides include Hán-Việt; ja→en honorifics; vi target natural dialogue', () => {
     expect(resolveLanguagePairRules('zh-Hans', 'vi').join(' ')).toMatch(/Hán-Việt/i);
     expect(resolveLanguagePairRules('ja', 'en').join(' ')).toMatch(/Honorific/i);
-    expect(resolveLanguagePairRules('en', 'vi').join(' ')).toMatch(/dialogue/i);
-    expect(resolveLanguagePairRules('ko', 'vi').join(' ')).toMatch(/address/i);
+    expect(resolveTargetLanguageRules('vi').join(' ')).toMatch(/natural Vietnamese/i);
+    expect(resolveSourceLanguageRules('ko').join(' ')).toMatch(/speech level|honorific/i);
   });
 
-  it('OUTPUT_PROTOCOL uses TARGET_LANGUAGE_TRANSLATION placeholder', () => {
+  it('OUTPUT_PROTOCOL uses TARGET_LANGUAGE_TRANSLATION placeholder and v2 header', () => {
     expect(OUTPUT_PROTOCOL_BLOCK).toContain('TARGET_LANGUAGE_TRANSLATION');
+    expect(OUTPUT_PROTOCOL_BLOCK).toMatch(/Output Protocol Version:\s*2/i);
     expect(OUTPUT_PROTOCOL_BLOCK).not.toMatch(/Vietnamese translation/i);
   });
 });
@@ -117,7 +129,7 @@ describe('repair / continuation preserve language pair', () => {
         targetLanguage: target,
       });
       expect(pack.prompt).toMatchSnapshot(`repair-${source}-${target}`);
-      expect(pack.prompt).toContain(formatLanguagePairPreamble(source, target).split('\n')[0]);
+      expect(pack.prompt).toContain(formatAiLanguageIdentity(source));
       expect(pack.prompt).toContain('TARGET_LANGUAGE_TRANSLATION');
       expect(pack.prompt).not.toMatch(/Vietnamese…|Vietnamese translation/i);
     });
@@ -150,8 +162,8 @@ describe('CN→VI regression', () => {
       styleLabel: 'xianxia',
       range: 'chapters 1–3',
     });
-    expect(header).toContain('简体中文');
-    expect(header).toContain('Tiếng Việt');
+    expect(header).toContain('Chinese (Simplified) / 简体中文 (zh-Hans)');
+    expect(header).toContain('Vietnamese / Tiếng Việt (vi)');
     expect(header).toContain('Translate:');
     const rules = composeTranslationStyleRules({
       style: 'xianxia',

@@ -5,6 +5,7 @@ import {
   formatLanguagePickerLabel,
   formatLanguagePickerStacked,
   groupLanguageProfilesByRegion,
+  NOVELTRANS_VERIFICATION_LABELS_VI,
   REGION_GROUP_LABELS_VI,
   REGION_GROUP_ORDER,
   searchLanguageProfiles,
@@ -45,7 +46,7 @@ export function LanguagePicker({
   'aria-label': ariaLabel,
   recentCodes = [],
   placeholder = 'Chọn ngôn ngữ…',
-  labelVariant = 'compact',
+  labelVariant = 'stacked',
 }: LanguagePickerProps) {
   const listId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -109,12 +110,39 @@ export function LanguagePicker({
     setQuery('');
   };
 
+  const renderVerificationHint = (lang: LanguageProfileDto) => {
+    if (lang.providerSupport === 'CATALOG_ONLY' || lang.aiSupportTier === 'EXPERIMENTAL') {
+      return null;
+    }
+    const verified = lang.novelTransVerification === 'VERIFIED';
+    return (
+      <span
+        className={`language-picker-verify${verified ? ' is-verified' : ''}`}
+        title={
+          verified
+            ? NOVELTRANS_VERIFICATION_LABELS_VI.VERIFIED
+            : 'Gemini hỗ trợ ngôn ngữ này. NovelTrans chưa kiểm thử đầy đủ quy trình dịch.'
+        }
+        aria-label={
+          verified
+            ? NOVELTRANS_VERIFICATION_LABELS_VI.VERIFIED
+            : NOVELTRANS_VERIFICATION_LABELS_VI.UNTESTED
+        }
+      >
+        {verified ? '✓' : '○'}
+      </span>
+    );
+  };
+
   const renderOptionLabel = (lang: LanguageProfileDto) => {
     if (labelVariant === 'stacked') {
       const stacked = formatLanguagePickerStacked(lang);
       return (
         <span className="language-picker-option-stacked">
-          <span className="language-picker-option-intl">{stacked.internationalName}</span>
+          <span className="language-picker-option-intl">
+            {stacked.internationalName}
+            {renderVerificationHint(lang)}
+          </span>
           <span className="language-picker-option-native">{stacked.nativeLine}</span>
         </span>
       );
@@ -122,6 +150,7 @@ export function LanguagePicker({
     return (
       <span className="language-picker-option-label">
         {formatLanguagePickerLabel(lang)}
+        {renderVerificationHint(lang)}
       </span>
     );
   };
@@ -224,8 +253,10 @@ export function LanguagePicker({
                   }}
                 >
                   {renderOptionLabel(lang)}
-                  {lang.aiSupportTier === 'EXPERIMENTAL' ? (
-                    <span className="language-picker-tier muted">thử nghiệm</span>
+                  {lang.providerSupport === 'CATALOG_ONLY' || lang.aiSupportTier === 'EXPERIMENTAL' ? (
+                    <span className="language-picker-tier muted" title="Ngôn ngữ thử nghiệm — chất lượng dịch có thể khác nhau.">
+                      thử nghiệm
+                    </span>
                   ) : null}
                 </button>
               ))}

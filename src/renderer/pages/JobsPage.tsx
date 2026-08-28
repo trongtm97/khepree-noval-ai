@@ -1,332 +1,58 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { JobAttemptDto, JobDto } from '@shared/schemas/job';
-import type { ProjectDto } from '@shared/schemas/import';
-import type { GoogleAccountDto } from '@shared/schemas/account';
-import { measureJobProgress, isJobAttention } from '@shared/utils/job-progress';
-import { useT } from '../i18n';
-import { friendlyError } from '../i18n/errors';
-import { statusLabel } from '../i18n/status';
-import { helpArticleForErrorCode } from '../features/help/content';
 import {
   PageHeader,
   Button,
-  Card,
-  EmptyState,
-  Drawer,
-  ProgressBar,
+  Dialog,
   ErrorPanel,
-  Select,
-  Skeleton,
   SectionHeader,
+  Skeleton,
 } from '../components/ui';
 import { HelpContextButton } from '../features/help/HelpContextButton';
-import { OperationalExportDialog } from '../components/OperationalExportDialog';
-
-interface WorkerRow {
-  id: string;
-  accountId: string;
-  health: string;
-  priority: number;
-  currentJobId: string | null;
-  limitedUntil: string | null;
-  lastError: string | null;
-}
-
-interface SchedulerSnap {
-  running: boolean;
-  paused: boolean;
-  inFlight: number;
-  maxConcurrent: number;
-  perProjectMax: number;
-  allowSameProjectParallel: boolean;
-}
-
-/** Lower number = higher scheduler priority (ORDER BY priority ASC). */
-const PRIORITY = {
-  high: 10,
-  normal: 100,
-  low: 500,
-} as const;
-
-type PriorityBand = keyof typeof PRIORITY;
-
-function priorityBand(priority: number): PriorityBand {
-  if (priority <= 50) return 'high';
-  if (priority <= 200) return 'normal';
-  return 'low';
-}
-
-function isQueuedState(state: string): boolean {
-  return state === 'QUEUED' || state === 'WAITING_WORKER' || state === 'PAUSED';
-}
-
-function friendlyChannel(job: JobDto | null): string | null {
-  if (!job?.progress) return null;
-  const p = (job.progress.providerType ?? '').toUpperCase();
-  if (p.includes('PLAYWRIGHT') || p.includes('NOTEBOOK')) return 'Gemini Notebook';
-  if (p.includes('WEB')) return 'Gemini Web';
-  if (job.progress.notebookName) return 'Gemini Notebook';
-  return null;
-}
-
-function knowledgeLabel(job: JobDto | null): string | null {
-  if (!job?.progress) return null;
-  const v =
-    job.progress.localKnowledgeVersion ??
-    job.progress.knowledgeVersion ??
-    job.progress.notebookVerifiedVersion;
-  if (typeof v !== 'number') return null;
-  return `Knowledge v${v}`;
-}
-
-function paragraphProgress(job: JobDto | null): string | null {
-  if (!job) return null;
-  const done = job.progress?.paragraphsDone;
-  const total = job.progress?.paragraphsTotal;
-  if (typeof done === 'number' && typeof total === 'number' && total > 0) {
-    return `${done} / ${total}`;
-  }
-  return null;
-}
-
-function chapterRange(job: JobDto | null): string | null {
-  if (job?.chapterFrom == null) return null;
-  if (job.chapterTo != null && job.chapterTo !== job.chapterFrom) {
-    return `${job.chapterFrom}–${job.chapterTo}`;
-  }
-  return String(job.chapterFrom);
-}
-
-function accountDisplayName(account: GoogleAccountDto | undefined, fallbackId: string): string {
-  if (!account) return fallbackId.slice(0, 8);
-  return (
-    [account.label, account.displayName, account.email].find((v) => Boolean(v)) ??
-    fallbackId.slice(0, 8)
-  );
-}
-
-function findLaneJob(
-  worker: WorkerRow,
-  jobById: Map<string, JobDto>,
-  allJobs: JobDto[],
-): JobDto | null {
-  if (worker.currentJobId) {
-    const byId = jobById.get(worker.currentJobId);
-    if (byId) return byId;
-  }
-  return (
-    allJobs.find((j) => {
-      const accountMatch =
-        j.progress?.accountId === worker.accountId ||
-        j.pinnedAccountId === worker.accountId;
-      if (!accountMatch) return false;
-      if (isQueuedState(j.state)) return false;
-      return ![
-        'COMPLETED',
-        'ACCEPTED_WITH_WARNINGS',
-        'CANCELLED',
-        'FAILED',
-        'SKIPPED',
-      ].includes(j.state);
-    }) ?? null
-  );
-}
-
-function laneStatusKey(health: string): 'running' | 'ready' | 'limited' | 'attention' | 'paused' {
-  const h = health.toUpperCase();
-  if (h === 'BUSY') return 'running';
-  if (h === 'READY') return 'ready';
-  if (h === 'LIMITED') return 'limited';
-  if (h === 'DISABLED' || h === 'OFFLINE') return 'paused';
-  return 'attention';
-}
+import { friendlyError } from '../i18n/errors';
+import { helpArticleForErrorCode } from '../features/help/content';
+import { useT } from '../i18n';
+import { ActionRequiredJobs } from '../features/jobs/ActionRequiredJobs';
+import { AiAccountSection } from '../features/jobs/AiAccountSection';
+import { JobDetailDrawer } from '../features/jobs/JobDetailDrawer';
+import { JobsOverflowMenu } from '../features/jobs/JobsOverflowMenu';
+import { JobsSummaryStrip } from '../features/jobs/JobsSummaryStrip';
+import { ProjectQueueSection } from '../features/jobs/ProjectQueueSection';
+import { RecentJobsSection } from '../features/jobs/RecentJobsSection';
+import { RunningJobCard } from '../features/jobs/RunningJobCard';
+import { useJobsControls } from '../features/jobs/useJobsControls';
+import { useJobsOverview } from '../features/jobs/useJobsOverview';
 
 export function JobsPage() {
   const t = useT();
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<ProjectDto[]>([]);
-  const [accounts, setAccounts] = useState<GoogleAccountDto[]>([]);
-  const [jobs, setJobs] = useState<JobDto[]>([]);
-  const [workers, setWorkers] = useState<WorkerRow[]>([]);
-  const [scheduler, setScheduler] = useState<SchedulerSnap | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [attempts, setAttempts] = useState<JobAttemptDto[]>([]);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const overview = useJobsOverview();
+  const controls = useJobsControls(overview.refresh);
 
-  const refresh = useCallback(async () => {
-    const [projectResult, accountResult, jobResult, status, workerResult] = await Promise.all([
-      window.novelTrans.projects.list(),
-      window.novelTrans.accounts.list(),
-      window.novelTrans.jobs.list(undefined),
-      window.novelTrans.jobs.schedulerStatus(),
-      window.novelTrans.jobs.workers(),
-    ]);
-    setProjects(projectResult.projects);
-    setAccounts(accountResult.accounts);
-    setJobs(jobResult.jobs);
-    setScheduler({
-      running: status.running,
-      paused: status.paused,
-      inFlight: status.inFlight,
-      maxConcurrent: status.maxConcurrent,
-      perProjectMax: status.perProjectMax,
-      allowSameProjectParallel: status.allowSameProjectParallel,
-    });
-    setWorkers(workerResult.workers);
-  }, []);
-
-  useEffect(() => {
-    void refresh()
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-    const id = window.setInterval(() => {
-      void refresh().catch(() => {
-        /* poll best-effort */
-      });
-    }, 4000);
-    return () => {
-      window.clearInterval(id);
-    };
-  }, [refresh, t]);
-
-  const accountById = useMemo(
-    () => new Map(accounts.map((a) => [a.id, a])),
-    [accounts],
-  );
-  const jobById = useMemo(() => new Map(jobs.map((j) => [j.id, j])), [jobs]);
-
-  const projectTitle = useCallback(
-    (id: string) => projects.find((p) => p.id === id)?.title ?? id.slice(0, 8),
-    [projects],
+  const accountOrder = useMemo(
+    () => new Map(overview.accounts.map((a, i) => [a.id, i])),
+    [overview.accounts],
   );
 
-  const runningCount = scheduler?.inFlight ?? 0;
-  const readyAccounts = accounts.filter((a) => a.status === 'READY').length;
-  const queuedCount = jobs.filter((j) => isQueuedState(j.state)).length;
-  const attentionJobs = useMemo(
-    () => jobs.filter((j) => isJobAttention(j.state)),
-    [jobs],
-  );
+  const selected = controls.selectedId
+    ? overview.jobById.get(controls.selectedId) ?? null
+    : null;
 
-  const queuedByProject = useMemo(() => {
-    const map = new Map<string, JobDto[]>();
-    for (const job of jobs) {
-      if (!isQueuedState(job.state)) continue;
-      const list = map.get(job.projectId) ?? [];
-      list.push(job);
-      map.set(job.projectId, list);
-    }
-    for (const list of map.values()) {
-      list.sort((a, b) => {
-        if (a.priority !== b.priority) return a.priority - b.priority;
-        return (a.chapterFrom ?? 0) - (b.chapterFrom ?? 0);
-      });
-    }
-    return [...map.entries()].sort((a, b) => {
-      const aPri = a[1][0]?.priority ?? 999;
-      const bPri = b[1][0]?.priority ?? 999;
-      if (aPri !== bPri) return aPri - bPri;
-      return projectTitle(a[0]).localeCompare(projectTitle(b[0]));
-    });
-  }, [jobs, projectTitle]);
+  const errInfo = controls.error ? friendlyError(controls.error) : null;
+  const pageIdle =
+    overview.runningCount === 0 &&
+    overview.waitingCount === 0 &&
+    overview.attentionJobs.length === 0 &&
+    overview.pausedCount === 0;
 
-  const sortedWorkers = useMemo(() => {
-    return [...workers].sort((a, b) => {
-      const rank = (h: string) => {
-        const k = laneStatusKey(h);
-        if (k === 'running') return 0;
-        if (k === 'attention') return 1;
-        if (k === 'limited') return 2;
-        if (k === 'ready') return 3;
-        return 4;
-      };
-      const d = rank(a.health) - rank(b.health);
-      if (d !== 0) return d;
-      return a.priority - b.priority;
-    });
-  }, [workers]);
-
-  const openJob = useCallback(
-    async (jobId: string) => {
-      setSelectedId(jobId);
-      setDrawerOpen(true);
-      setShowAdvanced(false);
-      setError(null);
-      try {
-        const detail = await window.novelTrans.jobs.get(jobId);
-        setAttempts(detail.attempts);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
-      }
-    },
-    [t],
-  );
-
-  const runControl = async (fn: () => Promise<{ message?: string } | undefined>) => {
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const result = await fn();
-      if (result && typeof result === 'object' && 'message' in result && result.message) {
-        setMessage(result.message);
-      }
-      await refresh();
-      if (selectedId) {
-        const detail = await window.novelTrans.jobs.get(selectedId);
-        setAttempts(detail.attempts);
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const setJobPriority = async (jobId: string, band: PriorityBand) => {
-    await runControl(async () => {
-      await window.novelTrans.jobs.move(jobId, PRIORITY[band]);
-      return { message: t('jobs.priorityUpdated') };
-    });
-  };
-
-  const setProjectQueuePriority = async (projectId: string, band: PriorityBand) => {
-    const queued = jobs.filter((j) => j.projectId === projectId && isQueuedState(j.state));
-    if (queued.length === 0) return;
-    await runControl(async () => {
-      for (const job of queued) {
-        await window.novelTrans.jobs.move(job.id, PRIORITY[band]);
-      }
-      return { message: t('jobs.priorityUpdated') };
-    });
-  };
-
-  const selected = selectedId ? jobById.get(selectedId) ?? null : null;
-  const errInfo = error ? friendlyError(error) : null;
-  const fairnessNote =
-    scheduler && !scheduler.allowSameProjectParallel
-      ? t('jobs.fairnessOnePerProject')
-      : scheduler
-        ? t('jobs.fairnessPerProjectMax', { n: String(scheduler.perProjectMax) })
-        : null;
-
-  if (loading) {
+  if (overview.loading) {
     return (
-      <div>
+      <div className="jobs-page">
         <PageHeader title={t('jobs.title')} description={t('jobs.subtitle')} />
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
+        <Skeleton height={72} />
+        <div className="jobs-card-list">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} height={88} />
+            <Skeleton key={i} height={120} />
           ))}
         </div>
       </div>
@@ -334,12 +60,48 @@ export function JobsPage() {
   }
 
   return (
-    <div className="ops-center">
+    <div className="jobs-page">
       <PageHeader
         title={t('jobs.title')}
         description={t('jobs.subtitle')}
-        actions={<HelpContextButton articleId="jobs-monitor" />}
+        actions={
+          <div className="jobs-header-actions btn-row">
+            {overview.scheduler?.paused ? (
+              <Button
+                disabled={controls.busy}
+                onClick={() => {
+                  void controls.resumeAll();
+                }}
+              >
+                {t('jobs.resumeAll')}
+              </Button>
+            ) : overview.runningCount > 0 ? (
+              <Button
+                variant="secondary"
+                disabled={controls.busy}
+                onClick={() => {
+                  void controls.pauseAll();
+                }}
+              >
+                {t('jobs.pauseAll')}
+              </Button>
+            ) : null}
+            <HelpContextButton articleId="jobs-monitor" />
+            <JobsOverflowMenu
+              scheduler={overview.scheduler}
+              onMessage={(msg) => {
+                controls.setMessage(msg);
+              }}
+            />
+          </div>
+        }
       />
+
+      {overview.refreshError ? (
+        <div className="banner banner-warning" style={{ marginBottom: '0.75rem' }}>
+          {overview.refreshError}
+        </div>
+      ) : null}
 
       {errInfo ? (
         <ErrorPanel
@@ -349,484 +111,152 @@ export function JobsPage() {
           helpArticleId={helpArticleForErrorCode(errInfo.code)}
         />
       ) : null}
-      {message ? (
+
+      {controls.message ? (
         <div className="banner banner-info" style={{ marginBottom: '0.75rem' }}>
-          {message}
+          {controls.message}
         </div>
       ) : null}
 
-      <div className="ops-header-card">
-        <div className="ops-stat-grid">
-          <div className="ops-stat">
-            <span className="ops-stat-label">{t('jobs.statRunning')}</span>
-            <strong className="ops-stat-value">{runningCount}</strong>
-            <span className="ops-stat-unit">{t('jobs.statStreams')}</span>
-          </div>
-          <div className="ops-stat">
-            <span className="ops-stat-label">{t('jobs.statReady')}</span>
-            <strong className="ops-stat-value">{readyAccounts}</strong>
-            <span className="ops-stat-unit">{t('jobs.statAccounts')}</span>
-          </div>
-          <div className="ops-stat">
-            <span className="ops-stat-label">{t('jobs.statQueued')}</span>
-            <strong className="ops-stat-value">{queuedCount}</strong>
-            <span className="ops-stat-unit">{t('jobs.statJobs')}</span>
-          </div>
-          <div className="ops-stat">
-            <span className="ops-stat-label">{t('jobs.statAttention')}</span>
-            <strong className="ops-stat-value">{attentionJobs.length}</strong>
-          </div>
-        </div>
-        <div className="ops-header-actions">
-          {scheduler?.paused ? (
-            <Button
-              disabled={busy}
-              onClick={() =>
-                void runControl(async () => {
-                  const r = await window.novelTrans.jobs.resumeAll();
-                  return { message: r.message };
-                })
-              }
-            >
-              {t('jobs.resumeAll')}
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onClick={() =>
-                void runControl(async () => {
-                  const r = await window.novelTrans.jobs.pauseAll();
-                  return { message: r.message };
-                })
-              }
-            >
-              {t('jobs.pauseAll')}
-            </Button>
-          )}
-        </div>
-        {fairnessNote ? <p className="ops-fairness muted">{fairnessNote}</p> : null}
-        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--nt-border)' }}>
-          <SectionHeader title={t('operationalExport.sectionTitle')} />
-          <OperationalExportDialog
-            kinds={['operational_jobs', 'operational_qa', 'operational_workbook']}
-            onComplete={setMessage}
-          />
-        </div>
-      </div>
+      <JobsSummaryStrip
+        runningCount={overview.runningCount}
+        waitingCount={overview.waitingCount}
+        attentionCount={overview.attentionJobs.length}
+        usableWorkers={overview.usableWorkers}
+        pausedCount={overview.pausedCount}
+      />
 
-      <SectionHeader title={t('jobs.workerLanes')} />
-      {sortedWorkers.length === 0 ? (
-        <EmptyState
-          title={t('jobs.noWorkers')}
-          description={t('jobs.noWorkersHint')}
-          actionLabel={t('nav.accounts')}
-          onAction={() => {
-            navigate('/accounts');
-          }}
-        />
-      ) : (
-        <div className="ops-lane-list">
-          {sortedWorkers.map((worker) => {
-            const account = accountById.get(worker.accountId);
-            const job = findLaneJob(worker, jobById, jobs);
-            const lane = laneStatusKey(worker.health);
-            const measure = job ? measureJobProgress(job) : null;
-            const channel = friendlyChannel(job);
-            const knowledge = knowledgeLabel(job);
-            const chapters = chapterRange(job);
-
-            return (
-              <Card key={worker.id} className={`ops-lane ops-lane--${lane}`}>
-                <div className="ops-lane-head">
-                  <div>
-                    <h3 className="ops-lane-title">
-                      {accountDisplayName(account, worker.accountId)}
-                    </h3>
-                    <p className={`ops-lane-status ops-lane-status--${lane}`}>
-                      <span className="ops-lane-dot" aria-hidden />
-                      {t(`jobs.lane.${lane}`)}
-                    </p>
-                  </div>
-                  <div className="ops-lane-actions">
-                    {lane === 'paused' || account?.workerEnabled === false ? (
-                      <Button
-                        size="sm"
-                        disabled={busy}
-                        onClick={() =>
-                          void runControl(async () => {
-                            await window.novelTrans.accounts.enable(worker.accountId);
-                            return { message: t('jobs.workerResumed') };
-                          })
-                        }
-                      >
-                        {t('actions.resume')}
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={busy || lane === 'running'}
-                        title={
-                          lane === 'running' ? t('jobs.pauseWorkerBusyHint') : undefined
-                        }
-                        onClick={() =>
-                          void runControl(async () => {
-                            await window.novelTrans.accounts.disable(worker.accountId);
-                            return { message: t('jobs.workerPaused') };
-                          })
-                        }
-                      >
-                        {t('jobs.pauseWorker')}
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busy}
-                      onClick={() =>
-                        void runControl(async () => {
-                          await window.novelTrans.accounts.openBrowser(
-                            worker.accountId,
-                            'gemini',
-                          );
-                          return { message: t('jobs.openedGemini') };
-                        })
-                      }
-                    >
-                      {t('jobs.openGemini')}
-                    </Button>
-                  </div>
-                </div>
-
-                {job ? (
-                  <div className="ops-lane-body">
-                    <p className="ops-lane-project">{projectTitle(job.projectId)}</p>
-                    {chapters ? (
-                      <p className="muted ops-lane-meta">
-                        {t('jobs.chapterLabel', { range: chapters })}
-                      </p>
-                    ) : null}
-                    <p className="muted ops-lane-meta">
-                      {[channel, knowledge].filter(Boolean).join(' · ')}
-                    </p>
-                    {(() => {
-                      const progress = job.progress;
-                      if (
-                        !progress ||
-                        typeof progress.paragraphsDone !== 'number' ||
-                        typeof progress.paragraphsTotal !== 'number' ||
-                        progress.paragraphsTotal <= 0
-                      ) {
-                        return null;
-                      }
-                      return (
-                        <p className="ops-lane-paras">
-                          {t('jobs.paragraphsProgress', {
-                            done: String(progress.paragraphsDone),
-                            total: String(progress.paragraphsTotal),
-                          })}
-                        </p>
-                      );
-                    })()}
-                    {measure ? (
-                      <ProgressBar
-                        value={measure.percent}
-                        indeterminate={measure.indeterminate}
-                        label={
-                          paragraphProgress(job) ?? statusLabel(job.state)
-                        }
-                      />
-                    ) : null}
-                    <div className="ops-lane-actions" style={{ marginTop: '0.5rem' }}>
-                      {job.error || isJobAttention(job.state) ? (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            void openJob(job.id);
-                          }}
-                        >
-                          {t('jobs.viewError')}
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            void openJob(job.id);
-                          }}
-                        >
-                          {t('actions.viewDetails')}
-                        </Button>
-                      )}
-                      {(job.state === 'FAILED' || job.state === 'NEEDS_ATTENTION' || job.state === 'CANCELLED') && (
-                        <Button
-                          size="sm"
-                          disabled={busy}
-                          onClick={() =>
-                            void runControl(async () => {
-                              const r = await window.novelTrans.jobs.retry(job.id);
-                              return { message: r.message };
-                            })
-                          }
-                        >
-                          {t('actions.retry')}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ) : worker.lastError && lane === 'attention' ? (
-                  <div className="ops-lane-body">
-                    <p className="error-text" style={{ margin: 0 }}>
-                      {worker.lastError.slice(0, 160)}
-                    </p>
-                  </div>
-                ) : null}
-              </Card>
-            );
-          })}
+      {pageIdle ? (
+        <div className="jobs-idle-cta">
+          <p className="muted">{t('jobs.idleNoWaiting')}</p>
+          <Button
+            onClick={() => {
+              navigate('/translation');
+            }}
+          >
+            {t('jobs.translateNovel')}
+          </Button>
         </div>
-      )}
+      ) : null}
 
-      {attentionJobs.length > 0 ? (
-        <>
-          <SectionHeader title={t('jobs.needsAttention')} />
-          <div className="ops-lane-list">
-            {attentionJobs.map((job) => (
-              <Card key={job.id} className="ops-attention-card">
-                <div className="page-header-row">
-                  <div>
-                    <strong>{projectTitle(job.projectId)}</strong>
-                    <p className="muted" style={{ margin: '0.2rem 0 0' }}>
-                      {(() => {
-                        const range = chapterRange(job);
-                        return range
-                          ? t('jobs.chapterLabel', { range })
-                          : null;
-                      })()}
-                      {' · '}
-                      {statusLabel(job.state)}
-                    </p>
-                    {job.error ? (
-                      <p className="error-text" style={{ margin: '0.35rem 0 0' }}>
-                        {job.error.slice(0, 180)}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="btn-row">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => {
-                        void openJob(job.id);
-                      }}
-                    >
-                      {t('jobs.viewError')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={busy}
-                      onClick={() =>
-                        void runControl(async () => {
-                          const r = await window.novelTrans.jobs.retry(job.id);
-                          return { message: r.message };
-                        })
-                      }
-                    >
-                      {t('actions.retry')}
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+      <ActionRequiredJobs
+        jobs={overview.attentionJobs}
+        titleFor={overview.titleFor}
+        busy={controls.busy}
+        onOpen={(jobId) => {
+          void controls.openJob(jobId);
+        }}
+        onRetry={(jobId) => {
+          void controls.retryJob(jobId);
+        }}
+      />
+
+      {overview.runningJobs.length > 0 ? (
+        <section aria-labelledby="jobs-running-heading">
+          <SectionHeader id="jobs-running-heading" title={t('jobs.runningTitle')} />
+          <div className="jobs-card-list">
+            {overview.runningJobs.map((job) => (
+              <RunningJobCard
+                key={job.id}
+                job={job}
+                titleFor={overview.titleFor}
+                accountById={overview.accountById}
+                accountOrder={accountOrder}
+                busy={controls.busy}
+                onOpen={(jobId) => {
+                  void controls.openJob(jobId);
+                }}
+                onPauseAll={() => {
+                  void controls.pauseAll();
+                }}
+                onCancel={controls.requestCancel}
+                onOpenGemini={(accountId) => {
+                  void controls.runControl(async () => {
+                    await window.novelTrans.accounts.openBrowser(accountId, 'gemini');
+                    return { message: t('jobs.openedGemini') };
+                  });
+                }}
+              />
             ))}
           </div>
-        </>
+        </section>
       ) : null}
 
-      <SectionHeader title={t('jobs.nextQueued')} />
-      {queuedByProject.length === 0 ? (
-        <EmptyState title={t('jobs.queueEmpty')} />
-      ) : (
-        <div className="ops-queue-list">
-          {queuedByProject.map(([projectId, projectJobs]) => {
-            const next = projectJobs[0];
-            const band = priorityBand(next.priority);
-            return (
-              <Card key={projectId} className="ops-queue-card">
-                <div className="ops-queue-main">
-                  <div>
-                    <h3 className="ops-queue-title">{projectTitle(projectId)}</h3>
-                    <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-                      {t('jobs.queuedCount', { n: String(projectJobs.length) })}
-                      {(() => {
-                        const range = chapterRange(next);
-                        return range
-                          ? ` · ${t('jobs.nextChapter', { range })}`
-                          : '';
-                      })()}
-                    </p>
-                  </div>
-                  <label className="ops-priority">
-                    <span className="muted">{t('jobs.priority')}</span>
-                    <Select
-                      value={band}
-                      disabled={busy}
-                      aria-label={t('jobs.priority')}
-                      onChange={(e) => {
-                        void setProjectQueuePriority(
-                          projectId,
-                          e.target.value as PriorityBand,
-                        );
-                      }}
-                    >
-                      <option value="high">{t('jobs.priorityHigh')}</option>
-                      <option value="normal">{t('jobs.priorityNormal')}</option>
-                      <option value="low">{t('jobs.priorityLow')}</option>
-                    </Select>
-                  </label>
-                </div>
-                {!scheduler?.allowSameProjectParallel ? (
-                  <p className="muted ops-queue-note">{t('jobs.oneStreamHint')}</p>
-                ) : null}
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      <Drawer
-        open={drawerOpen && selected != null}
-        title={selected ? projectTitle(selected.projectId) : t('jobs.detail')}
-        onClose={() => {
-          setDrawerOpen(false);
+      <ProjectQueueSection
+        queuedByProject={overview.queuedByProject}
+        titleFor={overview.titleFor}
+        busy={controls.busy}
+        onSetPriority={(jobIds, band) => {
+          void controls.setProjectQueuePriority(jobIds, band);
         }}
-        closeLabel={t('actions.close')}
-      >
-        {selected ? (
-          <div className="ops-detail">
-            <p>
-              <strong>{statusLabel(selected.state)}</strong>
-              {(() => {
-                const range = chapterRange(selected);
-                return range ? ` · ${t('jobs.chapterLabel', { range })}` : '';
-              })()}
-            </p>
-            {selected.error ? (
-              <div className="banner banner-error" style={{ margin: '0.75rem 0' }}>
-                {selected.error}
-              </div>
-            ) : null}
-            <p className="muted">
-              {[friendlyChannel(selected), knowledgeLabel(selected), paragraphProgress(selected)]
-                .filter(Boolean)
-                .join(' · ')}
-            </p>
+      />
 
-            <label className="ops-priority" style={{ display: 'block', marginTop: '0.75rem' }}>
-              <span className="muted">{t('jobs.priority')}</span>
-              <Select
-                value={priorityBand(selected.priority)}
-                disabled={busy}
-                onChange={(e) => {
-                  void setJobPriority(selected.id, e.target.value as PriorityBand);
-                }}
-              >
-                <option value="high">{t('jobs.priorityHigh')}</option>
-                <option value="normal">{t('jobs.priorityNormal')}</option>
-                <option value="low">{t('jobs.priorityLow')}</option>
-              </Select>
-            </label>
+      {overview.waitingCount === 0 &&
+      overview.pausedCount === 0 &&
+      overview.queuedByProject.length === 0 &&
+      !pageIdle ? (
+        <p className="muted jobs-queue-empty">{t('jobs.queueEmptySubtle')}</p>
+      ) : null}
 
-            <div className="btn-row" style={{ marginTop: '0.75rem' }}>
-              {(selected.state === 'FAILED' ||
-                selected.state === 'NEEDS_ATTENTION' ||
-                selected.state === 'CANCELLED') && (
-                <Button
-                  size="sm"
-                  disabled={busy}
-                  onClick={() =>
-                    void runControl(async () => {
-                      const r = await window.novelTrans.jobs.retry(selected.id);
-                      return { message: r.message };
-                    })
-                  }
-                >
-                  {t('actions.retry')}
-                </Button>
-              )}
-              {selected.pinnedAccountId || selected.progress?.accountId ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => {
-                    const aid = selected.progress?.accountId ?? selected.pinnedAccountId;
-                    if (!aid) return;
-                    void runControl(async () => {
-                      await window.novelTrans.accounts.openBrowser(aid, 'gemini');
-                      return { message: t('jobs.openedGemini') };
-                    });
-                  }}
-                >
-                  {t('jobs.openGemini')}
-                </Button>
-              ) : null}
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={busy || selected.state === 'CANCELLED'}
-                onClick={() =>
-                  void runControl(async () => {
-                    const r = await window.novelTrans.jobs.cancel(selected.id);
-                    return { message: r.message };
-                  })
-                }
-              >
-                {t('actions.cancel')}
-              </Button>
-            </div>
+      <AiAccountSection
+        workers={overview.workers}
+        accounts={overview.accounts}
+        jobById={overview.jobById}
+        jobs={overview.jobs}
+        titleFor={overview.titleFor}
+        busy={controls.busy}
+        onRunControl={(fn) => {
+          void controls.runControl(fn);
+        }}
+      />
 
-            <button
-              type="button"
-              className="ops-advanced-toggle"
-              onClick={() => {
-                setShowAdvanced((v) => !v);
-              }}
-            >
-              {showAdvanced ? t('jobs.hideAdvanced') : t('jobs.showAdvanced')}
-            </button>
-            {showAdvanced ? (
-              <div className="ops-advanced muted">
-                <p>ID: {selected.id}</p>
-                <p>
-                  {t('jobs.account')}:{' '}
-                  {selected.progress?.accountId ?? selected.pinnedAccountId ?? '—'}
-                </p>
-                <p>
-                  {t('jobs.status')}: {selected.state} · attempts {selected.attemptCount}
-                </p>
-                {selected.progress?.packMode ? (
-                  <p>packMode: {selected.progress.packMode}</p>
-                ) : null}
-                {selected.progress?.providerType ? (
-                  <p>provider: {selected.progress.providerType}</p>
-                ) : null}
-                {attempts.length > 0 ? (
-                  <ul style={{ paddingLeft: '1.1rem' }}>
-                    {attempts.slice(0, 8).map((a) => (
-                      <li key={a.id}>
-                        #{a.attemptNumber} {a.state}
-                        {a.error ? ` — ${a.error.slice(0, 80)}` : ''}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </Drawer>
+      <RecentJobsSection jobs={overview.recentJobs} titleFor={overview.titleFor} />
+
+      <JobDetailDrawer
+        open={controls.drawerOpen && selected != null}
+        job={selected}
+        attempts={controls.attempts}
+        titleFor={overview.titleFor}
+        accountById={overview.accountById}
+        accountOrder={accountOrder}
+        showAdvanced={controls.showAdvanced}
+        busy={controls.busy}
+        onClose={controls.closeDrawer}
+        onToggleAdvanced={() => {
+          controls.setShowAdvanced(!controls.showAdvanced);
+        }}
+        onSetPriority={(jobId, band) => {
+          void controls.setJobPriority(jobId, band);
+        }}
+        onRetry={(jobId) => {
+          void controls.retryJob(jobId);
+        }}
+        onCancel={controls.requestCancel}
+        onOpenGemini={(accountId) => {
+          void controls.runControl(async () => {
+            await window.novelTrans.accounts.openBrowser(accountId, 'gemini');
+            return { message: t('jobs.openedGemini') };
+          });
+        }}
+      />
+
+      <Dialog
+        open={controls.cancelJobId != null}
+        title={t('jobs.cancelConfirmTitle')}
+        description={t('jobs.cancelConfirmBody')}
+        confirmLabel={t('actions.cancel')}
+        cancelLabel={t('actions.close')}
+        danger
+        busy={controls.busy}
+        onConfirm={() => {
+          if (controls.cancelJobId) {
+            void controls.cancelJob(controls.cancelJobId);
+          }
+        }}
+        onCancel={() => {
+          controls.setCancelJobId(null);
+        }}
+      />
     </div>
   );
 }

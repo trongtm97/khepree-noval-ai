@@ -15,6 +15,9 @@ export const TermDeltaDiscoverSchema = z.object({
   action: z.literal('discover'),
   source: z.string().min(1),
   target: z.string().min(1),
+  /** Generic transliteration (not Pinyin-specific). Legacy alias: reading. */
+  transliteration: z.string().optional(),
+  transliterationSystem: z.string().max(64).optional(),
   reading: z.string().optional(),
   category: z.enum(TERM_DELTA_CATEGORIES),
   confidence: z.enum(TERM_DELTA_CONFIDENCES).optional(),
@@ -45,9 +48,24 @@ export type TermDeltaItem = z.infer<typeof TermDeltaItemSchema>;
 
 export const TermDeltaSchema = z.array(TermDeltaItemSchema);
 
+function normalizeTermDeltaItem(item: unknown): unknown {
+  if (!item || typeof item !== 'object') return item;
+  const o = { ...(item as Record<string, unknown>) };
+  if (o.action === 'discover') {
+    if (o.transliteration == null && typeof o.reading === 'string') {
+      o.transliteration = o.reading;
+    }
+    if (o.transliterationSystem == null && typeof o.transliteration_system === 'string') {
+      o.transliterationSystem = o.transliteration_system;
+    }
+  }
+  return o;
+}
+
 export function parseTermDelta(raw: unknown): TermDeltaItem[] {
   const parsed = typeof raw === 'string' ? (JSON.parse(raw) as unknown) : raw;
-  return TermDeltaSchema.parse(parsed);
+  const items = Array.isArray(parsed) ? parsed.map(normalizeTermDeltaItem) : parsed;
+  return TermDeltaSchema.parse(items);
 }
 
 /** JSON Schema–like descriptors for prompt/docs (offline, no network). */
@@ -63,7 +81,9 @@ export const TERM_DELTA_JSON_SCHEMA = {
           action: { const: 'discover' },
           source: { type: 'string', minLength: 1 },
           target: { type: 'string', minLength: 1 },
-          reading: { type: 'string' },
+          transliteration: { type: 'string' },
+          transliterationSystem: { type: 'string' },
+          reading: { type: 'string', description: 'Legacy alias of transliteration' },
           category: { enum: [...TERM_DELTA_CATEGORIES] },
           confidence: { enum: [...TERM_DELTA_CONFIDENCES] },
           notes: { type: 'string' },

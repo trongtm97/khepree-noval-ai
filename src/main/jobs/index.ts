@@ -13,6 +13,15 @@ export {
 } from './repair-strategies';
 export { runRepairLoop, recoverCrashedAttempts, hashPrompt } from './repair-loop';
 export type { RepairSender, RepairLoopInput } from './repair-loop';
+export {
+  requireRepairTranslationContext,
+  buildRepairTranslationContext,
+  repairContextSnapshot,
+  collectNeighborTargetTranslations,
+  lastAcceptedTargetParagraphs,
+} from './repair-translation-context';
+export type { RepairTranslationContext, RepairNeighborTranslation } from './repair-translation-context';
+export { requireRepairLanguagePair } from './repair-language-pair';
 export { AutomationScheduler } from './scheduler';
 export type { SchedulerOptions } from './scheduler';
 export { WorkerPool } from './worker-pool';

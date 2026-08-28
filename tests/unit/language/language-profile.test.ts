@@ -3,6 +3,7 @@ import {
   DEFAULT_SOURCE_LANGUAGE,
   DEFAULT_TARGET_LANGUAGE,
   canSwapLanguages,
+  formatAiLanguageIdentity,
   formatLanguagePairLabel,
   formatLanguagePairInline,
   formatLanguagePairStacked,
@@ -44,6 +45,8 @@ describe('LanguageProfile registry', () => {
       script: 'Latn',
       direction: 'ltr',
       regionGroup: 'EUROPE',
+      providerSupport: 'GEMINI_API_EXTENDED',
+      novelTransVerification: 'UNTESTED',
       aiSupportTier: 'GEMINI_EXTENDED',
       segmentationStrategy: 'whitespace',
       quoteStyle: 'curly',
@@ -127,10 +130,10 @@ describe('pack prompts are language-pair driven', () => {
         sourceLanguage: source,
         targetLanguage: target,
       });
-      const sourceName = getLanguageProfile(source).displayNameNative;
-      const targetName = getLanguageProfile(target).displayNameNative;
-      expect(sections.taskHeader).toContain(sourceName);
-      expect(sections.taskHeader).toContain(targetName);
+      const sourceLabel = formatAiLanguageIdentity(source);
+      const targetLabel = formatAiLanguageIdentity(target);
+      expect(sections.taskHeader).toContain(sourceLabel);
+      expect(sections.taskHeader).toContain(targetLabel);
       expect(sections.taskHeader).not.toMatch(/Translate Chinese → Vietnamese/);
       expect(
         formatTranslationTaskHeader({
@@ -139,7 +142,7 @@ describe('pack prompts are language-pair driven', () => {
           styleLabel: 'balanced',
           range: 'chapter 1',
         }),
-      ).toContain(sourceName);
+      ).toContain(sourceLabel);
     });
   }
 });

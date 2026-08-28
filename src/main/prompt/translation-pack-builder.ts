@@ -1,11 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { PackMode } from '@shared/constants/pack-mode';
 import { isLocalContextPack, normalizePackMode } from '@shared/constants/pack-mode';
-import { resolveProjectSourceLanguage } from '../services/resolve-project-source-language';
-import {
-  DEFAULT_SOURCE_LANGUAGE,
-  DEFAULT_TARGET_LANGUAGE,
-} from '@shared/constants/language-profile';
 import {
   composeTranslationStyleRules,
   formatTranslationTaskHeader,
@@ -21,6 +16,7 @@ import type { DatabaseManager } from '../db/database-manager';
 import type { ChapterRow } from '../db/repositories/chapter-repository';
 import type { ParagraphRow } from '../db/repositories/paragraph-repository';
 import { buildBookProfile } from '../source-folder/book-profile-builder';
+import { resolveForProjectEdition } from '../services/translation-language-resolver';
 
 export interface BuildPackInput {
   projectId: string;
@@ -37,9 +33,12 @@ export interface BuildPackInput {
   packMode?: PackMode | 'slim' | 'hybrid' | 'fat';
   /** Unsynced hot deltas text (already formatted section body or empty). */
   hotMemoryOverride?: string;
-  /** Override pair for tests — otherwise read from project row. */
+  /** Override pair for tests — production resolves via TranslationLanguageResolver. */
   sourceLanguage?: string;
   targetLanguage?: string;
+  editionId?: string;
+  /** When source detection flagged embedded foreign material in the batch. */
+  sourceMixedLanguage?: boolean;
 }
 
 function hashPrompt(prompt: string): string {
@@ -80,6 +79,7 @@ function buildTaskHeaderFromChapters(
   chapters: ChapterRow[],
   sourceLanguage: string,
   targetLanguage: string,
+  sourceMixedLanguage?: boolean,
 ): string {
   const labels = chapters.map(chapterLabel);
   const range =
@@ -92,6 +92,7 @@ function buildTaskHeaderFromChapters(
       targetLanguage,
       styleLabel: style,
       range,
+      sourceMixedLanguage,
     }),
     'Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.',
   ].join('\n');
@@ -99,8 +100,8 @@ function buildTaskHeaderFromChapters(
 
 function buildCriticalRules(
   style: TranslationStyle,
-  contextRules: string[],
-  extraRules: string[] | undefined,
+  projectRules: string[],
+  editionRules: string[] | undefined,
   sourceLanguage: string,
   targetLanguage: string,
 ): string {
@@ -108,13 +109,10 @@ function buildCriticalRules(
     style,
     sourceLanguage,
     targetLanguage,
+    projectRules,
+    editionRules,
   });
-  const merged = [
-    ...styleRules,
-    ...contextRules,
-    ...(extraRules ?? []),
-  ];
-  const unique = [...new Set(merged.map((rule) => rule.trim()).filter(Boolean))];
+  const unique = [...new Set(styleRules.map((rule) => rule.trim()).filter(Boolean))];
   return ['## Critical Rules', ...unique.map((rule) => `- ${rule}`)].join('\n');
 }
 
@@ -299,17 +297,18 @@ export function buildTranslationPack(
 
   const projectRules = input.context.criticalProjectRules;
 
-  const project = db.projects.getById(input.projectId);
-  const editionId = project?.active_edition_id;
-  const editionRow = editionId ? db.translationEditions.getById(editionId) : null;
-  const sourceLanguage =
-    input.sourceLanguage ??
-    (project ? resolveProjectSourceLanguage(project) : DEFAULT_SOURCE_LANGUAGE);
-  const targetLanguage =
-    input.targetLanguage ??
-    editionRow?.target_language ??
-    project?.target_language ??
-    DEFAULT_TARGET_LANGUAGE;
+  const resolvedPair =
+    input.sourceLanguage && input.targetLanguage
+      ? {
+          sourceLanguage: input.sourceLanguage,
+          targetLanguage: input.targetLanguage,
+        }
+      : resolveForProjectEdition(db, {
+          projectId: input.projectId,
+          editionId: input.editionId,
+        });
+  const sourceLanguage = resolvedPair.sourceLanguage;
+  const targetLanguage = resolvedPair.targetLanguage;
 
   const sections: TranslationPackSections = {
     taskHeader: buildTaskHeaderFromChapters(
@@ -317,6 +316,7 @@ export function buildTranslationPack(
       chapters,
       sourceLanguage,
       targetLanguage,
+      input.sourceMixedLanguage,
     ),
     criticalRules: [
       bookProfile,
@@ -396,6 +396,7 @@ function buildTaskHeader(
   chapterNumbers: number[],
   sourceLanguage: string,
   targetLanguage: string,
+  sourceMixedLanguage?: boolean,
 ): string {
   const range =
     chapterNumbers.length === 1
@@ -407,6 +408,7 @@ function buildTaskHeader(
       targetLanguage,
       styleLabel: style,
       range,
+      sourceMixedLanguage,
     }),
     'Use ONLY the Local Context sections below (ContextSelector from SQLite). Do not invent terms, characters, or plot.',
   ].join('\n');
@@ -422,11 +424,12 @@ export function assemblePackSections(input: {
   sourceLines: string[];
   packMode?: PackMode;
   hotMemoryOverride?: string;
-  sourceLanguage?: string;
-  targetLanguage?: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  sourceMixedLanguage?: boolean;
 }): { sections: TranslationPackSections; prompt: string; baseContext: string; operationPrompt: string } {
-  const sourceLanguage = input.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE;
-  const targetLanguage = input.targetLanguage ?? DEFAULT_TARGET_LANGUAGE;
+  const sourceLanguage = input.sourceLanguage;
+  const targetLanguage = input.targetLanguage;
   const rules = input.context.criticalProjectRules.length
     ? input.context.criticalProjectRules
     : input.criticalRules;
@@ -436,6 +439,7 @@ export function assemblePackSections(input: {
       input.chapterNumbers,
       sourceLanguage,
       targetLanguage,
+      input.sourceMixedLanguage,
     ),
     criticalRules: [
       buildKnowledgePriorityRules(),

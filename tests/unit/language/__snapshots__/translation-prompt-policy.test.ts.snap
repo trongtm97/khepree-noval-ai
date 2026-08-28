@@ -1,0 +1,1155 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TranslationPromptPolicyResolver > snapshot ar → en > ar-en 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+Arabic source: gender and number agreement in the source should inform target wording.
+Religious or cultural formulas: translate faithfully; do not omit or modernize without source support.
+--- target ---
+English target: use natural contemporary prose unless the genre demands archaic register.
+Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+--- typography ---
+Source is RTL script: read names and formulas in source order; do not mirror incorrectly in target.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+--- pairOverrides ---
+
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+Arabic source: gender and number agreement in the source should inform target wording.
+Religious or cultural formulas: translate faithfully; do not omit or modernize without source support.
+English target: use natural contemporary prose unless the genre demands archaic register.
+Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+Source is RTL script: read names and formulas in source order; do not mirror incorrectly in target.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English."
+`;
+
+exports[`TranslationPromptPolicyResolver > snapshot de → fr > de-fr 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+Preserve explicit subjects and tense/aspect as stated in the source.
+Keep proper nouns and titles exact unless a locked target form exists.
+--- target ---
+French target: natural register and liaison-friendly phrasing; keep titles consistent.
+--- typography ---
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Français.
+--- pairOverrides ---
+
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+Preserve explicit subjects and tense/aspect as stated in the source.
+Keep proper nouns and titles exact unless a locked target form exists.
+French target: natural register and liaison-friendly phrasing; keep titles consistent.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Français."
+`;
+
+exports[`TranslationPromptPolicyResolver > snapshot en → ar > en-ar 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+English source: preserve tense, modality, and explicit references as written.
+--- target ---
+Arabic target: respect RTL flow and formal/informal register from context.
+--- typography ---
+Target is RTL: use right-to-left punctuation and reading order in the translation.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=arabic): follow Arabic-script punctuation conventions.
+--- pairOverrides ---
+
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+English source: preserve tense, modality, and explicit references as written.
+Arabic target: respect RTL flow and formal/informal register from context.
+Target is RTL: use right-to-left punctuation and reading order in the translation.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=arabic): follow Arabic-script punctuation conventions."
+`;
+
+exports[`TranslationPromptPolicyResolver > snapshot fr → de > fr-de 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+Preserve gender and agreement cues carried by the source wording.
+Keep titles, ranks, and formal address consistent with memory.
+--- target ---
+German target: preserve compound terminology; use natural German sentence structure.
+--- typography ---
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Deutsch.
+--- pairOverrides ---
+
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+Preserve gender and agreement cues carried by the source wording.
+Keep titles, ranks, and formal address consistent with memory.
+German target: preserve compound terminology; use natural German sentence structure.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Deutsch."
+`;
+
+exports[`TranslationPromptPolicyResolver > snapshot ja → en > ja-en 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+Japanese source: subjects may be omitted; do not invent pronouns when the source leaves identity ambiguous.
+Honorifics and speech level (-san, -sama, -kun, -chan, keigo) carry social meaning — preserve nuance.
+Preserve name order policy from locked terms (family/given).
+Onomatopoeia and affect particles: convey tone in the target without inventing plot.
+--- target ---
+English target: use natural contemporary prose unless the genre demands archaic register.
+Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+--- typography ---
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+--- pairOverrides ---
+ja→en: honorifics (-san, -sama, -kun, -chan): keep or gloss consistently per Project Terms; do not drop without reason.
+ja→en: preserve name order policy from locked terms (family/given).
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+Japanese source: subjects may be omitted; do not invent pronouns when the source leaves identity ambiguous.
+Honorifics and speech level (-san, -sama, -kun, -chan, keigo) carry social meaning — preserve nuance.
+Preserve name order policy from locked terms (family/given).
+Onomatopoeia and affect particles: convey tone in the target without inventing plot.
+English target: use natural contemporary prose unless the genre demands archaic register.
+Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+ja→en: honorifics (-san, -sama, -kun, -chan): keep or gloss consistently per Project Terms; do not drop without reason.
+ja→en: preserve name order policy from locked terms (family/given)."
+`;
+
+exports[`TranslationPromptPolicyResolver > snapshot ja → vi > ja-vi 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+Japanese source: subjects may be omitted; do not invent pronouns when the source leaves identity ambiguous.
+Honorifics and speech level (-san, -sama, -kun, -chan, keigo) carry social meaning — preserve nuance.
+Preserve name order policy from locked terms (family/given).
+Onomatopoeia and affect particles: convey tone in the target without inventing plot.
+--- target ---
+Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+Avoid English or Chinese sentence skeletons in Vietnamese output.
+--- typography ---
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+--- pairOverrides ---
+
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+Japanese source: subjects may be omitted; do not invent pronouns when the source leaves identity ambiguous.
+Honorifics and speech level (-san, -sama, -kun, -chan, keigo) carry social meaning — preserve nuance.
+Preserve name order policy from locked terms (family/given).
+Onomatopoeia and affect particles: convey tone in the target without inventing plot.
+Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+Avoid English or Chinese sentence skeletons in Vietnamese output.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it."
+`;
+
+exports[`TranslationPromptPolicyResolver > snapshot ko → en > ko-en 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+Korean source: speech levels and honorifics encode social distance — preserve relative status.
+Subjects may be omitted; do not invent pronouns when identity is ambiguous.
+Name and address forms must follow locked Project Terms and relationship memory.
+--- target ---
+English target: use natural contemporary prose unless the genre demands archaic register.
+Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+--- typography ---
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+--- pairOverrides ---
+
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+Korean source: speech levels and honorifics encode social distance — preserve relative status.
+Subjects may be omitted; do not invent pronouns when identity is ambiguous.
+Name and address forms must follow locked Project Terms and relationship memory.
+English target: use natural contemporary prose unless the genre demands archaic register.
+Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it."
+`;
+
+exports[`TranslationPromptPolicyResolver > snapshot ko → vi > ko-vi 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+Korean source: speech levels and honorifics encode social distance — preserve relative status.
+Subjects may be omitted; do not invent pronouns when identity is ambiguous.
+Name and address forms must follow locked Project Terms and relationship memory.
+--- target ---
+Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+Avoid English or Chinese sentence skeletons in Vietnamese output.
+--- typography ---
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+--- pairOverrides ---
+
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+Korean source: speech levels and honorifics encode social distance — preserve relative status.
+Subjects may be omitted; do not invent pronouns when identity is ambiguous.
+Name and address forms must follow locked Project Terms and relationship memory.
+Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+Avoid English or Chinese sentence skeletons in Vietnamese output.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it."
+`;
+
+exports[`TranslationPromptPolicyResolver > snapshot ru → vi > ru-vi 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+Russian source: aspect and case information should inform target phrasing where relevant.
+Patronymics and name variants: follow locked Project Terms.
+--- target ---
+Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+Avoid English or Chinese sentence skeletons in Vietnamese output.
+--- typography ---
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+--- pairOverrides ---
+
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+Russian source: aspect and case information should inform target phrasing where relevant.
+Patronymics and name variants: follow locked Project Terms.
+Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+Avoid English or Chinese sentence skeletons in Vietnamese output.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt."
+`;
+
+exports[`TranslationPromptPolicyResolver > snapshot vi → en > vi-en 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+Read the source for what it states; do not add unstated facts or clarifications.
+Preserve semantic ambiguity when the source leaves identity or reference unclear.
+--- target ---
+English target: use natural contemporary prose unless the genre demands archaic register.
+Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+--- typography ---
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+--- pairOverrides ---
+
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+Read the source for what it states; do not add unstated facts or clarifications.
+Preserve semantic ambiguity when the source leaves identity or reference unclear.
+English target: use natural contemporary prose unless the genre demands archaic register.
+Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English."
+`;
+
+exports[`TranslationPromptPolicyResolver > snapshot zh-Hans → en > zh-Hans-en 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+Simplified Chinese source: implicit subjects and aspect are common; do not over-explicitize.
+Treat idioms and chengyu by meaning; avoid literal calques unless locked terms require a form.
+Classical or cultivation titles: use locked Project Terms; do not freestyle readings.
+Segment names and titles per locked terms; do not merge or split han compounds arbitrarily.
+--- target ---
+English target: use natural contemporary prose unless the genre demands archaic register.
+Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+--- typography ---
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+--- pairOverrides ---
+
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+Simplified Chinese source: implicit subjects and aspect are common; do not over-explicitize.
+Treat idioms and chengyu by meaning; avoid literal calques unless locked terms require a form.
+Classical or cultivation titles: use locked Project Terms; do not freestyle readings.
+Segment names and titles per locked terms; do not merge or split han compounds arbitrarily.
+English target: use natural contemporary prose unless the genre demands archaic register.
+Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
+Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for English.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it."
+`;
+
+exports[`TranslationPromptPolicyResolver > snapshot zh-Hans → vi > zh-Hans-vi 1`] = `
+"--- universal ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+--- fidelity ---
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+--- genre ---
+
+--- source ---
+Simplified Chinese source: implicit subjects and aspect are common; do not over-explicitize.
+Treat idioms and chengyu by meaning; avoid literal calques unless locked terms require a form.
+Classical or cultivation titles: use locked Project Terms; do not freestyle readings.
+Segment names and titles per locked terms; do not merge or split han compounds arbitrarily.
+--- target ---
+Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+Avoid English or Chinese sentence skeletons in Vietnamese output.
+--- typography ---
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+--- pairOverrides ---
+zh→vi: prefer established Hán-Việt (Sino-Vietnamese) readings for names and terms when locked terms allow.
+zh→vi: keep classical / cultivation titles consistent with Project Terms; do not freestyle Hán-Việt.
+zh-Hans→vi: source is Simplified Chinese; do not invent Traditional variants in the target.
+--- rules ---
+Translate meaning faithfully into the target language.
+Preserve tone, intent, ambiguity, and narrative viewpoint.
+Do not add facts, explanations, or plot not present in the source or supplied context.
+Do not omit meaningful content.
+Produce natural target-language prose according to the selected fidelity profile.
+Locked terminology has absolute priority over model guesses.
+Preserve stable paragraph IDs exactly as given in Source.
+Output no commentary outside the required protocol sections.
+Do not mention being an AI or explain translation choices.
+Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+Primary detected source language is contextual guidance — not every token belongs to that language.
+When the source contains another language: understand it in context.
+Translate natural-language foreign content into the target when appropriate.
+Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+Preserve exact numbers when the source requires numeric fidelity.
+Preserve user-locked strings exactly.
+Do not over-generalize — normal prose in the target language should read naturally.
+By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+Unless a project rule explicitly requires preserving original source typography.
+Translation prose should normally use the target language's expected script.
+Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+Exactly one output record per source paragraph ID.
+Translation text may use normal target-language punctuation inside the line.
+Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+Do not repeat the source text in your response.
+Do not provide explanations or meta-commentary — protocol sections only.
+This reduces token usage and truncation risk.
+Balance accuracy and natural target-language readability.
+Preserve proper nouns via locked/active terms.
+Keep tone consistent with previous chapters.
+Simplified Chinese source: implicit subjects and aspect are common; do not over-explicitize.
+Treat idioms and chengyu by meaning; avoid literal calques unless locked terms require a form.
+Classical or cultivation titles: use locked Project Terms; do not freestyle readings.
+Segment names and titles per locked terms; do not merge or split han compounds arbitrarily.
+Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+Avoid English or Chinese sentence skeletons in Vietnamese output.
+Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+zh→vi: prefer established Hán-Việt (Sino-Vietnamese) readings for names and terms when locked terms allow.
+zh→vi: keep classical / cultivation titles consistent with Project Terms; do not freestyle Hán-Việt.
+zh-Hans→vi: source is Simplified Chinese; do not invent Traditional variants in the target."
+`;

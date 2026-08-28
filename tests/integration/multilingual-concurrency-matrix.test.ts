@@ -22,7 +22,7 @@ import {
   formatTranslationTaskHeader,
   resolveLanguagePairRules,
 } from '@shared/constants/translation-style-model';
-import { getLanguageProfile } from '@shared/constants/language-profile';
+import { formatAiLanguageIdentity, getLanguageProfile } from '@shared/constants/language-profile';
 import { assemblePackSections } from '@main/prompt/translation-pack-builder';
 import { buildMemoryContext } from '@main/memory/context-selector';
 import { toCharacterDto, toRelationshipDto } from '@main/services/memory-dto';
@@ -133,8 +133,11 @@ describe('MATRIX / MULTILINGUAL — language pairs (mock)', () => {
 
       expect(header).toContain('Source language:');
       expect(header).toContain('Target language:');
-      expect(header).toContain(sourceProfile.displayNameNative);
-      expect(header).toContain(targetProfile.displayNameNative);
+      expect(header).toContain(sourceProfile.internationalName);
+      expect(header).toContain(sourceProfile.nativeName);
+      expect(header).toContain(targetProfile.internationalName);
+      expect(header).toContain(targetProfile.nativeName);
+      expect(header).toContain(formatAiLanguageIdentity(source));
       expect(header).not.toMatch(LEAK_ZH_VI);
 
       const { sections } = assemblePackSections({
@@ -147,8 +150,8 @@ describe('MATRIX / MULTILINGUAL — language pairs (mock)', () => {
         targetLanguage: target,
       });
 
-      expect(sections.taskHeader).toContain(sourceProfile.displayNameNative);
-      expect(sections.taskHeader).toContain(targetProfile.displayNameNative);
+      expect(sections.taskHeader).toContain(formatAiLanguageIdentity(source));
+      expect(sections.taskHeader).toContain(formatAiLanguageIdentity(target));
       expect(sections.taskHeader).not.toMatch(LEAK_ZH_VI);
       expect(sections.outputProtocol).toContain('TARGET_LANGUAGE_TRANSLATION');
       expect(sections.outputProtocol).not.toMatch(/Vietnamese translation/i);

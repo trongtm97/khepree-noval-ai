@@ -1,4 +1,5 @@
 import type { LanguageProfile } from './language-profile';
+import { resolveLanguageSearchAlias } from './language-code-aliases';
 import {
   AI_SUPPORT_TIERS,
   REGION_GROUPS,
@@ -9,12 +10,12 @@ import {
 export { AI_SUPPORT_TIERS, REGION_GROUPS };
 export type { AiSupportTier, RegionGroup };
 
-/** UI format: English — English · en */
+/** UI format: international on line 1; native · code implied in stacked mode. */
 export function formatLanguagePickerLabel(profile: Pick<
   LanguageProfile,
   'internationalName' | 'nativeName' | 'code'
 >): string {
-  return `${profile.internationalName} — ${profile.nativeName} · ${profile.code}`;
+  return `${profile.internationalName}\n${profile.nativeName} · ${profile.code}`;
 }
 
 /** Stacked UI: international name + native · code on separate lines. */
@@ -45,12 +46,32 @@ export function normalizeSearchQuery(query: string): string {
   return query.trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
 }
 
+export const NOVELTRANS_VERIFICATION_LABELS_VI: Record<
+  import('./language-catalog-types').NovelTransVerification,
+  string
+> = {
+  VERIFIED: 'Đã xác minh',
+  UNTESTED: 'Chưa kiểm thử',
+  KNOWN_ISSUE: 'Đã biết lỗi',
+};
+
+export const PROVIDER_SUPPORT_LABELS_VI: Record<
+  import('./language-catalog-types').ProviderSupport,
+  string
+> = {
+  GEMINI_WEB_OFFICIAL: 'Gemini Web',
+  GEMINI_API_EXTENDED: 'Gemini API',
+  CATALOG_ONLY: 'Danh mục',
+};
+
 export function languageMatchesQuery(
   profile: LanguageProfile,
   query: string,
 ): boolean {
   const q = normalizeSearchQuery(query);
   if (!q) return true;
+  const aliasTarget = resolveLanguageSearchAlias(query);
+  if (aliasTarget === profile.code) return true;
   const haystack = [
     profile.code,
     profile.internationalName,
@@ -70,6 +91,11 @@ export function searchLanguageProfiles(
   query: string,
 ): LanguageProfile[] {
   if (!query.trim()) return profiles;
+  const aliasTarget = resolveLanguageSearchAlias(query);
+  if (aliasTarget) {
+    const hit = profiles.find((p) => p.code === aliasTarget);
+    if (hit) return [hit];
+  }
   return profiles.filter((p) => languageMatchesQuery(p, query));
 }
 

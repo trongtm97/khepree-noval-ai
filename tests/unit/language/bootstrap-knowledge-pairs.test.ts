@@ -31,16 +31,15 @@ function prepFor(sourceLanguage: string, targetLanguage: string): BootstrapLocal
 }
 
 describe('bootstrap / preprocess language pairs', () => {
-  it.each(PAIRS)('bootstrap prompt %s → %s uses SOURCE/TARGET_LANGUAGE', (source, target) => {
+  it.each(PAIRS)('bootstrap prompt %s → %s uses edition profile headers', (source, target) => {
     const prompt = buildBootstrapAnalysisPrompt(prepFor(source, target));
-    expect(prompt).toContain(`SOURCE_LANGUAGE:`);
-    expect(prompt).toContain(`TARGET_LANGUAGE:`);
+    expect(prompt).toContain('Source:');
+    expect(prompt).toContain('Target edition:');
     expect(prompt).toContain(`(${source})`);
     expect(prompt).toContain(`(${target})`);
-    expect(prompt).toContain('preferred_target');
-    expect(prompt).toContain('sourceText');
-    expect(prompt).toContain('targetText');
-    expect(prompt).not.toMatch(/Chinese→Vietnamese|Chinese → Vietnamese|preferred_vi/i);
+    expect(prompt).toContain('canonical_source_name');
+    expect(prompt).toContain('preferred_target_name');
+    expect(prompt).not.toMatch(/"preferred_vi"/);
     expect(prompt).not.toMatch(/Trung\s*→\s*Việt/i);
   });
 
@@ -53,21 +52,19 @@ describe('bootstrap / preprocess language pairs', () => {
       sourceLanguage: source,
       targetLanguage: target,
     });
-    expect(prompt).toContain(`SOURCE_LANGUAGE:`);
-    expect(prompt).toContain(`TARGET_LANGUAGE:`);
+    expect(prompt).toContain('Source:');
+    expect(prompt).toContain('Target edition:');
     expect(prompt).toContain(`(${source})`);
     expect(prompt).toContain(`(${target})`);
-    expect(prompt).toContain('Source language:');
-    expect(prompt).toContain('Target language:');
-    expect(prompt).toContain('Preferred target name');
-    expect(prompt).not.toMatch(/Chinese → Vietnamese|中文→Tiếng Việt|preferred_vi|Tên Việt/i);
+    expect(prompt).toContain('preferred_target_name');
+    expect(prompt).not.toMatch(/"preferred_vi"/);
     expect(prompt).not.toMatch(/Trung\s*→\s*Việt/i);
   });
 
-  it('zh→vi regression: prompt still names Simplified Chinese and Vietnamese', () => {
+  it('zh→vi regression: prompt still names language codes in profile headers', () => {
     const prompt = buildBootstrapAnalysisPrompt(prepFor('zh-Hans', 'vi'));
-    expect(prompt).toMatch(/简体中文|Chinese|zh-Hans/i);
-    expect(prompt).toMatch(/Tiếng Việt|Vietnamese|\(vi\)/i);
+    expect(prompt).toMatch(/zh-Hans/i);
+    expect(prompt).toMatch(/\(vi\)/i);
   });
 });
 
@@ -90,7 +87,7 @@ describe('preferred_vi → preferred_target adapter', () => {
     expect(parsed.terms[0].preferred_target).toBe('Trúc Cơ');
   });
 
-  it('accepts structured sourceText/targetText + languages', () => {
+  it('accepts structured sourceText/targetText at parse boundary (legacy)', () => {
     const parsed = parseBootstrapAnalysisOutput(
       JSON.stringify({
         characters: [],

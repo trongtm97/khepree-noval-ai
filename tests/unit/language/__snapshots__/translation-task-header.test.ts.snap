@@ -1,0 +1,251 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`formatAiLanguageIdentity > snapshot labels for catalog codes 1`] = `
+{
+  "ar": "Arabic / العربية (ar)",
+  "bg": "Bulgarian / Български (bg)",
+  "bn": "Bengali / বাংলা (bn)",
+  "fa": "Persian / فارسی (fa)",
+  "fil": "Filipino / Filipino (fil)",
+  "he": "Hebrew / עברית (he)",
+  "hi": "Hindi / हिन्दी (hi)",
+  "jv": "Javanese / Basa Jawa (jv)",
+  "sr-Cyrl": "Serbian (Cyrillic) / Српски (sr-Cyrl)",
+  "sr-Latn": "Serbian (Latin) / Srpski (sr-Latn)",
+  "th": "Thai / ไทย (th)",
+  "uk": "Ukrainian / Українська (uk)",
+  "ur": "Urdu / اردو (ur)",
+  "zh-Hans": "Chinese (Simplified) / 简体中文 (zh-Hans)",
+  "zh-Hant": "Chinese (Traditional) / 繁體中文 (zh-Hant)",
+}
+`;
+
+exports[`formatTranslationTaskHeader > snapshot task headers for catalog codes → en 1`] = `
+{
+  "ar": "## Task
+Source language:
+Arabic / العربية (ar)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Arabic / العربية (ar) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "bg": "## Task
+Source language:
+Bulgarian / Български (bg)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Bulgarian / Български (bg) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "bn": "## Task
+Source language:
+Bengali / বাংলা (bn)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Bengali / বাংলা (bn) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "fa": "## Task
+Source language:
+Persian / فارسی (fa)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Persian / فارسی (fa) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "fil": "## Task
+Source language:
+Filipino / Filipino (fil)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Filipino / Filipino (fil) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "he": "## Task
+Source language:
+Hebrew / עברית (he)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Hebrew / עברית (he) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "hi": "## Task
+Source language:
+Hindi / हिन्दी (hi)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Hindi / हिन्दी (hi) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "jv": "## Task
+Source language:
+Javanese / Basa Jawa (jv)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Javanese / Basa Jawa (jv) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "sr-Cyrl": "## Task
+Source language:
+Serbian (Cyrillic) / Српски (sr-Cyrl)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Serbian (Cyrillic) / Српски (sr-Cyrl) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "sr-Latn": "## Task
+Source language:
+Serbian (Latin) / Srpski (sr-Latn)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Serbian (Latin) / Srpski (sr-Latn) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "th": "## Task
+Source language:
+Thai / ไทย (th)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Thai / ไทย (th) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "uk": "## Task
+Source language:
+Ukrainian / Українська (uk)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Ukrainian / Українська (uk) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "ur": "## Task
+Source language:
+Urdu / اردو (ur)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Urdu / اردو (ur) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "zh-Hans": "## Task
+Source language:
+Chinese (Simplified) / 简体中文 (zh-Hans)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Chinese (Simplified) / 简体中文 (zh-Hans) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+  "zh-Hant": "## Task
+Source language:
+Chinese (Traditional) / 繁體中文 (zh-Hant)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Chinese (Traditional) / 繁體中文 (zh-Hant) → English / English (en)
+Range: chapter 1
+Preserve every paragraph ID from Source exactly.",
+}
+`;

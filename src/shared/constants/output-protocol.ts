@@ -1,6 +1,6 @@
 /** Output protocol tags + QA verdicts (Phase 13). */
 
-export const OUTPUT_PROTOCOL_VERSION = 1;
+export const OUTPUT_PROTOCOL_VERSION = 2;
 
 export const OUTPUT_SECTION_TAGS = [
   'TRANSLATION',
@@ -46,6 +46,12 @@ export const QA_ISSUE_CODES = [
   'invalid_term_delta',
   'invalid_memory_delta',
   'section_missing',
+  'target_language_mismatch',
+  'source_leakage',
+  'punctuation_style',
+  'edition_term_leak',
+  'address_inconsistency',
+  'style_suggestion',
 ] as const;
 
 export type QaIssueCode = (typeof QA_ISSUE_CODES)[number];

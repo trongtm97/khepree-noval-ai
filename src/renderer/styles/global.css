@@ -597,6 +597,17 @@ body {
   flex-shrink: 0;
 }
 
+.language-picker-verify {
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.language-picker-verify.is-verified {
+  color: var(--status-success, #2f9e44);
+}
+
 .language-picker-empty {
   padding: var(--space-3);
   margin: 0;

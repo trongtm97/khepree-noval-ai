@@ -35,6 +35,11 @@ import {
   setParallelWavesEnabled,
 } from '../jobs/wave-service';
 import { resolveActiveEditionId } from './edition-service';
+import { resolveForProjectEdition } from './translation-language-resolver';
+import {
+  buildRepairTranslationContext,
+  repairContextSnapshot,
+} from '../jobs/repair-translation-context';
 import { logger } from '../logging/logger';
 import { isGeminiSoftErrorText } from '@shared/utils/gemini-soft-error';
 import { QaResultSchema, ParsedBatchResultSchema } from '@shared/schemas/output-protocol';
@@ -619,6 +624,28 @@ export class JobService {
     });
 
     this.db.jobs.updateState(job.id, 'RUNNING');
+
+    const pair = resolveForProjectEdition(this.db, {
+      projectId: input.projectId,
+    });
+    this.db.jobs.updateProgress(
+      job.id,
+      JSON.stringify(
+        repairContextSnapshot(
+          buildRepairTranslationContext({
+            projectId: input.projectId,
+            editionId: pair.editionId,
+            sourceLanguage: pair.sourceLanguage,
+            targetLanguage: pair.targetLanguage,
+            stylePolicyHash: input.initialPrompt
+              ? hashPrompt(input.initialPrompt)
+              : hashPrompt(input.initialRawResponse),
+            knowledgeVersion: null,
+            lockedTerms: input.lockedTerms ?? [],
+          }),
+        ),
+      ),
+    );
 
     return runRepairLoop(
       {

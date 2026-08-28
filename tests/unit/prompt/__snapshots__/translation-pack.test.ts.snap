@@ -25,25 +25,70 @@ If conflict:
 Do not let general knowledge override locked project terms.
 
 ## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
 - Balance accuracy and natural target-language readability.
 - Preserve proper nouns via locked/active terms.
 - Keep tone consistent with previous chapters.
-- Hán-Việt terminology: prefer established Sino-Vietnamese readings for names/terms when locked terms allow.
-- Keep classical / cultivation titles consistent with Project Terms; do not freestyle Hán-Việt.
-- Source is Simplified Chinese; do not invent Traditional variants in the target.
+- Simplified Chinese source: implicit subjects and aspect are common; do not over-explicitize.
+- Treat idioms and chengyu by meaning; avoid literal calques unless locked terms require a form.
+- Classical or cultivation titles: use locked Project Terms; do not freestyle readings.
+- Segment names and titles per locked terms; do not merge or split han compounds arbitrarily.
+- Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+- Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+- Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+- Avoid English or Chinese sentence skeletons in Vietnamese output.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+- Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+- zh→vi: prefer established Hán-Việt (Sino-Vietnamese) readings for names and terms when locked terms allow.
+- zh→vi: keep classical / cultivation titles consistent with Project Terms; do not freestyle Hán-Việt.
+- zh-Hans→vi: source is Simplified Chinese; do not invent Traditional variants in the target.
 - Keep locked names exact."
 `;
 
 exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > full-prompt 1`] = `
 "## Task
 Source language:
-简体中文
+Chinese (Simplified) / 简体中文 (zh-Hans)
+
+Detected from source content.
 
 Target language:
-Tiếng Việt
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
 
 Translate:
-简体中文 → Tiếng Việt
+Chinese (Simplified) / 简体中文 (zh-Hans) → Vietnamese / Tiếng Việt (vi)
 
 Style: balanced
 Range: chapter 451
@@ -60,12 +105,53 @@ If conflict:
 Do not let general knowledge override locked project terms.
 
 ## Critical Rules
+- Translate meaning faithfully into the target language.
+- Preserve tone, intent, ambiguity, and narrative viewpoint.
+- Do not add facts, explanations, or plot not present in the source or supplied context.
+- Do not omit meaningful content.
+- Produce natural target-language prose according to the selected fidelity profile.
+- Locked terminology has absolute priority over model guesses.
+- Preserve stable paragraph IDs exactly as given in Source.
+- Output no commentary outside the required protocol sections.
+- Do not mention being an AI or explain translation choices.
+- Use Local Context (characters, relationships, story state, terms) when present; do not contradict locked facts.
+- Primary detected source language is contextual guidance — not every token belongs to that language.
+- When the source contains another language: understand it in context.
+- Translate natural-language foreign content into the target when appropriate.
+- Preserve proper names, brands, URLs, code, and identifiers as non-translatable when appropriate.
+- Follow locked Project Terms; do not "correct" foreign phrases without evidence from context or terms.
+- Never translate or modify: paragraph IDs, URLs, file paths, code identifiers, markup control tokens, structured placeholders.
+- Preserve exact numbers when the source requires numeric fidelity.
+- Preserve user-locked strings exactly.
+- Do not over-generalize — normal prose in the target language should read naturally.
+- By default, adapt punctuation and quote style to the target language (targetProfile.quoteStyle, targetProfile.punctuationProfile).
+- Unless a project rule explicitly requires preserving original source typography.
+- Translation prose should normally use the target language's expected script.
+- Exceptions: proper names, locked terms, foreign quotations intentionally preserved, code, and URLs.
+- Exactly one output record per source paragraph ID.
+- Translation text may use normal target-language punctuation inside the line.
+- Because the parser is line-oriented: each translation MUST be one physical output line per ID.
+- If the source contains internal line breaks, they were normalized before prompt building — do not invent new paragraph IDs.
+- Do not repeat the source text in your response.
+- Do not provide explanations or meta-commentary — protocol sections only.
+- This reduces token usage and truncation risk.
 - Balance accuracy and natural target-language readability.
 - Preserve proper nouns via locked/active terms.
 - Keep tone consistent with previous chapters.
-- Hán-Việt terminology: prefer established Sino-Vietnamese readings for names/terms when locked terms allow.
-- Keep classical / cultivation titles consistent with Project Terms; do not freestyle Hán-Việt.
-- Source is Simplified Chinese; do not invent Traditional variants in the target.
+- Simplified Chinese source: implicit subjects and aspect are common; do not over-explicitize.
+- Treat idioms and chengyu by meaning; avoid literal calques unless locked terms require a form.
+- Classical or cultivation titles: use locked Project Terms; do not freestyle readings.
+- Segment names and titles per locked terms; do not merge or split han compounds arbitrarily.
+- Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
+- Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
+- Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
+- Avoid English or Chinese sentence skeletons in Vietnamese output.
+- Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
+- Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Tiếng Việt.
+- Source is CJK-dense: do not insert spaces inside names or terms unless the target language requires it.
+- zh→vi: prefer established Hán-Việt (Sino-Vietnamese) readings for names and terms when locked terms allow.
+- zh→vi: keep classical / cultivation titles consistent with Project Terms; do not freestyle Hán-Việt.
+- zh-Hans→vi: source is Simplified Chinese; do not invent Traditional variants in the target.
 - Keep locked names exact.
 
 ## Active Characters
@@ -95,7 +181,9 @@ MC arrives at Qingyun.
 [C000451:P000002] 他看见赵灵儿站在山门前。
 
 ## Output Protocol
-Return EXACTLY these sections in order. No markdown fences inside tags.
+Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
@@ -109,15 +197,30 @@ Return EXACTLY these sections in order. No markdown fences inside tags.
 []
 </MEMORY_DELTA>
 
-Rules:
-- TRANSLATION: one line per source paragraph; ID must match source exactly; text in the target language only.
-- TERM_DELTA: JSON array of discover|update|confirm objects. Use [] only when the batch truly has no new names/terms.
-- MEMORY_DELTA: JSON array of upsert|delete|relationship|story_state objects. Use [] only when nothing new about cast/world/plot.
-- Opening chapters should extract main cast and key terms when they appear.
-- When a named character appears for the first time, emit MEMORY_DELTA upsert with category "character" and object value { "translatedName": "..." } (not a bare string) and/or a relationship entry — empty MEMORY_DELTA while new cast appears is incorrect.
-- When a proper noun / technique / place name is newly translated, emit TERM_DELTA discover — empty TERM_DELTA while such names appear is incorrect.
-- Do not skip paragraph IDs. Do not invent IDs.
-- Locked/active terms MUST be used exactly as given."
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
 `;
 
 exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > hot-memory 1`] = `
@@ -141,13 +244,17 @@ MC arrives at Qingyun.
 exports[`TranslationPackBuilder snapshots > keeps balanced pack structure stable > task-header 1`] = `
 "## Task
 Source language:
-简体中文
+Chinese (Simplified) / 简体中文 (zh-Hans)
+
+Detected from source content.
 
 Target language:
-Tiếng Việt
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
 
 Translate:
-简体中文 → Tiếng Việt
+Chinese (Simplified) / 简体中文 (zh-Hans) → Vietnamese / Tiếng Việt (vi)
 
 Style: balanced
 Range: chapter 451

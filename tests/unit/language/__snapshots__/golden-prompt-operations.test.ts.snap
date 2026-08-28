@@ -1,0 +1,169 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Golden prompt operations — all prompt types preserve pair > CONTINUATION ar-fr > golden-continuation-ar-fr 1`] = `
+"Source language:
+Arabic / العربية (ar)
+
+Detected from source content.
+
+Target language:
+French / Français (fr)
+
+This is the required output language.
+
+Translate:
+Arabic / العربية (ar) → French / Français (fr)
+Continue from [C000001:P000002].
+Do not repeat paragraphs already translated.
+Return only the remaining part.
+Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
+Do not renumber paragraph IDs — use exact source IDs.
+Translations must be in the target language.
+Source paragraphs (remaining):
+[C000001:P000002] source two"
+`;
+
+exports[`Golden prompt operations — all prompt types preserve pair > CONTINUATION ja-en > golden-continuation-ja-en 1`] = `
+"Source language:
+Japanese / 日本語 (ja)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Japanese / 日本語 (ja) → English / English (en)
+Continue from [C000001:P000002].
+Do not repeat paragraphs already translated.
+Return only the remaining part.
+Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
+Do not renumber paragraph IDs — use exact source IDs.
+Translations must be in the target language.
+Source paragraphs (remaining):
+[C000001:P000002] source two"
+`;
+
+exports[`Golden prompt operations — all prompt types preserve pair > CONTINUATION zh-Hans-vi > golden-continuation-zh-Hans-vi 1`] = `
+"Source language:
+Chinese (Simplified) / 简体中文 (zh-Hans)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Chinese (Simplified) / 简体中文 (zh-Hans) → Vietnamese / Tiếng Việt (vi)
+Continue from [C000001:P000002].
+Do not repeat paragraphs already translated.
+Return only the remaining part.
+Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
+Do not renumber paragraph IDs — use exact source IDs.
+Translations must be in the target language.
+Source paragraphs (remaining):
+[C000001:P000002] source two"
+`;
+
+exports[`Golden prompt operations — all prompt types preserve pair > REPAIR ar-fr > golden-repair-ar-fr 1`] = `
+"Source language:
+Arabic / العربية (ar)
+
+Detected from source content.
+
+Target language:
+French / Français (fr)
+
+This is the required output language.
+
+Translate:
+Arabic / العربية (ar) → French / Français (fr)
+
+Previous response was missing translations for these paragraph IDs:
+[C000001:P000002]
+
+### Neighbor source (context only — do NOT re-translate)
+[C000001:P000001] source one
+
+### Missing source
+[C000001:P000002] source two
+
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>"
+`;
+
+exports[`Golden prompt operations — all prompt types preserve pair > REPAIR ja-en > golden-repair-ja-en 1`] = `
+"Source language:
+Japanese / 日本語 (ja)
+
+Detected from source content.
+
+Target language:
+English / English (en)
+
+This is the required output language.
+
+Translate:
+Japanese / 日本語 (ja) → English / English (en)
+
+Previous response was missing translations for these paragraph IDs:
+[C000001:P000002]
+
+### Neighbor source (context only — do NOT re-translate)
+[C000001:P000001] source one
+
+### Missing source
+[C000001:P000002] source two
+
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>"
+`;
+
+exports[`Golden prompt operations — all prompt types preserve pair > REPAIR zh-Hans-vi > golden-repair-zh-Hans-vi 1`] = `
+"Source language:
+Chinese (Simplified) / 简体中文 (zh-Hans)
+
+Detected from source content.
+
+Target language:
+Vietnamese / Tiếng Việt (vi)
+
+This is the required output language.
+
+Translate:
+Chinese (Simplified) / 简体中文 (zh-Hans) → Vietnamese / Tiếng Việt (vi)
+
+Previous response was missing translations for these paragraph IDs:
+[C000001:P000002]
+
+### Neighbor source (context only — do NOT re-translate)
+[C000001:P000001] source one
+
+### Missing source
+[C000001:P000002] source two
+
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>"
+`;

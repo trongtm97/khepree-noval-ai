@@ -75,6 +75,8 @@ export function buildLanguageProfile(seed: LanguageCatalogSeed): LanguageProfile
     script: seed.script,
     direction: seed.direction,
     regionGroup: seed.regionGroup,
+    providerSupport: seed.providerSupport,
+    novelTransVerification: seed.novelTransVerification,
     aiSupportTier: seed.aiSupportTier,
     segmentationStrategy: segmentationForScript(seed.script),
     quoteStyle: quoteStyleForScript(seed.script),

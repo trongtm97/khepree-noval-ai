@@ -120,12 +120,11 @@ function candidateAsMatchTerm(
   };
 }
 
-function loadTermsForPack(db: DatabaseManager, projectId: string): TermRow[] {
-  const project = db.projects.getById(projectId);
-  const pair = {
-    sourceLanguage: project?.source_language ?? 'zh-Hans',
-    targetLanguage: project?.target_language ?? 'vi',
-  };
+function loadTermsForPack(
+  db: DatabaseManager,
+  projectId: string,
+  pair: { sourceLanguage: string; targetLanguage: string },
+): TermRow[] {
   const vaultRows = db.terms.listForMatching({ projectId, ...pair });
   const vaultSources = new Set(
     vaultRows.map((row) => row.source_text ?? row.source_simplified),
@@ -187,7 +186,11 @@ export function buildMemoryContext(
     input.recentWindow,
   );
 
-  const termRows = loadTermsForPack(db, input.projectId);
+  const editionPair = {
+    sourceLanguage: project?.source_language ?? 'zh-Hans',
+    targetLanguage: editionRow?.target_language ?? project?.target_language ?? 'vi',
+  };
+  const termRows = loadTermsForPack(db, input.projectId, editionPair);
   const termIndex = buildTermMatchIndex(termRows, {
     sourceLanguage: project?.source_language,
   });

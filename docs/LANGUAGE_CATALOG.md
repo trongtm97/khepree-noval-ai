@@ -1,12 +1,26 @@
 # World Language Catalog
 
-NovelTrans Studio uses a **World Language Catalog** — an extensible registry of BCP-47 / ISO 639-1 language profiles used for project pairs, prompts, text adapters, and UI pickers.
+NovelTrans Studio uses a **World Language Catalog** — an extensible registry of BCP-47 / ISO 639-1 language profiles.
+
+**Last audit:** 2026-08-29 — see `docs/LANGUAGE_SUPPORT_AUDIT_2026.md`
 
 ## Important disclaimer
 
-**Language presence in the catalog ≠ guaranteed identical translation quality.**
+**Catalog presence ≠ guaranteed translation quality.**
 
-Every language can be selected, but NovelTrans does not claim equal output quality across all pairs. Support tiers describe *workflow verification*, not literary quality.
+UI wording: *Ngôn ngữ có thể sử dụng* — not “Gemini dịch hoàn hảo tất cả ngôn ngữ.”
+
+## Two support dimensions (since 2026-08-29)
+
+| Field | Values | Meaning |
+|-------|--------|---------|
+| `providerSupport` | `GEMINI_WEB_OFFICIAL`, `GEMINI_API_EXTENDED`, `CATALOG_ONLY` | Google/provider UI availability |
+| `novelTransVerification` | `VERIFIED`, `UNTESTED`, `KNOWN_ISSUE` | NovelTrans workflow evidence |
+
+`aiSupportTier` is **deprecated** (derived from `providerSupport` for backward compatibility).
+
+Official Gemini Web list: `src/shared/constants/gemini-web-official-2026.ts`  
+Source: https://support.google.com/gemini/answer/13575153
 
 ## Profile fields
 
@@ -21,7 +35,9 @@ Each `LanguageProfile` includes:
 | `script` | BCP-47 script subtag (open string: `Latn`, `Deva`, `Arab`, …) |
 | `direction` | `ltr` or `rtl` — drives editor `dir` attribute |
 | `regionGroup` | Browse group in language picker |
-| `aiSupportTier` | AI workflow tier (see below) |
+| `providerSupport` | Provider availability tier |
+| `novelTransVerification` | NovelTrans QA evidence |
+| `aiSupportTier` | *(deprecated)* derived tier |
 | `segmentationStrategy` | Text adapter hint (`cjk_char`, `whitespace`, `thai`, `mixed`) |
 | `quoteStyle` / `punctuationProfile` | Typographic defaults |
 | `supportsTransliteration` | Whether romanization helpers apply |
@@ -29,13 +45,24 @@ Each `LanguageProfile` includes:
 ### UI display format
 
 ```
-English — English · en
-Japanese — 日本語 · ja
-Arabic — العربية · ar
-Chinese (Simplified) — 简体中文 · zh-Hans
+Japanese
+日本語 · ja
 ```
 
-## AI support tiers
+Verification: `✓ Đã xác minh` or `○ Chưa kiểm thử` (tooltip explains NovelTrans has not fully tested the workflow).
+
+## Aliases
+
+| Map | File |
+|-----|------|
+| `LANGUAGE_CODE_ALIASES` | `language-code-aliases.ts` — persistence (`jw→jv`, `iw→he`, `in→id`) |
+| `LANGUAGE_SEARCH_ALIASES` | picker search (`farsi→fa`, `jw→jv`) |
+| `LEGACY_LANGUAGE_CODE_MAP` | `language-profile.ts` — ISO 639-2/3, zh variants |
+
+- **Javanese:** display `jv` only; `jw` is alias.
+- **Filipino / Tagalog:** `fil` (Filipino), `tl` (Tagalog). Migration `040` maps legacy `tl` (Filipino) → `fil`.
+
+## AI support tiers (deprecated)
 
 | Tier | Meaning |
 |------|---------|

@@ -35,6 +35,11 @@ import {
   readRepairChannelFromProgress,
   type RepairChannelContext,
 } from './repair-channel-context';
+import {
+  collectNeighborTargetTranslations,
+  lastAcceptedTargetParagraphs,
+  requireRepairTranslationContext,
+} from './repair-translation-context';
 
 export interface RepairSendRequest {
   jobId: string;
@@ -210,11 +215,14 @@ export async function runRepairLoop(
       }
 
       deps.db.jobs.updateState(input.jobId, 'QA');
+      const qaLang = resolveQaLanguagePair(deps.db, input.jobId);
       let qa = runLocalQa({
         parsed,
         sourceParagraphIds: input.sourceParagraphIds,
         sourceParagraphs,
         lockedTerms: input.lockedTerms,
+        sourceLanguage: qaLang?.sourceLanguage,
+        targetLanguage: qaLang?.targetLanguage,
       });
 
       // Multi-chunk merges often leave duplicate/unknown IDs → MANUAL_REVIEW.
@@ -234,6 +242,8 @@ export async function runRepairLoop(
             sourceParagraphIds: input.sourceParagraphIds,
             sourceParagraphs,
             lockedTerms: input.lockedTerms,
+            sourceLanguage: qaLang?.sourceLanguage,
+            targetLanguage: qaLang?.targetLanguage,
           });
         }
       }
@@ -501,6 +511,8 @@ export async function runRepairLoop(
 
       repairRound += 1;
       deps.db.jobs.updateState(input.jobId, 'REPAIRING');
+      const repairCtx = requireRepairTranslationContext(deps.db, input.jobId);
+      const targetIdsForContext = repairTargetParagraphIds(reason, qa);
       const plan = buildRepairPlan({
         reason,
         qa,
@@ -509,10 +521,31 @@ export async function runRepairLoop(
         lockedTermHints: (input.lockedTerms ?? []).map((t) => ({
           source: t.source,
           preferred: t.preferred,
-          paragraphIds: [],
+          paragraphIds: qa.errors
+            .filter(
+              (e) =>
+                e.termSource === t.source &&
+                (e.code === 'locked_term_missing' ||
+                  e.code === 'locked_term_forbidden_variant' ||
+                  e.code === 'edition_term_leak'),
+            )
+            .map((e) => e.paragraphId)
+            .filter((id): id is string => Boolean(id)),
         })),
-        sourceLanguage: deps.db.projects.getById(input.projectId)?.source_language,
-        targetLanguage: deps.db.projects.getById(input.projectId)?.target_language,
+        sourceLanguage: repairCtx.sourceLanguage,
+        targetLanguage: repairCtx.targetLanguage,
+        editionId: repairCtx.editionId,
+        neighborTargetTranslations: collectNeighborTargetTranslations(
+          input.batchParagraphs,
+          targetIdsForContext,
+          lastParsed?.translations ?? [],
+        ),
+        continuationTargetContext: lastAcceptedTargetParagraphs(
+          input.sourceParagraphIds,
+          lastParsed?.translations ?? [],
+          2,
+        ),
+        repairContext: repairCtx,
       });
 
       persistProgress(deps.db, input.jobId, {
@@ -554,8 +587,9 @@ export async function runRepairLoop(
         const usedChannel = sent.channel ?? inherited;
         if (shouldMergePartialRepair(plan, input.batchParagraphs.length)) {
           const repairParsed = parser.parse(sent.rawResponse);
+          const baseTranslations = (lastParsed ?? parsed).translations;
           const mergedTranslations = mergeRepairTranslations(
-            lastParsed.translations,
+            baseTranslations,
             repairParsed.translations,
             input.sourceParagraphIds,
           );
@@ -574,15 +608,16 @@ export async function runRepairLoop(
           );
         } else if (plan.mode === 'continuation') {
           const contParsed = parser.parse(sent.rawResponse);
+          const baseTranslations = (lastParsed ?? parsed).translations;
           const mergedTranslations = mergeTranslationsByParagraphId(
-            lastParsed.translations,
+            baseTranslations,
             contParsed.translations,
             input.sourceParagraphIds,
           );
           raw = buildMergedTranslationProtocol(
             mergedTranslations,
-            [...lastParsed.termDeltas, ...contParsed.termDeltas],
-            [...lastParsed.memoryDeltas, ...contParsed.memoryDeltas],
+            [...(lastParsed ?? parsed).termDeltas, ...contParsed.termDeltas],
+            [...(lastParsed ?? parsed).memoryDeltas, ...contParsed.memoryDeltas],
           );
         }
         if (isGeminiSoftErrorText(raw)) {
@@ -680,7 +715,9 @@ export function shouldMergePartialRepair(
   plan: RepairPromptPlan,
   batchParagraphCount: number,
 ): boolean {
-  if (plan.mode === 'deltas_only' || !plan.retranslate) return false;
+  if (plan.mode === 'deltas_only' || plan.mode === 'protocol_recovery' || !plan.retranslate) {
+    return false;
+  }
   if (plan.mode === 'continuation') return true;
   if (
     plan.mode === 'malformed_full' &&
@@ -704,6 +741,21 @@ function nextAttemptNumber(db: DatabaseManager, jobId: string): number {
   const attempts = db.jobs.listAttempts(jobId);
   if (attempts.length === 0) return 1;
   return Math.max(...attempts.map((a) => a.attempt_number)) + 1;
+}
+
+function resolveQaLanguagePair(
+  db: DatabaseManager,
+  jobId: string,
+): { sourceLanguage: string; targetLanguage: string } | null {
+  try {
+    const ctx = requireRepairTranslationContext(db, jobId);
+    return {
+      sourceLanguage: ctx.sourceLanguage,
+      targetLanguage: ctx.targetLanguage,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function persistProgress(
@@ -791,6 +843,29 @@ function toAttemptDto(row: {
     startedAt: row.started_at,
     completedAt: row.completed_at,
   };
+}
+
+function repairTargetParagraphIds(
+  reason: string | null,
+  qa: QaResult,
+): string[] {
+  if (reason === 'EMPTY_PARAGRAPH') return [...qa.emptyParagraphIds];
+  if (reason === 'CORRUPT_PARAGRAPH') return [...qa.corruptParagraphIds];
+  if (reason === 'TERM_VIOLATION') {
+    return [
+      ...new Set(
+        qa.errors
+          .filter(
+            (e) =>
+              e.code === 'locked_term_missing' ||
+              e.code === 'locked_term_forbidden_variant',
+          )
+          .map((e) => e.paragraphId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+  }
+  return [...qa.missingParagraphIds];
 }
 
 /** Test helper — create a synthetic job id without DB when needed. */

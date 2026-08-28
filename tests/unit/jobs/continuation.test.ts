@@ -17,6 +17,7 @@ const IDS = Array.from(
   { length: 10 },
   (_, i) => `[C000001:P${String(i + 1).padStart(6, '0')}]`,
 );
+const LANG_PAIR = { sourceLanguage: 'zh-Hans', targetLanguage: 'vi' };
 
 function partialProtocol(untilIndex: number): string {
   const lines = IDS.slice(0, untilIndex + 1).map(
@@ -84,6 +85,7 @@ describe('continuation', () => {
       fromParagraphId: IDS[3],
       batchParagraphs,
       remainingParagraphIds: IDS.slice(3),
+      ...LANG_PAIR,
     });
     expect(prompt).toContain(`Continue from ${IDS[3]}`);
     expect(prompt).toContain('Do not repeat paragraphs already translated');
@@ -136,6 +138,7 @@ describe('continuation', () => {
       batchParagraphs,
       sourceParagraphIds: IDS,
       initialRaw,
+      ...LANG_PAIR,
       maxAttempts: 2,
       persistPartial,
       sendContinuation: () => {
@@ -161,6 +164,7 @@ describe('continuation', () => {
       batchParagraphs,
       sourceParagraphIds: IDS,
       initialRaw,
+      ...LANG_PAIR,
       maxAttempts: 1,
       sendContinuation: () => Promise.resolve({
         status: 'SUCCESS',
@@ -189,6 +193,7 @@ describe('continuation', () => {
       batchParagraphs,
       sourceParagraphIds: IDS,
       initialRaw,
+      ...LANG_PAIR,
       maxAttempts: 2,
       sendContinuation: () => {
         sends += 1;

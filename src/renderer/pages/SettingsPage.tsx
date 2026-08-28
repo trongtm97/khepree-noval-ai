@@ -190,6 +190,9 @@ export function SettingsPage() {
 
       <TabPanel active={tab === 'translation'}>
         <TranslationSettingsPanel onMessage={setMessage} onError={setError} />
+        <Card as="section" style={{ marginTop: '1rem' }}>
+          <SchedulerConcurrencyPanel onMessage={setMessage} onError={setError} />
+        </Card>
       </TabPanel>
 
       <TabPanel active={tab === 'export'}>
@@ -211,8 +214,6 @@ export function SettingsPage() {
       </TabPanel>
 
       <TabPanel active={tab === 'advanced'}>
-        <SchedulerConcurrencyPanel onMessage={setMessage} onError={setError} />
-
         <Card as="section" style={{ marginTop: '1rem' }}>
           <SectionHeader title={t('settings.developerTools')} />
           <div className="btn-row">

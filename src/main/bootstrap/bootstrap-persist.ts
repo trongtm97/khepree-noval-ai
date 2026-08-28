@@ -3,13 +3,11 @@ import {
   preferredTargetOf,
   type BootstrapAnalysisOutput,
 } from '@shared/schemas/bootstrap';
-import {
-  DEFAULT_SOURCE_LANGUAGE,
-  DEFAULT_TARGET_LANGUAGE,
-} from '@shared/constants/language-profile';
 import { normalizeTermType } from '@shared/constants/term';
 import { utcNow } from '../db/utils/timestamps';
 import { ensureDefaultEdition } from '../services/edition-service';
+import type { LanguagePairFilter } from '../db/repositories/term-repository';
+import { resolveForProjectEdition } from '../services/translation-language-resolver';
 import {
   upsertCharacterPreferredName,
   upsertRelationshipAddressTerms,
@@ -123,7 +121,9 @@ export function persistBootstrapAnalysis(
     if (dup?.locked === 1) continue;
     if (dup) {
       db.relationships.update(dup.id, {
+        description: rel.description ?? dup.description,
         valid_from_chapter: rel.valid_from_chapter ?? dup.valid_from_chapter,
+        valid_to_chapter: rel.valid_to_chapter ?? dup.valid_to_chapter,
         confidence: rel.confidence ?? dup.confidence,
       });
       upsertRelationshipAddressTerms(db, {
@@ -140,7 +140,9 @@ export function persistBootstrapAnalysis(
         from_character_id: fromId,
         to_character_id: toId,
         relationship_type: rel.relationship_type,
+        description: rel.description ?? null,
         valid_from_chapter: rel.valid_from_chapter ?? null,
+        valid_to_chapter: rel.valid_to_chapter ?? null,
         confidence: rel.confidence ?? null,
       });
       upsertRelationshipAddressTerms(db, {
@@ -156,13 +158,17 @@ export function persistBootstrapAnalysis(
   }
 
   const projectForTerms = db.projects.getById(projectId);
-  const termPair = {
-    sourceLanguage: projectForTerms?.source_language ?? DEFAULT_SOURCE_LANGUAGE,
-    targetLanguage: projectForTerms?.target_language ?? DEFAULT_TARGET_LANGUAGE,
+  if (!projectForTerms) {
+    return result;
+  }
+  const resolvedPair = resolveForProjectEdition(db, { projectId });
+  const termPairLanguages: LanguagePairFilter = {
+    sourceLanguage: resolvedPair.sourceLanguage,
+    targetLanguage: resolvedPair.targetLanguage,
   };
 
   for (const term of output.terms) {
-    const existing = db.terms.findBySource(term.source, projectId, termPair);
+    const existing = db.terms.findBySource(term.source, projectId, termPairLanguages);
     if (existing && (existing.locked === 1 || existing.status === 'GLOBAL_VERIFIED')) {
       continue;
     }
@@ -212,7 +218,7 @@ export function persistBootstrapAnalysis(
   const storyRow = db.storyStates.getByProject(projectId);
   if (storyRow?.locked !== 1) {
     db.storyStates.patch(projectId, {
-      summaryText: story.summary || 'Chưa bắt đầu dịch.',
+      summaryText: story.summary || 'Translation not started.',
       unresolvedPlotPoints: story.open_plot_threads,
       locationState: {
         current_locations: story.current_locations,
@@ -253,6 +259,11 @@ function applyFullTemporalProvenance(
 ): void {
   const conn = db.getConnection();
   const now = utcNow();
+  const pair = resolveForProjectEdition(db, { projectId });
+  const termPairLanguages: LanguagePairFilter = {
+    sourceLanguage: pair.sourceLanguage,
+    targetLanguage: pair.targetLanguage,
+  };
 
   for (const ch of output.characters) {
     const row = db.characters.getByName(projectId, ch.source_name);
@@ -303,12 +314,7 @@ function applyFullTemporalProvenance(
   }
 
   for (const term of output.terms) {
-    const existing = db.terms.findBySource(term.source, projectId, {
-      sourceLanguage:
-        db.projects.getById(projectId)?.source_language ?? DEFAULT_SOURCE_LANGUAGE,
-      targetLanguage:
-        db.projects.getById(projectId)?.target_language ?? DEFAULT_TARGET_LANGUAGE,
-    });
+    const existing = db.terms.findBySource(term.source, projectId, termPairLanguages);
     if (!existing || existing.locked === 1) continue;
     const first = term.first_seen_chapter ?? existing.first_seen_chapter;
     const discovered =

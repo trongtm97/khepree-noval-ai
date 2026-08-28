@@ -8,7 +8,7 @@ import {
 } from '@shared/constants/bootstrap';
 import { buildTermMatchIndex, matchKnownTermsInText } from '../terms/term-matcher';
 import type { ChapterRow } from '../db/repositories/chapter-repository';
-import { resolveProjectSourceLanguage } from '../services/resolve-project-source-language';
+import { resolveForProjectEdition } from '../services/translation-language-resolver';
 
 export interface BootstrapLocalPrepResult {
   projectId: string;
@@ -100,6 +100,8 @@ export function prepareBootstrapLocal(
   const project = db.projects.getById(projectId);
   if (!project) throw new Error(`Project not found: ${projectId}`);
 
+  const languagePair = resolveForProjectEdition(db, { projectId });
+
   const chapterCount = resolveChapterCount(db, projectId, options?.mode);
   const budget =
     options?.characterBudget ?? loadNotebookSettings(db, projectId).bootstrapCharacterBudget;
@@ -124,16 +126,16 @@ export function prepareBootstrapLocal(
 
   const termRows = db.terms.listForMatching({
     projectId,
-    sourceLanguage: resolveProjectSourceLanguage(project),
-    targetLanguage: project.target_language,
+    sourceLanguage: languagePair.sourceLanguage,
+    targetLanguage: languagePair.targetLanguage,
   });
   const index = buildTermMatchIndex(termRows, {
-    sourceLanguage: resolveProjectSourceLanguage(project),
+    sourceLanguage: languagePair.sourceLanguage,
   });
   const matches = matchKnownTermsInText(batchText, index, termRows, {
     projectId,
-    sourceLanguage: resolveProjectSourceLanguage(project),
-    targetLanguage: project.target_language,
+    sourceLanguage: languagePair.sourceLanguage,
+    targetLanguage: languagePair.targetLanguage,
   });
   const knownTerms = matches.map((m) => {
     const translations = db.terms.listTranslations(m.term.id);
@@ -151,8 +153,8 @@ export function prepareBootstrapLocal(
 
   return {
     projectId,
-    sourceLanguage: resolveProjectSourceLanguage(project),
-    targetLanguage: project.target_language,
+    sourceLanguage: languagePair.sourceLanguage,
+    targetLanguage: languagePair.targetLanguage,
     bookProfile: bookProfile || '# Book profile\n',
     translationRules,
     knownTerms,

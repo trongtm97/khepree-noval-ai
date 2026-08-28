@@ -1,9 +1,7 @@
 import type { RepairPack } from '@shared/schemas/output-protocol';
-import {
-  DEFAULT_SOURCE_LANGUAGE,
-  DEFAULT_TARGET_LANGUAGE,
-} from '@shared/constants/language-profile';
 import { formatLanguagePairPreamble } from '@shared/constants/translation-style-model';
+import type { RepairNeighborTranslation } from './repair-translation-context';
+import { requireRepairLanguagePair } from './repair-language-pair';
 
 export interface RepairParagraphInput {
   paragraphId: string;
@@ -16,8 +14,10 @@ export interface BuildRepairPackInput {
   batchParagraphs: RepairParagraphInput[];
   /** How many neighbors on each side of a missing block (default 1). */
   contextRadius?: number;
-  sourceLanguage?: string;
-  targetLanguage?: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  /** Already-approved target lines for neighbor paragraphs (pronoun/tone continuity). */
+  neighborTargetTranslations?: RepairNeighborTranslation[];
 }
 
 /**
@@ -25,6 +25,8 @@ export interface BuildRepairPackInput {
  * Never re-sends the full chapter.
  */
 export function buildRepairPack(input: BuildRepairPackInput): RepairPack {
+  const languages = requireRepairLanguagePair(input);
+
   const missingSet = new Set(input.missingParagraphIds);
   if (missingSet.size === 0) {
     throw new Error('buildRepairPack requires at least one missing paragraph ID');
@@ -41,16 +43,16 @@ export function buildRepairPack(input: BuildRepairPackInput): RepairPack {
   }
 
   const radius = input.contextRadius ?? 1;
-  const contextParagraphs = collectContext(
+  const contextParagraphs = collectSourceNeighbors(
     input.batchParagraphs,
     missingSet,
     radius,
   );
+  const neighborTargets =
+    input.neighborTargetTranslations ??
+    [];
 
-  const prompt = renderRepairPrompt(paragraphs, contextParagraphs, {
-    sourceLanguage: input.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE,
-    targetLanguage: input.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
-  });
+  const prompt = renderRepairPrompt(paragraphs, contextParagraphs, neighborTargets, languages);
 
   return {
     missingParagraphIds: [...input.missingParagraphIds],
@@ -60,7 +62,7 @@ export function buildRepairPack(input: BuildRepairPackInput): RepairPack {
   };
 }
 
-function collectContext(
+function collectSourceNeighbors(
   batch: RepairParagraphInput[],
   missing: Set<string>,
   radius: number,
@@ -85,15 +87,29 @@ function collectContext(
 
 function renderRepairPrompt(
   missing: RepairParagraphInput[],
-  context: RepairParagraphInput[],
+  sourceNeighbors: RepairParagraphInput[],
+  neighborTargets: RepairNeighborTranslation[],
   languages: { sourceLanguage: string; targetLanguage: string },
 ): string {
   const missingList = missing.map((p) => p.paragraphId).join('\n');
-  const contextBlock =
-    context.length === 0
-      ? '(none)'
-      : context.map((p) => `${p.paragraphId} ${p.sourceText}`).join('\n');
-  const sourceBlock = missing.map((p) => `${p.paragraphId} ${p.sourceText}`).join('\n');
+  const targetNeighborBlock =
+    neighborTargets.length === 0
+      ? null
+      : [
+          '### Previous translated context',
+          ...neighborTargets.map((t) => `${t.paragraphId} ${t.targetText}`),
+        ].join('\n');
+  const sourceNeighborBlock =
+    sourceNeighbors.length === 0
+      ? null
+      : [
+          '### Neighbor source (context only — do NOT re-translate)',
+          ...sourceNeighbors.map((p) => `${p.paragraphId} ${p.sourceText}`),
+        ].join('\n');
+  const missingBlock = [
+    '### Missing source',
+    ...missing.map((p) => `${p.paragraphId} ${p.sourceText}`),
+  ].join('\n');
 
   return [
     formatLanguagePairPreamble(languages.sourceLanguage, languages.targetLanguage),
@@ -101,17 +117,21 @@ function renderRepairPrompt(
     'Previous response was missing translations for these paragraph IDs:',
     missingList,
     '',
-    'Local context (already translated — do NOT re-translate unless listed above):',
-    contextBlock,
+    targetNeighborBlock,
+    targetNeighborBlock ? '' : null,
+    sourceNeighborBlock,
+    sourceNeighborBlock ? '' : null,
+    missingBlock,
     '',
-    'Translate ONLY these source paragraphs into the target language:',
-    sourceBlock,
-    '',
-    'Output ONLY the <TRANSLATION> section for the missing IDs.',
-    'Use exact IDs. One line per ID. No other sections. No markdown fences.',
+    'Translate ONLY the missing source paragraphs listed above.',
+    'Output ONLY the <TRANSLATION> section for those IDs.',
+    'Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.',
+    'No markdown fences. Do not re-translate neighbor or previous-context lines.',
     '',
     '<TRANSLATION>',
     '[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...',
     '</TRANSLATION>',
-  ].join('\n');
+  ]
+    .filter((line): line is string => line !== null)
+    .join('\n');
 }

@@ -22,7 +22,6 @@ import { newId } from '../db/utils/uuid';
 import type { JobExecuteContext, InitialSendResult } from '../jobs/batch-executor';
 import type { RepairSendRequest, RepairSendResult } from '../jobs/repair-loop';
 import { getTranslationPackService } from '../services/translation-pack-service-singleton';
-import { resolveTranslationPackMode } from '../prompt/pack-mode-resolver';
 import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
 import type { PackMode } from '@shared/constants/pack-mode';
 import { parseJobConfig } from '../jobs/batch-executor';
@@ -70,6 +69,12 @@ import {
   type ProviderPreflightReport,
 } from './provider-preflight';
 import { resolveJobKnowledgeSnapshot } from '../knowledge/knowledge-version';
+import { resolveForProjectEdition } from '../services/translation-language-resolver';
+import {
+  buildRepairTranslationContext,
+  repairContextSnapshot,
+  lastAcceptedTargetParagraphs,
+} from '../jobs/repair-translation-context';
 
 /** Retries when a chunk fails transiently or returns zero translation lines. */
 const CHUNK_SEND_RETRIES = 2;
@@ -527,7 +532,8 @@ export class AiProviderManager {
         packMode,
         firstProviderType,
       );
-      const telemetry = this.packTelemetryFields(pack);
+      const repairMeta = this.packRepairJobMeta(ctx, config.lockedTerms);
+      const telemetry = this.packTelemetryFields(pack, repairMeta);
       this.db.jobs.updateState(ctx.job.id, 'SENDING');
       const diagnostics = this.recordPackDiagnostics(
         ctx,
@@ -671,7 +677,10 @@ export class AiProviderManager {
           packMode,
           lastProviderType ?? firstProviderType,
         );
-        lastTelemetry = this.packTelemetryFields(pack);
+        lastTelemetry = this.packTelemetryFields(
+          pack,
+          this.packRepairJobMeta(ctx, config.lockedTerms),
+        );
         if (sendOrdinal === 1 && attempt === 0) {
           this.recordPackDiagnostics(
             ctx,
@@ -849,17 +858,13 @@ export class AiProviderManager {
   }
 
   /**
-   * Phase 4: default LOCAL_CONTEXT — provider-neutral, not Notebook-driven.
+   * Phase 1: default LOCAL_CONTEXT — not Notebook-driven.
    */
   private resolvePackMode(
-    ctx: JobExecuteContext,
-    providerType?: string,
+    _ctx: JobExecuteContext,
+    _providerType?: string,
   ): PackMode {
-    return resolveTranslationPackMode(this.db, {
-      projectId: ctx.job.project_id,
-      accountId: ctx.accountId,
-      providerType,
-    }).packMode;
+    return 'local_context';
   }
 
   /**
@@ -920,10 +925,21 @@ export class AiProviderManager {
       providerType: input.providerType ?? null,
       packMode: input.packMode,
     });
+    const languagePair = resolveForProjectEdition(this.db, {
+      projectId: ctx.job.project_id,
+      editionId: ctx.job.edition_id ?? undefined,
+    });
     const result = await runContinuationLoop({
       batchParagraphs: chunkParagraphs,
       sourceParagraphIds: input.paragraphIds,
       initialRaw: input.raw,
+      sourceLanguage: languagePair.sourceLanguage,
+      targetLanguage: languagePair.targetLanguage,
+      continuationTargetContext: lastAcceptedTargetParagraphs(
+        input.paragraphIds,
+        initialParsed.translations,
+        2,
+      ),
       maxAttempts: config.maxContinuationAttempts ?? DEFAULT_MAX_CONTINUATION_ATTEMPTS,
       parser,
       persistPartial: (raw, meta) => { this.persistPartialRaw(ctx.job.id, raw, meta); },
@@ -1099,21 +1115,68 @@ export class AiProviderManager {
     );
   }
 
-  private packTelemetryFields(pack: TranslationPackBuildResult): {
+  private packRepairJobMeta(
+    ctx: JobExecuteContext,
+    lockedTerms?: { source: string; preferred: string; forbiddenVariants?: string[] }[],
+  ): {
+    projectId: string;
+    editionId: string | null;
+    sourceLanguage: string;
+    targetLanguage: string;
+    lockedTerms?: { source: string; preferred: string; forbiddenVariants?: string[] }[];
+  } {
+    const pair = resolveForProjectEdition(this.db, {
+      projectId: ctx.job.project_id,
+      editionId: ctx.job.edition_id ?? undefined,
+    });
+    return {
+      projectId: ctx.job.project_id,
+      editionId: pair.editionId,
+      sourceLanguage: pair.sourceLanguage,
+      targetLanguage: pair.targetLanguage,
+      lockedTerms,
+    };
+  }
+
+  private packTelemetryFields(
+    pack: TranslationPackBuildResult,
+    jobCtx?: {
+      projectId: string;
+      editionId: string | null;
+      sourceLanguage: string;
+      targetLanguage: string;
+      lockedTerms?: { source: string; preferred: string; forbiddenVariants?: string[] }[];
+    },
+  ): {
     packMode: PackMode;
     notebookId: string | null;
     localKnowledgeVersion: number;
     notebookVerifiedVersion: number;
     hotDeltaCount: number;
     localContextSnapshot: string;
-  } {
-    return {
+  } & Record<string, unknown> {
+    const base = {
       packMode: pack.packMode,
       notebookId: pack.packTelemetry.notebookId,
       localKnowledgeVersion: pack.packTelemetry.localKnowledgeVersion,
       notebookVerifiedVersion: pack.packTelemetry.notebookVerifiedVersion,
       hotDeltaCount: pack.packTelemetry.hotDeltaCount,
       localContextSnapshot: pack.baseContext,
+    };
+    if (!jobCtx) return base;
+    return {
+      ...base,
+      ...repairContextSnapshot(
+        buildRepairTranslationContext({
+          projectId: jobCtx.projectId,
+          editionId: jobCtx.editionId,
+          sourceLanguage: jobCtx.sourceLanguage,
+          targetLanguage: jobCtx.targetLanguage,
+          stylePolicyHash: pack.promptHash,
+          knowledgeVersion: pack.packTelemetry.localKnowledgeVersion,
+          lockedTerms: jobCtx.lockedTerms ?? [],
+        }),
+      ),
     };
   }
 
@@ -1190,7 +1253,10 @@ export class AiProviderManager {
 
     this.writeSendProgress(ctx, {
       ...phaseProgress,
-      ...this.packTelemetryFields(pack),
+      ...this.packTelemetryFields(
+        pack,
+        this.packRepairJobMeta(ctx, parseJobConfig(ctx.job.config).lockedTerms),
+      ),
       providerType: providerType ?? undefined,
       diagnostics,
       timelineEvent: { event: 'PROMPT_SENT', message: phaseProgress.phase },
@@ -1414,6 +1480,11 @@ export class AiProviderManager {
         override?.localContextSnapshot ??
         fromProgress.localContextSnapshot ??
         null,
+      sourceLanguage: override?.sourceLanguage ?? fromProgress.sourceLanguage ?? null,
+      targetLanguage: override?.targetLanguage ?? fromProgress.targetLanguage ?? null,
+      editionId: override?.editionId ?? fromProgress.editionId ?? job?.edition_id ?? null,
+      stylePolicyHash:
+        override?.stylePolicyHash ?? fromProgress.stylePolicyHash ?? null,
     };
   }
 
@@ -1485,6 +1556,8 @@ export class AiProviderManager {
             split,
             operationType,
             job ?? { chapter_from: null, chapter_to: null },
+            input.channel.stylePolicyHash,
+            input.targetParagraphIds?.length ?? 0,
           )
         : null;
 
@@ -1516,10 +1589,11 @@ export class AiProviderManager {
         activeCharacterCount: 0,
         relationshipCount: 0,
         recentMemoryCount: 0,
-        paragraphCount: 0,
+        paragraphCount: input.targetParagraphIds?.length ?? 0,
         chapterCount: 1,
       },
-      promptHash: newId().slice(0, 16),
+      promptHash:
+        input.channel.stylePolicyHash ?? `repair:${newId().slice(0, 12)}`,
     };
   }
 
@@ -1591,6 +1665,7 @@ export class AiProviderManager {
       providerType,
       packMode,
       jobId: ctx.job.id,
+      editionId: ctx.job.edition_id ?? undefined,
     });
   }
 
@@ -1599,6 +1674,8 @@ export class AiProviderManager {
     split: { baseContext: string; operationPrompt: string; prompt: string },
     operationType: TranslationPackOperation,
     job: { chapter_from: number | null; chapter_to: number | null },
+    stylePolicyHash?: string | null,
+    targetParagraphCount = 0,
   ): TranslationPackDto {
     const chapters = this.db.chapters.listByProject(projectId);
     let chapterIds: string[] = [];
@@ -1645,10 +1722,10 @@ export class AiProviderManager {
         activeCharacterCount: 0,
         relationshipCount: 0,
         recentMemoryCount: 0,
-        paragraphCount: 0,
+        paragraphCount: targetParagraphCount,
         chapterCount: Math.max(1, chapterIds.length),
       },
-      promptHash: `repair:${newId().slice(0, 12)}`,
+      promptHash: stylePolicyHash ?? `repair:${newId().slice(0, 12)}`,
     };
   }
 }

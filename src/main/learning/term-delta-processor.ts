@@ -6,11 +6,12 @@ import {
   parseTermDelta,
   type TermDeltaItem,
 } from '@shared/schemas/term-delta';
-import { normalizeLanguageCode } from '@shared/constants/language-profile';
 import type { DatabaseManager } from '../db/database-manager';
 import { withTransaction } from '../db/transaction';
 import { mapDeltaConfidence, refreshTermConfidence } from './confidence';
 import { utcNow } from '../db/utils/timestamps';
+import { resolveForProjectEdition } from '../services/translation-language-resolver';
+import { normalizeLanguageCode } from '@shared/constants/language-profile';
 
 export interface TermDeltaContext {
   projectId: string;
@@ -19,6 +20,8 @@ export interface TermDeltaContext {
   /** Source snippet for occurrence records. */
   sourceContext?: string | null;
   jobId?: string | null;
+  /** Edition provenance — application attaches from job context; never trust AI JSON. */
+  editionId?: string | null;
   sourceLanguage?: string;
   targetLanguage?: string;
 }
@@ -106,18 +109,50 @@ function applyItem(
   }
 }
 
+interface TermDeltaProvenance {
+  editionId: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+}
+
+/**
+ * Language pair + edition at processing boundary.
+ * Prefer explicit ctx fields from job; else resolve project + edition (no zh→vi hardcode).
+ */
+function resolveTermDeltaProvenance(
+  db: DatabaseManager,
+  ctx: TermDeltaContext,
+): TermDeltaProvenance {
+  if (ctx.sourceLanguage && ctx.targetLanguage) {
+    const resolved = resolveForProjectEdition(db, {
+      projectId: ctx.projectId,
+      editionId: ctx.editionId,
+    });
+    return {
+      editionId: ctx.editionId ?? resolved.editionId,
+      sourceLanguage: normalizeLanguageCode(ctx.sourceLanguage),
+      targetLanguage: normalizeLanguageCode(ctx.targetLanguage),
+    };
+  }
+  const resolved = resolveForProjectEdition(db, {
+    projectId: ctx.projectId,
+    editionId: ctx.editionId,
+  });
+  return {
+    editionId: resolved.editionId,
+    sourceLanguage: resolved.sourceLanguage,
+    targetLanguage: resolved.targetLanguage,
+  };
+}
+
 function projectLangPair(
   db: DatabaseManager,
   ctx: TermDeltaContext,
 ): { sourceLanguage: string; targetLanguage: string } {
-  const project = db.projects.getById(ctx.projectId);
+  const provenance = resolveTermDeltaProvenance(db, ctx);
   return {
-    sourceLanguage: normalizeLanguageCode(
-      ctx.sourceLanguage ?? project?.source_language ?? 'zh-Hans',
-    ),
-    targetLanguage: normalizeLanguageCode(
-      ctx.targetLanguage ?? project?.target_language ?? 'vi',
-    ),
+    sourceLanguage: provenance.sourceLanguage,
+    targetLanguage: provenance.targetLanguage,
   };
 }
 

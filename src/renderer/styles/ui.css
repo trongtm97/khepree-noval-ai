@@ -2271,3 +2271,176 @@ textarea:-webkit-autofill:focus {
   margin: 0.25rem 0;
 }
 
+/* —— Jobs page (user-first operations center) —— */
+.jobs-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.jobs-header-actions {
+  align-items: center;
+}
+
+.jobs-summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  min-height: 4rem;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary, var(--bg-primary));
+}
+
+.jobs-summary-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.jobs-summary-label {
+  font-size: var(--font-small);
+  color: var(--text-secondary);
+}
+
+.jobs-summary-value {
+  font-size: 1.15rem;
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.jobs-summary-icon {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.jobs-summary-icon--running {
+  color: var(--status-success, #2f9e44);
+}
+
+.jobs-summary-icon--attention {
+  color: var(--status-warning, #f08c00);
+}
+
+.jobs-card-list,
+.jobs-account-grid {
+  display: grid;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.jobs-account-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+}
+
+@media (min-width: 120rem) {
+  .jobs-account-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.jobs-card-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.jobs-card-main {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.jobs-card-sub,
+.jobs-card-detail,
+.jobs-card-message {
+  margin: 0.2rem 0 0;
+  font-size: var(--font-small);
+}
+
+.jobs-card-message {
+  color: var(--text-primary);
+}
+
+.jobs-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.jobs-running-card,
+.jobs-attention-card,
+.jobs-queue-card,
+.jobs-recent-card,
+.jobs-account-card {
+  padding: 0.75rem 0.85rem;
+  min-height: 4rem;
+}
+
+.jobs-running-card {
+  min-height: 6.25rem;
+}
+
+.jobs-queue-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.jobs-priority-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: var(--font-small);
+}
+
+.jobs-account-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0;
+  font-size: var(--font-small);
+  color: var(--text-secondary);
+}
+
+.jobs-idle-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.jobs-queue-empty {
+  margin: 0 0 0.75rem;
+  font-size: var(--font-small);
+}
+
+.jobs-detail-list {
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.jobs-detail-list dt {
+  font-size: var(--font-small);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.jobs-detail-list dd {
+  margin: 0.15rem 0 0;
+}
+
+.jobs-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+

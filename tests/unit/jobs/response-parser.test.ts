@@ -363,6 +363,12 @@ describe('ResponseParser', () => {
       expect(result.protocolVersion).toBe(1);
     });
 
+    it('detects protocol version 2 header', () => {
+      const raw = `Output Protocol Version: 2\n\n${validBody([`${IDS.p1} A.`])}`;
+      const result = parser.parse(raw);
+      expect(result.protocolVersion).toBe(2);
+    });
+
     it('HTML-ish wrong-case tags recovered via tolerant extract', () => {
       const raw = [
         '<translation>',

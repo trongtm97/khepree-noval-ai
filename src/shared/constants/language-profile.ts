@@ -5,16 +5,22 @@
  */
 
 import { buildLanguageProfile } from './language-catalog-build';
-import type { AiSupportTier, RegionGroup } from './language-catalog-types';
+import type { AiSupportTier, RegionGroup, NovelTransVerification, ProviderSupport } from './language-catalog-types';
 import { formatLanguagePairStackedFromProfiles } from './language-catalog-search';
 import { WORLD_LANGUAGE_CATALOG } from './world-language-catalog';
+import { LANGUAGE_CODE_ALIASES } from './language-code-aliases';
 
-export type { AiSupportTier, RegionGroup };
-export { AI_SUPPORT_TIERS, REGION_GROUPS } from './language-catalog-types';
+export type { AiSupportTier, RegionGroup, ProviderSupport, NovelTransVerification, LanguageProviderSupport } from './language-catalog-types';
+export { AI_SUPPORT_TIERS, REGION_GROUPS, PROVIDER_SUPPORT_LEVELS, NOVELTRANS_VERIFICATION_LEVELS } from './language-catalog-types';
 export {
+  GEMINI_WEB_OFFICIAL_CODES,
+  GEMINI_WEB_OFFICIAL_AUDIT_DATE,
+  GEMINI_WEB_OFFICIAL_SOURCE_URL,
+  NOVELTRANS_VERIFIED_CODES,
   GEMINI_WEB_VERIFIED_CODES,
   GEMINI_EXTENDED_CODES,
 } from './world-language-catalog';
+export { LANGUAGE_CODE_ALIASES, LANGUAGE_SEARCH_ALIASES, resolveLanguageSearchAlias } from './language-code-aliases';
 export {
   formatLanguagePickerLabel,
   formatLanguagePickerStacked,
@@ -24,6 +30,8 @@ export {
   REGION_GROUP_LABELS_VI,
   REGION_GROUP_ORDER,
   AI_SUPPORT_TIER_LABELS_VI,
+  NOVELTRANS_VERIFICATION_LABELS_VI,
+  PROVIDER_SUPPORT_LABELS_VI,
 } from './language-catalog-search';
 
 /** Known script tags — open string on profile; not a closed enum blocker. */
@@ -77,6 +85,9 @@ export interface LanguageProfile {
   script: string;
   direction: TextDirection;
   regionGroup: RegionGroup;
+  providerSupport: ProviderSupport;
+  novelTransVerification: NovelTransVerification;
+  /** @deprecated Use providerSupport + novelTransVerification. */
   aiSupportTier: AiSupportTier;
   segmentationStrategy: SegmentationStrategy;
   quoteStyle: QuoteStyle;
@@ -94,7 +105,11 @@ export const LEGACY_LANGUAGE_CODE_MAP: Readonly<Record<string, string>> = {
   'zh-CN': 'zh-Hans',
   'zh-SG': 'zh-Hans',
   'zh-TW': 'zh-Hant',
-  'zh-HK': 'zh-Hant',
+  'zh-HK': 'zh-HK',
+  'zh-hk': 'zh-HK',
+  jw: 'jv',
+  iw: 'he',
+  in: 'id',
   'zh-MO': 'zh-Hant',
   chi: 'zh-Hans',
   zho: 'zh-Hans',
@@ -138,6 +153,8 @@ export function registerLanguageProfile(profile: LanguageProfile): void {
     displayNameNative: profile.nativeName ?? profile.displayNameNative,
     nativeName: profile.nativeName ?? profile.displayNameNative,
     internationalName: profile.internationalName ?? profile.displayNameNative,
+    providerSupport: profile.providerSupport ?? 'CATALOG_ONLY',
+    novelTransVerification: profile.novelTransVerification ?? 'UNTESTED',
   });
 }
 
@@ -165,6 +182,7 @@ export function normalizeLanguageCode(raw: string): string {
   if (!trimmed) return DEFAULT_SOURCE_LANGUAGE;
   if (trimmed.toUpperCase() === LANGUAGE_AUTO) return LANGUAGE_AUTO;
   const lower = trimmed.toLowerCase();
+  if (LANGUAGE_CODE_ALIASES[lower]) return LANGUAGE_CODE_ALIASES[lower];
   if (LEGACY_LANGUAGE_CODE_MAP[lower]) return LEGACY_LANGUAGE_CODE_MAP[lower];
   const mapped = LEGACY_LANGUAGE_CODE_MAP[trimmed] ?? LEGACY_LANGUAGE_CODE_MAP[lower];
   if (mapped) return mapped;
@@ -205,6 +223,8 @@ export function getLanguageProfile(code: string): LanguageProfile {
     script: 'Latn',
     direction: 'ltr',
     regionGroup: 'OTHER',
+    providerSupport: 'CATALOG_ONLY',
+    novelTransVerification: 'UNTESTED',
     aiSupportTier: 'EXPERIMENTAL',
     segmentationStrategy: 'mixed',
     quoteStyle: 'ascii',
@@ -256,6 +276,44 @@ function formatLanguageSideInline(
   profile: Pick<LanguageProfile, 'internationalName' | 'nativeName' | 'code'>,
 ): string {
   return `${profile.internationalName} / ${profile.nativeName} · ${profile.code}`;
+}
+
+/** AI prompt identity: International / Native (canonical BCP-47). Aliases normalized first. */
+export function formatAiLanguageIdentityFromProfile(
+  profile: Pick<LanguageProfile, 'internationalName' | 'nativeName' | 'code'>,
+): string {
+  return `${profile.internationalName} / ${profile.nativeName} (${profile.code})`;
+}
+
+export function formatAiLanguageIdentity(code: string): string {
+  return formatAiLanguageIdentityFromProfile(getLanguageProfile(code));
+}
+
+/** Skip ordinary Latn LTR targets (en, vi, fr); CJK typography stays in policy layer. */
+export function shouldIncludeTargetScriptMetadata(
+  profile: Pick<LanguageProfile, 'script' | 'direction'>,
+): boolean {
+  if (profile.direction === 'rtl') return true;
+  const cjkScripts = new Set(['Hans', 'Hant', 'Jpan', 'Kore']);
+  if (cjkScripts.has(profile.script)) return false;
+  return profile.script !== 'Latn';
+}
+
+/** Target script / direction lines for task header when typography metadata helps the model. */
+export function formatTargetScriptMetadataLines(
+  profile: Pick<LanguageProfile, 'script' | 'direction'>,
+): string[] {
+  if (!shouldIncludeTargetScriptMetadata(profile)) return [];
+  const lines: string[] = [];
+  if (profile.script && profile.script !== 'Latn') {
+    lines.push(`Target script: ${profile.script}`);
+  }
+  if (profile.direction === 'rtl') {
+    lines.push('Text direction: RTL');
+  } else if (profile.script !== 'Latn') {
+    lines.push('Text direction: LTR');
+  }
+  return lines;
 }
 
 /** Single-line pair for project list rows. */

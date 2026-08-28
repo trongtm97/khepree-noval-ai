@@ -1,6 +1,10 @@
 import type { QaIssue, QaResult, ParsedBatchResult } from '@shared/schemas/output-protocol';
 import type { QaVerdict } from '@shared/constants/output-protocol';
 import { isCorruptTranslationText } from './corrupt-translation';
+import {
+  runLanguageAwareQa,
+  type LockedAddressTermForQa,
+} from './qa-language-aware';
 
 export interface LockedTermForQa {
   /** Source term present in batch paragraph source text. */
@@ -13,6 +17,8 @@ export interface LockedTermForQa {
    * Do not auto-replace — only flag.
    */
   forbiddenVariants?: string[];
+  /** Wrong-edition target forms (e.g. Vietnamese name in English edition). */
+  crossEditionForbidden?: string[];
 }
 
 export interface SourceParagraphForQa {
@@ -26,6 +32,10 @@ export interface QaCheckerInput {
   sourceParagraphIds: string[];
   sourceParagraphs?: SourceParagraphForQa[];
   lockedTerms?: LockedTermForQa[];
+  lockedAddressTerms?: LockedAddressTermForQa[];
+  /** When set, enables language-aware local QA (script, leakage, normalized terms). */
+  sourceLanguage?: string;
+  targetLanguage?: string;
 }
 
 /**
@@ -35,6 +45,7 @@ export interface QaCheckerInput {
 export function runLocalQa(input: QaCheckerInput): QaResult {
   const errors: QaIssue[] = [];
   const warnings: QaIssue[] = [];
+  const infos: QaIssue[] = [];
 
   if (input.parsed.status === 'needs_repair') {
     errors.push({
@@ -119,7 +130,6 @@ export function runLocalQa(input: QaCheckerInput): QaResult {
   let outOfOrder = false;
   const expectedOrder = sourceIds.filter((id) => translatedSet.has(id));
   const actualOrder = translatedOrder.filter((id) => sourceSet.has(id));
-  // Deduplicate actual for order check (first occurrence)
   const actualFirst: string[] = [];
   const seenOrder = new Set<string>();
   for (const id of actualOrder) {
@@ -139,9 +149,25 @@ export function runLocalQa(input: QaCheckerInput): QaResult {
     });
   }
 
-  // Locked term QA — flag only, never rewrite
-  if (input.lockedTerms?.length && input.sourceParagraphs?.length) {
-    checkLockedTerms(
+  const languageAwareEnabled =
+    input.sourceLanguage &&
+    input.targetLanguage &&
+    (input.sourceParagraphs?.length ?? 0) > 0;
+
+  if (languageAwareEnabled) {
+    const langQa = runLanguageAwareQa({
+      parsed: input.parsed,
+      sourceParagraphs: input.sourceParagraphs!,
+      sourceLanguage: input.sourceLanguage!,
+      targetLanguage: input.targetLanguage!,
+      lockedTerms: input.lockedTerms,
+      lockedAddressTerms: input.lockedAddressTerms,
+    });
+    errors.push(...langQa.errors);
+    warnings.push(...langQa.warnings);
+    infos.push(...langQa.infos);
+  } else if (input.lockedTerms?.length && input.sourceParagraphs?.length) {
+    checkLockedTermsLegacy(
       input.sourceParagraphs,
       input.parsed.translations,
       input.lockedTerms,
@@ -161,6 +187,7 @@ export function runLocalQa(input: QaCheckerInput): QaResult {
     passed: verdict === 'PASS' || verdict === 'PASS_WITH_WARNINGS',
     errors,
     warnings,
+    infos,
     missingParagraphIds,
     duplicateParagraphIds,
     unknownParagraphIds,
@@ -170,7 +197,8 @@ export function runLocalQa(input: QaCheckerInput): QaResult {
   };
 }
 
-function checkLockedTerms(
+/** Legacy plain substring locked-term check when language pair unavailable. */
+function checkLockedTermsLegacy(
   sources: SourceParagraphForQa[],
   translations: ParsedBatchResult['translations'],
   lockedTerms: LockedTermForQa[],
@@ -180,13 +208,12 @@ function checkLockedTerms(
 
   for (const para of sources) {
     const translated = byId.get(para.paragraphId);
-    if (translated === undefined) continue; // missing handled elsewhere
+    if (translated === undefined) continue;
 
     for (const term of lockedTerms) {
       if (!para.sourceText.includes(term.source)) continue;
 
-      const preferredPresent = translated.includes(term.preferred);
-      if (!preferredPresent) {
+      if (!translated.includes(term.preferred)) {
         errors.push({
           code: 'locked_term_missing',
           severity: 'error',
@@ -200,7 +227,6 @@ function checkLockedTerms(
       for (const forbidden of term.forbiddenVariants ?? []) {
         if (!forbidden || forbidden === term.preferred) continue;
         if (translated.includes(forbidden)) {
-          // Ambiguous if preferred also present — still flag forbidden variant use
           errors.push({
             code: 'locked_term_forbidden_variant',
             severity: 'error',
@@ -223,8 +249,10 @@ function resolveVerdict(input: {
   parseNeedsRepair: boolean;
 }): QaVerdict {
   if (input.parseNeedsRepair) {
-    // Uncertain structure → manual if we can't even list missing IDs clearly
-    if (input.missingParagraphIds.length === 0 && input.errors.some((e) => e.code === 'parse_uncertain')) {
+    if (
+      input.missingParagraphIds.length === 0 &&
+      input.errors.some((e) => e.code === 'parse_uncertain')
+    ) {
       return 'MANUAL_REVIEW';
     }
     return 'REPAIR_REQUIRED';
@@ -237,14 +265,16 @@ function resolveVerdict(input: {
   const hasUnknown = input.errors.some((e) => e.code === 'unknown_paragraph');
   const hasLocked = input.errors.some(
     (e) =>
-      e.code === 'locked_term_missing' || e.code === 'locked_term_forbidden_variant',
+      e.code === 'locked_term_missing' ||
+      e.code === 'locked_term_forbidden_variant' ||
+      e.code === 'edition_term_leak',
   );
+  const hasWrongLanguage = input.errors.some((e) => e.code === 'target_language_mismatch');
 
-  if (hasMissing || hasEmpty || hasCorrupt) {
+  if (hasMissing || hasEmpty || hasCorrupt || hasWrongLanguage) {
     return 'REPAIR_REQUIRED';
   }
 
-  // Ambiguous structural problems — human should look
   if (hasDup || hasUnknown || hasLocked) {
     return 'MANUAL_REVIEW';
   }
@@ -259,3 +289,5 @@ function resolveVerdict(input: {
 
   return 'PASS';
 }
+
+export type { LockedAddressTermForQa } from './qa-language-aware';

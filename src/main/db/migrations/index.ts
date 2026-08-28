@@ -45,6 +45,7 @@ import { MIGRATION_036_CONTEXT_FINGERPRINT } from './036-context-fingerprint';
 import { MIGRATION_037_RESEARCH_NOTEBOOK } from './037-research-notebook-persistence';
 import { MIGRATION_038_LOCAL_LEARNING_LOOP } from './038-local-learning-loop';
 import { MIGRATION_039_EXPORT_DIRECTORY } from './039-export-directory';
+import { MIGRATION_040_LANGUAGE_CODE_NORMALIZATION } from './040-language-code-normalization';
 
 export const MIGRATIONS: MigrationDefinition[] = [
   {
@@ -240,6 +241,7 @@ export const MIGRATIONS: MigrationDefinition[] = [
     name: 'export_directory',
     sql: MIGRATION_039_EXPORT_DIRECTORY,
   },
+  MIGRATION_040_LANGUAGE_CODE_NORMALIZATION,
 ];
 
 export function migrationChecksum(sql: string): string {

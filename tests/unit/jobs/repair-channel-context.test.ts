@@ -63,6 +63,10 @@ describe('repair channel context helpers', () => {
       packMode: 'local_context',
       knowledgeVersion: 47,
       localContextSnapshot: LOCAL_SNAPSHOT,
+      sourceLanguage: null,
+      targetLanguage: null,
+      editionId: null,
+      stylePolicyHash: null,
     });
   });
 
@@ -135,6 +139,9 @@ describe('repair loop inherits channel → same local context', () => {
         packMode: 'local_context',
         localKnowledgeVersion: 12,
         localContextSnapshot: LOCAL_SNAPSHOT,
+        repairSourceLanguage: 'zh-Hans',
+        repairTargetLanguage: 'vi',
+        stylePolicyHash: 'policy-hash-abc',
         phase: 'waiting_ai',
       }),
     );

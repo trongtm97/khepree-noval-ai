@@ -5,6 +5,7 @@ import { buildRepairPack } from '@main/jobs/repair-pack-builder';
 import type { ParsedBatchResult } from '@shared/schemas/output-protocol';
 
 const P1 = '[C000001:P000001]';
+const LANG_PAIR = { sourceLanguage: 'zh-Hans', targetLanguage: 'vi' };
 const P2 = '[C000001:P000002]';
 const P3 = '[C000001:P000003]';
 const P4 = '[C000001:P000004]';
@@ -215,6 +216,7 @@ describe('buildRepairPack', () => {
       missingParagraphIds: [P2, P3],
       batchParagraphs: batch,
       contextRadius: 1,
+      ...LANG_PAIR,
     });
     expect(pack.paragraphs.map((p) => p.paragraphId)).toEqual([P2, P3]);
     expect(pack.contextParagraphs.map((p) => p.paragraphId)).toEqual([P1, P4]);
@@ -230,6 +232,7 @@ describe('buildRepairPack', () => {
       missingParagraphIds: [P3],
       batchParagraphs: batch,
       contextRadius: 1,
+      ...LANG_PAIR,
     });
     expect(pack.paragraphs).toHaveLength(1);
     expect(pack.contextParagraphs.map((p) => p.paragraphId)).toEqual([P2, P4]);
@@ -239,7 +242,7 @@ describe('buildRepairPack', () => {
 
   it('throws when missing list empty', () => {
     expect(() =>
-      buildRepairPack({ missingParagraphIds: [], batchParagraphs: batch }),
+      buildRepairPack({ missingParagraphIds: [], batchParagraphs: batch, ...LANG_PAIR }),
     ).toThrow();
   });
 });

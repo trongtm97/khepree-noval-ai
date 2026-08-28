@@ -101,7 +101,7 @@ describe('source language detection truth model', () => {
   it('TEST 14: hint never overrides detected when mismatch', async () => {
     const r = await detectSourceLanguage({ sampleText: JA, hintCode: 'ko' });
     expect(r.detectedLanguage).not.toBe(r.hintCode);
-    expect(resolveProjectSourceLanguage({ source_language: r.detectedLanguage })).toBe('ja');
+    expect(resolveProjectSourceLanguage({ source_language: r.detectedLanguage, source_mode: 'FOLDER' } as never)).toBe('ja');
   });
 });
 
@@ -128,6 +128,7 @@ describe('resolveProjectSourceLanguage', () => {
       resolveProjectSourceLanguage({
         source_language: 'ja',
         source_language_hint: 'ko',
+        source_mode: 'FOLDER',
       } as never),
     ).toBe('ja');
   });

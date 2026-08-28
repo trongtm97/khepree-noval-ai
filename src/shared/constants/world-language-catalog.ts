@@ -1,31 +1,54 @@
-import type { AiSupportTier, LanguageCatalogSeed, RegionGroup } from './language-catalog-types';
+import type {
+  AiSupportTier,
+  LanguageCatalogSeed,
+  NovelTransVerification,
+  ProviderSupport,
+  RegionGroup,
+} from './language-catalog-types';
+import {
+  GEMINI_WEB_OFFICIAL_CODES,
+  NOVELTRANS_VERIFIED_CODES,
+} from './gemini-web-official-2026';
 
 export { REGION_GROUPS } from './language-catalog-types';
+export {
+  GEMINI_WEB_OFFICIAL_AUDIT_DATE,
+  GEMINI_WEB_OFFICIAL_CODES,
+  GEMINI_WEB_OFFICIAL_SOURCE_URL,
+  NOVELTRANS_VERIFIED_CODES,
+} from './gemini-web-official-2026';
 
-/** Google Gemini Web officially listed languages (NovelTrans verified workflow). */
+/** @deprecated Use GEMINI_WEB_OFFICIAL_CODES — kept for tests during transition. */
+export const GEMINI_WEB_VERIFIED_CODES = GEMINI_WEB_OFFICIAL_CODES;
 
-export const GEMINI_WEB_VERIFIED_CODES = new Set<string>([
-  'ar', 'bn', 'bg', 'zh-Hans', 'zh-Hant', 'hr', 'cs', 'da', 'nl', 'en', 'et', 'fi',
-  'fr', 'de', 'el', 'he', 'hi', 'hu', 'id', 'it', 'ja', 'ko', 'lv', 'lt', 'no', 'pl',
-  'pt', 'pt-BR', 'pt-PT', 'ro', 'ru', 'sr', 'sr-Latn', 'sr-Cyrl', 'sk', 'sl', 'es',
-  'sw', 'sv', 'th', 'tr', 'uk', 'vi',
-]);
-
-/** Broader Gemini/API capability — not yet NovelTrans browser-verified. */
+/** Broader Gemini/API capability — not listed on Gemini Web UI. */
 export const GEMINI_EXTENDED_CODES = new Set<string>([
-  'af', 'sq', 'am', 'hy', 'az', 'az-Latn', 'eu', 'be', 'bs', 'ca', 'ceb', 'ny', 'co',
-  'eo', 'tl', 'fy', 'gl', 'ka', 'gu', 'ht', 'ha', 'haw', 'hmn', 'is', 'ig', 'ga', 'jw',
-  'kn', 'kk', 'km', 'rw', 'ku', 'ky', 'lo', 'lb', 'mk', 'mg', 'ms', 'ml', 'mt', 'mi',
-  'mr', 'mn', 'ne', 'fa', 'ps', 'pa', 'sm', 'gd', 'st', 'sn', 'sd', 'si', 'so', 'su',
-  'tg', 'ta', 'te', 'ur', 'uz', 'uz-Latn', 'cy', 'xh', 'yi', 'yo', 'zu', 'my', 'km',
-  'bn', 'or', 'as', 'mai', 'ckb',
+  'ceb', 'ny', 'co', 'eo', 'fy', 'ht', 'ha', 'haw', 'hmn', 'ig', 'ga', 'rw', 'ku', 'ky',
+  'lb', 'mg', 'mi', 'mt', 'sm', 'gd', 'st', 'sn', 'sd', 'si', 'so', 'tg', 'cy', 'xh',
+  'yi', 'yo', 'my', 'mai', 'ckb', 'ps', 'bo', 'ug', 'tk', 'az-Cyrl', 'ti', 'om', 'qu',
+  'gn', 'ay', 'to', 'fj', 'la', 'sa',
 ]);
+
+function deriveAiSupportTier(provider: ProviderSupport): AiSupportTier {
+  if (provider === 'GEMINI_WEB_OFFICIAL') return 'GEMINI_WEB_VERIFIED';
+  if (provider === 'GEMINI_API_EXTENDED') return 'GEMINI_EXTENDED';
+  return 'EXPERIMENTAL';
+}
+
+function providerSupportFor(code: string): ProviderSupport {
+  if (GEMINI_WEB_OFFICIAL_CODES.has(code)) return 'GEMINI_WEB_OFFICIAL';
+  if (GEMINI_EXTENDED_CODES.has(code)) return 'GEMINI_API_EXTENDED';
+  return 'CATALOG_ONLY';
+}
+
+function verificationFor(code: string): NovelTransVerification {
+  if (NOVELTRANS_VERIFIED_CODES.has(code)) return 'VERIFIED';
+  return 'UNTESTED';
+}
 
 function tierFor(code: string, override?: AiSupportTier): AiSupportTier {
   if (override) return override;
-  if (GEMINI_WEB_VERIFIED_CODES.has(code)) return 'GEMINI_WEB_VERIFIED';
-  if (GEMINI_EXTENDED_CODES.has(code)) return 'GEMINI_EXTENDED';
-  return 'EXPERIMENTAL';
+  return deriveAiSupportTier(providerSupportFor(code));
 }
 
 type Seed = [
@@ -40,16 +63,21 @@ type Seed = [
 ];
 
 function seeds(rows: Seed[]): LanguageCatalogSeed[] {
-  return rows.map(([code, internationalName, nativeName, displayNameVi, script, direction, region, tier]) => ({
-    code,
-    internationalName,
-    nativeName,
-    displayNameVi,
-    script,
-    direction,
-    regionGroup: region,
-    aiSupportTier: tierFor(code, tier),
-  }));
+  return rows.map(([code, internationalName, nativeName, displayNameVi, script, direction, region, tier]) => {
+    const providerSupport = providerSupportFor(code);
+    return {
+      code,
+      internationalName,
+      nativeName,
+      displayNameVi,
+      script,
+      direction,
+      regionGroup: region,
+      providerSupport,
+      novelTransVerification: verificationFor(code),
+      aiSupportTier: tierFor(code, tier),
+    };
+  });
 }
 
 /** ISO 639-1 practical catalog + important BCP-47 script/region variants. */
@@ -57,6 +85,7 @@ export const WORLD_LANGUAGE_CATALOG: LanguageCatalogSeed[] = seeds([
   // POPULAR
   ['zh-Hans', 'Chinese (Simplified)', '简体中文', 'Tiếng Trung giản thể', 'Hans', 'ltr', 'POPULAR'],
   ['zh-Hant', 'Chinese (Traditional)', '繁體中文', 'Tiếng Trung phồn thể', 'Hant', 'ltr', 'POPULAR'],
+  ['zh-HK', 'Chinese (Hong Kong)', '香港中文', 'Tiếng Trung (Hồng Kông)', 'Hant', 'ltr', 'POPULAR'],
   ['vi', 'Vietnamese', 'Tiếng Việt', 'Tiếng Việt', 'Latn', 'ltr', 'POPULAR'],
   ['en', 'English', 'English', 'Tiếng Anh', 'Latn', 'ltr', 'POPULAR'],
   ['ja', 'Japanese', '日本語', 'Tiếng Nhật', 'Jpan', 'ltr', 'POPULAR'],
@@ -82,7 +111,8 @@ export const WORLD_LANGUAGE_CATALOG: LanguageCatalogSeed[] = seeds([
   ['my', 'Burmese', 'မြန်မာဘာသာ', 'Tiếng Miến Điện', 'Mymr', 'ltr', 'SOUTHEAST_ASIA'],
   ['km', 'Khmer', 'ភាសាខ្មែរ', 'Tiếng Khmer', 'Khmr', 'ltr', 'SOUTHEAST_ASIA'],
   ['lo', 'Lao', 'ລາວ', 'Tiếng Lào', 'Laoo', 'ltr', 'SOUTHEAST_ASIA'],
-  ['tl', 'Filipino', 'Filipino', 'Tiếng Filipino', 'Latn', 'ltr', 'SOUTHEAST_ASIA'],
+  ['fil', 'Filipino', 'Filipino', 'Tiếng Filipino', 'Latn', 'ltr', 'SOUTHEAST_ASIA'],
+  ['tl', 'Tagalog', 'Tagalog', 'Tiếng Tagalog', 'Latn', 'ltr', 'SOUTHEAST_ASIA'],
   ['ceb', 'Cebuano', 'Cebuano', 'Tiếng Cebuano', 'Latn', 'ltr', 'SOUTHEAST_ASIA'],
   ['jv', 'Javanese', 'Basa Jawa', 'Tiếng Java', 'Latn', 'ltr', 'SOUTHEAST_ASIA'],
   ['su', 'Sundanese', 'Basa Sunda', 'Tiếng Sunda', 'Latn', 'ltr', 'SOUTHEAST_ASIA'],
@@ -200,7 +230,6 @@ export const WORLD_LANGUAGE_CATALOG: LanguageCatalogSeed[] = seeds([
   // OTHER
   ['af', 'Afrikaans', 'Afrikaans', 'Tiếng Afrikaans', 'Latn', 'ltr', 'OTHER'],
   ['co', 'Corsican', 'Corsu', 'Tiếng Corsica', 'Latn', 'ltr', 'OTHER'],
-  ['jw', 'Javanese (Jawa)', 'Basa Jawa', 'Tiếng Jawa', 'Latn', 'ltr', 'OTHER'],
   ['la', 'Latin', 'Latina', 'Tiếng Latin', 'Latn', 'ltr', 'OTHER'],
   ['sa', 'Sanskrit', 'संस्कृतम्', 'Tiếng Phạn', 'Deva', 'ltr', 'OTHER'],
 ]);

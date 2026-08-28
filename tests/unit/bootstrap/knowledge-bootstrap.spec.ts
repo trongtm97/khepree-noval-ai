@@ -85,8 +85,9 @@ describe('bootstrap prompt', () => {
     const prompt = buildBootstrapAnalysisPrompt(prep);
     expect(prompt).toMatch(/DO NOT TRANSLATE/i);
     expect(prompt).toContain('筑基 → Trúc Cơ');
-    expect(prompt).toContain('SOURCE_LANGUAGE:');
-    expect(prompt).toContain('preferred_target');
+    expect(prompt).toContain('Source:');
+    expect(prompt).toContain('Target edition:');
+    expect(prompt).toContain('preferred_target_name');
     expect(prompt).not.toMatch(/preferred_vi/);
     expect(prompt).not.toMatch(/Return EXACTLY these sections/);
   });

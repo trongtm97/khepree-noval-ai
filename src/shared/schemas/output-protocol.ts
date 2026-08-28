@@ -38,7 +38,7 @@ export type ParsedBatchResult = z.infer<typeof ParsedBatchResultSchema>;
 
 export const QaIssueSchema = z.object({
   code: z.enum(QA_ISSUE_CODES),
-  severity: z.enum(['error', 'warning']),
+  severity: z.enum(['error', 'warning', 'info']),
   message: z.string(),
   paragraphId: z.string().optional(),
   termSource: z.string().optional(),
@@ -53,6 +53,7 @@ export const QaResultSchema = z.object({
   passed: z.boolean(),
   errors: z.array(QaIssueSchema),
   warnings: z.array(QaIssueSchema),
+  infos: z.array(QaIssueSchema).default([]),
   missingParagraphIds: z.array(z.string()),
   duplicateParagraphIds: z.array(z.string()),
   unknownParagraphIds: z.array(z.string()),

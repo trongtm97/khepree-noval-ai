@@ -9,6 +9,7 @@ import {
 
 const P1 = '[C000001:P000001]';
 const P2 = '[C000001:P000002]';
+const LANG_PAIR = { sourceLanguage: 'zh-Hans', targetLanguage: 'vi' };
 const batch = [
   { paragraphId: P1, sourceText: '第一' },
   { paragraphId: P2, sourceText: '他使用灵气。' },
@@ -38,14 +39,13 @@ describe('classifyRepairReason + strategies', () => {
       qa,
       parsed,
       batchParagraphs: batch,
+      ...LANG_PAIR,
     });
     expect(plan.mode).toBe('translation_missing');
     expect(plan.retranslate).toBe(true);
     expect(plan.targetParagraphIds).toEqual([P2]);
     expect(plan.prompt).toContain(P2);
-    expect(plan.prompt).toContain('Translate ONLY these source paragraphs');
-    // Missing ID is the translate target; P1 may appear only as context
-    expect(plan.prompt).toMatch(/Translate ONLY[\s\S]*\[C000001:P000002]/);
+    expect(plan.prompt).toContain('Translate ONLY the missing source paragraphs');
   });
 
   it('EMPTY_PARAGRAPH strategy', () => {
@@ -63,6 +63,7 @@ describe('classifyRepairReason + strategies', () => {
       qa,
       parsed,
       batchParagraphs: batch,
+      ...LANG_PAIR,
     });
     expect(plan.mode).toBe('translation_empty');
     expect(plan.targetParagraphIds).toContain(P1);
@@ -83,6 +84,7 @@ describe('classifyRepairReason + strategies', () => {
       qa,
       parsed,
       batchParagraphs: batch,
+      ...LANG_PAIR,
     });
     expect(plan.mode).toBe('translation_corrupt');
     expect(plan.retranslate).toBe(true);
@@ -104,6 +106,7 @@ describe('classifyRepairReason + strategies', () => {
       qa,
       parsed,
       batchParagraphs: batch,
+      ...LANG_PAIR,
     });
     expect(strategy.reason).toBe('MALFORMED_OUTPUT');
     const plan = strategy.buildPlan({
@@ -111,6 +114,7 @@ describe('classifyRepairReason + strategies', () => {
       qa,
       parsed,
       batchParagraphs: batch,
+      ...LANG_PAIR,
     });
     expect(plan.retranslate).toBe(true);
   });
@@ -140,6 +144,7 @@ describe('classifyRepairReason + strategies', () => {
       lockedTermHints: [
         { source: '灵气', preferred: 'linh khí', paragraphIds: [P2] },
       ],
+      ...LANG_PAIR,
     });
     expect(plan.mode).toBe('term_violation');
     expect(plan.prompt).toContain('linh khí');
@@ -214,10 +219,12 @@ describe('classifyRepairReason + strategies', () => {
         protocolVersion: 1,
       },
       batchParagraphs: batch,
+      ...LANG_PAIR,
     });
     expect(plan.retranslate).toBe(false);
     expect(plan.mode).toBe('deltas_only');
     expect(plan.targetParagraphIds).toEqual([]);
     expect(plan.prompt).toMatch(/Do NOT re-translate/i);
+    expect(plan.prompt).toContain('zh-Hans');
   });
 });

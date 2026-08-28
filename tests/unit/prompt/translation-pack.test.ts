@@ -130,6 +130,8 @@ describe('TranslationPackBuilder snapshots', () => {
       criticalRules: FIXED_CONTEXT.criticalProjectRules,
       context: FIXED_CONTEXT,
       sourceLines: SOURCE_LINES,
+      sourceLanguage: 'zh-Hans',
+      targetLanguage: 'vi',
     });
 
     expect(sections.taskHeader).toMatchSnapshot('task-header');
@@ -147,6 +149,8 @@ describe('TranslationPackBuilder snapshots', () => {
       criticalRules: FIXED_CONTEXT.criticalProjectRules,
       context: FIXED_CONTEXT,
       sourceLines: SOURCE_LINES,
+      sourceLanguage: 'zh-Hans',
+      targetLanguage: 'vi',
     });
 
     const contextChars =
@@ -175,6 +179,8 @@ describe('TranslationPackBuilder snapshots', () => {
       criticalRules: [],
       context: FIXED_CONTEXT,
       sourceLines: SOURCE_LINES,
+      sourceLanguage: 'zh-Hans',
+      targetLanguage: 'vi',
     });
 
     expect(sections.sourceParagraphs).toContain('[C000451:P000001]');
@@ -187,6 +193,7 @@ describe('TranslationPackBuilder snapshots', () => {
     expect(OUTPUT_PROTOCOL_BLOCK).toContain('<TERM_DELTA>');
     expect(OUTPUT_PROTOCOL_BLOCK).toContain('<MEMORY_DELTA>');
     expect(OUTPUT_PROTOCOL_BLOCK).toContain('category "character"');
-    expect(OUTPUT_PROTOCOL_BLOCK).toContain('TERM_DELTA discover');
+    expect(OUTPUT_PROTOCOL_BLOCK).toContain('emit discover');
+    expect(OUTPUT_PROTOCOL_BLOCK).toContain('do not manufacture');
   });
 });

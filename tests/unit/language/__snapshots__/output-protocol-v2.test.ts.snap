@@ -1,0 +1,44 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Output Protocol v2 > OUTPUT_PROTOCOL_BLOCK snapshot 1`] = `
+"Output Protocol Version: 2
+
+Return EXACTLY these sections in order. No Markdown fences.
+
+<TRANSLATION>
+[C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
+</TRANSLATION>
+
+<TERM_DELTA>
+[]
+</TERM_DELTA>
+
+<MEMORY_DELTA>
+[]
+</MEMORY_DELTA>
+
+TRANSLATION rules:
+- Exactly one physical output line per source paragraph ID; ID must match Source exactly.
+- Text in the target language only; one line per ID (no embedded line breaks in output).
+- Do not repeat source text. No commentary, explanations, or markdown fences outside tags.
+
+TERM_DELTA rules:
+- JSON array of discover|update|confirm objects only when this batch supports new/changed/confirmed terminology.
+- Use [] when the batch has no such terms — do not manufacture entries merely to fill the array.
+- When a proper noun / technique / place name is newly translated with confidence, emit discover.
+- Compact fields: action, source, target, category, optional transliteration + transliterationSystem, confidence, notes.
+- Do not emit editionId, sourceLanguage, or targetLanguage — the application attaches pair provenance at persist.
+- transliteration is generic (pinyin, romaji, romanization per source policy); omit when unnecessary. Legacy alias: reading.
+
+MEMORY_DELTA rules:
+- JSON array of upsert|delete|relationship|story_state only for facts newly supported or changed in this batch.
+- Use [] when nothing new — do not manufacture entries merely to fill the array.
+- Do not assert unknown or ambiguous facts with high confidence.
+- Prefer source-story facts in upsert values; do not store target-language prose as universal story facts.
+- When a named character appears for the first time with clear evidence, upsert category "character" with object value linking canonical source identity; target rendering belongs in edition layer.
+- relationship: language-neutral type/description/validFrom/validTo; aCallsB/bCallsA are edition-scoped forms of address.
+
+General:
+- Locked/active terms MUST be used exactly as given.
+- Do not skip paragraph IDs. Do not invent IDs."
+`;

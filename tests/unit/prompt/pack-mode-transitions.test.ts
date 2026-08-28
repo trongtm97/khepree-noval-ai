@@ -190,6 +190,8 @@ describe('local_context TranslationPack content', () => {
         ],
       },
       sourceLines: ['[C000010:P000001] 王林突破了。'],
+      sourceLanguage: 'zh-Hans',
+      targetLanguage: 'vi',
       hotMemoryOverride: [
         '## Recent Context',
         '- CHARACTER 王林 → Vương Lâm (updated); first_seen_chapter=10',

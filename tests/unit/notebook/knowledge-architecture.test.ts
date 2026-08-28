@@ -299,6 +299,8 @@ describe('local_context TranslationPack', () => {
       criticalRules: [],
       context: FIXED_CONTEXT,
       sourceLines: ['[C000001:P000001] 王林走了。'],
+      sourceLanguage: 'zh-Hans',
+      targetLanguage: 'vi',
       hotMemoryOverride: '## Recent Context\n- breakthrough',
     });
     expect(pack.prompt).toContain('breakthrough');
@@ -314,6 +316,8 @@ describe('local_context TranslationPack', () => {
       criticalRules: ['keep tone'],
       context: FIXED_CONTEXT,
       sourceLines: ['[C000001:P000001] 王林走了。'],
+      sourceLanguage: 'zh-Hans',
+      targetLanguage: 'vi',
     });
     expect(pack.baseContext).toContain('Should not appear in slim pack body dump');
   });

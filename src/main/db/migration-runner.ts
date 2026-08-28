@@ -94,6 +94,11 @@ export function runMigrations(
       }
     } catch (error) {
       if (backupPath) {
+        try {
+          db.close();
+        } catch {
+          /* connection may already be closed */
+        }
         restoreDatabaseFromBackup(options.dbPath, backupPath);
       }
       throw error;
