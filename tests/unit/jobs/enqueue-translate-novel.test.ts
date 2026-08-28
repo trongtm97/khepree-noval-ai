@@ -18,6 +18,8 @@ interface ParaSeed {
   human_locked?: boolean;
 }
 
+const DEFAULT_EDITION_ID = 'edition-1111-1111-1111-111111111111';
+
 function mockNovelDb(opts: {
   projectId: string;
   chapters: ChapterSeed[];
@@ -25,10 +27,48 @@ function mockNovelDb(opts: {
 }): { db: DatabaseManager; created: JobRow[] } {
   const created: JobRow[] = [];
   const byId = new Map<string, JobRow>();
+  let activeEditionId: string | null = DEFAULT_EDITION_ID;
+  const edition = {
+    id: DEFAULT_EDITION_ID,
+    project_id: opts.projectId,
+    target_language: 'vi',
+    name: 'Tiếng Việt',
+    status: 'ACTIVE',
+    style_config: null,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+  };
 
   const db = {
+    getConnection: () => ({
+      prepare: () => ({ run: () => undefined }),
+    }),
     projects: {
-      getById: (id: string) => (id === opts.projectId ? { id } : null),
+      getById: (id: string) =>
+        id === opts.projectId
+          ? {
+              id,
+              target_language: 'vi',
+              target_title: null,
+              source_language: 'zh-Hans',
+              active_edition_id: activeEditionId,
+            }
+          : null,
+      setActiveEditionId: (_id: string, editionId: string | null) => {
+        activeEditionId = editionId;
+      },
+      getStyleConfig: () => null,
+      updateLanguages: () => undefined,
+      setStyleConfig: () => undefined,
+    },
+    translationEditions: {
+      getById: (id: string) => (id === edition.id ? edition : null),
+      listByProject: (projectId: string) =>
+        projectId === opts.projectId ? [edition] : [],
+      create: () => edition,
+    },
+    appMeta: {
+      get: () => null,
     },
     chapters: {
       listByProject: (projectId: string) =>
@@ -38,13 +78,14 @@ function mockNovelDb(opts: {
       listByChapter: (chapterId: string) => opts.paragraphsByChapter[chapterId] ?? [],
     },
     translations: {
-      getByParagraphId: (paraUuid: string) => {
+      getByParagraphId: (paraUuid: string, _editionId?: string | null) => {
         for (const paras of Object.values(opts.paragraphsByChapter)) {
           const p = paras.find((x) => x.id === paraUuid);
           if (!p) continue;
           if (p.translated == null) return null;
           return {
             id: `t-${paraUuid}`,
+            edition_id: DEFAULT_EDITION_ID,
             translated_text: p.translated,
             human_locked: p.human_locked ? 1 : 0,
             status: 'translated',
@@ -83,6 +124,7 @@ function mockNovelDb(opts: {
         worker_mode: string;
         pinned_account_id: string | null;
         config: string;
+        edition_id?: string | null;
       }) => {
         const row: JobRow = {
           id: `job-${created.length + 1}`,
@@ -103,7 +145,7 @@ function mockNovelDb(opts: {
           lease_owner: null,
           lease_expires_at: null,
           scheduled_at: null,
-          edition_id: null,
+          edition_id: input.edition_id ?? DEFAULT_EDITION_ID,
           created_at: '2026-01-01T00:00:00.000Z',
           updated_at: '2026-01-01T00:00:00.000Z',
           started_at: null,

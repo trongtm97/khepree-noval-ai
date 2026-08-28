@@ -3,6 +3,7 @@ export const SETUP_WIZARD_STEPS = [
   'welcome',
   'googleAccount',
   'testGemini',
+  'defaultLanguage',
   'createProject',
 ] as const;
 

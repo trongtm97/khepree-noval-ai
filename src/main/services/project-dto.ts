@@ -67,6 +67,11 @@ export function toProjectDto(
     errorChapterCount: stats?.errorChapterCount,
     nextUntranslatedChapter: stats?.nextUntranslatedChapter ?? null,
     activeEditionId: row.active_edition_id ?? null,
+    sourceLanguageMode: row.source_language_mode ?? 'AUTO',
+    sourceLanguageHint: row.source_language_hint ?? null,
+    sourceLanguageConfidence: row.source_language_confidence ?? null,
+    sourceLanguageDetectionMethod: row.source_language_detection_method ?? null,
+    sourceLanguageDetectionCheckedAt: row.source_language_detection_checked_at ?? null,
     health,
   };
 }

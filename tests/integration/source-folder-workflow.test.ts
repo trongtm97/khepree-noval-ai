@@ -31,7 +31,7 @@ describe('source folder workflow integration', () => {
 
     const service = new SourceFolderService();
     const preview = await service.createFolderPreview({ folderPath: dir });
-    const created = service.commitFolderImport({
+    const created = await service.commitFolderImport({
       previewId: preview.previewId,
       projectTitle: 'Integration Novel',
     });

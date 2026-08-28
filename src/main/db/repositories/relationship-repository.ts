@@ -153,4 +153,9 @@ export class RelationshipRepository extends BaseRepository {
       );
     return this.getById(id);
   }
+
+  delete(id: string): boolean {
+    const result = this.db.prepare(`DELETE FROM character_relationships WHERE id = ?`).run(id);
+    return result.changes > 0;
+  }
 }

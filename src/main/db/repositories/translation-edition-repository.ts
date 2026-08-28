@@ -43,7 +43,11 @@ export class TranslationEditionRepository extends BaseRepository {
         ts.created_at,
         ts.updated_at,
       );
-    return this.getById(id)!;
+    const created = this.getById(id);
+    if (!created) {
+      throw new Error(`Failed to load created translation edition: ${id}`);
+    }
+    return created;
   }
 
   getById(id: string): TranslationEditionRow | null {

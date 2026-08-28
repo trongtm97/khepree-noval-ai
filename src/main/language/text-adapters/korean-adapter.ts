@@ -20,9 +20,7 @@ export const koreanTextAdapter: TextLanguageAdapter = {
     const trimmed = line.trim();
     // 제123화 / 123화
     let match = /^제\s*([0-9０-９]+)\s*화([^\n]*)$/u.exec(trimmed);
-    if (!match) {
-      match = /^([0-9０-９]+)\s*화([^\n]*)$/u.exec(trimmed);
-    }
+    match ??= /^([0-9０-９]+)\s*화([^\n]*)$/u.exec(trimmed);
     if (!match) return null;
     const chapterNumber = Number.parseInt(normalizeDigits(match[1]), 10);
     if (!chapterNumber || chapterNumber <= 0) return null;
@@ -39,9 +37,7 @@ export const koreanTextAdapter: TextLanguageAdapter = {
     const base = fileBaseName.replace(/\.txt$/i, '');
     const normalized = normalizeDigits(base);
     let match = /^제\s*([0-9]+)\s*화(.*)$/u.exec(normalized);
-    if (!match) {
-      match = /^([0-9]+)\s*화(.*)$/u.exec(normalized);
-    }
+    match ??= /^([0-9]+)\s*화(.*)$/u.exec(normalized);
     if (!match) return null;
     const chapterNumber = Number.parseInt(match[1], 10);
     if (!chapterNumber || chapterNumber <= 0) return null;
@@ -52,8 +48,11 @@ export const koreanTextAdapter: TextLanguageAdapter = {
     };
   },
 
-  normalizeText: genericUnicodeAdapter.normalizeText,
-  segmentParagraphs: genericUnicodeAdapter.segmentParagraphs,
+  normalizeText: (raw: string) => genericUnicodeAdapter.normalizeText(raw),
+  segmentParagraphs: (
+    body: string,
+    options?: Parameters<typeof genericUnicodeAdapter.segmentParagraphs>[1],
+  ) => genericUnicodeAdapter.segmentParagraphs(body, options),
 
   normalizePunctuation(text: string): string {
     return text.replace(/\u3000/g, ' ');

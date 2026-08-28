@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { LearningDashboardResponse } from '@shared/schemas/learning';
 import type { ProjectDto } from '@shared/schemas/import';
 import { useT, t as i18nT } from '../i18n';
+import { OperationalExportDialog } from '../components/OperationalExportDialog';
 
 export function LearningPage() {
   const t = useT();
@@ -82,6 +83,14 @@ export function LearningPage() {
             })}
           </span>
         ) : null}
+      </div>
+
+      <div className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
+        <h3>{t('operationalExport.sectionTitle')}</h3>
+        <OperationalExportDialog
+          projectId={projectId || undefined}
+          kinds={['operational_conflicts', 'operational_workbook']}
+        />
       </div>
 
       {!data ? (

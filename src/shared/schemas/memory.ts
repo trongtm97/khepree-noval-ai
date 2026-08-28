@@ -148,6 +148,7 @@ export type MemoryContextDto = z.infer<typeof MemoryContextDtoSchema>;
 
 export const CharacterListRequestSchema = z.object({
   projectId: z.string().uuid(),
+  editionId: z.string().uuid().optional(),
 });
 
 export const CharacterListResponseSchema = z.object({
@@ -157,6 +158,7 @@ export const CharacterListResponseSchema = z.object({
 export const CharacterUpsertRequestSchema = z.object({
   id: z.string().uuid().optional(),
   projectId: z.string().uuid(),
+  editionId: z.string().uuid().optional(),
   canonicalName: z.string().min(1),
   translatedName: z.string().nullable().optional(),
   aliases: z.array(z.string()).optional(),
@@ -176,6 +178,7 @@ export const CharacterUpsertResponseSchema = z.object({
 export const RelationshipListRequestSchema = z.object({
   projectId: z.string().uuid(),
   atChapter: z.number().int().positive().optional(),
+  editionId: z.string().uuid().optional(),
 });
 
 export const RelationshipListResponseSchema = z.object({
@@ -185,6 +188,7 @@ export const RelationshipListResponseSchema = z.object({
 export const RelationshipUpsertRequestSchema = z.object({
   id: z.string().uuid().optional(),
   projectId: z.string().uuid(),
+  editionId: z.string().uuid().optional(),
   fromCharacterId: z.string().uuid(),
   toCharacterId: z.string().uuid(),
   relationshipType: z.string().min(1),
@@ -217,6 +221,7 @@ export const MemoryApplyDeltaRequestSchema = z.object({
   projectId: z.string().uuid(),
   delta: z.unknown(),
   chapterNumber: z.number().int().positive().optional(),
+  editionId: z.string().uuid().optional(),
 });
 
 export const MemoryApplyDeltaResponseSchema = z.object({

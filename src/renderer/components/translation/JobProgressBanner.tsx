@@ -37,8 +37,8 @@ export function JobProgressBanner({
         const idx = res.accounts.findIndex((a) => a.id === accountId);
         if (idx >= 0) {
           const account = res.accounts[idx];
-          const custom = account?.label?.trim();
-          setAccountLabel(custom && custom.length > 0 ? custom : String(idx + 1));
+          const custom = account.label.trim();
+          setAccountLabel(custom.length > 0 ? custom : String(idx + 1));
           return;
         }
         setAccountLabel(accountId.slice(0, 6));

@@ -1,23 +1,37 @@
 /**
- * LanguageProfile — translation-pair domain (BCP-47-ish codes).
+ * LanguageProfile — World Language Catalog (BCP-47 / ISO 639-1).
  * Registry is extensible: registerLanguageProfile() adds/overrides entries.
  * Default project pair remains zh-Hans → vi for compatibility.
  */
 
+import { buildLanguageProfile } from './language-catalog-build';
+import type { AiSupportTier, RegionGroup } from './language-catalog-types';
+import { WORLD_LANGUAGE_CATALOG } from './world-language-catalog';
+
+export type { AiSupportTier, RegionGroup };
+export { AI_SUPPORT_TIERS, REGION_GROUPS } from './language-catalog-types';
+export {
+  GEMINI_WEB_VERIFIED_CODES,
+  GEMINI_EXTENDED_CODES,
+} from './world-language-catalog';
+export {
+  formatLanguagePickerLabel,
+  formatLanguagePickerStacked,
+  searchLanguageProfiles,
+  groupLanguageProfilesByRegion,
+  REGION_GROUP_LABELS_VI,
+  REGION_GROUP_ORDER,
+  AI_SUPPORT_TIER_LABELS_VI,
+} from './language-catalog-search';
+
+/** Known script tags — open string on profile; not a closed enum blocker. */
 export const LANGUAGE_SCRIPTS = [
-  'Latn',
-  'Hans',
-  'Hant',
-  'Jpan',
-  'Kore',
-  'Cyrl',
-  'Arab',
-  'Hebr',
-  'Thai',
-  'Other',
+  'Latn', 'Hans', 'Hant', 'Jpan', 'Kore', 'Cyrl', 'Arab', 'Hebr', 'Thai',
+  'Deva', 'Beng', 'Guru', 'Gujr', 'Orya', 'Taml', 'Telu', 'Knda', 'Mlym',
+  'Sinh', 'Khmr', 'Laoo', 'Mymr', 'Ethi', 'Geor', 'Armn', 'Grek', 'Tibt',
 ] as const;
 
-export type LanguageScript = (typeof LANGUAGE_SCRIPTS)[number];
+export type LanguageScript = (typeof LANGUAGE_SCRIPTS)[number] | string;
 
 export const TEXT_DIRECTIONS = ['ltr', 'rtl'] as const;
 export type TextDirection = (typeof TEXT_DIRECTIONS)[number];
@@ -51,10 +65,17 @@ export type PunctuationProfile = (typeof PUNCTUATION_PROFILES)[number];
 
 export interface LanguageProfile {
   code: string;
+  internationalName: string;
+  nativeName: string;
+  /** Vietnamese UI localization label. */
   displayNameVi: string;
+  /** @deprecated Use nativeName — kept for backward compatibility. */
   displayNameNative: string;
-  script: LanguageScript;
+  /** BCP-47 script subtag (open string). */
+  script: string;
   direction: TextDirection;
+  regionGroup: RegionGroup;
+  aiSupportTier: AiSupportTier;
   segmentationStrategy: SegmentationStrategy;
   quoteStyle: QuoteStyle;
   punctuationProfile: PunctuationProfile;
@@ -83,203 +104,44 @@ export const LEGACY_LANGUAGE_CODE_MAP: Readonly<Record<string, string>> = {
   deu: 'de',
   spa: 'es',
   por: 'pt',
+  'pt-br': 'pt-BR',
+  'pt-pt': 'pt-PT',
   rus: 'ru',
   ara: 'ar',
   tha: 'th',
   ind: 'id',
+  'sr-latn': 'sr-Latn',
+  'sr-cyrl': 'sr-Cyrl',
+  'az-latn': 'az-Latn',
+  'az-cyrl': 'az-Cyrl',
+  'uz-latn': 'uz-Latn',
 };
 
 export const DEFAULT_SOURCE_LANGUAGE = 'zh-Hans';
 export const DEFAULT_TARGET_LANGUAGE = 'vi';
 
-const BUILTIN_PROFILES: LanguageProfile[] = [
-  {
-    code: 'zh-Hans',
-    displayNameVi: 'Tiếng Trung giản thể',
-    displayNameNative: '简体中文',
-    script: 'Hans',
-    direction: 'ltr',
-    segmentationStrategy: 'cjk_char',
-    quoteStyle: 'cjk_corner',
-    punctuationProfile: 'cjk',
-    supportsTransliteration: true,
-    defaultTransliterationSystem: 'pinyin',
-  },
-  {
-    code: 'zh-Hant',
-    displayNameVi: 'Tiếng Trung phồn thể',
-    displayNameNative: '繁體中文',
-    script: 'Hant',
-    direction: 'ltr',
-    segmentationStrategy: 'cjk_char',
-    quoteStyle: 'cjk_corner',
-    punctuationProfile: 'cjk',
-    supportsTransliteration: true,
-    defaultTransliterationSystem: 'pinyin',
-  },
-  {
-    code: 'vi',
-    displayNameVi: 'Tiếng Việt',
-    displayNameNative: 'Tiếng Việt',
-    script: 'Latn',
-    direction: 'ltr',
-    segmentationStrategy: 'whitespace',
-    quoteStyle: 'curly',
-    punctuationProfile: 'western',
-    supportsTransliteration: false,
-  },
-  {
-    code: 'en',
-    displayNameVi: 'Tiếng Anh',
-    displayNameNative: 'English',
-    script: 'Latn',
-    direction: 'ltr',
-    segmentationStrategy: 'whitespace',
-    quoteStyle: 'curly',
-    punctuationProfile: 'western',
-    supportsTransliteration: false,
-  },
-  {
-    code: 'ja',
-    displayNameVi: 'Tiếng Nhật',
-    displayNameNative: '日本語',
-    script: 'Jpan',
-    direction: 'ltr',
-    segmentationStrategy: 'cjk_char',
-    quoteStyle: 'cjk_corner',
-    punctuationProfile: 'cjk',
-    supportsTransliteration: true,
-    defaultTransliterationSystem: 'romaji',
-  },
-  {
-    code: 'ko',
-    displayNameVi: 'Tiếng Hàn',
-    displayNameNative: '한국어',
-    script: 'Kore',
-    direction: 'ltr',
-    segmentationStrategy: 'cjk_char',
-    quoteStyle: 'cjk_corner',
-    punctuationProfile: 'cjk',
-    supportsTransliteration: true,
-    defaultTransliterationSystem: 'revised_romanization',
-  },
-  {
-    code: 'fr',
-    displayNameVi: 'Tiếng Pháp',
-    displayNameNative: 'Français',
-    script: 'Latn',
-    direction: 'ltr',
-    segmentationStrategy: 'whitespace',
-    quoteStyle: 'guillemet',
-    punctuationProfile: 'western',
-    supportsTransliteration: false,
-  },
-  {
-    code: 'de',
-    displayNameVi: 'Tiếng Đức',
-    displayNameNative: 'Deutsch',
-    script: 'Latn',
-    direction: 'ltr',
-    segmentationStrategy: 'whitespace',
-    quoteStyle: 'curly',
-    punctuationProfile: 'western',
-    supportsTransliteration: false,
-  },
-  {
-    code: 'es',
-    displayNameVi: 'Tiếng Tây Ban Nha',
-    displayNameNative: 'Español',
-    script: 'Latn',
-    direction: 'ltr',
-    segmentationStrategy: 'whitespace',
-    quoteStyle: 'curly',
-    punctuationProfile: 'western',
-    supportsTransliteration: false,
-  },
-  {
-    code: 'pt',
-    displayNameVi: 'Tiếng Bồ Đào Nha',
-    displayNameNative: 'Português',
-    script: 'Latn',
-    direction: 'ltr',
-    segmentationStrategy: 'whitespace',
-    quoteStyle: 'curly',
-    punctuationProfile: 'western',
-    supportsTransliteration: false,
-  },
-  {
-    code: 'ru',
-    displayNameVi: 'Tiếng Nga',
-    displayNameNative: 'Русский',
-    script: 'Cyrl',
-    direction: 'ltr',
-    segmentationStrategy: 'whitespace',
-    quoteStyle: 'guillemet',
-    punctuationProfile: 'western',
-    supportsTransliteration: true,
-    defaultTransliterationSystem: 'iso9',
-  },
-  {
-    code: 'ar',
-    displayNameVi: 'Tiếng Ả Rập',
-    displayNameNative: 'العربية',
-    script: 'Arab',
-    direction: 'rtl',
-    segmentationStrategy: 'whitespace',
-    quoteStyle: 'curly',
-    punctuationProfile: 'arabic',
-    supportsTransliteration: true,
-    defaultTransliterationSystem: 'ala_lc',
-  },
-  {
-    code: 'he',
-    displayNameVi: 'Tiếng Do Thái',
-    displayNameNative: 'עברית',
-    script: 'Hebr',
-    direction: 'rtl',
-    segmentationStrategy: 'whitespace',
-    quoteStyle: 'curly',
-    punctuationProfile: 'western',
-    supportsTransliteration: false,
-  },
-  {
-    code: 'th',
-    displayNameVi: 'Tiếng Thái',
-    displayNameNative: 'ไทย',
-    script: 'Thai',
-    direction: 'ltr',
-    segmentationStrategy: 'thai',
-    quoteStyle: 'curly',
-    punctuationProfile: 'thai',
-    supportsTransliteration: true,
-    defaultTransliterationSystem: 'rtgs',
-  },
-  {
-    code: 'id',
-    displayNameVi: 'Tiếng Indonesia',
-    displayNameNative: 'Bahasa Indonesia',
-    script: 'Latn',
-    direction: 'ltr',
-    segmentationStrategy: 'whitespace',
-    quoteStyle: 'curly',
-    punctuationProfile: 'western',
-    supportsTransliteration: false,
-  },
-];
-
 const registry = new Map<string, LanguageProfile>(
-  BUILTIN_PROFILES.map((p) => [p.code, p]),
+  WORLD_LANGUAGE_CATALOG.map((seed) => {
+    const profile = buildLanguageProfile(seed);
+    return [profile.code, profile] as const;
+  }),
 );
 
 /** Register or replace a profile (extensible registry). */
 export function registerLanguageProfile(profile: LanguageProfile): void {
   const code = normalizeLanguageCode(profile.code);
-  registry.set(code, { ...profile, code });
+  registry.set(code, {
+    ...profile,
+    code,
+    displayNameNative: profile.nativeName ?? profile.displayNameNative,
+    nativeName: profile.nativeName ?? profile.displayNameNative,
+    internationalName: profile.internationalName ?? profile.displayNameNative,
+  });
 }
 
 export function listLanguageProfiles(): LanguageProfile[] {
   return [...registry.values()].sort((a, b) =>
-    a.displayNameVi.localeCompare(b.displayNameVi, 'vi'),
+    a.internationalName.localeCompare(b.internationalName),
   );
 }
 
@@ -297,11 +159,9 @@ export function normalizeLanguageCode(raw: string): string {
   if (trimmed.toUpperCase() === LANGUAGE_AUTO) return LANGUAGE_AUTO;
   const lower = trimmed.toLowerCase();
   if (LEGACY_LANGUAGE_CODE_MAP[lower]) return LEGACY_LANGUAGE_CODE_MAP[lower];
-  // Preserve region/script casing for known patterns like zh-Hans
   const mapped = LEGACY_LANGUAGE_CODE_MAP[trimmed] ?? LEGACY_LANGUAGE_CODE_MAP[lower];
   if (mapped) return mapped;
   if (registry.has(trimmed)) return trimmed;
-  // Title-case script suffix: zh-hans → zh-Hans when base known
   const parts = trimmed.split('-');
   if (parts.length >= 2) {
     const base = parts[0].toLowerCase();
@@ -331,10 +191,14 @@ export function getLanguageProfile(code: string): LanguageProfile {
   if (hit) return hit;
   return {
     code: normalized,
+    internationalName: normalized,
+    nativeName: normalized,
     displayNameVi: normalized,
     displayNameNative: normalized,
     script: 'Latn',
     direction: 'ltr',
+    regionGroup: 'OTHER',
+    aiSupportTier: 'EXPERIMENTAL',
     segmentationStrategy: 'mixed',
     quoteStyle: 'ascii',
     punctuationProfile: 'western',
@@ -358,10 +222,9 @@ export function canSwapLanguages(
 
 export function languageCompactLabel(code: string): string {
   const profile = getLanguageProfile(code);
-  // Compact Chinese for UI chrome (user-facing pairs, not BCP-47 codes).
   if (profile.code === 'zh-Hans') return '中文';
   if (profile.code === 'zh-Hant') return '繁中';
-  return profile.displayNameNative;
+  return profile.nativeName;
 }
 
 /** Compact user-facing pair: 中文 → Tiếng Việt, English → Español. Never raw codes. */
@@ -384,9 +247,9 @@ export function formatTranslateTaskLine(
   const source = getLanguageProfile(sourceCode);
   const target = getLanguageProfile(targetCode);
   return [
-    `Source language: ${source.displayNameNative}`,
-    `Target language: ${target.displayNameNative}`,
-    `Translate: ${source.displayNameNative} → ${target.displayNameNative}`,
+    `Source language: ${source.nativeName}`,
+    `Target language: ${target.nativeName}`,
+    `Translate: ${source.nativeName} → ${target.nativeName}`,
     `Style: ${style}; Range: ${range}`,
   ].join(' | ');
 }

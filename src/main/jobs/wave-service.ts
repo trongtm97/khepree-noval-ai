@@ -138,7 +138,11 @@ function collectLockedTargets(db: DatabaseManager, projectId: string): Record<st
   const terms = db.terms.listAllForProject(projectId);
   for (const t of terms) {
     if (t.locked !== 1) continue;
-    const source = (t.source_text || t.source_simplified || '').toLowerCase();
+    const sourceRaw =
+      t.source_text != null && t.source_text.length > 0
+        ? t.source_text
+        : t.source_simplified;
+    const source = sourceRaw.toLowerCase();
     const target = db.terms.getPrimaryTranslation(t.id);
     if (source && target) out[source] = target;
   }

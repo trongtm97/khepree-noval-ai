@@ -32,19 +32,23 @@ const EMPTY_CONTEXT: MemoryContextDto = {
 describe('LanguageProfile registry', () => {
   it('lists builtin profiles and is extensible', () => {
     const before = listLanguageProfiles().length;
-    expect(before).toBeGreaterThanOrEqual(14);
+    expect(before).toBeGreaterThanOrEqual(100);
     registerLanguageProfile({
-      code: 'it',
+      code: 'it-test',
+      internationalName: 'Italian',
+      nativeName: 'Italiano',
       displayNameVi: 'Tiếng Ý',
       displayNameNative: 'Italiano',
       script: 'Latn',
       direction: 'ltr',
+      regionGroup: 'EUROPE',
+      aiSupportTier: 'GEMINI_EXTENDED',
       segmentationStrategy: 'whitespace',
       quoteStyle: 'curly',
       punctuationProfile: 'western',
       supportsTransliteration: false,
     });
-    expect(listLanguageProfiles().some((p) => p.code === 'it')).toBe(true);
+    expect(listLanguageProfiles().some((p) => p.code === 'it-test')).toBe(true);
     expect(listLanguageProfiles().length).toBeGreaterThanOrEqual(before);
   });
 

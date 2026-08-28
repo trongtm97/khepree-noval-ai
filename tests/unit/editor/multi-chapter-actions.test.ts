@@ -30,7 +30,22 @@ function mockEditorDb(): {
     [CH2]: { id: CH2, project_id: PROJECT, chapter_number: 2, sequence_order: 2 },
   };
 
+  const editionId = 'edition-1111-1111-1111-111111111111';
+  const edition = {
+    id: editionId,
+    project_id: PROJECT,
+    target_language: 'vi',
+    name: 'Tiếng Việt',
+    status: 'ACTIVE',
+    style_config: null,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+  };
+
   const db = {
+    getConnection: () => ({
+      prepare: () => ({ run: () => undefined }),
+    }),
     chapters: {
       getById: (id: string) => chapters[id] ?? null,
     },
@@ -38,7 +53,7 @@ function mockEditorDb(): {
       listByChapter: (chapterId: string) => paragraphsByChapter[chapterId] ?? [],
     },
     translations: {
-      clearAiByChapter: (chapterId: string) => {
+      clearAiByChapter: (chapterId: string, _editionId?: string | null) => {
         cleared.push(chapterId);
         return { deleted: chapterId === CH1 ? 1 : 2, keptLocked: chapterId === CH2 ? 1 : 0 };
       },
@@ -49,7 +64,23 @@ function mockEditorDb(): {
       getPrimaryTranslation: () => null,
     },
     projects: {
-      getById: () => ({ id: PROJECT, genre: null }),
+      getById: () => ({
+        id: PROJECT,
+        genre: null,
+        target_language: 'vi',
+        target_title: null,
+        source_language: 'zh-Hans',
+        active_edition_id: editionId,
+      }),
+      setActiveEditionId: () => undefined,
+      getStyleConfig: () => null,
+      updateLanguages: () => undefined,
+      setStyleConfig: () => undefined,
+    },
+    translationEditions: {
+      getById: (id: string) => (id === editionId ? edition : null),
+      listByProject: () => [edition],
+      create: () => edition,
     },
     jobs: {
       listByProject: () => [],

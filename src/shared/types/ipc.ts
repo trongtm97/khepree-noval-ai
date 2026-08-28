@@ -24,6 +24,22 @@ import type {
 import type { ProjectMetadataDto } from '../schemas/book-metadata';
 import type { TermCandidateDto, TermDto } from '../schemas/term';
 import type {
+  TabularCommitResponse,
+  TabularExportResponse,
+  TabularImportHistoryEntry,
+  TabularPreviewResponse,
+  TabularSelectFileResponse,
+  TabularUndoLastResponse,
+} from '../schemas/tabular';
+import type { TabularDataType, TabularFormat, TabularImportMode } from '../constants/tabular';
+import type {
+  TermTabularDefaultStatus,
+  TermTabularDuplicateStrategy,
+  TermTabularExportScope,
+} from '../constants/term-tabular';
+import type { TranslationSpreadsheetConflictStrategy } from '../constants/translation-spreadsheet';
+import type { SourceWorkbookImportMode } from '../constants/source-workbook-tabular';
+import type {
   CharacterDto,
   MemoryConflictDto,
   MemoryContextDto,
@@ -198,6 +214,10 @@ export interface NovelTransApi {
       sourceLanguage: string;
       targetLanguage: string;
     }) => Promise<{ project: ProjectDto }>;
+    redetectSourceLanguage: (input: {
+      projectId: string;
+      apply?: boolean;
+    }) => Promise<import('../schemas/source-language').SourceLanguageRedetectResponse>;
     resolveWorker: (input: {
       projectId: string;
       purpose?:
@@ -296,6 +316,16 @@ export interface NovelTransApi {
       hintCode?: string;
     }) => Promise<import('../schemas/language-profile').LanguageDetectResponse>;
   };
+  translationSettings: {
+    get: () => Promise<
+      import('../schemas/translation-settings').DefaultTargetLanguageSettings
+    >;
+    setDefaultTarget: (input: {
+      defaultTargetLanguage: string;
+    }) => Promise<
+      import('../schemas/translation-settings').DefaultTargetLanguageSettings
+    >;
+  };
   import: {
     selectFile: () => Promise<{ canceled: boolean; filePath: string | null }>;
     preview: (filePath: string) => Promise<{ preview: ImportPreviewDto }>;
@@ -328,6 +358,11 @@ export interface NovelTransApi {
       expectedEndChapter?: number;
     }) => Promise<{ preview: FolderPreviewDto }>;
     scan: (projectId: string) => Promise<{ scanResult: FolderScanResultDto }>;
+    detectLanguage: (input: {
+      previewId: string;
+      sourceLanguageHint?: string | null;
+      sourceLanguageMode?: 'AUTO' | 'HINTED';
+    }) => Promise<{ detection: import('../schemas/source-language').SourceLanguageDetection }>;
     import: (input: {
       previewId?: string;
       projectId?: string;
@@ -335,6 +370,9 @@ export interface NovelTransApi {
       genre?: string | null;
       description?: string | null;
       chineseTitle?: string | null;
+      sourceLanguageHint?: string | null;
+      sourceLanguageMode?: 'AUTO' | 'HINTED';
+      /** @deprecated */
       sourceLanguage?: string | null;
       targetLanguage?: string | null;
       accountId?: string | null;
@@ -485,6 +523,56 @@ export interface NovelTransApi {
       scopeRef?: string | null;
       duplicateStrategy?: TermImportDuplicateStrategy;
     }) => Promise<z.infer<typeof TermCommitImportResponseSchema>>;
+  };
+  tabular: {
+    selectImportFile: (input: {
+      dataType: TabularDataType;
+      format?: 'csv' | 'xlsx' | 'any';
+    }) => Promise<TabularSelectFileResponse>;
+    preview: (input: {
+      filePath: string;
+      projectId?: string;
+      editionId?: string;
+      dataTypeHint?: TabularDataType;
+      duplicateStrategy?: TermTabularDuplicateStrategy;
+      defaultImportStatus?: TermTabularDefaultStatus;
+      allowElevatedStatus?: boolean;
+    conflictStrategy?: TranslationSpreadsheetConflictStrategy;
+    sourceImportMode?: SourceWorkbookImportMode;
+    columnMapping?: Record<string, string>;
+    }) => Promise<TabularPreviewResponse>;
+    commit: (input: {
+      previewId: string;
+      mode?: TabularImportMode;
+      projectId?: string;
+      editionId?: string;
+      duplicateStrategy?: TermTabularDuplicateStrategy;
+      defaultImportStatus?: TermTabularDefaultStatus;
+      allowElevatedStatus?: boolean;
+      conflictStrategy?: TranslationSpreadsheetConflictStrategy;
+      sourceImportMode?: SourceWorkbookImportMode;
+    }) => Promise<TabularCommitResponse>;
+    discardPreview: (input: { previewId: string }) => Promise<{ ok: true }>;
+    selectExportPath: (input: {
+      dataType: TabularDataType;
+      format: TabularFormat;
+      defaultName: string;
+    }) => Promise<{ canceled: boolean; filePath: string | null }>;
+    export: (input: {
+      dataType: TabularDataType;
+      format: TabularFormat;
+      outputPath?: string;
+      projectId?: string;
+      editionId?: string;
+      utf8Bom?: boolean;
+      exportScope?: TermTabularExportScope;
+      operationalOptions?: { sanitizeEmail?: boolean; limit?: number };
+    }) => Promise<TabularExportResponse>;
+    undoLast: (input?: { projectId?: string }) => Promise<TabularUndoLastResponse>;
+    listHistory: (input?: { projectId?: string }) => Promise<{
+      entries: TabularImportHistoryEntry[];
+    }>;
+    downloadTermTemplate: (input?: { outputPath?: string }) => Promise<{ filePath: string }>;
   };
   memory: {
     listCharacters: (projectId: string) => Promise<{ characters: CharacterDto[] }>;

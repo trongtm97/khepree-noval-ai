@@ -59,9 +59,24 @@ import {
 import {
   listLanguageProfiles,
   normalizeLanguageCode,
-  DEFAULT_SOURCE_LANGUAGE,
   DEFAULT_TARGET_LANGUAGE,
+  LANGUAGE_AUTO,
 } from '@shared/constants/language-profile';
+import {
+  DefaultTargetLanguageSettingsSchema,
+  SetDefaultTargetLanguageRequestSchema,
+  SetDefaultTargetLanguageResponseSchema,
+} from '@shared/schemas/translation-settings';
+import {
+  readDefaultTargetLanguage,
+  setDefaultTargetLanguage,
+} from '../services/translation-settings-service';
+import {
+  SourceLanguageRedetectRequestSchema,
+  SourceLanguageRedetectResponseSchema,
+} from '@shared/schemas/source-language';
+import { redetectProjectSourceLanguage } from '../services/source-language-redetect';
+import { resolveProjectSourceLanguage } from '../services/resolve-project-source-language';
 import {
   detectLanguage,
   resolveSourceLanguageInput,
@@ -107,6 +122,7 @@ import {
   SourceFolderChangeFolderRequestSchema,
   SourceFolderGetDiffRequestSchema,
   SourceFolderGetDiffResponseSchema,
+  SourceFolderDetectLanguageRequestSchema,
   SourceFolderImportRequestSchema,
   SourceFolderMarkRetranslateRequestSchema,
   SourceFolderResolveConflictRequestSchema,
@@ -127,6 +143,7 @@ import {
   updateMetadataFromUserEdit,
 } from '../source-folder/book-metadata-service';
 import { getTermService } from '../services/term-service-singleton';
+import { getTabularService } from '../services/tabular-service-singleton';
 import {
   TermBulkResponseSchema,
   TermCandidateListRequestSchema,
@@ -280,6 +297,23 @@ import {
   ResetAiMemoryRequestSchema,
   ResetAiMemoryResponseSchema,
 } from '@shared/schemas/notebooklm-preprocess';
+import {
+  TabularCommitRequestSchema,
+  TabularCommitResponseSchema,
+  TabularDiscardPreviewRequestSchema,
+  TabularDownloadTermTemplateRequestSchema,
+  TabularDownloadTermTemplateResponseSchema,
+  TabularExportRequestSchema,
+  TabularExportResponseSchema,
+  TabularListHistoryResponseSchema,
+  TabularPreviewRequestSchema,
+  TabularPreviewResponseSchema,
+  TabularSelectExportPathRequestSchema,
+  TabularSelectFileRequestSchema,
+  TabularSelectFileResponseSchema,
+  TabularUndoLastRequestSchema,
+  TabularUndoLastResponseSchema,
+} from '@shared/schemas/tabular';
 import { FullNovelPreprocessAutoService } from '../bootstrap/full-novel-preprocess-auto-service';
 import { AiMemoryResetService } from '../bootstrap/ai-memory-reset-service';
 import { getAutoPreprocessProgress } from '../bootstrap/auto-preprocess-progress';
@@ -674,14 +708,15 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.PROJECT_CREATE,
     createIpcHandler(ProjectCreateRequestSchema, async (request) => {
       const resolved = await resolveSourceLanguageInput({
-        sourceLanguage: request.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE,
+        sourceLanguage: LANGUAGE_AUTO,
         sampleText: request.sampleText,
+        hintCode: request.sourceLanguageHint,
       });
       const targetLanguage = normalizeLanguageCode(
         request.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
       );
       if (resolved.code === targetLanguage) {
-        throw new Error('sourceLanguage and targetLanguage must differ');
+        throw new Error('SOURCE_TARGET_SAME');
       }
       const row = getDatabase().projects.create({
         title: request.title,
@@ -689,9 +724,17 @@ export function registerIpcHandlers(): void {
         description: request.description,
         source_language: resolved.code,
         target_language: targetLanguage,
+        source_language_mode: request.sourceLanguageHint ? 'HINTED' : 'AUTO',
+        source_language_hint: request.sourceLanguageHint ?? null,
+        source_language_confidence: resolved.detection.confidence,
+        source_language_detection_method: resolved.detection.method,
+        source_language_detection_checked_at: new Date().toISOString(),
       });
       ensureDefaultEdition(getDatabase(), row.id);
-      const refreshed = getDatabase().projects.getById(row.id)!;
+      const refreshed = getDatabase().projects.getById(row.id);
+      if (!refreshed) {
+        throw new Error(`Project not found after create: ${row.id}`);
+      }
       return ProjectCreateResponseSchema.parse({
         project: ProjectDtoSchema.parse(toProjectDto(refreshed, 0)),
         sourceDetection: resolved.detection,
@@ -707,10 +750,11 @@ export function registerIpcHandlers(): void {
       if (!existing) throw new Error(`Project not found: ${request.projectId}`);
       ensureDefaultEdition(db, request.projectId);
 
-      // Source language stays on project; target language maps to edition switch/create.
+      // Source language is detection truth — only target may change here.
+      const source = resolveProjectSourceLanguage(existing);
       db.projects.updateLanguages(
         request.projectId,
-        request.sourceLanguage,
+        source,
         existing.target_language,
       );
       createEdition(db, {
@@ -723,6 +767,18 @@ export function registerIpcHandlers(): void {
       return ProjectUpdateLanguagesResponseSchema.parse({
         project: ProjectDtoSchema.parse(toProjectDtoFromDb(db, row)),
       });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_REDETECT_SOURCE_LANGUAGE,
+    createIpcHandler(SourceLanguageRedetectRequestSchema, async (request) => {
+      const result = await redetectProjectSourceLanguage(
+        getDatabase(),
+        request.projectId,
+        { apply: request.apply },
+      );
+      return SourceLanguageRedetectResponseSchema.parse(result);
     }),
   );
 
@@ -773,6 +829,31 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_SETTINGS_GET,
+    createIpcHandlerNoArg(() => {
+      return DefaultTargetLanguageSettingsSchema.parse(
+        readDefaultTargetLanguage(getDatabase()),
+      );
+    }, DefaultTargetLanguageSettingsSchema),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_SETTINGS_SET_DEFAULT_TARGET,
+    createIpcHandler(SetDefaultTargetLanguageRequestSchema, (request) => {
+      try {
+        return SetDefaultTargetLanguageResponseSchema.parse(
+          setDefaultTargetLanguage(getDatabase(), request.defaultTargetLanguage),
+        );
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message === 'INVALID_LANGUAGE_CODE') {
+          throw new Error('INVALID_LANGUAGE_CODE');
+        }
+        throw err;
+      }
+    }),
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.PROJECT_GET,
     createIpcHandler(ProjectIdRequestSchema, (request) => {
       const db = getDatabase();
@@ -781,7 +862,10 @@ export function registerIpcHandlers(): void {
         throw new Error(`Project not found: ${request.projectId}`);
       }
       ensureDefaultEdition(db, request.projectId);
-      const refreshed = db.projects.getById(request.projectId)!;
+      const refreshed = db.projects.getById(request.projectId);
+      if (!refreshed) {
+        throw new Error(`Project not found: ${request.projectId}`);
+      }
       return ProjectCreateResponseSchema.parse({
         project: ProjectDtoSchema.parse(toProjectDtoFromDb(db, refreshed)),
       });
@@ -965,16 +1049,29 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.SOURCE_FOLDER_DETECT_LANGUAGE,
+    createIpcHandler(SourceFolderDetectLanguageRequestSchema, async (request) => {
+      const detection = await getSourceFolderService().detectLanguageFromPreview({
+        previewId: request.previewId,
+        sourceLanguageHint: request.sourceLanguageHint,
+        sourceLanguageMode: request.sourceLanguageMode,
+      });
+      return { detection };
+    }),
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.SOURCE_FOLDER_IMPORT,
     createIpcHandler(SourceFolderImportRequestSchema, async (request) => {
       if (request.previewId) {
-        const result = getSourceFolderService().commitFolderImport({
+        const result = await getSourceFolderService().commitFolderImport({
           previewId: request.previewId,
           projectTitle: request.projectTitle,
           genre: request.genre,
           description: request.description,
           chineseTitle: request.chineseTitle,
-          sourceLanguage: request.sourceLanguage,
+          sourceLanguageHint: request.sourceLanguageHint ?? request.sourceLanguage,
+          sourceLanguageMode: request.sourceLanguageMode,
           targetLanguage: request.targetLanguage,
           accountId: request.accountId,
           styleConfig: request.styleConfig,
@@ -986,6 +1083,7 @@ export function registerIpcHandlers(): void {
           project: ProjectDtoSchema.parse(toProjectDto(result.project, result.chapterCount)),
           chapterCount: result.chapterCount,
           paragraphCount: result.paragraphCount,
+          sourceDetection: result.sourceDetection,
         };
       }
       if (!request.projectId || !request.chapterNumbers?.length) {
@@ -1314,7 +1412,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.CHARACTER_LIST,
     createIpcHandler(CharacterListRequestSchema, (request) => {
-      const characters = getMemoryService().listCharacters(request.projectId);
+      const characters = getMemoryService().listCharacters(
+        request.projectId,
+        request.editionId,
+      );
       return CharacterListResponseSchema.parse({ characters });
     }),
   );
@@ -1333,6 +1434,7 @@ export function registerIpcHandlers(): void {
       const relationships = getMemoryService().listRelationships(
         request.projectId,
         request.atChapter,
+        request.editionId,
       );
       return RelationshipListResponseSchema.parse({ relationships });
     }),
@@ -1369,6 +1471,7 @@ export function registerIpcHandlers(): void {
         request.projectId,
         request.delta,
         request.chapterNumber,
+        request.editionId,
       );
       return MemoryApplyDeltaResponseSchema.parse(result);
     }),
@@ -1552,10 +1655,16 @@ export function registerIpcHandlers(): void {
     createIpcHandler(NotebookSyncNowRequestSchema, async (request) => {
       const sync = getNotebookSyncService();
       await sync.syncDrive(request.projectId);
-      if (request.accountId) {
-        sync.scheduleBackgroundVersionProbe(request.projectId, request.accountId);
+      const accountId =
+        request.accountId ??
+        new ProjectWorkerResolver(getDatabase()).resolve({
+          projectId: request.projectId,
+          purpose: 'notebook',
+        }).accountId;
+      if (accountId) {
+        sync.scheduleBackgroundVersionProbe(request.projectId, accountId);
       }
-      const health = sync.getHealth(request.projectId, request.accountId);
+      const health = sync.getHealth(request.projectId, accountId);
       return NotebookHealthDtoSchema.parse(health);
     }),
   );
@@ -2163,6 +2272,85 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.TERM_COMMIT_IMPORT,
     createIpcHandler(TermCommitImportRequestSchema, (request) => {
       return TermCommitImportResponseSchema.parse(getTermService().commitImport(request));
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TABULAR_SELECT_IMPORT_FILE,
+    createIpcHandler(TabularSelectFileRequestSchema, async (request) => {
+      return TabularSelectFileResponseSchema.parse(
+        await getTabularService().selectImportFile(request),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TABULAR_PREVIEW,
+    createIpcHandler(TabularPreviewRequestSchema, async (request) => {
+      return TabularPreviewResponseSchema.parse(await getTabularService().preview(request));
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TABULAR_COMMIT,
+    createIpcHandler(TabularCommitRequestSchema, (request) => {
+      return TabularCommitResponseSchema.parse(getTabularService().commit(request));
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TABULAR_DISCARD_PREVIEW,
+    createIpcHandler(TabularDiscardPreviewRequestSchema, (request) => {
+      getTabularService().discardPreview(request.previewId);
+      return { ok: true };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TABULAR_SELECT_EXPORT_PATH,
+    createIpcHandler(TabularSelectExportPathRequestSchema, async (request) => {
+      const result = await getTabularService().selectExportPath(request);
+      return { canceled: result.canceled, filePath: result.filePath };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TABULAR_EXPORT,
+    createIpcHandler(TabularExportRequestSchema, async (request) => {
+      if (!request.outputPath) {
+        throw new Error('outputPath is required for tabular export');
+      }
+      return TabularExportResponseSchema.parse(
+        await getTabularService().export({
+          ...request,
+          outputPath: request.outputPath,
+        }),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TABULAR_UNDO_LAST,
+    createIpcHandler(TabularUndoLastRequestSchema, (request) => {
+      return TabularUndoLastResponseSchema.parse(getTabularService().undoLast(request.projectId));
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TABULAR_LIST_HISTORY,
+    createIpcHandler(TabularUndoLastRequestSchema, (request) => {
+      return TabularListHistoryResponseSchema.parse({
+        entries: getTabularService().listHistory(request.projectId),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TABULAR_DOWNLOAD_TERM_TEMPLATE,
+    createIpcHandler(TabularDownloadTermTemplateRequestSchema, async (request) => {
+      return TabularDownloadTermTemplateResponseSchema.parse(
+        await getTabularService().downloadTermTemplate(request.outputPath),
+      );
     }),
   );
 

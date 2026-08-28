@@ -315,6 +315,68 @@ export class TranslationRepository extends BaseRepository {
     return result.changes > 0;
   }
 
+  /** All paragraphs for project/edition joined with optional translation — for spreadsheet export. */
+  listSpreadsheetRows(
+    projectId: string,
+    editionId: string,
+  ): Array<{
+    project_id: string;
+    edition_id: string;
+    chapter_number: number | null;
+    chapter_title: string | null;
+    paragraph_uuid: string;
+    paragraph_id: string;
+    source_text: string;
+    translation_id: string | null;
+    translated_text: string | null;
+    translation_status: string | null;
+    human_locked: number | null;
+    updated_at: string | null;
+    editor_note: string | null;
+  }> {
+    return this.db
+      .prepare(
+        `SELECT
+          c.project_id,
+          ? AS edition_id,
+          c.chapter_number,
+          COALESCE(c.chapter_title, c.display_title) AS chapter_title,
+          p.id AS paragraph_uuid,
+          p.paragraph_id,
+          p.source_text,
+          t.id AS translation_id,
+          t.translated_text,
+          t.status AS translation_status,
+          t.human_locked,
+          t.updated_at,
+          (
+            SELECT tv.editor_note FROM translation_versions tv
+            WHERE tv.translation_id = t.id
+            ORDER BY tv.version DESC LIMIT 1
+          ) AS editor_note
+        FROM chapter_paragraphs p
+        INNER JOIN chapters c ON c.id = p.chapter_id
+        LEFT JOIN translations t ON t.paragraph_id = p.id AND t.edition_id = ?
+        WHERE c.project_id = ?
+        ORDER BY c.sequence_order ASC, p.sequence ASC`,
+      )
+      .all(editionId, editionId, projectId) as Array<{
+      project_id: string;
+      edition_id: string;
+      chapter_number: number | null;
+      chapter_title: string | null;
+      paragraph_uuid: string;
+      paragraph_id: string;
+      source_text: string;
+      translation_id: string | null;
+      translated_text: string | null;
+      translation_status: string | null;
+      human_locked: number | null;
+      updated_at: string | null;
+      editor_note: string | null;
+    }>;
+  }
+
   /**
    * Delete AI translations for a chapter; keep human_locked rows.
    * Version history cascades via FK ON DELETE CASCADE.

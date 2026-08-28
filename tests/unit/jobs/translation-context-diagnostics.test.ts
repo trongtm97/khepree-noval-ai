@@ -5,6 +5,7 @@ import {
   formatDiagnosticsGroundingWarning,
   formatDiagnosticsKnowledgeVersions,
   formatDiagnosticsMemorySurface,
+  formatDiagnosticsPackModeTooltip,
   readDiagnosticsFromProgress,
 } from '@shared/constants/translation-context';
 import fs from 'node:fs';
@@ -29,7 +30,8 @@ describe('translation context diagnostics formatters', () => {
       notebookKnowledgeVersion: 48,
     };
     expect(formatDiagnosticsMemorySurface(d)).toBe('Translation Notebook');
-    expect(formatDiagnosticsContextMode(d)).toBe('SLIM — Notebook đã xác minh');
+    expect(formatDiagnosticsContextMode(d)).toBe('✓ Notebook đã cập nhật');
+    expect(formatDiagnosticsPackModeTooltip(d)).toBe('SLIM — Notebook đã xác minh');
     expect(formatDiagnosticsKnowledgeVersions(d)).toBe('v48 / v48 ✓');
     expect(formatDiagnosticsGroundingWarning(d)).toBeNull();
   });
@@ -42,7 +44,8 @@ describe('translation context diagnostics formatters', () => {
       localKnowledgeVersion: 48,
       notebookKnowledgeVersion: 47,
     };
-    expect(formatDiagnosticsContextMode(d)).toBe(
+    expect(formatDiagnosticsContextMode(d)).toBe('Notebook + cập nhật mới');
+    expect(formatDiagnosticsPackModeTooltip(d)).toBe(
       'HYBRID — Notebook v47 + cập nhật cục bộ v48',
     );
     expect(formatDiagnosticsGroundingWarning(d)).toBe(
@@ -52,14 +55,14 @@ describe('translation context diagnostics formatters', () => {
   });
 
   it('FAT is local only', () => {
-    expect(
-      formatDiagnosticsContextMode({
-        packMode: 'fat',
-        notebookGroundingVerified: false,
-        localKnowledgeVersion: 1,
-        notebookKnowledgeVersion: 0,
-      }),
-    ).toBe('FAT — SQLite local memory');
+    const d = {
+      packMode: 'fat' as const,
+      notebookGroundingVerified: false,
+      localKnowledgeVersion: 1,
+      notebookKnowledgeVersion: 0,
+    };
+    expect(formatDiagnosticsContextMode(d)).toBe('Bộ nhớ cục bộ');
+    expect(formatDiagnosticsPackModeTooltip(d)).toBe('FAT — SQLite local memory');
   });
 
   it('never claims full Notebook when grounding false on Browser', () => {

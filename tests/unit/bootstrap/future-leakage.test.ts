@@ -93,6 +93,25 @@ function mockDb(opts: {
     getConnection: () => ({
       prepare: () => ({ get: () => null }),
     }),
+    characterTranslations: {
+      getByCharacterAndEdition: () => null,
+      listByProjectAndEdition: () => [],
+    },
+    projects: {
+      getById: () => ({
+        id: 'p',
+        active_edition_id: 'ed1',
+        source_language: 'zh-Hans',
+        target_language: 'vi',
+      }),
+    },
+    translationEditions: {
+      getById: () => ({
+        id: 'ed1',
+        project_id: 'p',
+        target_language: 'vi',
+      }),
+    },
   } as unknown as DatabaseManager;
 }
 
@@ -166,7 +185,7 @@ describe('context selector temporal / future leakage', () => {
 
     const ctx = buildMemoryContext(
       db,
-      { projectId: 'p', chapterIds: ['ch1'] },
+      { projectId: 'p', chapterIds: ['ch1'], editionId: 'ed1' },
       (id) =>
         id === 'c1'
           ? {

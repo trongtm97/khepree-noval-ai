@@ -88,6 +88,10 @@ Use `StatusBadge` + icon/text (not color alone): ready/completed green, running 
 
 ## Localization
 
+Vietnamese-first UI (`vi.ts`). Settings tabs include **Dịch thuật** for global `default_target_language` (Language Picker, stacked international/native/code display). Create Project wizard: source `AUTO`, target from settings once on init (step navigation does not reset).
+
+## Settings
+
 `src/renderer/i18n/` — `vi.ts` default, `en.ts` stub same shape, `t()` / `useT()`, `status.ts`, `errors.ts` friendly map.
 
 ## Accessibility

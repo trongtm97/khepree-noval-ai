@@ -33,13 +33,16 @@ export const englishTextAdapter: TextLanguageAdapter = {
     if (!chapterNumber || chapterNumber <= 0) return null;
     return {
       chapterNumber,
-      chapterTitle: match[2]?.trim() || base,
+      chapterTitle: (match[2] ? match[2].trim() : '') || base,
       confidence: 0.95,
     };
   },
 
-  normalizeText: genericUnicodeAdapter.normalizeText,
-  segmentParagraphs: genericUnicodeAdapter.segmentParagraphs,
+  normalizeText: (raw: string) => genericUnicodeAdapter.normalizeText(raw),
+  segmentParagraphs: (
+    body: string,
+    options?: Parameters<typeof genericUnicodeAdapter.segmentParagraphs>[1],
+  ) => genericUnicodeAdapter.segmentParagraphs(body, options),
 
   normalizePunctuation(text: string): string {
     return text

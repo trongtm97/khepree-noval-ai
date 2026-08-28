@@ -112,9 +112,11 @@ export function runMigration031Backfill(db: Database.Database): void {
     }
 
     const editionId = randomUUID();
+    const trimmedTitle = project.target_title?.trim();
     const name =
-      (project.target_title && project.target_title.trim()) ||
-      editionDisplayName(project.target_language);
+      trimmedTitle !== undefined && trimmedTitle !== ''
+        ? trimmedTitle
+        : editionDisplayName(project.target_language);
 
     insertEdition.run(
       editionId,

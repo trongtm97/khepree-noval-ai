@@ -3,8 +3,17 @@ import {
   preferredTargetOf,
   type BootstrapAnalysisOutput,
 } from '@shared/schemas/bootstrap';
+import {
+  DEFAULT_SOURCE_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+} from '@shared/constants/language-profile';
 import { normalizeTermType } from '@shared/constants/term';
 import { utcNow } from '../db/utils/timestamps';
+import { ensureDefaultEdition } from '../services/edition-service';
+import {
+  upsertCharacterPreferredName,
+  upsertRelationshipAddressTerms,
+} from '../memory/edition-memory';
 
 export interface BootstrapPersistResult {
   charactersUpserted: number;
@@ -38,6 +47,7 @@ export function persistBootstrapAnalysis(
   };
 
   const nameToId = new Map<string, string>();
+  const edition = ensureDefaultEdition(db, projectId);
 
   for (const ch of output.characters) {
     const existing = db.characters.getByName(projectId, ch.source_name);
@@ -47,23 +57,41 @@ export function persistBootstrapAnalysis(
     }
     if (existing) {
       db.characters.update(existing.id, {
-        translated_name: preferredTargetOf(ch) ?? existing.translated_name,
         gender: ch.gender ?? existing.gender,
         role: ch.role ?? existing.role,
         first_chapter: ch.first_seen_chapter ?? existing.first_chapter,
       });
+      const preferred = preferredTargetOf(ch);
+      if (preferred) {
+        upsertCharacterPreferredName(db, {
+          characterId: existing.id,
+          editionId: edition.id,
+          targetLanguage: edition.target_language,
+          preferredName: preferred,
+          source: 'bootstrap',
+        });
+      }
       nameToId.set(ch.source_name, existing.id);
       result.charactersUpserted += 1;
     } else {
       const row = db.characters.create({
         project_id: projectId,
         canonical_name: ch.source_name,
-        translated_name: preferredTargetOf(ch),
         gender: ch.gender ?? null,
         role: ch.role ?? null,
         first_chapter: ch.first_seen_chapter ?? null,
         status: 'active',
       });
+      const preferred = preferredTargetOf(ch);
+      if (preferred) {
+        upsertCharacterPreferredName(db, {
+          characterId: row.id,
+          editionId: edition.id,
+          targetLanguage: edition.target_language,
+          preferredName: preferred,
+          source: 'bootstrap',
+        });
+      }
       nameToId.set(ch.source_name, row.id);
       result.charactersUpserted += 1;
     }
@@ -95,21 +123,33 @@ export function persistBootstrapAnalysis(
     if (dup?.locked === 1) continue;
     if (dup) {
       db.relationships.update(dup.id, {
-        a_calls_b: rel.a_calls_b ?? dup.a_calls_b,
-        b_calls_a: rel.b_calls_a ?? dup.b_calls_a,
         valid_from_chapter: rel.valid_from_chapter ?? dup.valid_from_chapter,
         confidence: rel.confidence ?? dup.confidence,
       });
+      upsertRelationshipAddressTerms(db, {
+        relationshipId: dup.id,
+        editionId: edition.id,
+        targetLanguage: edition.target_language,
+        aCallsB: rel.a_calls_b ?? undefined,
+        bCallsA: rel.b_calls_a ?? undefined,
+        source: 'bootstrap',
+      });
     } else {
-      db.relationships.create({
+      const created = db.relationships.create({
         project_id: projectId,
         from_character_id: fromId,
         to_character_id: toId,
         relationship_type: rel.relationship_type,
-        a_calls_b: rel.a_calls_b ?? null,
-        b_calls_a: rel.b_calls_a ?? null,
         valid_from_chapter: rel.valid_from_chapter ?? null,
         confidence: rel.confidence ?? null,
+      });
+      upsertRelationshipAddressTerms(db, {
+        relationshipId: created.id,
+        editionId: edition.id,
+        targetLanguage: edition.target_language,
+        aCallsB: rel.a_calls_b ?? null,
+        bCallsA: rel.b_calls_a ?? null,
+        source: 'bootstrap',
       });
     }
     result.relationshipsUpserted += 1;
@@ -117,8 +157,8 @@ export function persistBootstrapAnalysis(
 
   const projectForTerms = db.projects.getById(projectId);
   const termPair = {
-    sourceLanguage: projectForTerms?.source_language ?? 'zh-Hans',
-    targetLanguage: projectForTerms?.target_language ?? 'vi',
+    sourceLanguage: projectForTerms?.source_language ?? DEFAULT_SOURCE_LANGUAGE,
+    targetLanguage: projectForTerms?.target_language ?? DEFAULT_TARGET_LANGUAGE,
   };
 
   for (const term of output.terms) {
@@ -264,8 +304,10 @@ function applyFullTemporalProvenance(
 
   for (const term of output.terms) {
     const existing = db.terms.findBySource(term.source, projectId, {
-      sourceLanguage: db.projects.getById(projectId)?.source_language ?? 'zh-Hans',
-      targetLanguage: db.projects.getById(projectId)?.target_language ?? 'vi',
+      sourceLanguage:
+        db.projects.getById(projectId)?.source_language ?? DEFAULT_SOURCE_LANGUAGE,
+      targetLanguage:
+        db.projects.getById(projectId)?.target_language ?? DEFAULT_TARGET_LANGUAGE,
     });
     if (!existing || existing.locked === 1) continue;
     const first = term.first_seen_chapter ?? existing.first_seen_chapter;

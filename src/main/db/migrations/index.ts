@@ -34,6 +34,12 @@ import {
   MIGRATION_031_TRANSLATION_EDITIONS,
   runMigration031Backfill,
 } from './031-translation-editions';
+import {
+  MIGRATION_032_CHARACTER_TRANSLATIONS,
+  runMigration032Backfill,
+} from './032-character-translations';
+import { MIGRATION_033_IMPORT_HISTORY } from './033-import-history';
+import { MIGRATION_034 } from './034-source-language-detection';
 
 export const MIGRATIONS: MigrationDefinition[] = [
   {
@@ -192,6 +198,18 @@ export const MIGRATIONS: MigrationDefinition[] = [
     sql: MIGRATION_031_TRANSLATION_EDITIONS,
     run: runMigration031Backfill,
   },
+  {
+    version: 32,
+    name: 'character_translations',
+    sql: MIGRATION_032_CHARACTER_TRANSLATIONS,
+    run: runMigration032Backfill,
+  },
+  {
+    version: 33,
+    name: 'import_history',
+    sql: MIGRATION_033_IMPORT_HISTORY,
+  },
+  MIGRATION_034,
 ];
 
 export function migrationChecksum(sql: string): string {

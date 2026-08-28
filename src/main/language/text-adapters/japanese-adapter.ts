@@ -43,13 +43,16 @@ export const japaneseTextAdapter: TextLanguageAdapter = {
     if (!chapterNumber || chapterNumber <= 0) return null;
     return {
       chapterNumber,
-      chapterTitle: `第${match[1]}${match[2]}${match[3] ?? ''}`.trim(),
+      chapterTitle: `第${match[1]}${match[2]}${match[3] || ''}`.trim(),
       confidence: 0.95,
     };
   },
 
-  normalizeText: genericUnicodeAdapter.normalizeText,
-  segmentParagraphs: genericUnicodeAdapter.segmentParagraphs,
+  normalizeText: (raw: string) => genericUnicodeAdapter.normalizeText(raw),
+  segmentParagraphs: (
+    body: string,
+    options?: Parameters<typeof genericUnicodeAdapter.segmentParagraphs>[1],
+  ) => genericUnicodeAdapter.segmentParagraphs(body, options),
 
   normalizePunctuation(text: string): string {
     return text.replace(/\u3000/g, ' ');

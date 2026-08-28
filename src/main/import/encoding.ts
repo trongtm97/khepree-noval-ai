@@ -87,7 +87,7 @@ export function detectAndDecode(
   const sample = buffer.subarray(0, Math.min(buffer.length, 64 * 1024));
   const detected = jschardet.detect(sample);
   const detectedName = detected.encoding ?? null;
-  const detectedConf = detected.confidence ?? 0;
+  const detectedConf = detected.confidence;
 
   if (looksLikeValidUtf8(buffer)) {
     const adapter = options.sourceLanguage

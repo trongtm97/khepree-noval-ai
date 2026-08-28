@@ -22,10 +22,12 @@ import { HelpContextButton } from '../features/help/HelpContextButton';
 import { AiProvidersSettingsPanel } from '../components/settings/AiProvidersSettingsPanel';
 import { AiDiagnosticsSettingsPanel } from '../components/settings/AiDiagnosticsSettingsPanel';
 import { SchedulerConcurrencyPanel } from '../components/settings/SchedulerConcurrencyPanel';
+import { TranslationSettingsPanel } from '../components/settings/TranslationSettingsPanel';
 
 type SettingsTab =
   | 'appearance'
   | 'language'
+  | 'translation'
   | 'googleAi'
   | 'aiProviders'
   | 'aiDiagnostics'
@@ -34,6 +36,7 @@ type SettingsTab =
 const SETTINGS_TABS: SettingsTab[] = [
   'appearance',
   'language',
+  'translation',
   'googleAi',
   'aiProviders',
   'aiDiagnostics',
@@ -98,6 +101,7 @@ export function SettingsPage() {
         items={[
           { id: 'appearance', label: t('settings.appearance') },
           { id: 'language', label: t('settings.language') },
+          { id: 'translation', label: t('settings.translation') },
           { id: 'googleAi', label: t('settings.googleAi') },
           { id: 'aiProviders', label: t('settings.aiProviders') },
           { id: 'aiDiagnostics', label: t('settings.aiDiagnostics') },
@@ -168,6 +172,10 @@ export function SettingsPage() {
           </p>
           <p className="muted">{t('settings.languageNote')}</p>
         </Card>
+      </TabPanel>
+
+      <TabPanel active={tab === 'translation'}>
+        <TranslationSettingsPanel onMessage={setMessage} onError={setError} />
       </TabPanel>
 
       <TabPanel active={tab === 'googleAi'}>

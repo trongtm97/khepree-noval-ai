@@ -69,6 +69,8 @@ const api: NovelTransApi = {
       invokeChannel(IPC_CHANNELS.PROJECT_DELETE, { projectId }),
     updateLanguages: (input) =>
       invokeChannel(IPC_CHANNELS.PROJECT_UPDATE_LANGUAGES, input),
+    redetectSourceLanguage: (input) =>
+      invokeChannel(IPC_CHANNELS.PROJECT_REDETECT_SOURCE_LANGUAGE, input),
     resolveWorker: (input) =>
       invokeChannel(IPC_CHANNELS.PROJECT_RESOLVE_WORKER, input),
     setWorker: (input) => invokeChannel(IPC_CHANNELS.PROJECT_SET_WORKER, input),
@@ -82,6 +84,11 @@ const api: NovelTransApi = {
   languages: {
     list: () => invokeChannel(IPC_CHANNELS.LANGUAGE_LIST),
     detect: (input) => invokeChannel(IPC_CHANNELS.LANGUAGE_DETECT, input),
+  },
+  translationSettings: {
+    get: () => invokeChannel(IPC_CHANNELS.TRANSLATION_SETTINGS_GET),
+    setDefaultTarget: (input) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_SETTINGS_SET_DEFAULT_TARGET, input),
   },
   import: {
     selectFile: () => invokeChannel(IPC_CHANNELS.IMPORT_SELECT_FILE),
@@ -99,6 +106,8 @@ const api: NovelTransApi = {
       invokeChannel(IPC_CHANNELS.SOURCE_FOLDER_SCAN_PREVIEW, input),
     scan: (projectId) =>
       invokeChannel(IPC_CHANNELS.SOURCE_FOLDER_SCAN, { projectId }),
+    detectLanguage: (input) =>
+      invokeChannel(IPC_CHANNELS.SOURCE_FOLDER_DETECT_LANGUAGE, input),
     import: (input) => invokeChannel(IPC_CHANNELS.SOURCE_FOLDER_IMPORT, input),
     getStatus: (projectId) =>
       invokeChannel(IPC_CHANNELS.SOURCE_FOLDER_GET_STATUS, { projectId }),
@@ -148,6 +157,21 @@ const api: NovelTransApi = {
     export: (input) => invokeChannel(IPC_CHANNELS.TERM_EXPORT, input),
     previewImport: (input) => invokeChannel(IPC_CHANNELS.TERM_PREVIEW_IMPORT, input),
     commitImport: (input) => invokeChannel(IPC_CHANNELS.TERM_COMMIT_IMPORT, input),
+  },
+  tabular: {
+    selectImportFile: (input) =>
+      invokeChannel(IPC_CHANNELS.TABULAR_SELECT_IMPORT_FILE, input),
+    preview: (input) => invokeChannel(IPC_CHANNELS.TABULAR_PREVIEW, input),
+    commit: (input) => invokeChannel(IPC_CHANNELS.TABULAR_COMMIT, input),
+    discardPreview: (input) =>
+      invokeChannel(IPC_CHANNELS.TABULAR_DISCARD_PREVIEW, input),
+    selectExportPath: (input) =>
+      invokeChannel(IPC_CHANNELS.TABULAR_SELECT_EXPORT_PATH, input),
+    export: (input) => invokeChannel(IPC_CHANNELS.TABULAR_EXPORT, input),
+    undoLast: (input) => invokeChannel(IPC_CHANNELS.TABULAR_UNDO_LAST, input ?? {}),
+    listHistory: (input) => invokeChannel(IPC_CHANNELS.TABULAR_LIST_HISTORY, input ?? {}),
+    downloadTermTemplate: (input) =>
+      invokeChannel(IPC_CHANNELS.TABULAR_DOWNLOAD_TERM_TEMPLATE, input ?? {}),
   },
   memory: {
     listCharacters: (projectId) =>
@@ -353,3 +377,4 @@ const api: NovelTransApi = {
 };
 
 contextBridge.exposeInMainWorld('novelTrans', api);
+

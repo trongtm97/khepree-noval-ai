@@ -32,6 +32,7 @@ import {
   Skeleton,
 } from '../components/ui';
 import { HelpContextButton } from '../features/help/HelpContextButton';
+import { TermVaultTabularDialog } from '../components/TermVaultTabularDialog';
 import { helpArticleForErrorCode } from '../features/help/content';
 
 type Tab = 'vault' | 'review' | 'candidates';
@@ -329,6 +330,7 @@ export function TermsPage() {
             <Button variant="primary" disabled={busy} onClick={addTerm}>
               {t('terms.addTerm')}
             </Button>
+            <TermVaultTabularDialog onComplete={(msg) => setMessage(msg)} />
             <Button variant="secondary" disabled={busy} onClick={importTerms}>
               {t('actions.import')}
             </Button>

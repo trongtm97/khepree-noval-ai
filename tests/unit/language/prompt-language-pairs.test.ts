@@ -4,6 +4,7 @@ import {
   formatLanguagePairPreamble,
   formatTranslationTaskHeader,
   resolveLanguagePairRules,
+  resolveProjectTranslationStyle,
   resolveStyleModel,
 } from '@shared/constants/translation-style-model';
 import { OUTPUT_PROTOCOL_BLOCK } from '@shared/constants/translation-pack';
@@ -32,6 +33,16 @@ const PAIRS: [string, string][] = [
 ];
 
 describe('style model: fidelity / genre / pair rules', () => {
+  it('resolveProjectTranslationStyle reads style_config.preset', () => {
+    expect(resolveProjectTranslationStyle(null)).toBe('balanced');
+    expect(
+      resolveProjectTranslationStyle(JSON.stringify({ preset: 'xianxia' })),
+    ).toBe('xianxia');
+    expect(
+      resolveProjectTranslationStyle(JSON.stringify({ style: 'literal' })),
+    ).toBe('literal');
+  });
+
   it('maps legacy xianxia → BALANCED + XIANXIA without embedding Chinese language rules', () => {
     const m = resolveStyleModel('xianxia');
     expect(m.fidelity).toBe('BALANCED');

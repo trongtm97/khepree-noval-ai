@@ -96,7 +96,7 @@ export class AiProviderService {
           name,
           ok: health.ok,
           status: health.status,
-          message: health.message ?? '',
+          message: health.message,
           accountEmail: health.accountEmail ?? null,
           lastUsedAt: health.lastUsedAt ?? null,
           lastError: health.lastError ?? null,

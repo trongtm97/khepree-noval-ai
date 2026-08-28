@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { ProjectMetadataDto } from '@shared/schemas/book-metadata';
 import { GENRE_PRESETS } from '@shared/constants/book-metadata';
 import { Button, Input, Select } from '../components/ui';
+import { TabularImportExportDialog } from '../components/TabularImportExportDialog';
 import { useT } from '../i18n';
 import { HelpContextButton } from '../features/help/HelpContextButton';
 
@@ -17,16 +18,21 @@ export function ProjectInfoPage() {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeEditionId, setActiveEditionId] = useState<string | undefined>();
+  const [workbookMessage, setWorkbookMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!projectId) return;
     void Promise.all([
       window.novelTrans.bookMetadata.get(projectId),
       window.novelTrans.bookMetadata.listDocuments(projectId),
+      window.novelTrans.projects.list(),
     ])
-      .then(([metaRes, docsRes]) => {
+      .then(([metaRes, docsRes, projectsRes]) => {
         setMetadata(metaRes.metadata);
         setDocuments(docsRes.documents);
+        const project = projectsRes.projects.find((p) => p.id === projectId);
+        setActiveEditionId(project?.activeEditionId ?? undefined);
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
@@ -119,8 +125,18 @@ export function ProjectInfoPage() {
           <Button disabled={busy} onClick={() => { void syncNotebook(); }}>
             {t('bookMetadata.syncNotebook')}
           </Button>
+          {projectId ? (
+            <TabularImportExportDialog
+              dataType="project_data"
+              projectId={projectId}
+              editionId={activeEditionId}
+              onComplete={(msg) => setWorkbookMessage(msg)}
+            />
+          ) : null}
         </div>
       </div>
+
+      {workbookMessage ? <p className="banner banner-info">{workbookMessage}</p> : null}
 
       {error ? <p className="banner banner-error">{error}</p> : null}
 

@@ -2,6 +2,13 @@ import { parseMemoryDelta, type MemoryDeltaItem } from '@shared/schemas/memory-d
 import type { DatabaseManager } from '../db/database-manager';
 import type { MemoryConflictRow } from '../db/repositories/memory-conflict-repository';
 import { withTransaction } from '../db/transaction';
+import {
+  resolveEditionMemoryContext,
+  resolveCharacterPreferredName,
+  resolveRelationshipAddressTerms,
+  upsertCharacterPreferredName,
+  upsertRelationshipAddressTerms,
+} from './edition-memory';
 
 export interface MemoryDeltaApplyResult {
   applied: number;
@@ -90,13 +97,18 @@ export function applyMemoryDelta(
   projectId: string,
   raw: unknown,
   chapterNumber?: number,
+  editionId?: string,
 ): MemoryDeltaApplyResult {
   const items = parseMemoryDelta(raw);
+  const edition = resolveEditionMemoryContext(db, projectId, editionId);
   let result = emptyApplyResult();
 
   withTransaction(db.getConnection(), () => {
     for (const item of items) {
-      result = mergeApplyResults(result, applyItem(db, projectId, item, chapterNumber));
+      result = mergeApplyResults(
+        result,
+        applyItem(db, projectId, item, chapterNumber, edition.editionId, edition.targetLanguage),
+      );
     }
   });
 
@@ -107,15 +119,17 @@ function applyItem(
   db: DatabaseManager,
   projectId: string,
   item: MemoryDeltaItem,
-  chapterNumber?: number,
+  chapterNumber: number | undefined,
+  editionId: string,
+  targetLanguage: string,
 ): MemoryDeltaApplyResult {
   switch (item.action) {
     case 'upsert':
-      return applyUpsert(db, projectId, item, chapterNumber);
+      return applyUpsert(db, projectId, item, chapterNumber, editionId, targetLanguage);
     case 'delete':
       return applyDelete(db, projectId, item);
     case 'relationship':
-      return applyRelationship(db, projectId, item, chapterNumber);
+      return applyRelationship(db, projectId, item, chapterNumber, editionId, targetLanguage);
     case 'story_state':
       return applyStoryState(db, projectId, item);
     default:
@@ -127,7 +141,9 @@ function applyUpsert(
   db: DatabaseManager,
   projectId: string,
   item: Extract<MemoryDeltaItem, { action: 'upsert' }>,
-  chapterNumber?: number,
+  chapterNumber: number | undefined,
+  editionId: string,
+  targetLanguage: string,
 ): MemoryDeltaApplyResult {
   const conflicts: MemoryConflictRow[] = [];
   const proposedValue = serializeValue(item.value);
@@ -177,6 +193,8 @@ function applyUpsert(
       item.key,
       item.value,
       chapterNumber,
+      editionId,
+      targetLanguage,
     );
     conflicts.push(...characterResult.conflicts);
     if (characterResult.blocked) {
@@ -211,19 +229,22 @@ function applyCharacterPatch(
   name: string,
   value: Record<string, unknown>,
   chapterNumber: number | undefined,
+  editionId: string,
+  targetLanguage: string,
 ): { conflicts: MemoryConflictRow[]; blocked: boolean } {
   const conflicts: MemoryConflictRow[] = [];
+  const proposedName =
+    typeof value.translatedName === 'string'
+      ? value.translatedName
+      : typeof value.translated_name === 'string'
+        ? value.translated_name
+        : null;
+
   let character = db.characters.getByName(projectId, name);
   if (!character) {
     character = db.characters.create({
       project_id: projectId,
       canonical_name: name,
-      translated_name:
-        typeof value.translatedName === 'string'
-          ? value.translatedName
-          : typeof value.translated_name === 'string'
-            ? value.translated_name
-            : null,
       gender: typeof value.gender === 'string' ? value.gender : null,
       role: typeof value.role === 'string' ? value.role : null,
       description: typeof value.description === 'string' ? value.description : null,
@@ -234,18 +255,35 @@ function applyCharacterPatch(
       first_chapter: chapterNumber ?? null,
       last_chapter: chapterNumber ?? null,
     });
+    if (proposedName) {
+      upsertCharacterPreferredName(db, {
+        characterId: character.id,
+        editionId,
+        targetLanguage,
+        preferredName: proposedName,
+        source: 'ai_delta',
+      });
+    }
     return { conflicts, blocked: false };
   }
+
+  const existingTranslation = db.characterTranslations.getByCharacterAndEdition(
+    character.id,
+    editionId,
+  );
+  const existingPreferred = resolveCharacterPreferredName(db, character, editionId);
 
   const fields: {
     patchKey: string;
     rowKey: keyof import('../db/repositories/character-repository').CharacterRow;
     proposed: unknown;
+    editionScoped?: boolean;
   }[] = [
     {
       patchKey: 'translatedName',
       rowKey: 'translated_name',
-      proposed: value.translatedName ?? value.translated_name,
+      proposed: proposedName,
+      editionScoped: true,
     },
     { patchKey: 'gender', rowKey: 'gender', proposed: value.gender },
     { patchKey: 'role', rowKey: 'role', proposed: value.role },
@@ -256,9 +294,36 @@ function applyCharacterPatch(
   let blocked = false;
   const patch: Partial<import('../db/repositories/character-repository').CreateCharacterInput> =
     {};
+  let preferredPatch: string | null | undefined;
 
   for (const field of fields) {
     if (field.proposed === undefined) continue;
+    if (field.editionScoped) {
+      if (existingTranslation?.locked === 1) {
+        const proposedText = serializeValue(field.proposed);
+        const existingText = serializeValue(existingPreferred);
+        if (differs(existingText, proposedText)) {
+          blocked = true;
+          conflicts.push(
+            recordConflict(
+              db,
+              projectId,
+              'character_translation',
+              existingTranslation.id,
+              field.patchKey,
+              existingPreferred,
+              field.proposed,
+            ),
+          );
+        }
+        continue;
+      }
+      if (typeof field.proposed === 'string') {
+        preferredPatch = field.proposed;
+      }
+      continue;
+    }
+
     const existing = character[field.rowKey];
     const proposedText = serializeValue(field.proposed);
     const existingText = serializeValue(existing);
@@ -276,9 +341,6 @@ function applyCharacterPatch(
         ),
       );
       continue;
-    }
-    if (field.rowKey === 'translated_name' && typeof field.proposed === 'string') {
-      patch.translated_name = field.proposed;
     }
     if (field.rowKey === 'gender' && typeof field.proposed === 'string') {
       patch.gender = field.proposed;
@@ -300,6 +362,16 @@ function applyCharacterPatch(
 
   if (!blocked && Object.keys(patch).length > 0) {
     db.characters.update(character.id, patch);
+  }
+
+  if (!blocked && preferredPatch !== undefined) {
+    upsertCharacterPreferredName(db, {
+      characterId: character.id,
+      editionId,
+      targetLanguage,
+      preferredName: preferredPatch,
+      source: 'ai_delta',
+    });
   }
 
   if (chapterNumber !== undefined) {
@@ -342,7 +414,9 @@ function applyRelationship(
   db: DatabaseManager,
   projectId: string,
   item: Extract<MemoryDeltaItem, { action: 'relationship' }>,
-  chapterNumber?: number,
+  chapterNumber: number | undefined,
+  editionId: string,
+  targetLanguage: string,
 ): MemoryDeltaApplyResult {
   const conflicts: MemoryConflictRow[] = [];
   const fromChar = resolveCharacter(db, projectId, item.from);
@@ -392,27 +466,41 @@ function applyRelationship(
       );
       return emptyApplyResult({ conflicts, skipped: 1 });
     }
+    const existingAddress = resolveRelationshipAddressTerms(db, overlapping, editionId);
     db.relationships.update(overlapping.id, {
       description: item.description ?? overlapping.description,
-      a_calls_b: item.aCallsB ?? overlapping.a_calls_b,
-      b_calls_a: item.bCallsA ?? overlapping.b_calls_a,
       confidence: item.confidence ?? overlapping.confidence,
+      source: 'ai_delta',
+    });
+    upsertRelationshipAddressTerms(db, {
+      relationshipId: overlapping.id,
+      editionId,
+      targetLanguage,
+      aCallsB: item.aCallsB ?? existingAddress.aCallsB,
+      bCallsA: item.bCallsA ?? existingAddress.bCallsA,
       source: 'ai_delta',
     });
     return emptyApplyResult({ applied: 1, conflicts, relationshipsTouched: 1 });
   }
 
-  db.relationships.create({
+  const created = db.relationships.create({
     project_id: projectId,
     from_character_id: fromChar.id,
     to_character_id: toChar.id,
     relationship_type: item.type,
     description: item.description ?? null,
-    a_calls_b: item.aCallsB ?? null,
-    b_calls_a: item.bCallsA ?? null,
     valid_from_chapter: item.validFromChapter ?? chapterNumber ?? null,
     valid_to_chapter: item.validToChapter ?? null,
     confidence: item.confidence ?? null,
+    source: 'ai_delta',
+  });
+
+  upsertRelationshipAddressTerms(db, {
+    relationshipId: created.id,
+    editionId,
+    targetLanguage,
+    aCallsB: item.aCallsB ?? null,
+    bCallsA: item.bCallsA ?? null,
     source: 'ai_delta',
   });
 

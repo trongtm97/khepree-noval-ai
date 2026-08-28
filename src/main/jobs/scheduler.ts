@@ -9,7 +9,6 @@ import {
   SCHEDULER_SETTING_KEYS,
 } from '@shared/constants/job';
 import {
-  DEFAULT_AUTO_GLOBAL_CAP,
   DEFAULT_CONCURRENCY_POLICY,
   GLOBAL_MAX_MODE_AUTO,
   type ConcurrencyPolicy,
@@ -32,9 +31,12 @@ import {
 } from './concurrency-policy';
 
 export interface SchedulerOptions {
-  /** @deprecated Prefer concurrencyPolicy.globalMaxWorkers / AUTO. */
-  maxConcurrentWorkers?: number;
   concurrencyPolicy?: Partial<ConcurrencyPolicy>;
+  /**
+   * Legacy alias for concurrencyPolicy.globalMaxWorkers (fixed int mode).
+   * Prefer concurrencyPolicy for new code.
+   */
+  maxConcurrentWorkers?: number;
   tickMs?: number;
   leaseMs?: number;
   quotaCooldownMs?: number;
@@ -81,7 +83,10 @@ export class AutomationScheduler {
     this.tickMs = options.tickMs ?? DEFAULT_SCHEDULER_TICK_MS;
     this.leaseMs = options.leaseMs ?? DEFAULT_JOB_LEASE_MS;
     this.policyOverrides = { ...(options.concurrencyPolicy ?? {}) };
-    if (options.maxConcurrentWorkers != null) {
+    if (
+      options.maxConcurrentWorkers != null &&
+      this.policyOverrides.globalMaxWorkers === undefined
+    ) {
       this.policyOverrides.globalMaxWorkers = options.maxConcurrentWorkers;
     }
   }
@@ -203,7 +208,7 @@ export class AutomationScheduler {
     let claimedThisTick = 0;
 
     for (let pass = 0; pass < projects.length && capacity > 0; pass += 1) {
-      const projectId = projects[pass]!;
+      const projectId = projects[pass];
       let snap = buildConcurrencySnapshot(this.inFlightMeta.values());
       const projectMax = effectivePerProjectMax(policy);
       if ((snap.byProject.get(projectId) ?? 0) >= projectMax) continue;
@@ -293,7 +298,7 @@ export class AutomationScheduler {
         ...loaded.perAccountMax,
         ...this.policyOverrides.perAccountMax,
       },
-      autoCap: this.policyOverrides.autoCap ?? loaded.autoCap ?? DEFAULT_AUTO_GLOBAL_CAP,
+      autoCap: this.policyOverrides.autoCap ?? loaded.autoCap,
     };
   }
 

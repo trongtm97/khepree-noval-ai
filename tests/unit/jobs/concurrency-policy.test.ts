@@ -225,7 +225,10 @@ describe('multi-stream fair scheduler', () => {
     expect(scheduler.getInFlightCount()).toBe(3);
 
     for (const release of gates.values()) release();
-    await waitFor(() => scheduler!.getInFlightCount() === 0);
+    await waitFor(() => {
+      if (!scheduler) throw new Error('scheduler missing');
+      return scheduler.getInFlightCount() === 0;
+    });
   });
 
   it('same project: only 1 job by default', async () => {
@@ -265,7 +268,8 @@ describe('multi-stream fair scheduler', () => {
     expect(started.length).toBe(1);
     expect(scheduler.getInFlightCount()).toBe(1);
 
-    gates.get(started[0]!)?.();
+    const firstStarted = started[0];
+    if (firstStarted) gates.get(firstStarted)?.();
     await waitFor(() => started.length === 2);
   });
 

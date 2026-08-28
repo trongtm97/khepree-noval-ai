@@ -45,10 +45,7 @@ function memoryKey(item: MemoryDeltaItem): string | null {
   if (item.action === 'relationship') {
     return `rel:${item.from}->${item.to}:${item.type}`;
   }
-  if (item.action === 'story_state') {
-    return 'story:state';
-  }
-  return null;
+  return 'story:state';
 }
 
 function memoryValue(item: MemoryDeltaItem): string | null {
@@ -68,8 +65,7 @@ function memoryValue(item: MemoryDeltaItem): string | null {
       currentChapterNumber: item.currentChapterNumber ?? null,
     });
   }
-  if (item.action === 'delete') return '__delete__';
-  return null;
+  return '__delete__';
 }
 
 function isIdentityUpsert(item: MemoryDeltaItem): boolean {

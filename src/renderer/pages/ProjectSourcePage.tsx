@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { SourceFolderSettingsDto } from '@shared/schemas/source-folder';
+import type { ProjectDto } from '@shared/schemas/import';
+import type { SourceLanguageDetection } from '@shared/schemas/source-language';
+import { formatLanguagePickerStacked, getLanguageProfile } from '@shared/constants/language-profile';
 import { Button, Card, Input, PageHeader } from '../components/ui';
 import { useT } from '../i18n';
 import { SourceFolderSettingsDrawer } from '../components/source-folder/SourceFolderSettingsDrawer';
 import { HelpContextButton } from '../features/help/HelpContextButton';
+import { SourceWorkbookDialog } from '../components/SourceWorkbookDialog';
+import { SourceLanguageDetectionBanner } from '../components/SourceLanguageDetectionBanner';
 
 export function ProjectSourcePage() {
   const t = useT();
@@ -29,12 +34,26 @@ export function ProjectSourcePage() {
     path: string;
     changeCount: number;
   } | null>(null);
+  const [tabularMessage, setTabularMessage] = useState<string | null>(null);
+  const [project, setProject] = useState<ProjectDto | null>(null);
+  const [redetectBusy, setRedetectBusy] = useState(false);
+  const [redetectDetection, setRedetectDetection] = useState<SourceLanguageDetection | null>(
+    null,
+  );
+  const [redetectPending, setRedetectPending] = useState<{
+    currentLanguage: string;
+    detection: SourceLanguageDetection;
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
-    const status = await window.novelTrans.sourceFolder.getStatus(projectId);
+    const [status, projectRes] = await Promise.all([
+      window.novelTrans.sourceFolder.getStatus(projectId),
+      window.novelTrans.projects.get(projectId),
+    ]);
     setSettings(status.settings);
     setSummary(status.scanSummary);
+    setProject(projectRes.project);
   }, [projectId]);
 
   useEffect(() => {
@@ -116,6 +135,45 @@ export function ProjectSourcePage() {
     }
   };
 
+  const runRedetect = async (apply = false) => {
+    if (!projectId) return;
+    setRedetectBusy(true);
+    setError(null);
+    try {
+      const result = await window.novelTrans.projects.redetectSourceLanguage({
+        projectId,
+        apply,
+      });
+      setRedetectDetection(result.detection);
+      if (result.requiresConfirmation && !apply) {
+        setRedetectPending({
+          currentLanguage: result.currentLanguage,
+          detection: result.detection,
+        });
+        return;
+      }
+      setRedetectPending(null);
+      if (!result.changed) {
+        setTabularMessage(t('sourceFolder.redetectUnchanged'));
+      } else if (result.applied) {
+        await refresh();
+        setTabularMessage(
+          t('createProjectWizard.sourceDetectedTitle') +
+            ': ' +
+            formatLanguagePickerStacked({
+              internationalName: result.detection.internationalName,
+              nativeName: result.detection.nativeName,
+              code: result.detection.detectedLanguage,
+            }).nativeLine,
+        );
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('sourceFolder.redetectFailed'));
+    } finally {
+      setRedetectBusy(false);
+    }
+  };
+
   if (!projectId) {
     return <div className="banner banner-error">{t('sourceFolder.noProject')}</div>;
   }
@@ -134,6 +192,7 @@ export function ProjectSourcePage() {
       />
 
       {error ? <div className="banner banner-error">{error}</div> : null}
+      {tabularMessage ? <div className="banner banner-success">{tabularMessage}</div> : null}
 
       <Card>
         <h3>{t('sourceFolder.sectionTitle')}</h3>
@@ -197,6 +256,90 @@ export function ProjectSourcePage() {
             </div>
           ) : null}
         </div>
+      </Card>
+
+      <Card style={{ marginTop: '1rem' }}>
+        <h3>{t('sourceFolder.sourceLanguageSection')}</h3>
+        <p className="muted">{t('sourceFolder.sourceLanguageSectionHelp')}</p>
+        {project ? (
+          <SourceLanguageDetectionBanner
+            detection={
+              redetectDetection ?? (() => {
+                const profile = getLanguageProfile(project.sourceLanguage);
+                return {
+                  detectedLanguage: project.sourceLanguage,
+                  confidence: project.sourceLanguageConfidence ?? 0.85,
+                  method: project.sourceLanguageDetectionMethod ?? 'LOCAL',
+                  internationalName: profile.internationalName,
+                  nativeName: profile.nativeName,
+                  displayNameVi: profile.displayNameVi,
+                  displayNameNative: profile.displayNameNative,
+                  hintCode: project.sourceLanguageHint ?? null,
+                  hintMismatch: project.hintMismatch ?? false,
+                  mixedLanguage: false,
+                  secondaryLanguages: [],
+                  needsUserConfirm: false,
+                };
+              })()
+            }
+            detecting={redetectBusy}
+          />
+        ) : null}
+        <div className="btn-row" style={{ marginTop: '0.75rem' }}>
+          <Button
+            variant="secondary"
+            disabled={busy || redetectBusy}
+            onClick={() => {
+              void runRedetect(false);
+            }}
+          >
+            {redetectBusy ? t('sourceFolder.redetectRunning') : t('sourceFolder.redetectSourceLanguage')}
+          </Button>
+        </div>
+        {redetectPending ? (
+          <div className="banner banner-warn" style={{ marginTop: '0.75rem' }}>
+            <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>
+              {t('sourceFolder.redetectChangedTitle')}
+            </p>
+            <p style={{ margin: 0 }}>
+              {t('sourceFolder.redetectChangedBody', {
+                current: redetectPending.currentLanguage,
+                detected: redetectPending.detection.detectedLanguage,
+              })}
+            </p>
+            <div className="btn-row" style={{ marginTop: '0.5rem' }}>
+              <Button
+                variant="primary"
+                disabled={redetectBusy}
+                onClick={() => {
+                  void runRedetect(true);
+                }}
+              >
+                {t('sourceFolder.redetectApply')}
+              </Button>
+              <Button
+                disabled={redetectBusy}
+                onClick={() => {
+                  setRedetectPending(null);
+                }}
+              >
+                {t('sourceFolder.redetectKeepCurrent')}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Card>
+
+      <Card style={{ marginTop: '1rem' }}>
+        <h3>{t('sourceWorkbook.sectionTitle')}</h3>
+        <p>{t('sourceWorkbook.sectionDesc')}</p>
+        <SourceWorkbookDialog
+          projectId={projectId}
+          onComplete={(message) => {
+            setTabularMessage(message);
+            void refresh();
+          }}
+        />
       </Card>
 
       {showSettings && settings ? (

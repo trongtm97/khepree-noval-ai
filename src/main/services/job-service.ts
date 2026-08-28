@@ -260,13 +260,12 @@ export class JobService {
 
     if (jobs.length > 0) {
       if (isParallelWavesEnabled(this.db) && jobs.length > 1) {
-        const waveJobs = jobs
-          .filter((j) => j.chapterFrom != null && j.chapterTo != null)
-          .map((j) => ({
-            jobId: j.id,
-            chapterFrom: j.chapterFrom as number,
-            chapterTo: j.chapterTo as number,
-          }));
+        const waveJobs = jobs.flatMap((j) => {
+          const chapterFrom = j.chapterFrom;
+          const chapterTo = j.chapterTo;
+          if (chapterFrom == null || chapterTo == null) return [];
+          return [{ jobId: j.id, chapterFrom, chapterTo }];
+        });
         if (waveJobs.length > 1) {
           createTranslationWave(this.db, {
             projectId: input.projectId,

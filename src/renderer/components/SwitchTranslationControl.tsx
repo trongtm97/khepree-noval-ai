@@ -1,14 +1,18 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { formatLanguagePairLabel } from '@shared/constants/language-profile';
+import {
+  formatLanguagePairLabel,
+  formatLanguagePickerStacked,
+  getLanguageProfile,
+} from '@shared/constants/language-profile';
+import type { LanguageProfileDto } from '@shared/schemas/language-profile';
 import { useT } from '../i18n';
-import { Button, Select } from './ui';
-
-interface LangOption {
-  code: string;
-  displayNameVi: string;
-  displayNameNative: string;
-}
+import { LanguagePicker } from './LanguagePicker';
+import {
+  loadRecentLanguagePairs,
+  saveRecentLanguagePair,
+} from '../services/language-recent-pairs';
+import { Button } from './ui';
 
 export function SwitchTranslationControl({
   projectId,
@@ -25,28 +29,29 @@ export function SwitchTranslationControl({
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [langs, setLangs] = useState<LangOption[]>([]);
-  const [source, setSource] = useState(sourceLanguage);
+  const [langs, setLangs] = useState<LanguageProfileDto[]>([]);
+  const [recentPairs, setRecentPairs] = useState(loadRecentLanguagePairs());
   const [target, setTarget] = useState(targetLanguage);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const sourceProfile = getLanguageProfile(sourceLanguage);
+  const sourceStacked = formatLanguagePickerStacked({
+    internationalName: sourceProfile.internationalName,
+    nativeName: sourceProfile.nativeName,
+    code: sourceLanguage,
+  });
+
   useEffect(() => {
-    setSource(sourceLanguage);
     setTarget(targetLanguage);
-  }, [sourceLanguage, targetLanguage]);
+  }, [targetLanguage]);
 
   useEffect(() => {
     if (!open) return;
     void window.novelTrans.languages.list().then((res) => {
-      setLangs(
-        res.languages.map((l) => ({
-          code: l.code,
-          displayNameVi: l.displayNameVi,
-          displayNameNative: l.displayNameNative,
-        })),
-      );
+      setLangs(res.languages);
     });
+    setRecentPairs(loadRecentLanguagePairs());
   }, [open]);
 
   useEffect(() => {
@@ -61,7 +66,7 @@ export function SwitchTranslationControl({
   }, [open]);
 
   const save = async () => {
-    if (source === target) {
+    if (sourceLanguage === target) {
       setError(t('projectNav.languageMustDiffer'));
       return;
     }
@@ -70,9 +75,10 @@ export function SwitchTranslationControl({
     try {
       const res = await window.novelTrans.projects.updateLanguages({
         projectId,
-        sourceLanguage: source,
+        sourceLanguage,
         targetLanguage: target,
       });
+      saveRecentLanguagePair(res.project.sourceLanguage, res.project.targetLanguage);
       onUpdated(res.project.sourceLanguage, res.project.targetLanguage);
       setOpen(false);
     } catch (err: unknown) {
@@ -81,6 +87,8 @@ export function SwitchTranslationControl({
       setSaving(false);
     }
   };
+
+  const recentTargets = recentPairs.map((p) => p.targetCode);
 
   return (
     <div className="switch-translation" ref={rootRef}>
@@ -105,40 +113,32 @@ export function SwitchTranslationControl({
           <label className="muted" style={{ display: 'block', marginBottom: '0.25rem' }}>
             {t('projectNav.sourceLanguage')}
           </label>
-          <Select
-            value={source}
+          <div
+            className="source-language-readonly"
             aria-label={t('projectNav.sourceLanguage')}
-            disabled={saving}
-            onChange={(e) => {
-              setSource(e.target.value);
-            }}
+            style={{ marginBottom: '0.5rem' }}
           >
-            {langs.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.displayNameNative}
-              </option>
-            ))}
-          </Select>
+            <span className="language-picker-intl">{sourceStacked.internationalName}</span>
+            <br />
+            <span className="language-picker-native">{sourceStacked.nativeLine}</span>
+            <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: 'var(--font-small)' }}>
+              {t('projectNav.sourceLanguageDetected')}
+            </p>
+          </div>
           <label
             className="muted"
             style={{ display: 'block', margin: '0.5rem 0 0.25rem' }}
           >
             {t('projectNav.targetLanguage')}
           </label>
-          <Select
+          <LanguagePicker
             value={target}
             aria-label={t('projectNav.targetLanguage')}
+            languages={langs}
+            recentCodes={recentTargets}
             disabled={saving}
-            onChange={(e) => {
-              setTarget(e.target.value);
-            }}
-          >
-            {langs.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.displayNameNative}
-              </option>
-            ))}
-          </Select>
+            onChange={setTarget}
+          />
           {error ? <p className="error-text">{error}</p> : null}
           <div className="btn-row" style={{ marginTop: '0.65rem' }}>
             <Button size="sm" disabled={saving} onClick={() => void save()}>

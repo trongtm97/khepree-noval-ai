@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import {
+  AI_SUPPORT_TIERS,
   LANGUAGE_AUTO,
-  LANGUAGE_SCRIPTS,
   PUNCTUATION_PROFILES,
   QUOTE_STYLES,
+  REGION_GROUPS,
   SEGMENTATION_STRATEGIES,
   TEXT_DIRECTIONS,
   normalizeLanguageCode,
@@ -11,10 +12,14 @@ import {
 
 export const LanguageProfileDtoSchema = z.object({
   code: z.string().min(2).max(32),
+  internationalName: z.string().min(1),
+  nativeName: z.string().min(1),
   displayNameVi: z.string(),
   displayNameNative: z.string(),
-  script: z.enum(LANGUAGE_SCRIPTS),
+  script: z.string().min(1).max(16),
   direction: z.enum(TEXT_DIRECTIONS),
+  regionGroup: z.enum(REGION_GROUPS),
+  aiSupportTier: z.enum(AI_SUPPORT_TIERS),
   segmentationStrategy: z.enum(SEGMENTATION_STRATEGIES),
   quoteStyle: z.enum(QUOTE_STYLES),
   punctuationProfile: z.enum(PUNCTUATION_PROFILES),
@@ -56,12 +61,18 @@ export const LanguageDetectRequestSchema = z.object({
 
 export const LanguageDetectResponseSchema = z.object({
   code: LanguageCodeSchema,
+  internationalName: z.string(),
+  nativeName: z.string(),
   displayNameVi: z.string(),
   displayNameNative: z.string(),
   confidence: z.number().min(0).max(1),
-  method: z.enum(['heuristic', 'ai', 'hint', 'fallback']),
+  method: z.enum(['heuristic', 'ai', 'hint', 'fallback', 'hybrid']),
   /** True when confidence is low enough that UI must let user confirm/edit. */
   needsUserConfirm: z.boolean(),
+  hintCode: z.string().nullable().optional(),
+  hintMismatch: z.boolean().optional(),
+  mixedLanguage: z.boolean().optional(),
+  secondaryLanguages: z.array(z.string()).optional(),
 });
 
 export type LanguageDetectRequest = z.infer<typeof LanguageDetectRequestSchema>;

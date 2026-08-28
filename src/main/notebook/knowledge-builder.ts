@@ -18,6 +18,11 @@ import type { TermRow } from '../db/repositories/term-repository';
 import type { CharacterRow } from '../db/repositories/character-repository';
 import type { RelationshipRow } from '../db/repositories/relationship-repository';
 import {
+  resolveCharacterPreferredName,
+  resolveEditionMemoryContext,
+  resolveRelationshipAddressTerms,
+} from '../memory/edition-memory';
+import {
   buildBudgetedDocument,
   type KnowledgeRecord,
 } from './knowledge-budget-builder';
@@ -97,9 +102,11 @@ function termLine(term: TermRow, primary: string): string {
 function characterRecord(
   character: CharacterRow,
   aliases: string[],
+  preferredName?: string | null,
+  researchOnly = false,
 ): KnowledgeRecord {
   const lines: string[] = [`## ${character.canonical_name}`];
-  if (character.translated_name) lines.push(`Tên dịch: ${character.translated_name}`);
+  if (!researchOnly && preferredName) lines.push(`Tên dịch: ${preferredName}`);
   if (character.gender) lines.push(`Giới tính: ${character.gender}`);
   if (character.role) lines.push(`Vai trò: ${character.role}`);
   if (aliases.length) lines.push(`Bí danh: ${aliases.join(', ')}`);
@@ -114,13 +121,19 @@ function relationshipRecord(
   rel: RelationshipRow,
   fromName: string,
   toName: string,
+  address?: { aCallsB?: string | null; bCallsA?: string | null },
+  researchOnly = false,
 ): KnowledgeRecord {
   const lines: string[] = [
     `## ${fromName} → ${toName}`,
     `Quan hệ: ${rel.relationship_type}`,
   ];
-  if (rel.a_calls_b) lines.push(`Gọi: ${rel.a_calls_b}`);
-  if (rel.b_calls_a) lines.push(`Được gọi: ${rel.b_calls_a}`);
+  if (!researchOnly) {
+    const aCallsB = address?.aCallsB ?? rel.a_calls_b;
+    const bCallsA = address?.bCallsA ?? rel.b_calls_a;
+    if (aCallsB) lines.push(`Gọi: ${aCallsB}`);
+    if (bCallsA) lines.push(`Được gọi: ${bCallsA}`);
+  }
   if (rel.valid_from_chapter) lines.push(`Từ chương: ${rel.valid_from_chapter}`);
   if (rel.valid_to_chapter) lines.push(`Đến chương: ${rel.valid_to_chapter}`);
   if (rel.description) lines.push(`Mô tả: ${rel.description}`);
@@ -277,9 +290,17 @@ export class NotebookKnowledgeBuilder {
     }).content;
   }
 
-  buildCharacters(projectId: string): string {
+  buildCharacters(
+    projectId: string,
+    options?: { editionId?: string; researchOnly?: boolean },
+  ): string {
     const project = this.db.projects.getById(projectId);
     if (!project) throw new Error(`Project not found: ${projectId}`);
+
+    const researchOnly = options?.researchOnly === true;
+    const edition = researchOnly
+      ? null
+      : resolveEditionMemoryContext(this.db, projectId, options?.editionId);
 
     const currentChapter = resolveCurrentChapter(this.db, projectId);
     const settings = loadNotebookSettings(this.db, projectId);
@@ -296,7 +317,14 @@ export class NotebookKnowledgeBuilder {
       ctx,
     );
     const records = sorted.map((character) =>
-      characterRecord(character, this.db.characters.listAliases(character.id).map((a) => a.alias)),
+      characterRecord(
+        character,
+        this.db.characters.listAliases(character.id).map((a) => a.alias),
+        edition
+          ? resolveCharacterPreferredName(this.db, character, edition.editionId)
+          : null,
+        researchOnly,
+      ),
     );
 
     return buildBudgetedDocument(records, {
@@ -309,9 +337,17 @@ export class NotebookKnowledgeBuilder {
     }).content;
   }
 
-  buildRelationships(projectId: string): string {
+  buildRelationships(
+    projectId: string,
+    options?: { editionId?: string; researchOnly?: boolean },
+  ): string {
     const project = this.db.projects.getById(projectId);
     if (!project) throw new Error(`Project not found: ${projectId}`);
+
+    const researchOnly = options?.researchOnly === true;
+    const edition = researchOnly
+      ? null
+      : resolveEditionMemoryContext(this.db, projectId, options?.editionId);
 
     const currentChapter = resolveCurrentChapter(this.db, projectId);
     const sorted = sortRelationshipsForKnowledge(
@@ -322,10 +358,16 @@ export class NotebookKnowledgeBuilder {
     const records: KnowledgeRecord[] = sorted.map((rel) => {
       const from = this.db.characters.getById(rel.from_character_id);
       const to = this.db.characters.getById(rel.to_character_id);
+      const address =
+        edition != null
+          ? resolveRelationshipAddressTerms(this.db, rel, edition.editionId)
+          : undefined;
       return relationshipRecord(
         rel,
         from?.canonical_name ?? rel.from_character_id,
         to?.canonical_name ?? rel.to_character_id,
+        address,
+        researchOnly,
       );
     });
 

@@ -12,6 +12,7 @@ import { ProjectInfoPage } from './pages/ProjectInfoPage';
 import { AiMemoryPage } from './pages/AiMemoryPage';
 import { TranslationEditorPage } from './pages/TranslationEditorPage';
 import { PortabilityPage } from './pages/PortabilityPage';
+import { ProjectDataPage } from './pages/ProjectDataPage';
 import { TermsPage } from './pages/TermsPage';
 import { CharactersPage } from './pages/CharactersPage';
 import { AccountsPage } from './pages/AccountsPage';
@@ -132,6 +133,7 @@ export function App() {
               <Route path="ai-memory" element={<AiMemoryPage />} />
               <Route path="terms" element={<TermsPage />} />
               <Route path="characters" element={<CharactersPage />} />
+              <Route path="data" element={<ProjectDataPage />} />
               <Route path="export" element={<PortabilityPage />} />
               <Route path="info" element={<Navigate to=".." replace />} />
               <Route path="source" element={<Navigate to="../chapters" replace />} />

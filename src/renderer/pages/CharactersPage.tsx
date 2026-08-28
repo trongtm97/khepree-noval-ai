@@ -26,6 +26,7 @@ import {
   Skeleton,
 } from '../components/ui';
 import { HelpContextButton } from '../features/help/HelpContextButton';
+import { TabularImportExportDialog } from '../components/TabularImportExportDialog';
 import { helpArticleForErrorCode } from '../features/help/content';
 import { useUiShellStore } from '../stores/ui-shell-store';
 
@@ -294,6 +295,14 @@ export function CharactersPage() {
                 ))}
               </Select>
             )}
+            {selectedProject ? (
+              <TabularImportExportDialog
+                dataType="characters"
+                projectId={selectedProject.id}
+                editionId={selectedProject.activeEditionId ?? undefined}
+                onComplete={(msg) => setMessage(msg)}
+              />
+            ) : null}
           </>
         }
       />

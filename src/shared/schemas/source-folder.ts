@@ -152,6 +152,12 @@ export const SourceFolderScanRequestSchema = z.object({
   projectId: z.string().uuid(),
 });
 
+export const SourceFolderDetectLanguageRequestSchema = z.object({
+  previewId: z.string().uuid(),
+  sourceLanguageHint: z.string().min(2).max(32).nullable().optional(),
+  sourceLanguageMode: z.enum(['AUTO', 'HINTED']).optional(),
+});
+
 export const SourceFolderImportRequestSchema = z.object({
   previewId: z.string().uuid().optional(),
   projectId: z.string().uuid().optional(),
@@ -159,8 +165,10 @@ export const SourceFolderImportRequestSchema = z.object({
   genre: z.string().max(200).nullable().optional(),
   description: z.string().max(5000).nullable().optional(),
   chineseTitle: z.string().max(500).nullable().optional(),
-  /** AUTO or language code — resolved before persist. */
+  /** @deprecated Hint only — use sourceLanguageHint */
   sourceLanguage: z.string().min(2).max(32).optional(),
+  sourceLanguageHint: z.string().min(2).max(32).nullable().optional(),
+  sourceLanguageMode: z.enum(['AUTO', 'HINTED']).optional(),
   targetLanguage: z.string().min(2).max(32).optional(),
   accountId: z.string().uuid().nullable().optional(),
   styleConfig: z.record(z.unknown()).nullable().optional(),

@@ -6,6 +6,7 @@ import { DatabaseManager } from '../../../src/main/db/database-manager';
 import { NotebookSyncService } from '../../../src/main/notebook/notebook-sync-service';
 import { buildMemoryContext } from '../../../src/main/memory/context-selector';
 import { PACK_CANDIDATE_MIN_CONFIDENCE } from '@shared/constants/learning';
+import { ensureDefaultEdition } from '../../../src/main/services/edition-service';
 
 describe('consecutive chapter freshness hardening', () => {
   let db: DatabaseManager;
@@ -141,9 +142,10 @@ describe('consecutive chapter freshness hardening', () => {
       frequency: 1,
     });
 
+    const edition = ensureDefaultEdition(db, projectId);
     const ctx = buildMemoryContext(
       db,
-      { projectId, chapterIds: [chapter.id] },
+      { projectId, chapterIds: [chapter.id], editionId: edition.id },
       () => null,
       () => {
         throw new Error('unexpected relationship mapping in candidate pack test');

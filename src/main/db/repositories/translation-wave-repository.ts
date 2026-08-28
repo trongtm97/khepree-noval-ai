@@ -63,7 +63,11 @@ export class TranslationWaveRepository extends BaseRepository {
         ts.created_at,
         ts.updated_at,
       );
-    return this.getWaveById(id)!;
+    const created = this.getWaveById(id);
+    if (!created) {
+      throw new Error(`Failed to load created translation wave: ${id}`);
+    }
+    return created;
   }
 
   getWaveById(id: string): TranslationWaveRow | null {
@@ -131,7 +135,11 @@ export class TranslationWaveRepository extends BaseRepository {
         ts.created_at,
         ts.updated_at,
       );
-    return this.getWaveJobById(id)!;
+    const created = this.getWaveJobById(id);
+    if (!created) {
+      throw new Error(`Failed to load created wave job: ${id}`);
+    }
+    return created;
   }
 
   getWaveJobById(id: string): WaveJobRow | null {

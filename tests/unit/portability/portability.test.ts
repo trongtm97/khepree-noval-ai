@@ -16,6 +16,7 @@ import {
 } from '@main/portability/novel-export-builder';
 import { getAutoBackupConfig, runAutoBackupIfDue } from '@main/portability/auto-backup';
 import { TermService } from '@main/services/term-service';
+import { ensureDefaultEdition } from '@main/services/edition-service';
 
 describe('Portability (Phase 18)', () => {
   let tempRoot: string;
@@ -34,6 +35,7 @@ describe('Portability (Phase 18)', () => {
     db = initializeDatabase({ dataDir, backupsDir });
     dbPath = db.dbPath;
     projectId = db.projects.create({ title: 'Portable Novel' }).id;
+    const edition = ensureDefaultEdition(db, projectId);
     const chapter = db.chapters.create({
       project_id: projectId,
       chapter_number: 1,
@@ -49,6 +51,7 @@ describe('Portability (Phase 18)', () => {
     });
     db.translations.create({
       paragraph_id: para.id,
+      edition_id: edition.id,
       translated_text: 'Xin chào thế giới.',
       status: 'translated',
       version_source: 'AI_INITIAL',

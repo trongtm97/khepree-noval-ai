@@ -27,6 +27,10 @@ import { assemblePackSections } from '@main/prompt/translation-pack-builder';
 import { buildMemoryContext } from '@main/memory/context-selector';
 import { toCharacterDto, toRelationshipDto } from '@main/services/memory-dto';
 import {
+  resolveCharacterPreferredName,
+  resolveRelationshipAddressTerms,
+} from '@main/memory/edition-memory';
+import {
   createEdition,
   ensureDefaultEdition,
   switchEdition,
@@ -227,36 +231,39 @@ describe('MATRIX / MULTILINGUAL — terms / characters / export / notebook', () 
       source_text: '王林走进山谷。',
     });
 
-    // Active edition = VI
+    const viEdition = ensureDefaultEdition(db, project.id);
     switchEdition(db, {
       projectId: project.id,
-      editionId: ensureDefaultEdition(db, project.id).id,
+      editionId: viEdition.id,
     });
-    const mapCharacter = (characterId: string) => {
+    const mapCharacter = (editionId: string) => (characterId: string) => {
       const row = db.characters.getById(characterId);
       if (!row) return null;
       return toCharacterDto(
         row,
         db.characters.listAliases(row.id).map((a) => a.alias),
+        resolveCharacterPreferredName(db, row, editionId),
       );
     };
-    const mapRelationship = (
+    const mapRelationship = (editionId: string) => (
       rel: Parameters<typeof toRelationshipDto>[0],
     ) => {
       const from = db.characters.getById(rel.from_character_id);
       const to = db.characters.getById(rel.to_character_id);
+      const address = resolveRelationshipAddressTerms(db, rel, editionId);
       return toRelationshipDto(
         rel,
         from?.canonical_name ?? rel.from_character_id,
         to?.canonical_name ?? rel.to_character_id,
+        address,
       );
     };
 
     const viCtx = buildMemoryContext(
       db,
-      { projectId: project.id, chapterIds: [chapter.id] },
-      mapCharacter,
-      mapRelationship,
+      { projectId: project.id, chapterIds: [chapter.id], editionId: viEdition.id },
+      mapCharacter(viEdition.id),
+      mapRelationship(viEdition.id),
     );
     expect(viCtx.activeTerms.some((t) => t.preferredTranslation === 'Vương Lâm')).toBe(true);
     expect(viCtx.activeTerms.every((t) => t.preferredTranslation !== 'Wang Lin')).toBe(true);
@@ -271,9 +278,9 @@ describe('MATRIX / MULTILINGUAL — terms / characters / export / notebook', () 
 
     const enCtx = buildMemoryContext(
       db,
-      { projectId: project.id, chapterIds: [chapter.id] },
-      mapCharacter,
-      mapRelationship,
+      { projectId: project.id, chapterIds: [chapter.id], editionId: enEdition.id },
+      mapCharacter(enEdition.id),
+      mapRelationship(enEdition.id),
     );
     expect(enCtx.activeTerms.some((t) => t.preferredTranslation === 'Wang Lin')).toBe(true);
     expect(enCtx.activeTerms.every((t) => t.preferredTranslation !== 'Vương Lâm')).toBe(true);
@@ -292,31 +299,43 @@ describe('MATRIX / MULTILINGUAL — terms / characters / export / notebook', () 
     expect(JSON.stringify(sections)).not.toContain('Vương Lâm');
   });
 
-  it('character preferred names: terms channel is pair-isolated (characters table project-scoped GAP documented)', () => {
+  it('character preferred names are edition-scoped via character_translations', () => {
     const project = db.projects.create({
       title: 'Char Novel',
       source_language: 'zh-Hans',
       target_language: 'vi',
     });
-    ensureDefaultEdition(db, project.id);
-    db.characters.create({
+    const vi = ensureDefaultEdition(db, project.id);
+    const { edition: en } = createEdition(db, {
+      projectId: project.id,
+      targetLanguage: 'en',
+      name: 'EN',
+      activate: false,
+    });
+    const char = db.characters.create({
       project_id: project.id,
       canonical_name: '王林',
-      translated_name: 'Vương Lâm',
       status: 'active',
       first_chapter: 1,
     });
-    // OPEN RISK for audit: characters.translated_name is not edition-scoped.
-    // Preferred target names for packs must come from pair-filtered terms.
-    const char = db.characters.getByName(project.id, '王林');
-    expect(char?.translated_name).toBe('Vương Lâm');
-    expect(
-      db.terms.listForMatching({
-        projectId: project.id,
-        sourceLanguage: 'zh-Hans',
-        targetLanguage: 'en',
-      }),
-    ).toHaveLength(0);
+    db.characterTranslations.upsert({
+      character_id: char.id,
+      edition_id: vi.id,
+      target_language: 'vi',
+      preferred_name: 'Vương Lâm',
+      source: 'test',
+    });
+    db.characterTranslations.upsert({
+      character_id: char.id,
+      edition_id: en.id,
+      target_language: 'en',
+      preferred_name: 'Wang Lin',
+      source: 'test',
+    });
+
+    expect(resolveCharacterPreferredName(db, char, vi.id)).toBe('Vương Lâm');
+    expect(resolveCharacterPreferredName(db, char, en.id)).toBe('Wang Lin');
+    expect(resolveCharacterPreferredName(db, char, en.id)).not.toBe('Vương Lâm');
   });
 
   it('Research notebook shared; Translation notebook names edition-scoped', () => {

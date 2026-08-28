@@ -23,6 +23,7 @@ import {
 } from '../utils/ensure-translate-ready';
 import { confirmDangerous } from '../utils/confirm-dangerous';
 import { chapterRef } from '../components/translation/chapter-utils';
+import { TranslationSpreadsheetDialog } from '../components/TranslationSpreadsheetDialog';
 import { TranslationHeader } from '../components/translation/TranslationHeader';
 import { ChapterNavigator } from '../components/translation/ChapterNavigator';
 import { BilingualEditor } from '../components/translation/BilingualEditor';
@@ -45,6 +46,7 @@ export function TranslationEditorPage() {
   const [chapterIndex, setChapterIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [spreadsheetMessage, setSpreadsheetMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [replaceQuery, setReplaceQuery] = useState('');
   const [searchMatchIndex, setSearchMatchIndex] = useState<number | null>(null);
@@ -791,9 +793,8 @@ export function TranslationEditorPage() {
   const targetLanguage = project?.targetLanguage ?? 'vi';
   const sourceProfile = getLanguageProfile(sourceLanguage);
   const targetProfile = getLanguageProfile(targetLanguage);
-  const chapterNumber = currentChapter
-    ? (currentChapter.chapterNumber ?? currentChapter.sequenceOrder ?? null)
-    : null;
+  const chapterNumber = currentChapter ? currentChapter.chapterNumber : null;
+  const activeEditionId = project?.activeEditionId ?? undefined;
 
   if (loading) {
     return (
@@ -849,6 +850,24 @@ export function TranslationEditorPage() {
             : retranslateChapter());
         }}
       />
+
+      {projectId && activeEditionId ? (
+        <div style={{ padding: '0.5rem 1rem', display: 'flex', gap: 12, alignItems: 'center' }}>
+          <TranslationSpreadsheetDialog
+            projectId={projectId}
+            editionId={activeEditionId}
+            onComplete={(msg) => setSpreadsheetMessage(msg)}
+            onImported={() => {
+              if (chapters.length === 0) return;
+              const chapter = chapters[chapterIndex] ?? chapters[0];
+              void loadChapter(projectId, chapter.id, chapterRef(chapter)).then(() => {
+                if (activeParagraphId) setActiveParagraph(activeParagraphId);
+              });
+            }}
+          />
+          {spreadsheetMessage ? <span className="muted">{spreadsheetMessage}</span> : null}
+        </div>
+      ) : null}
 
       {error ? (
         <div className="banner banner-error">

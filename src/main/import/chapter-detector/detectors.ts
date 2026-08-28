@@ -43,7 +43,7 @@ export const chineseChapterDetector: LineDetector = {
     const hit = adaptersForHeadingScan('zh-Hans')
       .find((a) => a.id === 'chinese')
       ?.detectChapterHeading(line);
-    if (!hit || hit.detectorId !== 'chinese-chapter') return null;
+    if (hit?.detectorId !== 'chinese-chapter') return null;
     return {
       offset,
       lineIndex,
@@ -62,7 +62,7 @@ export const prefixedChapterDetector: LineDetector = {
     const hit = adaptersForHeadingScan('zh-Hans')
       .find((a) => a.id === 'chinese')
       ?.detectChapterHeading(line);
-    if (!hit || hit.detectorId !== 'chinese-zhengwen') return null;
+    if (hit?.detectorId !== 'chinese-zhengwen') return null;
     return {
       offset,
       lineIndex,

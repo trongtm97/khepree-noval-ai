@@ -4,7 +4,7 @@ import {
   KNOWLEDGE_TYPES,
   type KnowledgeType,
 } from '@shared/constants/knowledge';
-import { NotebookKnowledgeBuilder, loadNotebookSettings } from './knowledge-builder';
+import { NotebookKnowledgeBuilder } from './knowledge-builder';
 import {
   FILE_KEY_TO_NAME,
   OWNED_FILE_KEYS,
@@ -37,6 +37,7 @@ function looksLikeStatusMessage(text: string): boolean {
 
 const TYPE_BY_EVENT: Record<string, KnowledgeType[]> = {
   PROJECT_METADATA_CHANGED: ['book_profile'],
+  TRANSLATION_RULES_CHANGED: ['translation_rules'],
   TERM_CHANGED: ['project_terms'],
   CHARACTER_CHANGED: ['characters'],
   RELATIONSHIP_CHANGED: ['relationships'],
@@ -237,21 +238,12 @@ export class NotebookSyncService {
     };
   }
 
-  /** @deprecated Prefer evaluateSyncPolicy with explicit chapterCount. */
+  /**
+   * @deprecated Prefer evaluateSyncPolicy with explicit chapterCount.
+   * Thin wrapper — never a separate +1 counter path.
+   */
   maybeAutoSyncAfterChapter(projectId: string): { shouldSync: boolean } {
-    const settings = loadNotebookSettings(this.db, projectId);
-    const state = this.db.driveSyncState.ensure(projectId);
-    const next = state.chapters_since_sync + 1;
-    const dirty = this.db.knowledgeFiles.anyDirty(projectId);
-    const shouldSync =
-      dirty &&
-      (state.critical_change_pending === 1 || next >= settings.syncEveryNChapters);
-    this.db.driveSyncState.patch(projectId, {
-      chaptersSinceSync: shouldSync ? 0 : next,
-      criticalChangePending: shouldSync ? false : state.critical_change_pending === 1,
-      ...(shouldSync ? { syncStatus: 'pending' as const } : {}),
-    });
-    return { shouldSync };
+    return this.evaluateSyncPolicy(projectId, { chapterCount: 1 });
   }
 
   /**

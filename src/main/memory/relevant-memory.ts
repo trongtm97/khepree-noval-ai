@@ -6,6 +6,7 @@ export interface RelevantEntityFilterInput {
   batchText: string;
   characters: CharacterRow[];
   aliasesByCharacter: Map<string, string[]>;
+  preferredNameByCharacter?: Map<string, string | null>;
   relationships: RelationshipRow[];
   memoryEvents: MemoryEventRow[];
 }
@@ -32,10 +33,9 @@ export function filterRelevantEntities(
       activeCharacterIds.add(character.id);
       continue;
     }
-    if (
-      character.translated_name &&
-      appearsInText(input.batchText, character.translated_name)
-    ) {
+    const preferred =
+      input.preferredNameByCharacter?.get(character.id) ?? character.translated_name;
+    if (preferred && appearsInText(input.batchText, preferred)) {
       activeCharacterIds.add(character.id);
       continue;
     }
@@ -61,7 +61,8 @@ export function filterRelevantEntities(
         (c) =>
           activeCharacterIds.has(c.id) &&
           (c.canonical_name === event.event_key ||
-            c.translated_name === event.event_key),
+            (input.preferredNameByCharacter?.get(c.id) ?? c.translated_name) ===
+              event.event_key),
       );
     }
     return false;

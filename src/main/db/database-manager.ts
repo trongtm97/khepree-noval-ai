@@ -41,6 +41,9 @@ import {
   BatchSizeRepository,
   TranslationWaveRepository,
   TranslationEditionRepository,
+  CharacterTranslationRepository,
+  RelationshipTranslationRepository,
+  ImportHistoryRepository,
 } from './repositories';
 
 export interface DatabaseOptions {
@@ -89,6 +92,9 @@ export class DatabaseManager {
   readonly batchSize: BatchSizeRepository;
   readonly translationWaves: TranslationWaveRepository;
   readonly translationEditions: TranslationEditionRepository;
+  readonly characterTranslations: CharacterTranslationRepository;
+  readonly relationshipTranslations: RelationshipTranslationRepository;
+  readonly importHistory: ImportHistoryRepository;
 
   constructor(options: DatabaseOptions) {
     fs.mkdirSync(options.dataDir, { recursive: true });
@@ -149,6 +155,9 @@ export class DatabaseManager {
     this.batchSize = new BatchSizeRepository(this.db);
     this.translationWaves = new TranslationWaveRepository(this.db);
     this.translationEditions = new TranslationEditionRepository(this.db);
+    this.characterTranslations = new CharacterTranslationRepository(this.db);
+    this.relationshipTranslations = new RelationshipTranslationRepository(this.db);
+    this.importHistory = new ImportHistoryRepository(this.db);
 
     this.appMeta.set('schema_version', String(getCurrentSchemaVersion(this.db)));
   }

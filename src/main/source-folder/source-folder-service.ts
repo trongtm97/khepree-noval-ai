@@ -33,11 +33,11 @@ import {
 import { getJobService } from '../services/job-service-singleton';
 import { logger } from '../logging/logger';
 import {
-  DEFAULT_SOURCE_LANGUAGE,
-  DEFAULT_TARGET_LANGUAGE,
-  normalizeLanguageCode,
-} from '@shared/constants/language-profile';
-import { detectLanguageHeuristic } from '../language/language-detect';
+  assertSourceTargetDiffer,
+  defaultImportTargetLanguage,
+  detectionCheckedAt,
+  resolveImportSourceLanguage,
+} from '../services/source-language-import';
 import type { ProjectRow } from '../db/repositories/project-repository';
 
 export type FolderPreviewDto = z.infer<typeof FolderPreviewDtoSchema>;
@@ -182,19 +182,22 @@ export class SourceFolderService {
     this.scanAbortControllers.get(projectId)?.abort();
   }
 
-  commitFolderImport(input: {
+  async commitFolderImport(input: {
     previewId: string;
     projectTitle: string;
     genre?: string | null;
     description?: string | null;
     chineseTitle?: string | null;
+    sourceLanguageHint?: string | null;
+    sourceLanguageMode?: 'AUTO' | 'HINTED';
+    /** @deprecated Use sourceLanguageHint — ignored for truth. */
     sourceLanguage?: string | null;
     targetLanguage?: string | null;
     accountId?: string | null;
     styleConfig?: Record<string, unknown> | null;
     expectedStartChapter?: number | null;
     expectedEndChapter?: number | null;
-  }): { project: ProjectRow; chapterCount: number; paragraphCount: number } {
+  }): Promise<{ project: ProjectRow; chapterCount: number; paragraphCount: number; sourceDetection: import('@shared/schemas/source-language').SourceLanguageDetection }> {
     const session = this.requirePreview(input.previewId);
     const db = getDatabase();
 
@@ -202,29 +205,25 @@ export class SourceFolderService {
       (ch) => ch.status === 'new' && ch.chapterNumber > 0,
     );
 
-    const sampleChunks: string[] = [];
-    for (const ch of importable.slice(0, 3)) {
-      sampleChunks.push(ch.chapterTitle);
-      try {
-        const raw = fsSync.readFileSync(ch.sourceFilePath, 'utf8');
-        sampleChunks.push(raw.slice(0, 2500));
-      } catch {
-        /* skip unreadable sample */
-      }
-    }
-    const sampleText = sampleChunks.join('\n').slice(0, 8000);
+    const hint =
+      input.sourceLanguageHint ??
+      (input.sourceLanguage && input.sourceLanguage.toUpperCase() !== 'AUTO'
+        ? input.sourceLanguage
+        : null);
+    const mode =
+      input.sourceLanguageMode ?? (hint ? 'HINTED' : 'AUTO');
 
-    const rawSource = (input.sourceLanguage ?? DEFAULT_SOURCE_LANGUAGE).trim();
-    const sourceLanguage =
-      rawSource.toUpperCase() === 'AUTO'
-        ? detectLanguageHeuristic(sampleText).code
-        : normalizeLanguageCode(rawSource);
-    const targetLanguage = normalizeLanguageCode(
-      input.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
-    );
-    if (sourceLanguage === targetLanguage) {
-      throw new Error('sourceLanguage and targetLanguage must differ');
-    }
+    const { detection, sourceLanguageHint, sourceLanguageMode } =
+      await resolveImportSourceLanguage({
+        scanResult: session.scanResult,
+        folderPath: session.folderPath,
+        sourceLanguageHint: hint,
+        sourceLanguageMode: mode,
+      });
+
+    const sourceLanguage = detection.detectedLanguage;
+    const targetLanguage = defaultImportTargetLanguage(input.targetLanguage);
+    assertSourceTargetDiffer(sourceLanguage, targetLanguage);
 
     const result = withTransaction(db.getConnection(), () => {
       const project = db.projects.create({
@@ -235,6 +234,11 @@ export class SourceFolderService {
           : (input.description ?? null),
         source_language: sourceLanguage,
         target_language: targetLanguage,
+        source_language_mode: sourceLanguageMode,
+        source_language_hint: sourceLanguageHint,
+        source_language_confidence: detection.confidence,
+        source_language_detection_method: detection.method,
+        source_language_detection_checked_at: detectionCheckedAt(),
         source_mode: 'FOLDER',
         source_folder_path: session.folderPath,
         source_folder_status: 'AVAILABLE',
@@ -293,7 +297,7 @@ export class SourceFolderService {
           project.id,
         );
 
-      return { project, chapterCount, paragraphCount };
+      return { project, chapterCount, paragraphCount, sourceDetection: detection };
     });
 
     this.previewSessions.delete(input.previewId);
@@ -304,7 +308,35 @@ export class SourceFolderService {
       detail: { chapterCount: result.chapterCount },
     });
 
+    if (detection.hintMismatch) {
+      logger.info('source_language_hint_mismatch', {
+        event: 'LANGUAGE_HINT_MISMATCH',
+        projectId: result.project.id,
+        hint: sourceLanguageHint,
+        detected: detection.detectedLanguage,
+      });
+    }
+
     return result;
+  }
+
+  async detectLanguageFromPreview(input: {
+    previewId: string;
+    sourceLanguageHint?: string | null;
+    sourceLanguageMode?: 'AUTO' | 'HINTED';
+  }) {
+    const session = this.requirePreview(input.previewId);
+    const hint =
+      input.sourceLanguageMode === 'HINTED' && input.sourceLanguageHint
+        ? input.sourceLanguageHint
+        : null;
+    const { detection } = await resolveImportSourceLanguage({
+      scanResult: session.scanResult,
+      folderPath: session.folderPath,
+      sourceLanguageHint: hint,
+      sourceLanguageMode: hint ? 'HINTED' : 'AUTO',
+    });
+    return detection;
   }
 
   async importChaptersFromScan(

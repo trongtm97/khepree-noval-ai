@@ -103,6 +103,18 @@ export type {
   TranslationEditionRow,
   EditionStatus,
 } from './translation-edition-repository';
+export { CharacterTranslationRepository } from './character-translation-repository';
+export type {
+  CharacterTranslationRow,
+  UpsertCharacterTranslationInput,
+} from './character-translation-repository';
+export { RelationshipTranslationRepository } from './relationship-translation-repository';
+export type {
+  RelationshipTranslationRow,
+  UpsertRelationshipTranslationInput,
+} from './relationship-translation-repository';
+export { ImportHistoryRepository } from './import-history-repository';
+export type { ImportHistoryRow, CreateImportHistoryInput } from './import-history-repository';
 export type {
   FullNovelPreprocessRunRow,
   FullNovelPreprocessPartRow,

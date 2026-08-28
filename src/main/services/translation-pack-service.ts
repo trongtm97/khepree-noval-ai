@@ -3,6 +3,9 @@ import {
   MIN_PACK_CHAPTERS,
   type TranslationStyle,
 } from '@shared/constants/translation-pack';
+import {
+  resolveProjectTranslationStyle,
+} from '@shared/constants/translation-style-model';
 import { isPackMode, type PackMode } from '@shared/constants/pack-mode';
 import { DEFAULT_NOTEBOOK_SETTINGS } from '@shared/constants/knowledge';
 import type {
@@ -143,7 +146,11 @@ export class TranslationPackService {
     const pack = buildTranslationPack(db, {
       projectId: input.projectId,
       chapterIds: input.chapterIds,
-      style: input.style ?? 'balanced',
+      style:
+        input.style ??
+        (resolveProjectTranslationStyle(
+          db.projects.getStyleConfig(input.projectId),
+        ) as TranslationStyle),
       context,
       extraRules: input.extraRules,
       paragraphIds: input.paragraphIds,

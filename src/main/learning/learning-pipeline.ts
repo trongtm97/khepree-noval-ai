@@ -1,6 +1,7 @@
 import type { ParsedBatchResult } from '@shared/schemas/output-protocol';
 import type { DatabaseManager } from '../db/database-manager';
 import { applyMemoryDelta, type MemoryDeltaApplyResult } from '../memory/memory-delta-processor';
+import { resolveEditionFromJob } from '../memory/edition-memory';
 import { applyTermDelta, type TermDeltaApplyResult } from './term-delta-processor';
 import { compactProjectMemory, type CompactMemoryResult } from './memory-compactor';
 import { NotebookKnowledgeBuilder } from '../notebook/knowledge-builder';
@@ -112,11 +113,13 @@ export async function runLearningPipeline(
     jobId: input.jobId,
   });
 
+  const edition = resolveEditionFromJob(db, input.projectId, input.jobId);
   const memory = applyMemoryDelta(
     db,
     input.projectId,
     input.parsed.memoryDeltas,
     chapterNumber ?? undefined,
+    edition.editionId,
   );
 
   if (memory.applied > 0) {

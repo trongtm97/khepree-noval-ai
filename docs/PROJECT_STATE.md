@@ -85,6 +85,13 @@
 - [x] Baseline audit `docs/PLAYWRIGHT_AUDIT_BEFORE_FIX.md`; breaking notes `docs/PLAYWRIGHT_1_62_BREAKING_CHANGES.md`
 - [x] `docs/AUTOMATION.md` updated
 
+### Default target language (2026-08-28)
+- [x] `app_meta` key `settings.default_target_language`; IPC get/set
+- [x] Settings → Dịch thuật → Ngôn ngữ dịch mặc định
+- [x] Create Project wizard + Edition add pre-fill; duplicate edition warning
+- [x] Onboarding `defaultLanguage` step; help `default-target-language`
+- [x] `docs/LANGUAGE_CATALOG.md`, `docs/UI_UX.md` updates
+
 ## In Progress
 
 - [ ] Playwright send-path hardening (selectors / confirm-sent / wait strategy) — **not started**; engine layer only

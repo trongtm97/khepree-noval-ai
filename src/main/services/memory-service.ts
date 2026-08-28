@@ -3,6 +3,13 @@ import { getDatabase } from '../db/connection';
 import { applyMemoryDelta } from '../memory/memory-delta-processor';
 import { buildMemoryContext } from '../memory/context-selector';
 import {
+  resolveEditionMemoryContext,
+  resolveCharacterPreferredName,
+  resolveRelationshipAddressTerms,
+  upsertCharacterPreferredName,
+  upsertRelationshipAddressTerms,
+} from '../memory/edition-memory';
+import {
   toCharacterDto,
   toMemoryConflictDto,
   toRelationshipDto,
@@ -17,16 +24,22 @@ import type {
 } from '@shared/schemas/memory';
 
 export class MemoryService {
-  listCharacters(projectId: string): CharacterDto[] {
+  listCharacters(projectId: string, editionId?: string): CharacterDto[] {
     const db = getDatabase();
+    const edition = resolveEditionMemoryContext(db, projectId, editionId);
     return db.characters.listByProject(projectId).map((row) =>
-      toCharacterDto(row, db.characters.listAliases(row.id).map((alias) => alias.alias)),
+      toCharacterDto(
+        row,
+        db.characters.listAliases(row.id).map((alias) => alias.alias),
+        resolveCharacterPreferredName(db, row, edition.editionId),
+      ),
     );
   }
 
   upsertCharacter(input: {
     id?: string;
     projectId: string;
+    editionId?: string;
     canonicalName: string;
     translatedName?: string | null;
     aliases?: string[];
@@ -37,15 +50,16 @@ export class MemoryService {
     lastChapter?: number | null;
     status?: CharacterStatus;
     locked?: boolean;
+    translationLocked?: boolean;
   }): CharacterDto {
     const db = getDatabase();
+    const edition = resolveEditionMemoryContext(db, input.projectId, input.editionId);
     let row = input.id ? db.characters.getById(input.id) : null;
 
     if (row) {
       row =
         db.characters.update(row.id, {
           canonical_name: input.canonicalName,
-          translated_name: input.translatedName,
           gender: input.gender,
           role: input.role,
           description: input.description,
@@ -58,7 +72,6 @@ export class MemoryService {
       row = db.characters.create({
         project_id: input.projectId,
         canonical_name: input.canonicalName,
-        translated_name: input.translatedName,
         gender: input.gender,
         role: input.role,
         description: input.description,
@@ -66,6 +79,17 @@ export class MemoryService {
         last_chapter: input.lastChapter,
         status: input.status,
         locked: input.locked,
+      });
+    }
+
+    if (input.translatedName !== undefined) {
+      upsertCharacterPreferredName(db, {
+        characterId: row.id,
+        editionId: edition.editionId,
+        targetLanguage: edition.targetLanguage,
+        preferredName: input.translatedName,
+        locked: input.translationLocked,
+        source: 'manual',
       });
     }
 
@@ -83,11 +107,17 @@ export class MemoryService {
     return toCharacterDto(
       row,
       db.characters.listAliases(row.id).map((alias) => alias.alias),
+      resolveCharacterPreferredName(db, row, edition.editionId),
     );
   }
 
-  listRelationships(projectId: string, atChapter?: number): RelationshipDto[] {
+  listRelationships(
+    projectId: string,
+    atChapter?: number,
+    editionId?: string,
+  ): RelationshipDto[] {
     const db = getDatabase();
+    const edition = resolveEditionMemoryContext(db, projectId, editionId);
     const rows = atChapter
       ? db.relationships.listActiveAtChapter(projectId, atChapter)
       : db.relationships.listByProject(projectId);
@@ -95,10 +125,12 @@ export class MemoryService {
     return rows.map((row) => {
       const from = db.characters.getById(row.from_character_id);
       const to = db.characters.getById(row.to_character_id);
+      const address = resolveRelationshipAddressTerms(db, row, edition.editionId);
       return toRelationshipDto(
         row,
         from?.canonical_name ?? row.from_character_id,
         to?.canonical_name ?? row.to_character_id,
+        address,
       );
     });
   }
@@ -106,6 +138,7 @@ export class MemoryService {
   upsertRelationship(input: {
     id?: string;
     projectId: string;
+    editionId?: string;
     fromCharacterId: string;
     toCharacterId: string;
     relationshipType: string;
@@ -117,14 +150,14 @@ export class MemoryService {
     confidence?: number | null;
     source?: string;
     locked?: boolean;
+    addressLocked?: boolean;
   }): RelationshipDto {
     const db = getDatabase();
+    const edition = resolveEditionMemoryContext(db, input.projectId, input.editionId);
     const row = input.id
       ? db.relationships.update(input.id, {
           relationship_type: input.relationshipType,
           description: input.description,
-          a_calls_b: input.aCallsB,
-          b_calls_a: input.bCallsA,
           valid_from_chapter: input.validFromChapter,
           valid_to_chapter: input.validToChapter,
           confidence: input.confidence,
@@ -137,8 +170,6 @@ export class MemoryService {
           to_character_id: input.toCharacterId,
           relationship_type: input.relationshipType,
           description: input.description,
-          a_calls_b: input.aCallsB,
-          b_calls_a: input.bCallsA,
           valid_from_chapter: input.validFromChapter,
           valid_to_chapter: input.validToChapter,
           confidence: input.confidence,
@@ -150,12 +181,26 @@ export class MemoryService {
       throw new Error(`Relationship not found: ${input.id ?? ''}`);
     }
 
+    if (input.aCallsB !== undefined || input.bCallsA !== undefined) {
+      upsertRelationshipAddressTerms(db, {
+        relationshipId: row.id,
+        editionId: edition.editionId,
+        targetLanguage: edition.targetLanguage,
+        aCallsB: input.aCallsB,
+        bCallsA: input.bCallsA,
+        locked: input.addressLocked,
+        source: input.source ?? 'manual',
+      });
+    }
+
     const from = db.characters.getById(row.from_character_id);
     const to = db.characters.getById(row.to_character_id);
+    const address = resolveRelationshipAddressTerms(db, row, edition.editionId);
     return toRelationshipDto(
       row,
       from?.canonical_name ?? row.from_character_id,
       to?.canonical_name ?? row.to_character_id,
+      address,
     );
   }
 
@@ -208,9 +253,11 @@ export class MemoryService {
     projectId: string,
     delta: unknown,
     chapterNumber?: number,
+    editionId?: string,
   ): { applied: number; skipped: number; conflicts: MemoryConflictDto[] } {
     const db = getDatabase();
-    const result = applyMemoryDelta(db, projectId, delta, chapterNumber);
+    const edition = resolveEditionMemoryContext(db, projectId, editionId);
+    const result = applyMemoryDelta(db, projectId, delta, chapterNumber, edition.editionId);
     return {
       applied: result.applied,
       skipped: result.skipped,
@@ -235,26 +282,35 @@ export class MemoryService {
     chapterIds: string[];
     tokenBudget?: number;
     recentWindow?: number;
+    editionId?: string;
   }): MemoryContextDto {
     const db = getDatabase();
+    const edition = resolveEditionMemoryContext(db, input.projectId, input.editionId);
     return buildMemoryContext(
       db,
-      input,
+      { ...input, editionId: edition.editionId },
       (characterId) => {
         const row = db.characters.getById(characterId);
         if (!row) return null;
         return toCharacterDto(
           row,
           db.characters.listAliases(row.id).map((alias) => alias.alias),
+          resolveCharacterPreferredName(db, row, edition.editionId),
         );
       },
       (relationshipRow) => {
         const from = db.characters.getById(relationshipRow.from_character_id);
         const to = db.characters.getById(relationshipRow.to_character_id);
+        const address = resolveRelationshipAddressTerms(
+          db,
+          relationshipRow,
+          edition.editionId,
+        );
         return toRelationshipDto(
           relationshipRow,
           from?.canonical_name ?? relationshipRow.from_character_id,
           to?.canonical_name ?? relationshipRow.to_character_id,
+          address,
         );
       },
     );

@@ -97,8 +97,8 @@ export class GeminiWebApiProvider implements IAIProvider {
         ok: false,
         status: 'LOGIN_REQUIRED',
         message: 'Chưa có tài khoản Gemini Web API sẵn sàng.',
-        accountEmail: accounts[0]?.google_email ?? null,
-        lastError: accounts[0]?.last_error ?? null,
+        accountEmail: null,
+        lastError: null,
       };
     }
 
@@ -365,6 +365,8 @@ export class GeminiWebApiProvider implements IAIProvider {
   }
 
   private resolveAccount(options?: SendPromptOptions) {
+    // Mapped account only — ProjectWorkerResolver / caller must pass
+    // googleAccountId or aiAccountId. Never blind first READY.
     if (options?.aiAccountId) {
       return this.db.aiAccounts.getById(options.aiAccountId);
     }
@@ -375,7 +377,6 @@ export class GeminiWebApiProvider implements IAIProvider {
       );
       if (linked) return linked;
     }
-    // Project sends must pass googleAccountId / aiAccountId — never blind first READY.
     return null;
   }
 

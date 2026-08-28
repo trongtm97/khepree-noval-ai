@@ -21,6 +21,7 @@ import {
   SectionHeader,
 } from '../components/ui';
 import { HelpContextButton } from '../features/help/HelpContextButton';
+import { OperationalExportDialog } from '../components/OperationalExportDialog';
 
 interface WorkerRow {
   id: string;
@@ -90,7 +91,7 @@ function paragraphProgress(job: JobDto | null): string | null {
 }
 
 function chapterRange(job: JobDto | null): string | null {
-  if (!job || job.chapterFrom == null) return null;
+  if (job?.chapterFrom == null) return null;
   if (job.chapterTo != null && job.chapterTo !== job.chapterFrom) {
     return `${job.chapterFrom}–${job.chapterTo}`;
   }
@@ -99,7 +100,10 @@ function chapterRange(job: JobDto | null): string | null {
 
 function accountDisplayName(account: GoogleAccountDto | undefined, fallbackId: string): string {
   if (!account) return fallbackId.slice(0, 8);
-  return account.label || account.displayName || account.email || fallbackId.slice(0, 8);
+  return (
+    [account.label, account.displayName, account.email].find((v) => Boolean(v)) ??
+    fallbackId.slice(0, 8)
+  );
 }
 
 function findLaneJob(
@@ -268,7 +272,7 @@ export function JobsPage() {
     [t],
   );
 
-  const runControl = async (fn: () => Promise<{ message?: string } | void>) => {
+  const runControl = async (fn: () => Promise<{ message?: string } | undefined>) => {
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -402,6 +406,13 @@ export function JobsPage() {
           )}
         </div>
         {fairnessNote ? <p className="ops-fairness muted">{fairnessNote}</p> : null}
+        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--nt-border)' }}>
+          <SectionHeader title={t('operationalExport.sectionTitle')} />
+          <OperationalExportDialog
+            kinds={['operational_jobs', 'operational_qa', 'operational_workbook']}
+            onComplete={setMessage}
+          />
+        </div>
       </div>
 
       <SectionHeader title={t('jobs.workerLanes')} />
@@ -499,16 +510,25 @@ export function JobsPage() {
                     <p className="muted ops-lane-meta">
                       {[channel, knowledge].filter(Boolean).join(' · ')}
                     </p>
-                    {typeof job.progress?.paragraphsDone === 'number' &&
-                    typeof job.progress?.paragraphsTotal === 'number' &&
-                    job.progress.paragraphsTotal > 0 ? (
-                      <p className="ops-lane-paras">
-                        {t('jobs.paragraphsProgress', {
-                          done: String(job.progress.paragraphsDone),
-                          total: String(job.progress.paragraphsTotal),
-                        })}
-                      </p>
-                    ) : null}
+                    {(() => {
+                      const progress = job.progress;
+                      if (
+                        !progress ||
+                        typeof progress.paragraphsDone !== 'number' ||
+                        typeof progress.paragraphsTotal !== 'number' ||
+                        progress.paragraphsTotal <= 0
+                      ) {
+                        return null;
+                      }
+                      return (
+                        <p className="ops-lane-paras">
+                          {t('jobs.paragraphsProgress', {
+                            done: String(progress.paragraphsDone),
+                            total: String(progress.paragraphsTotal),
+                          })}
+                        </p>
+                      );
+                    })()}
                     {measure ? (
                       <ProgressBar
                         value={measure.percent}
@@ -579,9 +599,12 @@ export function JobsPage() {
                   <div>
                     <strong>{projectTitle(job.projectId)}</strong>
                     <p className="muted" style={{ margin: '0.2rem 0 0' }}>
-                      {chapterRange(job)
-                        ? t('jobs.chapterLabel', { range: chapterRange(job)! })
-                        : null}
+                      {(() => {
+                        const range = chapterRange(job);
+                        return range
+                          ? t('jobs.chapterLabel', { range })
+                          : null;
+                      })()}
                       {' · '}
                       {statusLabel(job.state)}
                     </p>
@@ -627,7 +650,7 @@ export function JobsPage() {
       ) : (
         <div className="ops-queue-list">
           {queuedByProject.map(([projectId, projectJobs]) => {
-            const next = projectJobs[0]!;
+            const next = projectJobs[0];
             const band = priorityBand(next.priority);
             return (
               <Card key={projectId} className="ops-queue-card">
@@ -636,9 +659,12 @@ export function JobsPage() {
                     <h3 className="ops-queue-title">{projectTitle(projectId)}</h3>
                     <p className="muted" style={{ margin: '0.25rem 0 0' }}>
                       {t('jobs.queuedCount', { n: String(projectJobs.length) })}
-                      {chapterRange(next)
-                        ? ` · ${t('jobs.nextChapter', { range: chapterRange(next)! })}`
-                        : ''}
+                      {(() => {
+                        const range = chapterRange(next);
+                        return range
+                          ? ` · ${t('jobs.nextChapter', { range })}`
+                          : '';
+                      })()}
                     </p>
                   </div>
                   <label className="ops-priority">

@@ -3,12 +3,15 @@ import type { FolderPreviewDto } from '@shared/schemas/source-folder';
 import type { GoogleAccountDto } from '@shared/schemas/account';
 import type { ProjectDto } from '@shared/schemas/import';
 import type { LanguageProfileDto } from '@shared/schemas/language-profile';
+import type { SourceLanguageDetection } from '@shared/schemas/source-language';
+import { SourceLanguageHintField } from './SourceLanguageHintField';
+import { SourceLanguageDetectionBanner } from './SourceLanguageDetectionBanner';
+import { LanguagePicker } from './LanguagePicker';
 import {
-  DEFAULT_SOURCE_LANGUAGE,
-  DEFAULT_TARGET_LANGUAGE,
-  LANGUAGE_AUTO,
-  canSwapLanguages,
-} from '@shared/constants/language-profile';
+  loadRecentLanguagePairs,
+  recentTargetCodes,
+  saveRecentLanguagePair,
+} from '../services/language-recent-pairs';
 import { Button, Input, Select } from './ui';
 import { useT } from '../i18n';
 
@@ -37,10 +40,12 @@ export function CreateProjectWizard({
   const [genre, setGenre] = useState('');
   const [accountId, setAccountId] = useState('');
   const [stylePreset, setStylePreset] = useState('balanced');
-  const [sourceLanguage, setSourceLanguage] = useState(DEFAULT_SOURCE_LANGUAGE);
-  const [targetLanguage, setTargetLanguage] = useState(DEFAULT_TARGET_LANGUAGE);
+  const [sourceLanguageHint, setSourceLanguageHint] = useState<string | null>(null);
+  const [sourceDetection, setSourceDetection] = useState<SourceLanguageDetection | null>(null);
+  const [detectingSource, setDetectingSource] = useState(false);
+  const [targetLanguage, setTargetLanguage] = useState<string | null>(null);
   const [languages, setLanguages] = useState<LanguageProfileDto[]>([]);
-  const [detectionBanner, setDetectionBanner] = useState<string | null>(null);
+  const [recentPairs, setRecentPairs] = useState(loadRecentLanguagePairs());
   const [folderPath, setFolderPath] = useState<string | null>(null);
   const [expectedStart, setExpectedStart] = useState('');
   const [expectedEnd, setExpectedEnd] = useState('');
@@ -63,13 +68,26 @@ export function CreateProjectWizard({
       .list()
       .then((res) => { setLanguages(res.languages); })
       .catch(() => { setLanguages([]); });
+    void window.novelTrans.translationSettings
+      .get()
+      .then((res) => {
+        setTargetLanguage((prev) => prev ?? res.defaultTargetLanguage);
+      })
+      .catch(() => {
+        setTargetLanguage((prev) => prev);
+      });
   }, []);
 
-  const swapLanguages = () => {
-    if (!canSwapLanguages(sourceLanguage, targetLanguage)) return;
-    setSourceLanguage(targetLanguage);
-    setTargetLanguage(sourceLanguage);
-    setDetectionBanner(null);
+  const runSourceDetection = async (
+    previewId: string,
+    hint: string | null,
+  ): Promise<SourceLanguageDetection> => {
+    const detection = await window.novelTrans.sourceFolder.detectLanguage({
+      previewId,
+      sourceLanguageHint: hint,
+      sourceLanguageMode: hint ? 'HINTED' : 'AUTO',
+    });
+    return detection.detection;
   };
 
   const pickFolder = async () => {
@@ -91,6 +109,7 @@ export function CreateProjectWizard({
   const scanFolder = async () => {
     if (!folderPath) return;
     setBusy(true);
+    setDetectingSource(true);
     try {
       const { preview: next } = await window.novelTrans.sourceFolder.scanPreview({
         folderPath,
@@ -98,31 +117,39 @@ export function CreateProjectWizard({
         expectedEndChapter: expectedEnd ? Number.parseInt(expectedEnd, 10) : undefined,
       });
       setPreview(next);
-
-      if (sourceLanguage === LANGUAGE_AUTO) {
-        const sample = next.scanResult.newChapters
-          .slice(0, 3)
-          .map((c) => c.chapterTitle || c.sourceFileName)
-          .join('\n');
-        if (sample.trim()) {
-          const detected = await window.novelTrans.languages.detect({ sampleText: sample });
-          setSourceLanguage(detected.code);
-          setDetectionBanner(
-            t('createProjectWizard.detectedLanguage', { name: detected.displayNameVi }),
-          );
-        }
-      }
-
+      const detection = await runSourceDetection(next.previewId, sourceLanguageHint);
+      setSourceDetection(detection);
       setStep('preview');
     } catch (err: unknown) {
       onError(err instanceof Error ? err.message : t('createProjectWizard.scanFailed'));
     } finally {
+      setDetectingSource(false);
       setBusy(false);
     }
   };
 
-  const commit = async () => {
+  const refreshDetection = async () => {
     if (!preview) return;
+    setDetectingSource(true);
+    try {
+      const detection = await runSourceDetection(preview.previewId, sourceLanguageHint);
+      setSourceDetection(detection);
+    } catch (err: unknown) {
+      onError(err instanceof Error ? err.message : t('createProjectWizard.scanFailed'));
+    } finally {
+      setDetectingSource(false);
+    }
+  };
+
+  const commit = async () => {
+    if (!preview || !targetLanguage) return;
+    if (
+      sourceDetection &&
+      sourceDetection.detectedLanguage === targetLanguage
+    ) {
+      onError(t('createProjectWizard.sourceTargetSame'));
+      return;
+    }
     setBusy(true);
     try {
       const result = await window.novelTrans.sourceFolder.import({
@@ -130,17 +157,23 @@ export function CreateProjectWizard({
         projectTitle: title.trim() || t('createProjectWizard.defaultTitle'),
         genre: genre.trim() || null,
         chineseTitle: chineseTitle.trim() || null,
-        sourceLanguage,
+        sourceLanguageHint,
+        sourceLanguageMode: sourceLanguageHint ? 'HINTED' : 'AUTO',
         targetLanguage,
         accountId: accountId || null,
         styleConfig: { preset: stylePreset },
         expectedStartChapter: expectedStart ? Number.parseInt(expectedStart, 10) : null,
         expectedEndChapter: expectedEnd ? Number.parseInt(expectedEnd, 10) : null,
       });
+      if (sourceDetection) {
+        saveRecentLanguagePair(sourceDetection.detectedLanguage, targetLanguage);
+        setRecentPairs(loadRecentLanguagePairs());
+      }
       setImported(result);
       setStep('bootstrap');
     } catch (err: unknown) {
-      onError(err instanceof Error ? err.message : t('createProjectWizard.importFailed'));
+      const msg = err instanceof Error ? err.message : t('createProjectWizard.importFailed');
+      onError(msg === 'SOURCE_TARGET_SAME' ? t('createProjectWizard.sourceTargetSame') : msg);
     } finally {
       setBusy(false);
     }
@@ -213,51 +246,22 @@ export function CreateProjectWizard({
             {t('createProjectWizard.chineseTitle')}
             <Input value={chineseTitle} onChange={(e) => { setChineseTitle(e.target.value); }} />
           </label>
-          <div className="btn-row" style={{ alignItems: 'flex-end', gap: 12 }}>
-            <label style={{ flex: 1 }}>
-              {t('createProjectWizard.sourceLanguage')}
-              <Select
-                value={sourceLanguage}
-                onChange={(e) => {
-                  setSourceLanguage(e.target.value);
-                  setDetectionBanner(null);
-                }}
-              >
-                <option value={LANGUAGE_AUTO}>{t('createProjectWizard.languageAuto')}</option>
-                {languages.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.displayNameVi}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <Button
-              type="button"
-              disabled={!canSwapLanguages(sourceLanguage, targetLanguage)}
-              onClick={swapLanguages}
-              title={t('createProjectWizard.swapLanguages')}
-            >
-              ↔
-            </Button>
-            <label style={{ flex: 1 }}>
-              {t('createProjectWizard.targetLanguage')}
-              <Select
-                value={targetLanguage}
-                onChange={(e) => { setTargetLanguage(e.target.value); }}
-              >
-                {languages.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.displayNameVi}
-                  </option>
-                ))}
-              </Select>
-            </label>
-          </div>
-          {detectionBanner ? (
-            <p className="muted">
-              {detectionBanner} {t('createProjectWizard.detectedEditHint')}
-            </p>
-          ) : null}
+          <SourceLanguageHintField
+            languages={languages}
+            hint={sourceLanguageHint}
+            onHintChange={setSourceLanguageHint}
+          />
+          <label>
+            {t('createProjectWizard.targetLanguage')}
+            <LanguagePicker
+              value={targetLanguage ?? ''}
+              aria-label={t('createProjectWizard.targetLanguage')}
+              languages={languages}
+              recentCodes={recentTargetCodes(recentPairs)}
+              disabled={!targetLanguage}
+              onChange={setTargetLanguage}
+            />
+          </label>
           <label>
             {t('createProjectWizard.genre')}
             <Input value={genre} onChange={(e) => { setGenre(e.target.value); }} />
@@ -280,7 +284,7 @@ export function CreateProjectWizard({
             </Select>
           </label>
           <div className="btn-row">
-            <Button variant="primary" onClick={() => { setStep('folder'); }}>
+            <Button variant="primary" onClick={() => { setStep('folder'); }} disabled={!targetLanguage}>
               {t('actions.continue')}
             </Button>
             <Button onClick={onCancel}>{t('actions.cancel')}</Button>
@@ -323,6 +327,24 @@ export function CreateProjectWizard({
 
       {step === 'preview' && preview ? (
         <div>
+          <SourceLanguageDetectionBanner
+            detection={sourceDetection}
+            detecting={detectingSource}
+          />
+          {sourceDetection ? (
+            <div className="btn-row" style={{ marginBottom: '0.75rem' }}>
+              <Button
+                type="button"
+                size="sm"
+                disabled={detectingSource}
+                onClick={() => {
+                  void refreshDetection();
+                }}
+              >
+                {t('createProjectWizard.sourceRedetect')}
+              </Button>
+            </div>
+          ) : null}
           <p>{t('createProjectWizard.scanSummary', {
             files: preview.scanResult.filesTotal,
             chapters: preview.scanResult.recognizedFiles,

@@ -119,9 +119,9 @@ describe('encoding via adapters', () => {
 
 describe('RTL direction on LanguageProfile', () => {
   it('Arabic and Hebrew are rtl; CJK/English are ltr', () => {
-    expect(getLanguageProfile('ar')?.direction).toBe('rtl');
-    expect(getLanguageProfile('he')?.direction).toBe('rtl');
-    expect(getLanguageProfile('zh-Hans')?.direction).toBe('ltr');
-    expect(getLanguageProfile('en')?.direction).toBe('ltr');
+    expect(getLanguageProfile('ar').direction).toBe('rtl');
+    expect(getLanguageProfile('he').direction).toBe('rtl');
+    expect(getLanguageProfile('zh-Hans').direction).toBe('ltr');
+    expect(getLanguageProfile('en').direction).toBe('ltr');
   });
 });

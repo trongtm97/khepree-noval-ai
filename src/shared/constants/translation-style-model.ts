@@ -235,6 +235,24 @@ export function composeTranslationStyleRules(input: {
   ];
 }
 
+/** Resolve translation style preset from project_settings.style_config JSON. */
+export function resolveProjectTranslationStyle(
+  styleConfigJson: string | null | undefined,
+): string {
+  if (!styleConfigJson?.trim()) return 'balanced';
+  try {
+    const parsed = JSON.parse(styleConfigJson) as {
+      preset?: string;
+      style?: string;
+    };
+    const candidate = (parsed.preset ?? parsed.style ?? '').trim();
+    if (!candidate) return 'balanced';
+    return resolveStyleModel(candidate).legacyStyle;
+  } catch {
+    return 'balanced';
+  }
+}
+
 /** Prompt display name for a language code. */
 export function languageDisplayName(code: string): string {
   return getLanguageProfile(code).displayNameNative;

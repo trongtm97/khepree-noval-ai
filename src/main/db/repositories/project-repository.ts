@@ -3,6 +3,7 @@ import { newId } from '../utils/uuid';
 import { touchTimestamps, utcNow } from '../utils/timestamps';
 import type { SourceFolderStatus, SourceMode } from '@shared/constants/source-folder';
 import type { MetadataSource } from '@shared/constants/book-metadata';
+import type { SourceDetectionMethod, SourceLanguageMode } from '@shared/constants/source-language';
 import { normalizeLanguageCode } from '@shared/constants/language-profile';
 
 export interface ProjectRow {
@@ -10,6 +11,11 @@ export interface ProjectRow {
   title: string;
   source_language: string;
   target_language: string;
+  source_language_mode: SourceLanguageMode;
+  source_language_hint: string | null;
+  source_language_confidence: number | null;
+  source_language_detection_method: SourceDetectionMethod | null;
+  source_language_detection_checked_at: string | null;
   genre: string | null;
   description: string | null;
   status: string;
@@ -83,6 +89,11 @@ export interface CreateProjectInput {
   title: string;
   source_language?: string;
   target_language?: string;
+  source_language_mode?: SourceLanguageMode;
+  source_language_hint?: string | null;
+  source_language_confidence?: number | null;
+  source_language_detection_method?: SourceDetectionMethod | null;
+  source_language_detection_checked_at?: string | null;
   genre?: string | null;
   description?: string | null;
   status?: string;
@@ -128,13 +139,15 @@ export class ProjectRepository extends BaseRepository {
         `INSERT INTO projects (
           id, title, source_language, target_language, genre, description, status,
           created_at, updated_at, deleted_at,
+          source_language_mode, source_language_hint, source_language_confidence,
+          source_language_detection_method, source_language_detection_checked_at,
           source_mode, source_folder_path, source_folder_status,
           watch_folder_enabled, scan_on_startup,
           auto_import_new_chapters, auto_queue_new_chapters, auto_translate_new_chapters,
           expected_start_chapter, expected_end_chapter, last_folder_scan_at,
           title_cn, title_vi, source_title, target_title, author_name, expected_chapter_count, official_summary,
           book_profile_dirty
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       )
       .run(
         id,
@@ -150,6 +163,13 @@ export class ProjectRepository extends BaseRepository {
         input.status ?? 'draft',
         ts.created_at,
         ts.updated_at,
+        input.source_language_mode ?? 'AUTO',
+        input.source_language_hint
+          ? normalizeLanguageCode(input.source_language_hint)
+          : null,
+        input.source_language_confidence ?? null,
+        input.source_language_detection_method ?? null,
+        input.source_language_detection_checked_at ?? utcNow(),
         input.source_mode ?? 'LEGACY_IMPORT',
         input.source_folder_path ?? null,
         input.source_folder_status ?? null,

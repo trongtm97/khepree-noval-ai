@@ -121,7 +121,9 @@ export class DriveSyncService {
   /**
    * Advance chapters_since_sync by real completed chapter count.
    * Batch 101–103 → pass chapterCount=3 (not +1 per job).
-   * Prefer NotebookSyncService.evaluateSyncPolicy from LearningPipeline.
+   *
+   * LearningPipeline MUST call NotebookSyncService.evaluateSyncPolicy — not this.
+   * Kept for Drive-layer unit tests / low-level schedule helpers only.
    */
   onChapterCompleted(
     projectId: string,

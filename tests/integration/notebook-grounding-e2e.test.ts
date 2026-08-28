@@ -25,6 +25,8 @@ import { buildMemoryContext } from '@main/memory/context-selector';
 import { applyTermDelta } from '@main/learning/term-delta-processor';
 import { resetNotebookSyncService } from '@main/notebook/notebook-sync-service-singleton';
 import { toCharacterDto, toRelationshipDto } from '@main/services/memory-dto';
+import { ensureDefaultEdition } from '@main/services/edition-service';
+import { resolveCharacterPreferredName, resolveRelationshipAddressTerms } from '@main/memory/edition-memory';
 import { KNOWLEDGE_FILE_NAMES, KNOWLEDGE_TYPES } from '@shared/constants/knowledge';
 import {
   GROUNDING_PROBE,
@@ -233,24 +235,28 @@ describe('FULL-novel Notebook grounding E2E', () => {
     expect(mode.packMode).toBe('slim');
     expect(mode.reason).toBe('ready_verified');
 
+    const edition = ensureDefaultEdition(db, projectId);
     const context = buildMemoryContext(
       db,
-      { projectId, chapterIds: [chapterId] },
+      { projectId, chapterIds: [chapterId], editionId: edition.id },
       (characterId) => {
         const row = db.characters.getById(characterId);
         if (!row) return null;
         return toCharacterDto(
           row,
           db.characters.listAliases(row.id).map((a) => a.alias),
+          resolveCharacterPreferredName(db, row, edition.id),
         );
       },
       (rel) => {
         const from = db.characters.getById(rel.from_character_id);
         const to = db.characters.getById(rel.to_character_id);
+        const address = resolveRelationshipAddressTerms(db, rel, edition.id);
         return toRelationshipDto(
           rel,
           from?.canonical_name ?? rel.from_character_id,
           to?.canonical_name ?? rel.to_character_id,
+          address,
         );
       },
     );

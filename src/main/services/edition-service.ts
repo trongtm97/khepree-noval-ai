@@ -52,8 +52,52 @@ export function toEditionDto(
 }
 
 /**
+ * Attach legacy rows (edition_id NULL) to an edition — same as migration 031 backfill.
+ * Safe for first/default edition only; no-op when no orphans remain.
+ */
+export function claimOrphanEditionScopedRows(
+  db: DatabaseManager,
+  projectId: string,
+  editionId: string,
+): void {
+  const conn = db.getConnection();
+  conn
+    .prepare(
+      `UPDATE translations SET edition_id = ?
+       WHERE edition_id IS NULL
+         AND paragraph_id IN (
+           SELECT p.id FROM chapter_paragraphs p
+           INNER JOIN chapters c ON c.id = p.chapter_id
+           WHERE c.project_id = ?
+         )`,
+    )
+    .run(editionId, projectId);
+
+  conn
+    .prepare(`UPDATE jobs SET edition_id = ? WHERE project_id = ? AND edition_id IS NULL`)
+    .run(editionId, projectId);
+
+  conn
+    .prepare(
+      `UPDATE notebook_resources SET edition_id = ?
+       WHERE project_id = ?
+         AND edition_id IS NULL
+         AND notebook_role IN ('TRANSLATION', 'SINGLE')`,
+    )
+    .run(editionId, projectId);
+
+  conn
+    .prepare(
+      `UPDATE translation_waves SET edition_id = ?
+       WHERE project_id = ? AND (edition_id IS NULL OR edition_id = '')`,
+    )
+    .run(editionId, projectId);
+}
+
+/**
  * Ensure project has at least one edition and active_edition_id set.
  * Does NOT re-run Research / FULL preprocess.
+ * When creating/activating the first edition, claims orphan edition-scoped rows.
  */
 export function ensureDefaultEdition(db: DatabaseManager, projectId: string): TranslationEditionRow {
   const project = db.projects.getById(projectId);
@@ -68,6 +112,7 @@ export function ensureDefaultEdition(db: DatabaseManager, projectId: string): Tr
   if (existing.length > 0) {
     db.projects.setActiveEditionId(projectId, existing[0].id);
     mirrorEditionOntoProject(db, projectId, existing[0]);
+    claimOrphanEditionScopedRows(db, projectId, existing[0].id);
     return existing[0];
   }
 
@@ -78,6 +123,7 @@ export function ensureDefaultEdition(db: DatabaseManager, projectId: string): Tr
     styleConfig: db.projects.getStyleConfig(projectId),
   });
   db.projects.setActiveEditionId(projectId, edition.id);
+  claimOrphanEditionScopedRows(db, projectId, edition.id);
   logger.info('Created default translation edition', {
     projectId,
     editionId: edition.id,
@@ -116,7 +162,8 @@ export function listEditions(db: DatabaseManager, projectId: string): EditionDto
   const project = db.projects.getById(projectId);
   if (!project) throw new Error(`Project not found: ${projectId}`);
   ensureDefaultEdition(db, projectId);
-  const refreshed = db.projects.getById(projectId)!;
+  const refreshed = db.projects.getById(projectId);
+  if (!refreshed) throw new Error(`Project not found: ${projectId}`);
   return db.translationEditions
     .listByProject(projectId)
     .map((row) => toEditionDto(row, refreshed.active_edition_id));
@@ -158,10 +205,14 @@ export function createEdition(
   }
 
   const active = getActiveEdition(db, input.projectId);
+  const trimmedName = input.name?.trim();
   const edition = db.translationEditions.create({
     projectId: input.projectId,
     targetLanguage,
-    name: input.name?.trim() || defaultEditionName(targetLanguage),
+    name:
+      trimmedName !== undefined && trimmedName !== ''
+        ? trimmedName
+        : defaultEditionName(targetLanguage),
     // Copy style as starting point; edition-specific edits diverge later.
     styleConfig: active.style_config ?? db.projects.getStyleConfig(input.projectId),
   });
@@ -193,7 +244,7 @@ export function switchEdition(
   if (!project) throw new Error(`Project not found: ${input.projectId}`);
 
   const edition = db.translationEditions.getById(input.editionId);
-  if (!edition || edition.project_id !== input.projectId) {
+  if (edition?.project_id !== input.projectId) {
     throw new Error(`Edition not found: ${input.editionId}`);
   }
 

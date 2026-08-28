@@ -8,6 +8,7 @@ import {
 } from '@shared/constants/bootstrap';
 import { buildTermMatchIndex, matchKnownTermsInText } from '../terms/term-matcher';
 import type { ChapterRow } from '../db/repositories/chapter-repository';
+import { resolveProjectSourceLanguage } from '../services/resolve-project-source-language';
 
 export interface BootstrapLocalPrepResult {
   projectId: string;
@@ -123,15 +124,15 @@ export function prepareBootstrapLocal(
 
   const termRows = db.terms.listForMatching({
     projectId,
-    sourceLanguage: project.source_language,
+    sourceLanguage: resolveProjectSourceLanguage(project),
     targetLanguage: project.target_language,
   });
   const index = buildTermMatchIndex(termRows, {
-    sourceLanguage: project.source_language,
+    sourceLanguage: resolveProjectSourceLanguage(project),
   });
   const matches = matchKnownTermsInText(batchText, index, termRows, {
     projectId,
-    sourceLanguage: project.source_language,
+    sourceLanguage: resolveProjectSourceLanguage(project),
     targetLanguage: project.target_language,
   });
   const knownTerms = matches.map((m) => {
@@ -150,7 +151,7 @@ export function prepareBootstrapLocal(
 
   return {
     projectId,
-    sourceLanguage: project.source_language,
+    sourceLanguage: resolveProjectSourceLanguage(project),
     targetLanguage: project.target_language,
     bookProfile: bookProfile || '# Book profile\n',
     translationRules,

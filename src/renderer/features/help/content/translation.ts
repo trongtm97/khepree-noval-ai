@@ -244,4 +244,89 @@ export const translationArticles: HelpArticle[] = [
       { type: 'actions', items: [{ label: 'Mở Dịch truyện', to: '/translation' }] },
     ],
   },
+  {
+    id: 'default-target-language',
+    categoryId: 'translation',
+    title: 'Đặt ngôn ngữ dịch mặc định',
+    description:
+      'Cấu hình ngôn ngữ đích mặc định khi tạo dự án hoặc bản dịch mới.',
+    keywords: [
+      'ngôn ngữ',
+      'mặc định',
+      'target',
+      'dịch',
+      'cài đặt',
+      'default',
+      'việt',
+      'english',
+    ],
+    order: 2,
+    relatedIds: ['start-translate', 'import-novel'],
+    blocks: [
+      { type: 'heading', level: 1, text: 'Đặt ngôn ngữ dịch mặc định' },
+      {
+        type: 'paragraph',
+        text: 'Cài đặt → Dịch thuật → Ngôn ngữ dịch mặc định. Chọn ngôn ngữ bạn thường dịch sang (ví dụ Tiếng Việt, English, 日本語).',
+      },
+      {
+        type: 'callout',
+        variant: 'info',
+        title: 'Chỉ áp dụng cho dự án mới',
+        body: 'Cài đặt này chỉ áp dụng cho các dự án hoặc bản dịch được tạo sau đó. Các dự án hiện có không bị thay đổi.',
+      },
+      {
+        type: 'list',
+        items: [
+          'Tạo dự án: ngôn ngữ nguồn mặc định Tự động nhận diện; ngôn ngữ dịch lấy từ cài đặt.',
+          'Thêm bản dịch: + Thêm ngôn ngữ pre-fill từ cài đặt; nếu đã có edition cùng ngôn ngữ, UI cảnh báo.',
+          'Ngôn ngữ thử nghiệm (EXPERIMENTAL): vẫn lưu được; có cảnh báo kiểm thử Gemini.',
+        ],
+      },
+      { type: 'actions', items: [{ label: 'Mở Cài đặt', to: '/settings?tab=translation' }] },
+    ],
+  },
+  {
+    id: 'source-language-detection',
+    categoryId: 'translation',
+    title: 'NovelTrans xác định ngôn ngữ nguồn như thế nào?',
+    description:
+      'Ngôn ngữ nguồn được phát hiện từ nội dung truyện; gợi ý của bạn chỉ là tham khảo.',
+    keywords: [
+      'ngôn ngữ nguồn',
+      'source',
+      'nhận diện',
+      'detect',
+      'gợi ý',
+      'hint',
+      'tự động',
+    ],
+    order: 3,
+    relatedIds: ['import-novel', 'default-target-language'],
+    blocks: [
+      {
+        type: 'heading',
+        level: 1,
+        text: 'NovelTrans xác định ngôn ngữ nguồn như thế nào?',
+      },
+      {
+        type: 'paragraph',
+        text: 'Bạn không cần biết chính xác ngôn ngữ của truyện. NovelTrans sẽ tự phân tích nội dung từ metadata, lời mở đầu và các chương đầu để xác định ngôn ngữ nguồn.',
+      },
+      {
+        type: 'callout',
+        variant: 'info',
+        title: 'Gợi ý ≠ ngôn ngữ nguồn',
+        body: 'Nếu bạn cung cấp một gợi ý ngôn ngữ trong Tùy chọn nâng cao, phần mềm vẫn kiểm tra lại nội dung thực tế. Khi gợi ý và nội dung không khớp, NovelTrans ưu tiên ngôn ngữ được phát hiện từ nội dung để dịch.',
+      },
+      {
+        type: 'list',
+        items: [
+          'Tạo dự án: mặc định Tự động nhận diện — không bắt chọn ngôn ngữ nguồn.',
+          'Phát hiện cục bộ trước; chỉ gọi AI khi độ tin cậy thấp hoặc mơ hồ (ví dụ Trung/Nhật có Kanji).',
+          'Nguồn truyện → Nhận diện lại: dùng khi đổi thư mục hoặc sửa nội dung lớn. Dự án đã có bản dịch sẽ hỏi xác nhận trước khi đổi.',
+          'Ngôn ngữ dịch (đích) do bạn chọn — không tự động nhận diện.',
+        ],
+      },
+    ],
+  },
 ];

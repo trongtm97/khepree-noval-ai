@@ -129,7 +129,6 @@ export class CharacterRepository extends BaseRepository {
     if (existing.locked === 1 && patch.locked !== false) {
       const guarded: (keyof CreateCharacterInput)[] = [
         'canonical_name',
-        'translated_name',
         'gender',
         'role',
         'description',

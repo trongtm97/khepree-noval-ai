@@ -5,6 +5,7 @@ import { buildTermMatchIndex, matchKnownTermsInText } from '../terms/term-matche
 import { estimateTokens, trimToTokenBudget } from './budget-estimator';
 import { getRecentMemory } from './recent-memory';
 import { filterRelevantEntities } from './relevant-memory';
+import { resolveCharacterPreferredName } from './edition-memory';
 import type { CharacterDto, MemoryContextDto, RelationshipDto } from '@shared/schemas/memory';
 import type { TermRow } from '../db/repositories/term-repository';
 import type { TermCandidateRow } from '../db/repositories/term-candidate-repository';
@@ -14,6 +15,7 @@ export interface ContextSelectorInput {
   chapterIds: string[];
   tokenBudget?: number;
   recentWindow?: number;
+  editionId?: string;
 }
 
 function loadBatchText(db: DatabaseManager, chapterIds: string[]): string {
@@ -157,10 +159,24 @@ export function buildMemoryContext(
     input.recentWindow,
   );
 
+  const editionId = input.editionId;
+  if (!editionId) {
+    throw new Error('buildMemoryContext requires editionId');
+  }
+
+  const preferredNameByCharacter = new Map<string, string | null>();
+  for (const character of allCharacters) {
+    preferredNameByCharacter.set(
+      character.id,
+      resolveCharacterPreferredName(db, character, editionId),
+    );
+  }
+
   const relevant = filterRelevantEntities({
     batchText,
     characters: allCharacters,
     aliasesByCharacter,
+    preferredNameByCharacter,
     relationships: allRelationships,
     memoryEvents: recentSlice.events.filter(
       (event) => event.chapter_number == null || event.chapter_number <= anchorChapter,
@@ -169,16 +185,19 @@ export function buildMemoryContext(
 
   const projectRepo = (db as { projects?: DatabaseManager['projects'] }).projects;
   const project = projectRepo?.getById(input.projectId);
+  const editionRow = input.editionId
+    ? db.translationEditions.getById(input.editionId)
+    : project?.active_edition_id
+      ? db.translationEditions.getById(project.active_edition_id)
+      : null;
   const termRows = loadTermsForPack(db, input.projectId);
-  // Lexical look-ahead: all known terms may standardize names early.
-  // Plot/relationship timing is enforced via listActiveAtChapter + character first_chapter.
   const termIndex = buildTermMatchIndex(termRows, {
     sourceLanguage: project?.source_language,
   });
   const termMatches = matchKnownTermsInText(batchText, termIndex, termRows, {
     projectId: input.projectId,
     sourceLanguage: project?.source_language,
-    targetLanguage: project?.target_language,
+    targetLanguage: editionRow?.target_language ?? project?.target_language,
   });
   const activeTerms = trimToTokenBudget(
     termMatches.map((match) => {

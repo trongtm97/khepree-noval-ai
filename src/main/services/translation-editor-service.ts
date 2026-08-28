@@ -156,10 +156,20 @@ export class TranslationEditorService {
   }
 
   getContext(projectId: string, chapterNumber: number): EditorContextResponse {
+    const project = this.db.projects.getById(projectId);
+    const editionId = project?.active_edition_id ?? undefined;
+    const edition = editionId
+      ? this.db.translationEditions.getById(editionId)
+      : null;
+
     const characters = this.db.characters.listByProject(projectId).slice(0, 40).map((c) => ({
       id: c.id,
       canonicalName: c.canonical_name,
-      translatedName: c.translated_name,
+      translatedName:
+        editionId != null
+          ? this.db.characterTranslations.getByCharacterAndEdition(c.id, editionId)
+              ?.preferred_name ?? c.translated_name
+          : c.translated_name,
       role: c.role,
     }));
 
@@ -169,19 +179,24 @@ export class TranslationEditorService {
       .map((rel) => {
         const from = this.db.characters.getById(rel.from_character_id);
         const to = this.db.characters.getById(rel.to_character_id);
+        const tr =
+          editionId != null
+            ? this.db.relationshipTranslations.getByRelationshipAndEdition(rel.id, editionId)
+            : null;
         return {
           id: rel.id,
           fromName: from?.canonical_name ?? rel.from_character_id,
           toName: to?.canonical_name ?? rel.to_character_id,
           type: rel.relationship_type,
+          aCallsB: tr?.a_calls_b ?? rel.a_calls_b,
+          bCallsA: tr?.b_calls_a ?? rel.b_calls_a,
         };
       });
 
-    const project = this.db.projects.getById(projectId);
     const termRows = this.db.terms.listForMatching({
       projectId,
       sourceLanguage: project?.source_language,
-      targetLanguage: project?.target_language,
+      targetLanguage: edition?.target_language ?? project?.target_language,
     });
     const terms = termRows.slice(0, 40).map((t) => ({
       id: t.id,

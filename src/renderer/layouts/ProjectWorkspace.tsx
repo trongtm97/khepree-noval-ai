@@ -15,6 +15,7 @@ const PROJECT_TABS = [
   { end: false, key: 'projectNav.aiMemory', segment: 'ai-memory' },
   { end: false, key: 'projectNav.terms', segment: 'terms' },
   { end: false, key: 'projectNav.characters', segment: 'characters' },
+  { end: false, key: 'projectNav.data', segment: 'data' },
   { end: false, key: 'projectNav.export', segment: 'export' },
 ] as const;
 
@@ -27,6 +28,7 @@ export function projectTabKeyFromPath(pathname: string): string {
   if (segment === 'ai-memory') return 'projectNav.aiMemory';
   if (segment === 'terms') return 'projectNav.terms';
   if (segment === 'characters') return 'projectNav.characters';
+  if (segment === 'data') return 'projectNav.data';
   if (segment === 'export') return 'projectNav.export';
   return 'projectNav.overview';
 }

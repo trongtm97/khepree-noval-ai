@@ -12,6 +12,7 @@ import { helpArticleForErrorCode } from '../features/help/content';
 import {
   PageHeader,
   Button,
+  Card,
   Tabs,
   TabPanel,
   EmptyState,
@@ -23,6 +24,7 @@ import {
   type LogLine,
 } from '../components/ui';
 import { HelpContextButton } from '../features/help/HelpContextButton';
+import { OperationalExportDialog } from '../components/OperationalExportDialog';
 
 type LogsTab = 'activity' | 'technical';
 
@@ -186,6 +188,13 @@ export function LogsPage() {
           </div>
         }
       />
+
+      <Card style={{ marginBottom: '1rem' }}>
+        <h3>{t('operationalExport.sectionTitle')}</h3>
+        <OperationalExportDialog
+          kinds={['operational_activity', 'operational_workbook']}
+        />
+      </Card>
 
       <Tabs
         items={[

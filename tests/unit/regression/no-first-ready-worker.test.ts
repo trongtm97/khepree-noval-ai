@@ -21,6 +21,7 @@ const GUARDED_FILES = [
   'src/renderer/utils/translate-preflight.ts',
   'src/main/jobs/worker-pool.ts',
   'src/main/learning/learning-pipeline.ts',
+  'src/main/ipc/register-handlers.ts',
 ];
 
 /** Patterns that indicate blind first-READY / first-account selection. */

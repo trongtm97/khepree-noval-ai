@@ -7,6 +7,7 @@ import { createDatabaseManager, closeDatabase } from '@main/db/connection';
 import type { DatabaseManager } from '@main/db/database-manager';
 import { persistParsedTranslations } from '@main/learning/translation-persistence';
 import { TranslationEditorService } from '@main/services/translation-editor-service';
+import { ensureDefaultEdition } from '@main/services/edition-service';
 
 describe('Translation editor persistence (Phase 17)', () => {
   let tempRoot: string;
@@ -22,6 +23,7 @@ describe('Translation editor persistence (Phase 17)', () => {
     closeDatabase();
     db = createDatabaseManager({ dataDir: paths.data, backupsDir: paths.backups });
     projectId = db.projects.create({ title: 'Editor Novel' }).id;
+    ensureDefaultEdition(db, projectId);
     const chapter = db.chapters.create({
       project_id: projectId,
       chapter_number: 1,
@@ -66,7 +68,8 @@ describe('Translation editor persistence (Phase 17)', () => {
   });
 
   it('skips AI overwrite when human_locked', () => {
-    db.translations.saveHumanEdit(paraUuid, 'Bản người sửa.');
+    const editionId = db.projects.getById(projectId)?.active_edition_id ?? null;
+    db.translations.saveHumanEdit(paraUuid, 'Bản người sửa.', editionId);
     const result = persistParsedTranslations(db, {
       projectId,
       parsed: {
@@ -82,7 +85,9 @@ describe('Translation editor persistence (Phase 17)', () => {
     });
     expect(result.skipped).toBe(1);
     expect(result.saved).toBe(0);
-    expect(db.translations.getByParagraphId(paraUuid)?.translated_text).toBe('Bản người sửa.');
+    expect(db.translations.getByParagraphId(paraUuid, editionId)?.translated_text).toBe(
+      'Bản người sửa.',
+    );
   });
 
   it('saveHumanEdit creates HUMAN_EDIT version with lock', () => {

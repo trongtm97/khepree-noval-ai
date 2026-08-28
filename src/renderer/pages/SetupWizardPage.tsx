@@ -16,6 +16,8 @@ import {
   Badge,
 } from '../components/ui';
 import { CreateProjectWizard } from '../components/CreateProjectWizard';
+import { LanguagePicker } from '../components/LanguagePicker';
+import type { LanguageProfileDto } from '@shared/schemas/language-profile';
 
 const LOGIN_POLL_MS = 2500;
 const LOGIN_POLL_MAX = 48;
@@ -40,6 +42,8 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
   const [pendingAccountId, setPendingAccountId] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [projectHint, setProjectHint] = useState<string | null>(null);
+  const [setupLanguages, setSetupLanguages] = useState<LanguageProfileDto[]>([]);
+  const [setupDefaultTarget, setSetupDefaultTarget] = useState<string | null>(null);
   const pollAbort = useRef<AbortController | null>(null);
 
   const refreshAccounts = useCallback(async () => {
@@ -65,6 +69,21 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
       pollAbort.current?.abort();
     };
   }, [refresh, t]);
+
+  useEffect(() => {
+    if (status?.step !== 'defaultLanguage') return;
+    void Promise.all([
+      window.novelTrans.languages.list(),
+      window.novelTrans.translationSettings.get(),
+    ])
+      .then(([langRes, settings]) => {
+        setSetupLanguages(langRes.languages);
+        setSetupDefaultTarget((prev) => prev ?? settings.defaultTargetLanguage);
+      })
+      .catch(() => {
+        setSetupLanguages([]);
+      });
+  }, [status?.step]);
 
   const readyAccounts = accounts.filter((a) => a.status === 'READY');
   const geminiReady = accounts.some((a) => a.status === 'READY' && a.workerEnabled);
@@ -343,7 +362,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
                 variant="primary"
                 disabled={busy}
                 onClick={() => {
-                  void go('createProject');
+                  void go('defaultLanguage');
                 }}
               >
                 {t('setup.next')}
@@ -365,6 +384,64 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
                 }}
               >
                 {t('setup.skipExplore')}
+              </Button>
+            </div>
+          </>
+        ) : null}
+
+        {status.step === 'defaultLanguage' ? (
+          <>
+            <h2>{t('setup.defaultLanguageTitle')}</h2>
+            <p>{t('setup.defaultLanguageBody')}</p>
+            <LanguagePicker
+              value={setupDefaultTarget ?? ''}
+              labelVariant="stacked"
+              aria-label={t('setup.defaultLanguageTitle')}
+              languages={setupLanguages}
+              disabled={!setupDefaultTarget}
+              onChange={setSetupDefaultTarget}
+            />
+            <div className="btn-row">
+              <Button
+                variant="primary"
+                disabled={busy || !setupDefaultTarget}
+                onClick={() => {
+                  void (async () => {
+                    if (!setupDefaultTarget) return;
+                    setBusy(true);
+                    setError(null);
+                    try {
+                      await window.novelTrans.translationSettings.setDefaultTarget({
+                        defaultTargetLanguage: setupDefaultTarget,
+                      });
+                      await go('createProject');
+                    } catch (err: unknown) {
+                      setError(err instanceof Error ? err.message : String(err));
+                    } finally {
+                      setBusy(false);
+                    }
+                  })();
+                }}
+              >
+                {t('setup.next')}
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={busy}
+                onClick={() => {
+                  void go('createProject');
+                }}
+              >
+                {t('setup.defaultLanguageSkip')}
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={busy}
+                onClick={() => {
+                  void go('testGemini');
+                }}
+              >
+                {t('setup.back')}
               </Button>
             </div>
           </>
@@ -420,7 +497,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
                   variant="ghost"
                   disabled={busy}
                   onClick={() => {
-                    void go('testGemini');
+                    void go('defaultLanguage');
                   }}
                 >
                   {t('setup.back')}

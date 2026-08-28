@@ -1,13 +1,9 @@
 import { z } from 'zod';
 import {
-  DEFAULT_SOURCE_LANGUAGE,
   DEFAULT_TARGET_LANGUAGE,
   LANGUAGE_AUTO,
 } from '../constants/language-profile';
-import {
-  LanguageCodeSchema,
-  SourceLanguageInputSchema,
-} from './language-profile';
+import { LanguageCodeSchema } from './language-profile';
 
 export const ProjectDtoSchema = z.object({
   id: z.string().uuid(),
@@ -29,6 +25,15 @@ export const ProjectDtoSchema = z.object({
   /** Next chapter_number to translate (null if none / complete). */
   nextUntranslatedChapter: z.number().int().positive().nullable().optional(),
   activeEditionId: z.string().uuid().nullable().optional(),
+  sourceLanguageMode: z.enum(['AUTO', 'HINTED']).optional(),
+  sourceLanguageHint: z.string().nullable().optional(),
+  sourceLanguageConfidence: z.number().min(0).max(1).nullable().optional(),
+  sourceLanguageDetectionMethod: z
+    .enum(['LOCAL', 'AI', 'HYBRID', 'FALLBACK'])
+    .nullable()
+    .optional(),
+  sourceLanguageDetectionCheckedAt: z.string().nullable().optional(),
+  hintMismatch: z.boolean().optional(),
   health: z
     .object({
       source: z.enum(['ok', 'warn', 'missing']),
@@ -51,10 +56,11 @@ export const ProjectCreateRequestSchema = z.object({
   genre: z.string().max(200).nullable().optional(),
   description: z.string().max(5000).nullable().optional(),
   /**
-   * Source language: AUTO or BCP-47-ish code.
-   * AUTO is resolved at create/import via detect — never stored as AUTO.
+   * User hint only — never used as translation source of truth.
+   * AUTO or omitted = no hint.
    */
-  sourceLanguage: SourceLanguageInputSchema.default(DEFAULT_SOURCE_LANGUAGE),
+  sourceLanguageHint: z.string().max(32).nullable().optional(),
+  sourceLanguageMode: z.enum(['AUTO', 'HINTED']).default('AUTO'),
   targetLanguage: LanguageCodeSchema.default(DEFAULT_TARGET_LANGUAGE),
   /** Optional sample for AUTO detection when creating without folder yet. */
   sampleText: z.string().max(50_000).optional(),
@@ -62,14 +68,19 @@ export const ProjectCreateRequestSchema = z.object({
 
 export const ProjectCreateResponseSchema = z.object({
   project: ProjectDtoSchema,
-  /** Present when source was AUTO or detection ran. */
+  /** Present when detection ran at create/import. */
   sourceDetection: z
     .object({
-      code: z.string(),
+      detectedLanguage: z.string(),
+      code: z.string().optional(),
       displayNameVi: z.string(),
       displayNameNative: z.string(),
+      nativeName: z.string().optional(),
+      internationalName: z.string().optional(),
       confidence: z.number(),
-      method: z.enum(['heuristic', 'ai', 'hint', 'fallback']),
+      method: z.enum(['LOCAL', 'AI', 'HYBRID', 'FALLBACK', 'heuristic', 'ai', 'hint', 'fallback', 'hybrid']),
+      hintMismatch: z.boolean().optional(),
+      hintCode: z.string().nullable().optional(),
       needsUserConfirm: z.boolean(),
     })
     .nullable()

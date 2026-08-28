@@ -22,14 +22,17 @@ function asCharacterStatus(value: string): CharacterStatus {
 export function toCharacterDto(
   row: CharacterRow,
   aliases: string[] = [],
+  preferredName?: string | null,
 ): CharacterDto {
+  const translated =
+    preferredName !== undefined ? preferredName : row.translated_name;
   return {
     id: row.id,
     projectId: row.project_id,
     canonicalName: row.canonical_name,
-    translatedName: row.translated_name,
+    translatedName: translated,
     canonicalSourceName: row.canonical_name,
-    preferredTargetName: row.translated_name,
+    preferredTargetName: translated,
     aliases,
     gender: row.gender,
     role: row.role,
@@ -47,6 +50,7 @@ export function toRelationshipDto(
   row: RelationshipRow,
   fromName: string,
   toName: string,
+  address?: { aCallsB?: string | null; bCallsA?: string | null },
 ): RelationshipDto {
   return {
     id: row.id,
@@ -57,8 +61,8 @@ export function toRelationshipDto(
     toName,
     relationshipType: row.relationship_type,
     description: row.description,
-    aCallsB: row.a_calls_b,
-    bCallsA: row.b_calls_a,
+    aCallsB: address?.aCallsB !== undefined ? address.aCallsB : row.a_calls_b,
+    bCallsA: address?.bCallsA !== undefined ? address.bCallsA : row.b_calls_a,
     validFromChapter: row.valid_from_chapter,
     validToChapter: row.valid_to_chapter,
     confidence: row.confidence,

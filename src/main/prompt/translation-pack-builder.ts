@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { PackMode } from '@shared/constants/pack-mode';
+import { resolveProjectSourceLanguage } from '../services/resolve-project-source-language';
 import {
   DEFAULT_SOURCE_LANGUAGE,
   DEFAULT_TARGET_LANGUAGE,
@@ -355,8 +356,7 @@ export function buildTranslationPack(
   const project = db.projects.getById(input.projectId);
   const sourceLanguage =
     input.sourceLanguage ??
-    project?.source_language ??
-    DEFAULT_SOURCE_LANGUAGE;
+    (project ? resolveProjectSourceLanguage(project) : DEFAULT_SOURCE_LANGUAGE);
   const targetLanguage =
     input.targetLanguage ??
     project?.target_language ??

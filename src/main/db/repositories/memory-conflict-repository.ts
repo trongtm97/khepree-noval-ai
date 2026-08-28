@@ -69,6 +69,14 @@ export class MemoryConflictRepository extends BaseRepository {
       .all(projectId) as MemoryConflictRow[];
   }
 
+  listByProject(projectId: string, limit = 5000): MemoryConflictRow[] {
+    return this.db
+      .prepare(
+        `SELECT * FROM memory_conflicts WHERE project_id = ? ORDER BY created_at DESC LIMIT ?`,
+      )
+      .all(projectId, limit) as MemoryConflictRow[];
+  }
+
   resolve(id: string, status: ConflictStatus): MemoryConflictRow | null {
     this.db
       .prepare(`UPDATE memory_conflicts SET status = ?, updated_at = ? WHERE id = ?`)
