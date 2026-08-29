@@ -9,6 +9,8 @@ export interface AiAccountRow {
   google_account_id: string | null;
   google_email: string | null;
   session_location: string;
+  display_name: string | null;
+  profile_dir_name: string | null;
   status: string;
   last_used_at: string | null;
   last_error: string | null;
@@ -21,6 +23,8 @@ export interface CreateAiAccountInput {
   session_location: string;
   google_account_id?: string | null;
   google_email?: string | null;
+  display_name?: string | null;
+  profile_dir_name?: string | null;
   status?: AiAccountStatus;
 }
 
@@ -52,10 +56,15 @@ export class AiAccountRepository extends BaseRepository {
       .prepare(
         `SELECT * FROM ai_accounts
          WHERE provider_id = ? AND status = 'READY'
-         ORDER BY CASE WHEN last_used_at IS NULL THEN 1 ELSE 0 END,
-                  last_used_at DESC, created_at ASC`,
+         ORDER BY CASE WHEN last_used_at IS NULL THEN 0 ELSE 1 END,
+                  last_used_at ASC, created_at ASC`,
       )
       .all(providerId) as AiAccountRow[];
+  }
+
+  pickLeastRecentlyUsedReady(providerId: string): AiAccountRow | null {
+    const rows = this.listReadyByProvider(providerId);
+    return rows[0] ?? null;
   }
 
   findReadyForGoogleAccount(
@@ -96,8 +105,9 @@ export class AiAccountRepository extends BaseRepository {
       .prepare(
         `INSERT INTO ai_accounts (
           id, provider_id, google_account_id, google_email, session_location,
+          display_name, profile_dir_name,
           status, last_used_at, last_error, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
       )
       .run(
         id,
@@ -105,6 +115,8 @@ export class AiAccountRepository extends BaseRepository {
         input.google_account_id ?? null,
         input.google_email ?? null,
         input.session_location,
+        input.display_name ?? null,
+        input.profile_dir_name ?? null,
         input.status ?? 'LOGIN_REQUIRED',
         created_at,
         updated_at,
@@ -143,6 +155,22 @@ export class AiAccountRepository extends BaseRepository {
         `UPDATE ai_accounts SET google_email = ?, updated_at = ? WHERE id = ?`,
       )
       .run(email, now, id);
+    return this.getById(id);
+  }
+
+  updateDisplayName(id: string, displayName: string | null): AiAccountRow | null {
+    const now = utcNow();
+    this.db
+      .prepare(`UPDATE ai_accounts SET display_name = ?, updated_at = ? WHERE id = ?`)
+      .run(displayName, now, id);
+    return this.getById(id);
+  }
+
+  updateProfileDirName(id: string, profileDirName: string | null): AiAccountRow | null {
+    const now = utcNow();
+    this.db
+      .prepare(`UPDATE ai_accounts SET profile_dir_name = ?, updated_at = ? WHERE id = ?`)
+      .run(profileDirName, now, id);
     return this.getById(id);
   }
 

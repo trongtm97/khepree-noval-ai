@@ -273,3 +273,38 @@ export function jobSupportsPartialResume(job: JobDto): boolean {
     done > 0
   );
 }
+
+export type JobBulkAction = 'cancel' | 'delete' | 'retry';
+
+const TERMINAL_BULK_STATES = new Set([
+  'COMPLETED',
+  'ACCEPTED_WITH_WARNINGS',
+  'FAILED',
+  'CANCELLED',
+  'SKIPPED',
+]);
+
+/** Mirror backend bulkJobs eligibility rules. */
+export function canBulkAction(job: JobDto, action: JobBulkAction): boolean {
+  if (action === 'cancel') {
+    if (job.state === 'CANCELLED') return false;
+    if (TERMINAL_BULK_STATES.has(job.state) && job.state !== 'FAILED') return false;
+    return true;
+  }
+  if (action === 'retry') {
+    return ['FAILED', 'NEEDS_ATTENTION', 'CANCELLED', 'SKIPPED', 'QUEUED'].includes(job.state);
+  }
+  return true;
+}
+
+export function countBulkEligible(
+  jobs: JobDto[],
+  selectedIds: Set<string>,
+  action: JobBulkAction,
+): number {
+  return jobs.filter((j) => selectedIds.has(j.id) && canBulkAction(j, action)).length;
+}
+
+export function collectManageableJobIds(jobs: JobDto[]): string[] {
+  return jobs.map((j) => j.id);
+}

@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useNotificationStore, shouldAutoDismissToast } from '../../stores/notification-store';
+import {
+  useNotificationStore,
+  shouldAutoDismissToast,
+  resolveToastDurationMs,
+} from '../../stores/notification-store';
 import { useT } from '../../i18n';
 import { Button, IconButton } from '../ui';
 import { X } from 'lucide-react';
@@ -17,20 +21,40 @@ export function ToastViewport({
   const allItems = useNotificationStore((s) => s.items);
   const markRead = useNotificationStore((s) => s.markRead);
   const toasts = useMemo(() => allItems.filter((i) => i.toast), [allItems]);
-  const scheduled = useRef<Set<string>>(new Set());
+  const timersRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
+    const timers = timersRef.current;
+    const activeIds = new Set(toasts.map((item) => item.id));
+
+    for (const [id, timerId] of timers.entries()) {
+      if (!activeIds.has(id)) {
+        window.clearTimeout(timerId);
+        timers.delete(id);
+      }
+    }
+
     for (const item of toasts) {
       if (!shouldAutoDismissToast(item.kind)) continue;
-      if (scheduled.current.has(item.id)) continue;
-      scheduled.current.add(item.id);
-      const duration = item.toastDurationMs ?? 5000;
-      window.setTimeout(() => {
-        scheduled.current.delete(item.id);
+      if (timers.has(item.id)) continue;
+      const duration = resolveToastDurationMs(item.kind, item.toastDurationMs);
+      const timerId = window.setTimeout(() => {
+        timers.delete(item.id);
         markRead(item.id);
       }, duration);
+      timers.set(item.id, timerId);
     }
   }, [toasts, markRead]);
+
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      for (const timerId of timers.values()) {
+        window.clearTimeout(timerId);
+      }
+      timers.clear();
+    };
+  }, []);
 
   if (toasts.length === 0) return null;
 

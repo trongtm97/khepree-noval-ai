@@ -89,6 +89,19 @@ function parseGlobalMax(raw: string | null): GlobalMaxWorkersMode {
   return Math.min(HARD_GLOBAL_WORKER_CEILING, n);
 }
 
+function normalizeSerialPolicy(policy: ConcurrencyPolicy): ConcurrencyPolicy {
+  return {
+    ...policy,
+    perProjectMax: 1,
+    allowSameProjectParallel: false,
+    perAccountMax: {
+      playwright: 1,
+      webApi: 1,
+      default: 1,
+    },
+  };
+}
+
 /** Load durable policy from app_meta (legacy max_concurrent_workers still honored). */
 export function loadConcurrencyPolicy(db: DatabaseManager): ConcurrencyPolicy {
   const base = DEFAULT_CONCURRENCY_POLICY;
@@ -96,7 +109,7 @@ export function loadConcurrencyPolicy(db: DatabaseManager): ConcurrencyPolicy {
     db.appMeta.get(SCHEDULER_CONCURRENCY_KEYS.globalMaxWorkers) ??
     db.appMeta.get(SCHEDULER_SETTING_KEYS.maxConcurrentWorkers);
 
-  return {
+  return normalizeSerialPolicy({
     globalMaxWorkers: parseGlobalMax(globalRaw),
     autoCap: readInt(db, SCHEDULER_CONCURRENCY_KEYS.autoCap, base.autoCap),
     perProviderMax: readInt(
@@ -127,7 +140,7 @@ export function loadConcurrencyPolicy(db: DatabaseManager): ConcurrencyPolicy {
       SCHEDULER_CONCURRENCY_KEYS.allowSameProjectParallel,
       base.allowSameProjectParallel,
     ),
-  };
+  });
 }
 
 export interface ConcurrencyPolicyPatch {
@@ -144,55 +157,38 @@ export function saveConcurrencyPolicy(
   db: DatabaseManager,
   patch: ConcurrencyPolicyPatch,
 ): ConcurrencyPolicy {
-  if (patch.globalMaxWorkers !== undefined) {
+  const serialPatch: ConcurrencyPolicyPatch = {
+    ...patch,
+    perProjectMax: 1,
+    allowSameProjectParallel: false,
+    perAccountPlaywrightMax: 1,
+    perAccountWebApiMax: 1,
+  };
+  if (serialPatch.globalMaxWorkers !== undefined) {
     const v =
-      patch.globalMaxWorkers === GLOBAL_MAX_MODE_AUTO
+      serialPatch.globalMaxWorkers === GLOBAL_MAX_MODE_AUTO
         ? GLOBAL_MAX_MODE_AUTO
-        : String(Math.min(HARD_GLOBAL_WORKER_CEILING, Math.max(1, patch.globalMaxWorkers)));
+        : String(Math.min(HARD_GLOBAL_WORKER_CEILING, Math.max(1, serialPatch.globalMaxWorkers)));
     db.appMeta.set(SCHEDULER_CONCURRENCY_KEYS.globalMaxWorkers, v);
     // Keep legacy key in sync for older readers.
     db.appMeta.set(SCHEDULER_SETTING_KEYS.maxConcurrentWorkers, v);
   }
-  if (patch.autoCap !== undefined) {
+  if (serialPatch.autoCap !== undefined) {
     db.appMeta.set(
       SCHEDULER_CONCURRENCY_KEYS.autoCap,
-      String(Math.min(HARD_GLOBAL_WORKER_CEILING, Math.max(1, patch.autoCap))),
+      String(Math.min(HARD_GLOBAL_WORKER_CEILING, Math.max(1, serialPatch.autoCap))),
     );
   }
-  if (patch.perProviderMax !== undefined) {
+  if (serialPatch.perProviderMax !== undefined) {
     db.appMeta.set(
       SCHEDULER_CONCURRENCY_KEYS.perProviderMax,
-      String(Math.min(HARD_GLOBAL_WORKER_CEILING, Math.max(1, patch.perProviderMax))),
+      String(Math.min(HARD_GLOBAL_WORKER_CEILING, Math.max(1, serialPatch.perProviderMax))),
     );
   }
-  if (patch.perProjectMax !== undefined) {
-    const n = Math.min(HARD_GLOBAL_WORKER_CEILING, Math.max(1, patch.perProjectMax));
-    db.appMeta.set(SCHEDULER_CONCURRENCY_KEYS.perProjectMax, String(n));
-    if (patch.allowSameProjectParallel === undefined) {
-      db.appMeta.set(
-        SCHEDULER_CONCURRENCY_KEYS.allowSameProjectParallel,
-        n > 1 ? '1' : '0',
-      );
-    }
-  }
-  if (patch.perAccountPlaywrightMax !== undefined) {
-    db.appMeta.set(
-      SCHEDULER_CONCURRENCY_KEYS.perAccountPlaywrightMax,
-      String(Math.max(1, patch.perAccountPlaywrightMax)),
-    );
-  }
-  if (patch.perAccountWebApiMax !== undefined) {
-    db.appMeta.set(
-      SCHEDULER_CONCURRENCY_KEYS.perAccountWebApiMax,
-      String(Math.max(1, patch.perAccountWebApiMax)),
-    );
-  }
-  if (patch.allowSameProjectParallel !== undefined) {
-    db.appMeta.set(
-      SCHEDULER_CONCURRENCY_KEYS.allowSameProjectParallel,
-      patch.allowSameProjectParallel ? '1' : '0',
-    );
-  }
+  db.appMeta.set(SCHEDULER_CONCURRENCY_KEYS.perProjectMax, '1');
+  db.appMeta.set(SCHEDULER_CONCURRENCY_KEYS.allowSameProjectParallel, '0');
+  db.appMeta.set(SCHEDULER_CONCURRENCY_KEYS.perAccountPlaywrightMax, '1');
+  db.appMeta.set(SCHEDULER_CONCURRENCY_KEYS.perAccountWebApiMax, '1');
   return loadConcurrencyPolicy(db);
 }
 

@@ -1,6 +1,29 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TranslateReadinessService } from '@main/services/translate-readiness-service';
 import type { DatabaseManager } from '@main/db/database-manager';
+import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
+import { mockAccountAvailability } from '../../helpers/account-availability-fixtures';
+
+const mockResolve = vi.fn(() => mockAccountAvailability({ usableForNewJob: true }));
+const mockPreflightMessage = vi.fn(() => null as string | null);
+
+vi.mock('@main/services/account-availability-service', () => ({
+  getAccountAvailabilityService: vi.fn(() => ({
+    resolve: mockResolve,
+    preflightMessage: mockPreflightMessage,
+  })),
+}));
+
+vi.mock('@main/ai/provider-preflight', () => ({
+  checkProviderForJob: vi.fn(() =>
+    Promise.resolve({
+      providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+      result: 'READY',
+      message: 'ok',
+      checks: {},
+    }),
+  ),
+}));
 
 const PROJECT = '11111111-1111-1111-1111-111111111111';
 const ACCOUNT = '22222222-2222-2222-2222-222222222222';
@@ -10,12 +33,23 @@ function mockDb(opts: {
   workerHealth?: string;
   aiReady?: boolean;
   notebookStatus?: string | null;
+  enabledProviders?: string[];
 }): DatabaseManager {
   const accountStatus = opts.accountStatus ?? 'READY';
   const workerHealth = opts.workerHealth ?? 'READY';
+  const enabledProviders =
+    opts.enabledProviders ??
+    [
+      {
+        id: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+        enabled: 1,
+        priority: 1,
+      },
+    ];
   return {
     projects: {
       getById: (id: string) => (id === PROJECT ? { id } : null),
+      getStyleConfig: () => null,
     },
     jobs: {
       getById: () => null,
@@ -53,12 +87,37 @@ function mockDb(opts: {
         },
       ],
       getById: () => null,
+      getByAccountId: (id: string) =>
+        id === ACCOUNT
+          ? {
+              id: 'w1',
+              google_account_id: ACCOUNT,
+              health: workerHealth,
+              current_job_id: null,
+            }
+          : null,
       markReady: vi.fn(),
+      clearExpiredLimits: vi.fn(),
     },
     googleAccounts: {
       getById: (id: string) =>
         id === ACCOUNT
           ? { id: ACCOUNT, status: accountStatus, email: 'a@x.com', display_name: 'A', label: 'A' }
+          : null,
+      getDetail: (id: string) =>
+        id === ACCOUNT
+          ? {
+              id: ACCOUNT,
+              status: accountStatus,
+              email: 'a@x.com',
+              display_name: 'A',
+              label: 'A',
+              worker_enabled: 1,
+            }
+          : null,
+      getProfile: (id: string) =>
+        id === ACCOUNT
+          ? { profile_dir_name: 'profile-a' }
           : null,
       list: () => [{ id: ACCOUNT, status: accountStatus }],
       listDetails: () => [],
@@ -66,6 +125,9 @@ function mockDb(opts: {
     aiAccounts: {
       listAll: () =>
         opts.aiReady ? [{ id: 'ai1', status: 'READY' }] : [{ id: 'ai1', status: 'LOGIN_REQUIRED' }],
+    },
+    aiProviders: {
+      listEnabledOrdered: () => enabledProviders,
     },
     notebooks: {
       getByProjectAndWorker: () =>
@@ -78,6 +140,35 @@ function mockDb(opts: {
 }
 
 describe('TranslateReadinessService.ensureForTranslate', () => {
+  beforeEach(() => {
+    mockResolve.mockReset();
+    mockResolve.mockReturnValue(mockAccountAvailability({ usableForNewJob: true }));
+    mockPreflightMessage.mockReset();
+    mockPreflightMessage.mockReturnValue(null);
+  });
+
+  it('returns ok when Playwright provider is ready without Web API cookies', async () => {
+    const prepareForTranslate = vi.fn(() =>
+      Promise.resolve({
+        ready: true,
+        usedFallback: true,
+        message: 'prepared',
+        notebookStatus: null as string | null,
+        needsAssisted: false,
+      }),
+    );
+    const service = new TranslateReadinessService(mockDb({ aiReady: false }), {
+      openBrowser: vi.fn(),
+      testSession: vi.fn(() => Promise.resolve({ usable: true })),
+      prepareForTranslate,
+    });
+
+    const result = await service.ensureForTranslate(PROJECT);
+
+    expect(result.ok).toBe(true);
+    expect(result.reason).toBe('ok');
+  });
+
   it('returns ok when Web API is ready after prepare', async () => {
     const openBrowser = vi.fn();
     const testSession = vi.fn();
@@ -106,6 +197,13 @@ describe('TranslateReadinessService.ensureForTranslate', () => {
   });
 
   it('opens Gemini and asks user when LOGIN_REQUIRED and session still unusable', async () => {
+    mockResolve.mockReturnValue(
+      mockAccountAvailability({
+        availability: 'LOGIN_REQUIRED',
+        usableForNewJob: false,
+      }),
+    );
+    mockPreflightMessage.mockReturnValue('1 tài khoản cần đăng nhập lại.');
     const openBrowser = vi.fn(() => Promise.resolve());
     const testSession = vi.fn(() =>
       Promise.resolve({ usable: false, reason: 'LOGIN_REQUIRED' }),
@@ -138,7 +236,7 @@ describe('TranslateReadinessService.ensureForTranslate', () => {
       }),
     );
     const service = new TranslateReadinessService(
-      mockDb({ aiReady: false, notebookStatus: null }),
+      mockDb({ aiReady: false, notebookStatus: null, enabledProviders: [] }),
       {
         openBrowser,
         testSession: vi.fn(() => Promise.resolve({ usable: true })),
@@ -155,6 +253,7 @@ describe('TranslateReadinessService.ensureForTranslate', () => {
   });
 
   it('returns no_account when project has no Google accounts', async () => {
+    mockPreflightMessage.mockReturnValue('Chưa có tài khoản Google.');
     const db = {
       projects: { getById: () => ({ id: PROJECT }) },
       jobs: { getById: () => null, listByProject: () => [] },
@@ -176,9 +275,17 @@ describe('TranslateReadinessService.ensureForTranslate', () => {
         listAll: () => [],
         listEnabled: () => [],
         getById: () => null,
+        getByAccountId: () => null,
         markReady: vi.fn(),
+        clearExpiredLimits: vi.fn(),
       },
-      googleAccounts: { getById: () => null, list: () => [], listDetails: () => [] },
+      googleAccounts: {
+        getById: () => null,
+        getDetail: () => null,
+        getProfile: () => null,
+        list: () => [],
+        listDetails: () => [],
+      },
       aiAccounts: { listAll: () => [] },
       notebooks: { getByProjectAndWorker: () => null, listByProject: () => [] },
     } as unknown as DatabaseManager;

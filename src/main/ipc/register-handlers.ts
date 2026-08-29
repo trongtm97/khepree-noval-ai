@@ -411,17 +411,24 @@ import {
   AiAccountActionResponseSchema,
   AiAccountCreateRequestSchema,
   AiAccountIdRequestSchema,
+  AiAccountUpdateDisplayNameRequestSchema,
   AiAccountListRequestSchema,
   AiAccountListResponseSchema,
   AiAccountPasteCookiesRequestSchema,
+  AiBrowserAccountOpenLoginResponseSchema,
   AiFallbackConfigRequestSchema,
   AiModelsListRequestSchema,
   AiModelsListResponseSchema,
   AiProviderCheckRequestSchema,
   AiProviderHealthResponseSchema,
+  AiProviderGetRoutingRequestSchema,
   AiProviderListResponseSchema,
+  AiProviderRoutingResponseSchema,
+  AiProviderSetPrimaryRequestSchema,
   AiProviderSetEnabledRequestSchema,
   AiProviderSetPriorityRequestSchema,
+  ProjectSetPrimaryProviderRequestSchema,
+  ProjectTranslateAiSettingsResponseSchema,
   AiWorkerInstallResponseSchema,
 } from '@shared/schemas/ai-provider';
 import {
@@ -430,6 +437,13 @@ import {
 } from '@shared/schemas/ai-auto-setup';
 import { AiAutoSetupService } from '../ai/ai-auto-setup-service';
 import { z } from 'zod';
+import {
+  mergePreferNotebookPack,
+  mergeProjectPrimaryProvider,
+  projectUsesGlobalPrimary,
+  readPreferNotebookPack,
+  readProjectPrimaryProviderOverride,
+} from '@shared/constants/project-style-config';
 
 function accountDto(accountId: string) {
   const detail = getAccountWorkerService().getAccount(accountId);
@@ -914,6 +928,71 @@ export function registerIpcHandlers(): void {
         ensureNotebook: request.ensureNotebook,
       });
       return ProjectWorkerSetResponseSchema.parse(result);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_GET_TRANSLATE_PACK_SETTINGS,
+    createIpcHandler(
+      z.object({ projectId: z.string().uuid() }),
+      async (request) => {
+        const db = getDatabase();
+        const project = db.projects.getById(request.projectId);
+        if (!project) throw new Error(`Project not found: ${request.projectId}`);
+        const preferNotebookPack = readPreferNotebookPack(
+          db.projects.getStyleConfig(request.projectId),
+        );
+        const style = db.projects.getStyleConfig(request.projectId);
+        return ProjectTranslateAiSettingsResponseSchema.parse({
+          preferNotebookPack,
+          useGlobalPrimary: projectUsesGlobalPrimary(style),
+          primaryProviderId: readProjectPrimaryProviderOverride(style),
+        });
+      },
+    ),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_SET_PREFER_NOTEBOOK_PACK,
+    createIpcHandler(
+      z.object({
+        projectId: z.string().uuid(),
+        preferNotebookPack: z.boolean(),
+      }),
+      async (request) => {
+        const db = getDatabase();
+        const project = db.projects.getById(request.projectId);
+        if (!project) throw new Error(`Project not found: ${request.projectId}`);
+        const merged = mergePreferNotebookPack(
+          db.projects.getStyleConfig(request.projectId),
+          request.preferNotebookPack,
+        );
+        db.projects.setStyleConfig(request.projectId, merged);
+        return { preferNotebookPack: request.preferNotebookPack };
+      },
+    ),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_SET_PRIMARY_PROVIDER,
+    createIpcHandler(ProjectSetPrimaryProviderRequestSchema, async (request) => {
+      const db = getDatabase();
+      const project = db.projects.getById(request.projectId);
+      if (!project) throw new Error(`Project not found: ${request.projectId}`);
+      const merged = mergeProjectPrimaryProvider(
+        db.projects.getStyleConfig(request.projectId),
+        {
+          useGlobalPrimary: request.useGlobalPrimary,
+          primaryProviderId: request.primaryProviderId ?? null,
+        },
+      );
+      db.projects.setStyleConfig(request.projectId, merged);
+      const style = db.projects.getStyleConfig(request.projectId);
+      return ProjectTranslateAiSettingsResponseSchema.parse({
+        preferNotebookPack: readPreferNotebookPack(style),
+        useGlobalPrimary: projectUsesGlobalPrimary(style),
+        primaryProviderId: readProjectPrimaryProviderOverride(style),
+      });
     }),
   );
 
@@ -2751,6 +2830,23 @@ function registerAiProviderHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.AI_PROVIDER_GET_ROUTING,
+    createIpcHandler(AiProviderGetRoutingRequestSchema, (request) => {
+      return AiProviderRoutingResponseSchema.parse(
+        getAiProviderService().getRoutingConfig(request.projectId),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.AI_PROVIDER_SET_PRIMARY,
+    createIpcHandler(AiProviderSetPrimaryRequestSchema, (request) => {
+      getAiProviderService().setPrimaryProvider(request.providerId);
+      return AiProviderListResponseSchema.parse(getAiProviderService().listProviders());
+    }),
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.AI_PROVIDER_INSTALL_WORKER,
     createIpcHandlerNoArg(async () => {
       const result = await getAiProviderService().installWorker();
@@ -2795,6 +2891,7 @@ function registerAiProviderHandlers(): void {
         providerId: request.providerId,
         googleAccountId: request.googleAccountId,
         googleEmail: request.googleEmail,
+        displayName: request.displayName,
       });
       return AiAccountActionResponseSchema.parse({ account });
     }),
@@ -2828,6 +2925,37 @@ function registerAiProviderHandlers(): void {
     IPC_CHANNELS.AI_ACCOUNT_DELETE,
     createIpcHandler(AiAccountIdRequestSchema, async (request) => {
       return getAiProviderService().deleteAccount(request.accountId);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.AI_BROWSER_ACCOUNT_OPEN_LOGIN,
+    createIpcHandler(AiAccountIdRequestSchema, async (request) => {
+      const result = await getAiProviderService().openBrowserAccountLogin({
+        accountId: request.accountId,
+      });
+      return AiBrowserAccountOpenLoginResponseSchema.parse(result);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.AI_BROWSER_ACCOUNT_VERIFY,
+    createIpcHandler(AiAccountIdRequestSchema, async (request) => {
+      const result = await getAiProviderService().verifyBrowserAccount({
+        accountId: request.accountId,
+      });
+      return AiAccountActionResponseSchema.parse(result);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.AI_ACCOUNT_UPDATE_DISPLAY_NAME,
+    createIpcHandler(AiAccountUpdateDisplayNameRequestSchema, (request) => {
+      const account = getAiProviderService().updateBrowserAccountDisplayName(
+        request.accountId,
+        request.displayName,
+      );
+      return AiAccountActionResponseSchema.parse({ account });
     }),
   );
 

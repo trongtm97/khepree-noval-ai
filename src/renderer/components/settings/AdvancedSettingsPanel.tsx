@@ -5,7 +5,6 @@ import { useT } from '../../i18n';
 import { friendlyError } from '../../i18n/errors';
 import { helpArticleForErrorCode } from '../../features/help/content';
 import { Button, ErrorPanel, Switch } from '../ui';
-import { AdvancedParallelSettingsPanel } from './AdvancedParallelSettingsPanel';
 import { AiDiagnosticsSettingsPanel } from './AiDiagnosticsSettingsPanel';
 import { AiProvidersSettingsPanel } from './AiProvidersSettingsPanel';
 import { AiWebApiManualConnectPanel } from './AiWebApiManualConnectPanel';
@@ -100,8 +99,6 @@ export function AdvancedSettingsPanel({
           <AiWebApiManualConnectPanel />
         </SettingsDisclosure>
       </SettingsSection>
-
-      <AdvancedParallelSettingsPanel />
 
       <SettingsSection
         title={t('settings.advancedDiagnosticsSection')}

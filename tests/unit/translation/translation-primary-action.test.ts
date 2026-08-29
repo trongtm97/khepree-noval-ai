@@ -18,7 +18,7 @@ function makeChapter(n: number, hasTranslation = false): ChapterSummaryDto {
 }
 
 describe('resolvePrimaryTranslateAction', () => {
-  it('labels untranslated current chapter', () => {
+  it('translates current chapter when untranslated', () => {
     const chapters = [makeChapter(1, true), makeChapter(2, false), makeChapter(3, false)];
     const result = resolvePrimaryTranslateAction({
       chapters,
@@ -30,9 +30,10 @@ describe('resolvePrimaryTranslateAction', () => {
     });
     expect(result.labelKey).toBe('translation.translateChapterN');
     expect(result.labelParams).toEqual({ n: '2' });
+    expect(result.primaryHandler).toBe('translateCurrent');
   });
 
-  it('labels continue to next untranslated chapter', () => {
+  it('translates current chapter even when already translated', () => {
     const chapters = [makeChapter(1, true), makeChapter(2, true), makeChapter(3, false)];
     const result = resolvePrimaryTranslateAction({
       chapters,
@@ -42,8 +43,23 @@ describe('resolvePrimaryTranslateAction', () => {
       preparing: false,
       busy: false,
     });
-    expect(result.labelKey).toBe('translation.continueNextChapter');
-    expect(result.labelParams).toEqual({ n: '3' });
+    expect(result.labelKey).toBe('translation.translateChapterN');
+    expect(result.labelParams).toEqual({ n: '2' });
+    expect(result.primaryHandler).toBe('translateCurrent');
+  });
+
+  it('prefers selected chapters when sidebar selection is non-empty', () => {
+    const result = resolvePrimaryTranslateAction({
+      chapters: [makeChapter(1), makeChapter(2)],
+      chapterIndex: 0,
+      selectedCount: 3,
+      activeJob: null,
+      preparing: false,
+      busy: false,
+    });
+    expect(result.labelKey).toBe('translation.translateSelectedMenu');
+    expect(result.labelParams).toEqual({ count: '3' });
+    expect(result.primaryHandler).toBe('translateSelected');
   });
 
   it('shows resume when job paused', () => {
@@ -83,5 +99,6 @@ describe('resolvePrimaryTranslateAction', () => {
     });
     expect(result.labelKey).toBe('dashboard.translationComplete');
     expect(result.disabled).toBe(true);
+    expect(result.primaryHandler).toBe('none');
   });
 });

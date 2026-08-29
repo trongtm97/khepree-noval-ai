@@ -1,7 +1,6 @@
 import type { DatabaseManager } from '../db/database-manager';
 import type { ParsedBatchResult } from '@shared/schemas/output-protocol';
 import {
-  PARALLEL_WAVES_DEFAULT_ENABLED,
   PARALLEL_WAVES_FEATURE_KEY,
 } from '@shared/constants/parallel-waves';
 import { utcNow } from '../db/utils/timestamps';
@@ -24,14 +23,13 @@ export interface WaveProvisionalPayload {
   sourceContextByParagraph: Record<string, string>;
 }
 
-export function isParallelWavesEnabled(db: DatabaseManager): boolean {
-  const raw = db.appMeta.get(PARALLEL_WAVES_FEATURE_KEY);
-  if (raw == null) return PARALLEL_WAVES_DEFAULT_ENABLED;
-  return raw === '1' || raw === 'true';
+/** Parallel waves disabled — one serial stream per project/account. */
+export function isParallelWavesEnabled(_db: DatabaseManager): boolean {
+  return false;
 }
 
-export function setParallelWavesEnabled(db: DatabaseManager, enabled: boolean): void {
-  db.appMeta.set(PARALLEL_WAVES_FEATURE_KEY, enabled ? '1' : '0');
+export function setParallelWavesEnabled(db: DatabaseManager, _enabled: boolean): void {
+  db.appMeta.set(PARALLEL_WAVES_FEATURE_KEY, '0');
 }
 
 /**

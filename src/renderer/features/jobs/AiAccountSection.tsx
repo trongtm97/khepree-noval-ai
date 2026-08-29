@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { MoreHorizontal } from 'lucide-react';
 import type { GoogleAccountDto } from '@shared/schemas/account';
 import type { JobDto } from '@shared/schemas/job';
-import { Button, Card, IconButton, SectionHeader } from '../../components/ui';
+import { measureJobProgress } from '@shared/utils/job-progress';
+import { Button, Card, IconButton, ProgressBar, SectionHeader } from '../../components/ui';
 import { DropdownMenu } from '../../components/overlay';
 import { useT } from '../../i18n';
 import {
@@ -90,6 +91,7 @@ export function AiAccountSection({
               worker={worker}
               account={account}
               lane={lane}
+              job={job}
               displayName={accountDisplayName(
                 account,
                 displayIndex,
@@ -110,6 +112,7 @@ function AccountRow({
   worker,
   account,
   lane,
+  job,
   projectTitle,
   displayName,
   busy,
@@ -118,6 +121,7 @@ function AccountRow({
   worker: WorkerRow;
   account: GoogleAccountDto | undefined;
   lane: ReturnType<typeof accountLaneStatus>;
+  job: JobDto | null;
   projectTitle: string | null;
   displayName: string;
   busy: boolean;
@@ -128,6 +132,20 @@ function AccountRow({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLButtonElement>(null);
   const isRunning = lane === 'running';
+  const activeJob = account?.availability?.activeJob;
+  const measure = job ? measureJobProgress(job) : null;
+  const progressHint =
+    activeJob &&
+    typeof activeJob.paragraphsDone === 'number' &&
+    typeof activeJob.paragraphsTotal === 'number' &&
+    activeJob.paragraphsTotal > 0
+      ? t('jobs.paragraphsProgress', {
+          done: String(activeJob.paragraphsDone),
+          total: String(activeJob.paragraphsTotal),
+        })
+      : measure && measure.labelParts.length > 0
+        ? measure.labelParts.join(' · ')
+        : null;
 
   const statusText =
     lane === 'running' && projectTitle
@@ -145,6 +163,25 @@ function AccountRow({
             </span>
             <span>{statusText}</span>
           </p>
+          {progressHint ? (
+            <>
+              <p className="muted jobs-card-sub">{progressHint}</p>
+              <ProgressBar
+                value={measure?.percent ?? null}
+                indeterminate={measure?.indeterminate ?? true}
+                label={progressHint}
+                aria-label={t('jobs.progressAria', {
+                  project: projectTitle ?? displayName,
+                  percent: String(measure?.percent ?? 0),
+                })}
+              />
+            </>
+          ) : null}
+          {worker.lastError && (lane === 'attention' || lane === 'login') ? (
+            <p className="muted u-text-sm" style={{ margin: '0.35rem 0 0' }}>
+              {worker.lastError}
+            </p>
+          ) : null}
         </div>
         <div className="jobs-card-actions btn-row">
           <Button

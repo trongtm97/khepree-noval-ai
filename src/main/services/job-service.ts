@@ -29,11 +29,7 @@ import type { JobAttemptRow, JobRow } from '../db/repositories/job-repository';
 import type { AutomationScheduler } from '../jobs/scheduler';
 import { healIdleWorkers } from '../jobs/heal-workers';
 import { saveConcurrencyPolicy } from '../jobs/concurrency-policy';
-import {
-  createTranslationWave,
-  isParallelWavesEnabled,
-  setParallelWavesEnabled,
-} from '../jobs/wave-service';
+import { isParallelWavesEnabled, setParallelWavesEnabled } from '../jobs/wave-service';
 import { resolveActiveEditionId } from './edition-service';
 import { resolveForProjectEdition } from './translation-language-resolver';
 import {
@@ -265,21 +261,6 @@ export class JobService {
     }
 
     if (jobs.length > 0) {
-      if (isParallelWavesEnabled(this.db) && jobs.length > 1) {
-        const waveJobs = jobs.flatMap((j) => {
-          const chapterFrom = j.chapterFrom;
-          const chapterTo = j.chapterTo;
-          if (chapterFrom == null || chapterTo == null) return [];
-          return [{ jobId: j.id, chapterFrom, chapterTo }];
-        });
-        if (waveJobs.length > 1) {
-          createTranslationWave(this.db, {
-            projectId: input.projectId,
-            editionId: resolveActiveEditionId(this.db, input.projectId),
-            jobs: waveJobs,
-          });
-        }
-      }
       void this.prepareProfilesAndKickScheduler();
     }
 
@@ -512,32 +493,22 @@ export class JobService {
   updateSchedulerSettings(input: {
     globalMaxWorkers?: 'AUTO' | number;
     autoCap?: number;
-    perProjectMax?: number;
     perProviderMax?: number;
     perAccountPlaywrightMax?: number;
     perAccountWebApiMax?: number;
-    allowSameProjectParallel?: boolean;
-    parallelTranslationWaves?: boolean;
   }): ReturnType<JobService['schedulerStatus']> {
-    if (input.parallelTranslationWaves !== undefined) {
-      setParallelWavesEnabled(this.db, input.parallelTranslationWaves);
-      // Waves ON ⇒ same-project parallel allowed; OFF ⇒ force serial per project.
-      if (input.allowSameProjectParallel === undefined) {
-        input = {
-          ...input,
-          allowSameProjectParallel: input.parallelTranslationWaves,
-          perProjectMax:
-            input.perProjectMax ??
-            (input.parallelTranslationWaves
-              ? Math.max(2, this.schedulerStatus().perProjectMax)
-              : 1),
-        };
-      }
-    }
+    setParallelWavesEnabled(this.db, false);
+    const patch = {
+      ...input,
+      perProjectMax: 1 as const,
+      allowSameProjectParallel: false as const,
+      perAccountPlaywrightMax: 1 as const,
+      perAccountWebApiMax: 1 as const,
+    };
     if (this.scheduler) {
-      this.scheduler.updateConcurrencyPolicy(input);
+      this.scheduler.updateConcurrencyPolicy(patch);
     } else {
-      saveConcurrencyPolicy(this.db, input);
+      saveConcurrencyPolicy(this.db, patch);
     }
     return this.schedulerStatus();
   }

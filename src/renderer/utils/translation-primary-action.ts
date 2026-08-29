@@ -2,16 +2,11 @@ import type { ChapterSummaryDto } from '@shared/schemas/translation-pack';
 import type { JobDto } from '@shared/schemas/job';
 import { isJobActive } from '@shared/utils/job-progress';
 import { chapterRef } from '../components/translation/chapter-utils';
-import {
-  findNextUntranslatedIndex,
-  translatingNumbersFromJob,
-} from './chapter-navigator';
-import { resolveChapterDisplayStatus } from '../features/project-chapters/chapter-display-status';
 
 export type PrimaryTranslateLabelKey =
-  | 'translation.continueAction'
   | 'translation.translateChapterN'
-  | 'translation.continueNextChapter'
+  | 'translation.translateSelectedMenu'
+  | 'translation.translateCurrent'
   | 'actions.resume'
   | 'dashboard.translationComplete'
   | 'translation.translatingAction';
@@ -22,7 +17,7 @@ export interface PrimaryTranslateActionState {
   disabled: boolean;
   loading: boolean;
   showPlayIcon: boolean;
-  primaryHandler: 'continue' | 'resume' | 'none';
+  primaryHandler: 'translateCurrent' | 'translateSelected' | 'resume' | 'none';
 }
 
 function projectFullyTranslated(
@@ -38,11 +33,20 @@ export function resolvePrimaryTranslateAction(input: {
   chapters: ChapterSummaryDto[];
   chapterIndex: number;
   nextUntranslatedChapter?: number | null;
+  selectedCount?: number;
   activeJob: JobDto | null;
   preparing: boolean;
   busy: boolean;
 }): PrimaryTranslateActionState {
-  const { chapters, chapterIndex, nextUntranslatedChapter, activeJob, preparing, busy } = input;
+  const {
+    chapters,
+    chapterIndex,
+    nextUntranslatedChapter,
+    selectedCount = 0,
+    activeJob,
+    preparing,
+    busy,
+  } = input;
   const jobActive = activeJob != null && isJobActive(activeJob.state);
   const jobPaused = activeJob?.state === 'PAUSED';
   const jobRunning = jobActive && !jobPaused;
@@ -77,63 +81,35 @@ export function resolvePrimaryTranslateAction(input: {
     };
   }
 
+  if (selectedCount > 0) {
+    return {
+      labelKey: 'translation.translateSelectedMenu',
+      labelParams: { count: String(selectedCount) },
+      disabled: busy || preparing,
+      loading: preparing || busy,
+      showPlayIcon: true,
+      primaryHandler: 'translateSelected',
+    };
+  }
+
   const current = chapters.at(chapterIndex);
   if (!current) {
     return {
-      labelKey: 'translation.continueAction',
+      labelKey: 'translation.translateCurrent',
       disabled: busy || preparing || chapters.length === 0,
       loading: preparing || busy,
       showPlayIcon: true,
-      primaryHandler: 'continue',
+      primaryHandler: 'translateCurrent',
     };
   }
 
-  const translatingNumbers = translatingNumbersFromJob(activeJob);
-  const currentStatus = resolveChapterDisplayStatus(current, translatingNumbers);
   const currentNum = chapterRef(current);
-
-  if (currentStatus === 'untranslated') {
-    return {
-      labelKey: 'translation.translateChapterN',
-      labelParams: { n: String(currentNum) },
-      disabled: busy || preparing,
-      loading: preparing || busy,
-      showPlayIcon: true,
-      primaryHandler: 'continue',
-    };
-  }
-
-  const nextIdx = findNextUntranslatedIndex(chapters, chapterIndex, translatingNumbers);
-  if (nextIdx != null && nextIdx !== chapterIndex) {
-    const nextNum = chapterRef(chapters[nextIdx]);
-    if (nextNum !== currentNum) {
-      return {
-        labelKey: 'translation.continueNextChapter',
-        labelParams: { n: String(nextNum) },
-        disabled: busy || preparing,
-        loading: preparing || busy,
-        showPlayIcon: true,
-        primaryHandler: 'continue',
-      };
-    }
-  }
-
-  if (nextUntranslatedChapter != null && nextUntranslatedChapter !== currentNum) {
-    return {
-      labelKey: 'translation.continueNextChapter',
-      labelParams: { n: String(nextUntranslatedChapter) },
-      disabled: busy || preparing,
-      loading: preparing || busy,
-      showPlayIcon: true,
-      primaryHandler: 'continue',
-    };
-  }
-
   return {
-    labelKey: 'translation.continueAction',
+    labelKey: 'translation.translateChapterN',
+    labelParams: { n: String(currentNum) },
     disabled: busy || preparing,
     loading: preparing || busy,
     showPlayIcon: true,
-    primaryHandler: 'continue',
+    primaryHandler: 'translateCurrent',
   };
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { JobDto } from '../../../src/shared/schemas/job';
 import {
+  canBulkAction,
+  countBulkEligible,
   countPausedJobs,
   countWaitingJobs,
   friendlyChannel,
@@ -90,5 +92,32 @@ describe('friendlyChannel', () => {
       }),
     );
     expect(label).toBe('Notebook');
+  });
+});
+
+describe('canBulkAction', () => {
+  it('allows cancel for active jobs but not completed', () => {
+    expect(canBulkAction(job({ state: 'RUNNING' }), 'cancel')).toBe(true);
+    expect(canBulkAction(job({ state: 'QUEUED' }), 'cancel')).toBe(true);
+    expect(canBulkAction(job({ state: 'COMPLETED' }), 'cancel')).toBe(false);
+    expect(canBulkAction(job({ state: 'CANCELLED' }), 'cancel')).toBe(false);
+  });
+
+  it('allows retry only for retryable states', () => {
+    expect(canBulkAction(job({ state: 'FAILED' }), 'retry')).toBe(true);
+    expect(canBulkAction(job({ state: 'NEEDS_ATTENTION' }), 'retry')).toBe(true);
+    expect(canBulkAction(job({ state: 'RUNNING' }), 'retry')).toBe(false);
+  });
+
+  it('counts eligible bulk targets in selection', () => {
+    const jobs = [
+      job({ id: '1', state: 'QUEUED' }),
+      job({ id: '2', state: 'COMPLETED' }),
+      job({ id: '3', state: 'FAILED' }),
+    ];
+    const selected = new Set(['1', '2', '3']);
+    expect(countBulkEligible(jobs, selected, 'cancel')).toBe(2);
+    expect(countBulkEligible(jobs, selected, 'retry')).toBe(2);
+    expect(countBulkEligible(jobs, selected, 'delete')).toBe(3);
   });
 });

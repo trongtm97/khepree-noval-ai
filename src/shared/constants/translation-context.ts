@@ -44,6 +44,10 @@ export function formatDiagnosticsAiChannel(
       return 'Gemini Browser';
     case 'GEMINI_WEB_API':
       return 'Gemini Web API';
+    case 'PLAYWRIGHT_CHATGPT':
+      return 'ChatGPT Browser';
+    case 'PLAYWRIGHT_META_AI':
+      return 'Meta AI Browser';
     case 'GEMINI_OFFICIAL':
       return 'Gemini Official API';
     default:

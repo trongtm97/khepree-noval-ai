@@ -77,13 +77,19 @@ export function useStartupAiReadiness(intervalMs = 60_000): StartupAiReadinessSt
 
   const refresh = useCallback(async () => {
     try {
-      const [accountsSettled, healthSettled, listSettled, aiAccSettled] =
+      const [accountsSettled, healthSettled, listSettled, aiAccSettled, chatGptAccSettled, metaAccSettled] =
         await Promise.allSettled([
           window.novelTrans.accounts.list(),
           window.novelTrans.aiProviders.health(),
           window.novelTrans.aiProviders.list(),
           window.novelTrans.aiAccounts.list({
             providerId: AI_PROVIDER_IDS.GEMINI_WEB_API,
+          }),
+          window.novelTrans.aiAccounts.list({
+            providerId: AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
+          }),
+          window.novelTrans.aiAccounts.list({
+            providerId: AI_PROVIDER_IDS.PLAYWRIGHT_META_AI,
           }),
         ]);
 
@@ -93,6 +99,14 @@ export function useStartupAiReadiness(intervalMs = 60_000): StartupAiReadinessSt
       const healthRes = settledValue(healthSettled);
       const listRes = settledValue(listSettled);
       const aiAccRes = settledValue(aiAccSettled);
+      const chatGptAccRes = settledValue(chatGptAccSettled);
+      const metaAccRes = settledValue(metaAccSettled);
+
+      const browserAiAccounts = [
+        ...(chatGptAccRes?.accounts ?? []),
+        ...(metaAccRes?.accounts ?? []),
+      ];
+      const browserAiReady = browserAiAccounts.some((a) => a.status === 'READY');
 
       const ipcFailed =
         !accountsRes && !healthRes && !listRes && !aiAccRes;
@@ -135,6 +149,9 @@ export function useStartupAiReadiness(intervalMs = 60_000): StartupAiReadinessSt
         healthRes?.providers.find((p) => p.type === 'GEMINI_WEB_API') ??
         null;
 
+      const enabledProviders =
+        listRes?.providers.filter((p) => p.enabled).map((p) => p.id) ?? [];
+
       const next = evaluateStartupAiReadiness({
         googleAccounts: (accountsRes?.accounts ?? []).map((a) => ({
           availability: a.availability,
@@ -151,6 +168,14 @@ export function useStartupAiReadiness(intervalMs = 60_000): StartupAiReadinessSt
         hasEnabledProvider:
           listRes?.providers.some((p) => p.enabled) ??
           (healthRes?.providers.length ?? 0) > 0,
+        providerRows: (listRes?.providers ?? []).map((p) => ({
+          id: p.id,
+          status: p.status,
+          enabled: p.enabled,
+        })),
+        primaryProviderId: listRes?.primaryProviderId ?? null,
+        fallbackEnabled: listRes?.fallbackEnabled ?? true,
+        browserAiReady,
       });
 
       setResult(next);

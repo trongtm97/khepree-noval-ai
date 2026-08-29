@@ -16,6 +16,7 @@ describe('AI settings tab (Phase 4)', () => {
     expect(settingsPage).not.toContain('AiProvidersSettingsPanel');
     expect(aiPanel).toContain('autoSetupRun');
     expect(aiPanel).toContain('aiAutoSetup');
+    expect(aiPanel).toContain('PrimaryTranslationProviderPanel');
     expect(aiPanel).not.toContain('__Secure-1PSID');
     expect(aiPanel).not.toContain('aiPriority');
     expect(aiPanel).not.toContain('aiDiagBrowser');

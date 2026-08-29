@@ -9,6 +9,7 @@ import { useSettingsFeedback } from './useSettingsFeedback';
 
 interface ProviderListState {
   providers: AiProviderDto[];
+  primaryProviderId: string | null;
   fallbackEnabled: boolean;
   workerInstalled: boolean;
   workerRunning: boolean;
@@ -26,6 +27,7 @@ export function AiProvidersSettingsPanel() {
     const list = await window.novelTrans.aiProviders.list();
     setState({
       providers: list.providers,
+      primaryProviderId: list.primaryProviderId,
       fallbackEnabled: list.fallbackEnabled,
       workerInstalled: list.workerInstalled,
       workerRunning: list.workerRunning,
@@ -112,7 +114,11 @@ export function AiProvidersSettingsPanel() {
           const ordered = [...all].sort(
             (a, b) => a.priority - b.priority || a.name.localeCompare(b.name),
           );
-          const isFirst = ordered[0]?.id === provider.id;
+          const isPrimary =
+            provider.enabled &&
+            (state?.primaryProviderId === provider.id ||
+              (!state?.primaryProviderId && ordered[0]?.id === provider.id));
+          const isFallback = provider.enabled && !isPrimary;
           return (
             <Card key={provider.id} as="div" className="u-pad-compact">
               <div className="u-row u-row--between">
@@ -121,7 +127,8 @@ export function AiProvidersSettingsPanel() {
                   <div className="muted u-text-sm">
                     {aiProviderTypeLabel(provider.type)} · {t('settings.aiPriority')}:{' '}
                     {provider.priority}
-                    {isFirst && provider.enabled ? ` · ${t('settings.aiRunsFirst')}` : ''}
+                    {isPrimary ? ` · ${t('settings.aiBadgePrimary')}` : ''}
+                    {isFallback ? ` · ${t('settings.aiBadgeFallback')}` : ''}
                   </div>
                   {provider.accountEmail ? (
                     <div className="muted u-text-sm">{provider.accountEmail}</div>
@@ -155,7 +162,7 @@ export function AiProvidersSettingsPanel() {
                 </Button>
                 <Button
                   variant="secondary"
-                  disabled={busy || isFirst}
+                  disabled={busy || isPrimary}
                   onClick={() => {
                     void window.novelTrans.aiProviders
                       .setPriority({

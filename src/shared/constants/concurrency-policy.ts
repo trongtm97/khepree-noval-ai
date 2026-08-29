@@ -71,19 +71,17 @@ export const SCHEDULER_CONCURRENCY_KEYS = {
   allowSameProjectParallel: 'scheduler.allow_same_project_parallel',
 } as const;
 
-/** Merge legacy SCHEDULER_SETTING_KEYS.maxConcurrentWorkers with concurrency keys. */
-export function effectivePerProjectMax(policy: ConcurrencyPolicy): number {
-  if (!policy.allowSameProjectParallel) return 1;
-  return Math.max(1, policy.perProjectMax);
+/** @deprecated Same-project parallel removed — always serial per project. */
+export function effectivePerProjectMax(_policy: ConcurrencyPolicy): number {
+  return 1;
 }
 
+/** One translation job per Google / Web API account at a time. */
 export function perAccountLimitFor(
-  policy: ConcurrencyPolicy,
-  kind: ProviderConcurrencyKind,
+  _policy: ConcurrencyPolicy,
+  _kind: ProviderConcurrencyKind,
 ): number {
-  if (kind === 'PLAYWRIGHT_GEMINI') return Math.max(1, policy.perAccountMax.playwright);
-  if (kind === 'GEMINI_WEB_API') return Math.max(1, policy.perAccountMax.webApi);
-  return Math.max(1, policy.perAccountMax.default);
+  return 1;
 }
 
 export function resolveGlobalMaxWorkers(
@@ -109,6 +107,12 @@ export function normalizeProviderConcurrencyKind(
 ): ProviderConcurrencyKind {
   const n = (raw ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (n.includes('WEBAPI') || n === 'GEMINIWEBAPI') return 'GEMINI_WEB_API';
+  if (n.includes('PLAYWRIGHTCHATGPT') || n === 'CHATGPT') {
+    return 'PLAYWRIGHT_CHATGPT';
+  }
+  if (n.includes('PLAYWRIGHTMETAAI') || n === 'METAAI') {
+    return 'PLAYWRIGHT_META_AI';
+  }
   if (
     n.includes('PLAYWRIGHT') ||
     n === 'GEMINI' ||

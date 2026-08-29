@@ -6,11 +6,14 @@ import { Button, Card, IconButton, SectionHeader, Select } from '../../component
 import { DropdownMenu } from '../../components/overlay';
 import { useT } from '../../i18n';
 import { chapterRange, isQueuedForDisplay, priorityBand, type PriorityBand } from './jobs-utils';
+import { JobSelectCheckbox } from './JobSelectCheckbox';
 
 export interface ProjectQueueSectionProps {
   queuedByProject: [string, JobDto[]][];
   titleFor: (projectId: string) => string;
   busy: boolean;
+  selectedJobIds: Set<string>;
+  onToggleSelect: (jobId: string) => void;
   onSetPriority: (jobIds: string[], band: PriorityBand) => void;
 }
 
@@ -18,6 +21,8 @@ export function ProjectQueueSection({
   queuedByProject,
   titleFor,
   busy,
+  selectedJobIds,
+  onToggleSelect,
   onSetPriority,
 }: ProjectQueueSectionProps) {
   const t = useT();
@@ -37,6 +42,8 @@ export function ProjectQueueSection({
             projectJobs={projectJobs}
             title={titleFor(projectId)}
             busy={busy}
+            selectedJobIds={selectedJobIds}
+            onToggleSelect={onToggleSelect}
             onSetPriority={onSetPriority}
             onOpenProject={() => {
               navigate(`/projects/${projectId}`);
@@ -52,12 +59,16 @@ function QueueProjectCard({
   projectJobs,
   title,
   busy,
+  selectedJobIds,
+  onToggleSelect,
   onSetPriority,
   onOpenProject,
 }: {
   projectJobs: JobDto[];
   title: string;
   busy: boolean;
+  selectedJobIds: Set<string>;
+  onToggleSelect: (jobId: string) => void;
   onSetPriority: (jobIds: string[], band: PriorityBand) => void;
   onOpenProject: () => void;
 }) {
@@ -143,6 +154,27 @@ function QueueProjectCard({
           </DropdownMenu>
         </div>
       </div>
+      <ul className="jobs-queue-job-list">
+        {projectJobs.map((job) => {
+          const range = chapterRange(job);
+          return (
+            <li key={job.id} className="jobs-queue-job-item">
+              <JobSelectCheckbox
+                jobId={job.id}
+                checked={selectedJobIds.has(job.id)}
+                disabled={busy}
+                ariaLabel={t('jobs.selectJobAria', {
+                  project: range ? `${title} · ${range}` : title,
+                })}
+                onToggle={onToggleSelect}
+              />
+              <span className="jobs-queue-job-label">
+                {range ? t('jobs.chapterLabel', { range }) : title}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </Card>
   );
 }

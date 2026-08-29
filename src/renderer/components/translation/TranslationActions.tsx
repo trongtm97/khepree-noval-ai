@@ -60,6 +60,7 @@ export function TranslationActions({
     chapters,
     chapterIndex,
     nextUntranslatedChapter,
+    selectedCount,
     activeJob,
     preparing,
     busy,
@@ -72,8 +73,12 @@ export function TranslationActions({
       onResume?.();
       return;
     }
-    if (primary.primaryHandler === 'continue') {
-      onContinue();
+    if (primary.primaryHandler === 'translateSelected') {
+      onTranslateSelected();
+      return;
+    }
+    if (primary.primaryHandler === 'translateCurrent') {
+      onTranslateCurrent();
     }
   };
 
@@ -126,6 +131,16 @@ export function TranslationActions({
             }}
           >
             {t('translation.translateCurrent')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onContinue();
+            }}
+          >
+            {t('translation.continueAction')}
           </button>
           <button
             type="button"

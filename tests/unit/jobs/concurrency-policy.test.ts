@@ -86,6 +86,29 @@ describe('ConcurrencyPolicy', () => {
     ).toBe(true);
   });
 
+  it('canAdmit blocks same project even when DB has allowSameProjectParallel=true', () => {
+    const policy = {
+      ...DEFAULT_CONCURRENCY_POLICY,
+      allowSameProjectParallel: true,
+      perProjectMax: 4,
+    };
+    const snap = buildConcurrencySnapshot([
+      {
+        jobId: 'j1',
+        projectId: 'p1',
+        accountId: 'a1',
+        providerKind: 'PLAYWRIGHT_GEMINI',
+      },
+    ]);
+    expect(
+      canAdmitJob(policy, snap, {
+        projectId: 'p1',
+        accountId: 'a2',
+        providerKind: 'PLAYWRIGHT_GEMINI',
+      }),
+    ).toBe(false);
+  });
+
   it('canAdmit blocks second Playwright job on same account', () => {
     const policy = DEFAULT_CONCURRENCY_POLICY;
     const snap = buildConcurrencySnapshot([
@@ -340,12 +363,15 @@ describe('multi-stream fair scheduler', () => {
     saveConcurrencyPolicy(db, {
       globalMaxWorkers: 'AUTO',
       autoCap: 3,
-      perProjectMax: 1,
+      perProjectMax: 4,
       perProviderMax: 4,
+      allowSameProjectParallel: true,
     });
     const loaded = loadConcurrencyPolicy(db);
     expect(loaded.globalMaxWorkers).toBe('AUTO');
     expect(loaded.autoCap).toBe(3);
     expect(loaded.perProviderMax).toBe(4);
+    expect(loaded.perProjectMax).toBe(1);
+    expect(loaded.allowSameProjectParallel).toBe(false);
   });
 });

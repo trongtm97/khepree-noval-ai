@@ -124,6 +124,7 @@ import type { SetupWizardStep } from '../constants/setup';
 import type {
   AiAccountActionResponseSchema,
   AiAccountListResponseSchema,
+  AiBrowserAccountOpenLoginResponseSchema,
   AiModelsListResponseSchema,
   AiProviderHealthResponseSchema,
   AiProviderListResponseSchema,
@@ -240,6 +241,24 @@ export interface NovelTransApi {
       accountId: string;
       ensureNotebook?: boolean;
     }) => Promise<import('../schemas/project-worker').ProjectWorkerSetResponse>;
+    getTranslatePackSettings: (projectId: string) => Promise<{
+      preferNotebookPack: boolean;
+      useGlobalPrimary: boolean;
+      primaryProviderId: string | null;
+    }>;
+    setPreferNotebookPack: (input: {
+      projectId: string;
+      preferNotebookPack: boolean;
+    }) => Promise<{ preferNotebookPack: boolean }>;
+    setPrimaryProvider: (input: {
+      projectId: string;
+      useGlobalPrimary: boolean;
+      primaryProviderId?: string | null;
+    }) => Promise<{
+      preferNotebookPack: boolean;
+      useGlobalPrimary: boolean;
+      primaryProviderId: string | null;
+    }>;
   };
   editions: {
     list: (projectId: string) => Promise<{
@@ -1219,6 +1238,12 @@ export interface NovelTransApi {
       enabled: boolean;
       statuses?: AiResponseStatus[];
     }) => Promise<z.infer<typeof AiProviderListResponseSchema>>;
+    getRouting: (input?: { projectId?: string }) => Promise<
+      z.infer<typeof import('../schemas/ai-provider').AiProviderRoutingResponseSchema>
+    >;
+    setPrimary: (input: {
+      providerId: string;
+    }) => Promise<z.infer<typeof AiProviderListResponseSchema>>;
     installWorker: () => Promise<z.infer<typeof AiWorkerInstallResponseSchema>>;
     autoSetupStatus: () => Promise<z.infer<typeof AiStatusSnapshotSchema>>;
     autoSetupRun: () => Promise<z.infer<typeof AiAutoSetupResultSchema>>;
@@ -1231,6 +1256,7 @@ export interface NovelTransApi {
       providerId: string;
       googleAccountId?: string | null;
       googleEmail?: string | null;
+      displayName?: string;
     }) => Promise<z.infer<typeof AiAccountActionResponseSchema>>;
     pasteCookies: (input: {
       accountId: string;
@@ -1245,6 +1271,16 @@ export interface NovelTransApi {
       accountId: string;
     }) => Promise<z.infer<typeof AiAccountActionResponseSchema>>;
     delete: (input: { accountId: string }) => Promise<{ ok: boolean }>;
+    openBrowserLogin: (input: {
+      accountId: string;
+    }) => Promise<z.infer<typeof AiBrowserAccountOpenLoginResponseSchema>>;
+    verifyBrowser: (input: {
+      accountId: string;
+    }) => Promise<z.infer<typeof AiAccountActionResponseSchema>>;
+    updateDisplayName: (input: {
+      accountId: string;
+      displayName: string;
+    }) => Promise<z.infer<typeof AiAccountActionResponseSchema>>;
   };
   aiModels: {
     list: (input: {

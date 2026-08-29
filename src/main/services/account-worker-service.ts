@@ -1,4 +1,5 @@
 import { newId } from '../db/utils/uuid';
+import { nextSequentialDisplayName } from '@shared/utils/account-display-name';
 import type { GoogleAccountRepository, GoogleAccountDetail } from '../db/repositories/google-account-repository';
 import type { AuditLogService } from '../security/audit-log-service';
 import type { SecretStorageService } from '../security/secret-storage-service';
@@ -74,7 +75,10 @@ export class AccountWorkerService {
   }): Promise<GoogleAccountDetail> {
     const workerId = newId();
     const { profileDirName } = this.profiles.createProfileDirectory(workerId);
-    const label = input?.label?.trim() ?? `Google Account ${workerId.slice(0, 8)}`;
+    const existingCount = this.accounts.list().length;
+    const label =
+      input?.label?.trim() ||
+      nextSequentialDisplayName('Tài khoản Google', existingCount);
 
     const account = this.accounts.create({
       id: workerId,

@@ -15,11 +15,13 @@ import { useT } from '../i18n';
 import { ActionRequiredJobs } from '../features/jobs/ActionRequiredJobs';
 import { AiAccountSection } from '../features/jobs/AiAccountSection';
 import { JobDetailDrawer } from '../features/jobs/JobDetailDrawer';
+import { JobsBulkBar } from '../features/jobs/JobsBulkBar';
 import { JobsOverflowMenu } from '../features/jobs/JobsOverflowMenu';
 import { JobsSummaryStrip } from '../features/jobs/JobsSummaryStrip';
 import { ProjectQueueSection } from '../features/jobs/ProjectQueueSection';
 import { RecentJobsSection } from '../features/jobs/RecentJobsSection';
 import { RunningJobCard } from '../features/jobs/RunningJobCard';
+import { collectManageableJobIds } from '../features/jobs/jobs-utils';
 import { useJobsControls } from '../features/jobs/useJobsControls';
 import { useJobsOverview } from '../features/jobs/useJobsOverview';
 
@@ -37,6 +39,20 @@ export function JobsPage() {
   const selected = controls.selectedId
     ? overview.jobById.get(controls.selectedId) ?? null
     : null;
+
+  const manageableJobIds = useMemo(
+    () => collectManageableJobIds(overview.jobs),
+    [overview.jobs],
+  );
+
+  const bulkConfirmDescription =
+    controls.pendingBulkAction === 'cancel'
+      ? t('jobs.bulkCancelConfirm', { n: String(controls.selectedJobIds.size) })
+      : controls.pendingBulkAction === 'delete'
+        ? t('jobs.bulkDeleteConfirm', { n: String(controls.selectedJobIds.size) })
+        : controls.pendingBulkAction === 'retry'
+          ? t('jobs.bulkRetryConfirm', { n: String(controls.selectedJobIds.size) })
+          : '';
 
   const errInfo = controls.error ? friendlyError(controls.error) : null;
   const pageIdle =
@@ -124,6 +140,20 @@ export function JobsPage() {
         attentionCount={overview.attentionJobs.length}
         usableWorkers={overview.usableWorkers}
         pausedCount={overview.pausedCount}
+        inFlight={overview.scheduler?.inFlight}
+        maxConcurrent={overview.scheduler?.maxConcurrent}
+        schedulerPaused={overview.scheduler?.paused}
+      />
+
+      <JobsBulkBar
+        jobs={overview.jobs}
+        selectedJobIds={controls.selectedJobIds}
+        busy={controls.busy}
+        onSelectAll={() => {
+          controls.selectAllJobs(manageableJobIds);
+        }}
+        onClearSelection={controls.clearJobSelection}
+        onBulkAction={controls.requestBulkAction}
       />
 
       {pageIdle ? (
@@ -143,6 +173,8 @@ export function JobsPage() {
         jobs={overview.attentionJobs}
         titleFor={overview.titleFor}
         busy={controls.busy}
+        selectedJobIds={controls.selectedJobIds}
+        onToggleSelect={controls.toggleJobSelection}
         onOpen={(jobId) => {
           void controls.openJob(jobId);
         }}
@@ -163,6 +195,8 @@ export function JobsPage() {
                 accountById={overview.accountById}
                 accountOrder={accountOrder}
                 busy={controls.busy}
+                selected={controls.selectedJobIds.has(job.id)}
+                onToggleSelect={controls.toggleJobSelection}
                 onOpen={(jobId) => {
                   void controls.openJob(jobId);
                 }}
@@ -186,6 +220,8 @@ export function JobsPage() {
         queuedByProject={overview.queuedByProject}
         titleFor={overview.titleFor}
         busy={controls.busy}
+        selectedJobIds={controls.selectedJobIds}
+        onToggleSelect={controls.toggleJobSelection}
         onSetPriority={(jobIds, band) => {
           void controls.setProjectQueuePriority(jobIds, band);
         }}
@@ -210,7 +246,13 @@ export function JobsPage() {
         }}
       />
 
-      <RecentJobsSection jobs={overview.recentJobs} titleFor={overview.titleFor} />
+      <RecentJobsSection
+        jobs={overview.recentJobs}
+        titleFor={overview.titleFor}
+        busy={controls.busy}
+        selectedJobIds={controls.selectedJobIds}
+        onToggleSelect={controls.toggleJobSelection}
+      />
 
       <JobDetailDrawer
         open={controls.drawerOpen && selected != null}
@@ -238,6 +280,26 @@ export function JobsPage() {
             return { message: t('jobs.openedGemini') };
           });
         }}
+      />
+
+      <Dialog
+        open={controls.pendingBulkAction != null}
+        title={
+          controls.pendingBulkAction === 'cancel'
+            ? t('jobs.bulkCancel')
+            : controls.pendingBulkAction === 'delete'
+              ? t('jobs.bulkDelete')
+              : t('jobs.bulkRetry')
+        }
+        description={bulkConfirmDescription}
+        confirmLabel={t('actions.confirm')}
+        cancelLabel={t('actions.close')}
+        danger={controls.pendingBulkAction === 'delete'}
+        busy={controls.busy}
+        onConfirm={() => {
+          void controls.confirmBulkAction();
+        }}
+        onCancel={controls.cancelBulkAction}
       />
 
       <Dialog

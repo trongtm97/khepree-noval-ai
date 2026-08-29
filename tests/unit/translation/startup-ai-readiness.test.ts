@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
 import { evaluateStartupAiReadiness } from '../../../src/renderer/utils/startup-ai-readiness';
 import { mockAccountAvailability } from '../../helpers/account-availability-fixtures';
 
@@ -78,6 +79,46 @@ describe('evaluateStartupAiReadiness', () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.issues).toContain('no_ai_provider');
+  });
+
+  it('ok when browser AI ready without Web API', () => {
+    const result = evaluateStartupAiReadiness({
+      ...ready,
+      webApiHealth: { ok: false, status: 'ERROR', message: 'no cookies' },
+      webApiAccounts: [{ status: 'LOGIN_REQUIRED' }],
+      workerRunning: false,
+      browserAiReady: true,
+    });
+    expect(result).toEqual({ ok: true, issues: [] });
+  });
+
+  it('ok when ChatGPT primary is ready without Web API cookies', () => {
+    const result = evaluateStartupAiReadiness({
+      ...ready,
+      webApiHealth: { ok: false, status: 'ERROR', message: 'no cookies' },
+      webApiAccounts: [{ status: 'LOGIN_REQUIRED' }],
+      workerRunning: false,
+      providerRows: [
+        { id: AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT, status: 'READY', enabled: true },
+      ],
+      primaryProviderId: AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
+      browserAiReady: true,
+    });
+    expect(result).toEqual({ ok: true, issues: [] });
+  });
+
+  it('ok when Playwright Gemini primary is READY without Web API cookies', () => {
+    const result = evaluateStartupAiReadiness({
+      ...ready,
+      webApiHealth: { ok: false, status: 'ERROR', message: 'no cookies' },
+      webApiAccounts: [{ status: 'LOGIN_REQUIRED' }],
+      workerRunning: false,
+      providerRows: [
+        { id: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, status: 'READY', enabled: true },
+      ],
+      primaryProviderId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+    });
+    expect(result).toEqual({ ok: true, issues: [] });
   });
 
   it('ignores paused google accounts', () => {

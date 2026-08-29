@@ -2351,6 +2351,61 @@ textarea:-webkit-autofill:focus {
   gap: 0.65rem;
 }
 
+.jobs-select-checkbox {
+  display: inline-flex;
+  align-items: flex-start;
+  padding-top: 0.15rem;
+  flex: 0 0 auto;
+}
+
+.jobs-select-checkbox input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.jobs-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.55rem 0.85rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary, var(--bg-primary));
+}
+
+.jobs-bulk-bar__count {
+  font-size: var(--font-small);
+  font-weight: 600;
+}
+
+.jobs-bulk-bar__actions {
+  flex-wrap: wrap;
+}
+
+.jobs-queue-job-list {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.jobs-queue-job-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--font-small);
+}
+
+.jobs-queue-job-label {
+  min-width: 0;
+}
+
 .jobs-card-main {
   flex: 1 1 12rem;
   min-width: 0;

@@ -1,10 +1,15 @@
 import type { DatabaseManager } from '../db/database-manager';
+import { checkProviderForJob } from '../ai/provider-preflight';
 import { healIdleWorkers } from '../jobs/heal-workers';
 import { NotebookBootstrapService } from '../notebook/notebook-bootstrap-service';
 import { NOTEBOOK_CHANNEL_READY } from '@shared/constants/notebook';
+import { isProviderPreflightUsable } from '@shared/constants/provider-preflight';
 import { logger } from '../logging/logger';
+import { readPreferNotebookPack } from '@shared/constants/project-style-config';
+import { resolveTranslationPackMode } from '../prompt/pack-mode-resolver';
 import { resolveProjectWorker } from './project-worker-resolver';
 import { getAccountAvailabilityService } from './account-availability-service';
+import { getNotebookSendReadinessService } from './notebook-send-readiness-singleton';
 
 export const TRANSLATE_ENSURE_REASONS = [
   'ok',
@@ -139,12 +144,48 @@ export class TranslateReadinessService {
 
     const prepared = await prepare(projectId, { accountId });
     const notebookStatus = prepared.notebookStatus;
+
+    const preferNotebook = readPreferNotebookPack(
+      this.db.projects.getStyleConfig(projectId),
+    );
+    if (preferNotebook && accountId) {
+      const packMode = resolveTranslationPackMode(this.db, {
+        projectId,
+        accountId,
+        preferNotebookPack: true,
+      }).packMode;
+      const sendReady = await getNotebookSendReadinessService().ensureForSend({
+        projectId,
+        accountId,
+        packMode,
+      });
+      if (!sendReady.ok && sendReady.needsAssisted) {
+        if (!prepared.needsAssisted) {
+          await this.tryOpenBrowser(accountId, 'notebook');
+        }
+        return {
+          ok: false,
+          reason: 'needs_notebook',
+          message: sendReady.message,
+          workerAccountId: accountId,
+          notebookStatus: sendReady.mapping?.status ?? notebookStatus,
+          usedFallback: true,
+          needsAssisted: true,
+          actions: ['open_notebook', 'open_ai_memory'],
+        };
+      }
+    }
+
     const webApiReady = this.hasWebApiReady();
     const notebookReady = NOTEBOOK_CHANNEL_READY.has(
       (notebookStatus ?? '').toLowerCase(),
     );
+    const providerChannelReady = await this.hasUsableTranslateChannel(
+      accountId,
+      projectId,
+    );
 
-    if (webApiReady || notebookReady) {
+    if (providerChannelReady || webApiReady || notebookReady) {
       return {
         ok: true,
         reason: 'ok',
@@ -204,6 +245,35 @@ export class TranslateReadinessService {
   private hasWebApiReady(): boolean {
     const accounts = this.db.aiAccounts.listAll();
     return accounts.some((a) => upper(a.status) === 'READY');
+  }
+
+  /** Match job send path: any enabled provider passes lightweight preflight. */
+  private async hasUsableTranslateChannel(
+    accountId: string,
+    projectId: string,
+  ): Promise<boolean> {
+    const enabled = this.db.aiProviders.listEnabledOrdered();
+    for (const row of enabled) {
+      try {
+        const report = await checkProviderForJob(this.db, {
+          accountId,
+          projectId,
+          providerId: row.id,
+          requireNotebook: false,
+          lightweight: true,
+        });
+        if (isProviderPreflightUsable(report.result)) {
+          return true;
+        }
+      } catch (error) {
+        logger.warn('ensureForTranslate provider preflight failed', {
+          providerId: row.id,
+          accountId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+    return false;
   }
 
   private async tryOpenBrowser(

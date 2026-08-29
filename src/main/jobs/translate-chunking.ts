@@ -19,13 +19,18 @@ export function chunkParagraphBatch<T>(
   return chunks;
 }
 
-/** Web API stays small; Playwright/NotebookLM uses a larger paragraph batch. */
+/** Web API stays small; Playwright providers use a larger paragraph batch. */
 export function resolveTranslateBatchParagraphs(
   firstProviderType: string | null | undefined,
 ): number {
-  return firstProviderType === 'PLAYWRIGHT_GEMINI'
-    ? PLAYWRIGHT_TRANSLATE_BATCH_PARAGRAPHS
-    : DEFAULT_TRANSLATE_BATCH_PARAGRAPHS;
+  if (
+    firstProviderType === 'PLAYWRIGHT_GEMINI' ||
+    firstProviderType === 'PLAYWRIGHT_CHATGPT' ||
+    firstProviderType === 'PLAYWRIGHT_META_AI'
+  ) {
+    return PLAYWRIGHT_TRANSLATE_BATCH_PARAGRAPHS;
+  }
+  return DEFAULT_TRANSLATE_BATCH_PARAGRAPHS;
 }
 
 /** Playwright: respect paragraph cap AND source char cap (large chapter → multiple sends). */

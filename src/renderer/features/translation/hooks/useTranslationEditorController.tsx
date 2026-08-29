@@ -8,6 +8,7 @@ import { useEditorStore } from '../../../stores/editor-store';
 import { useT } from '../../../i18n';
 import { Button, Skeleton } from '../../../components/ui';
 import { useUiShellStore } from '../../../stores/ui-shell-store';
+import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
 import {
   evaluateTranslatePreflight,
   evaluateJobWatchTick,
@@ -145,10 +146,14 @@ export function useTranslationEditorController() {
 
   const refreshPreflight = useCallback(async () => {
     try {
-      const [workersRes, accountsRes, aiRes, resolved] = await Promise.all([
+      const [workersRes, accountsRes, aiRes, providersRes, routingRes, resolved] = await Promise.all([
         window.novelTrans.jobs.workers(),
         window.novelTrans.accounts.list(),
         window.novelTrans.aiAccounts.list({}),
+        window.novelTrans.aiProviders.list(),
+        projectId
+          ? window.novelTrans.aiProviders.getRouting({ projectId })
+          : window.novelTrans.aiProviders.getRouting(),
         projectId
           ? window.novelTrans.projects.resolveWorker({
               projectId,
@@ -176,8 +181,28 @@ export function useTranslationEditorController() {
           status: a.status,
           workerEnabled: a.workerEnabled,
         })),
-        aiAccounts: aiRes.accounts.map((a) => ({ status: a.status })),
+        aiAccounts: aiRes.accounts
+          .filter((a) => a.providerId === AI_PROVIDER_IDS.GEMINI_WEB_API)
+          .map((a) => ({ status: a.status })),
+        browserAiAccounts: aiRes.accounts
+          .filter(
+            (a) =>
+              a.providerId === AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT ||
+              a.providerId === AI_PROVIDER_IDS.PLAYWRIGHT_META_AI ||
+              a.providerId === AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+          )
+          .map((a) => ({ status: a.status, providerId: a.providerId })),
         notebookStatus,
+        providerRows: providersRes.providers.map((p) => ({
+          id: p.id,
+          status: p.status,
+          enabled: p.enabled,
+        })),
+        primaryProviderId: routingRes.primaryProviderId,
+        fallbackEnabled: providersRes.fallbackEnabled,
+        enabledProviderIds: providersRes.providers
+          .filter((p) => p.enabled)
+          .map((p) => p.id),
         resolvedWorkerAccountId: workerAccountId,
       });
       setPreflightReason(result.ok ? null : result.reason);
@@ -601,6 +626,9 @@ export function useTranslationEditorController() {
     }
   };
 
+  const enqueueTranslateCurrentRef = useRef(enqueueTranslateCurrent);
+  enqueueTranslateCurrentRef.current = enqueueTranslateCurrent;
+
   const enqueueNovelRange = async (opts: {
     chapterFrom?: number;
     chapterTo?: number;
@@ -673,9 +701,6 @@ export function useTranslationEditorController() {
       project?.nextUntranslatedChapter ?? (chapter ? chapterRef(chapter) : undefined);
     await enqueueNovelRange({ chapterFrom: from });
   };
-
-  const continueTranslateRef = useRef(continueTranslate);
-  continueTranslateRef.current = continueTranslate;
 
   const translateNext3 = async () => {
     const chapter = chapters.at(chapterIndex);
@@ -1337,7 +1362,7 @@ export function useTranslationEditorController() {
           return;
         }
         event.preventDefault();
-        void continueTranslateRef.current();
+        void enqueueTranslateCurrentRef.current();
         return;
       }
       if (mod && event.key === 'g' && searchMatches.length > 0) {

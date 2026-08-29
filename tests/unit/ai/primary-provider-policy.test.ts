@@ -1,0 +1,127 @@
+import { describe, expect, it, vi } from 'vitest';
+import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
+import { AI_ROUTING_META_KEYS } from '@shared/constants/provider-preflight';
+import {
+  resolvePrimaryProviderId,
+  applyPrimaryProvider,
+} from '@main/ai/primary-provider-policy';
+import type { AiProviderService } from '@main/ai/ai-provider-service';
+
+function mockDb(options?: {
+  globalPrimary?: string | null;
+  projectStyle?: string | null;
+  enabledIds?: string[];
+}) {
+  const meta = new Map<string, string>();
+  if (options?.globalPrimary) {
+    meta.set(AI_ROUTING_META_KEYS.primaryProviderId, options.globalPrimary);
+  }
+
+  const enabledIds =
+    options?.enabledIds ??
+    [
+      AI_PROVIDER_IDS.GEMINI_WEB_API,
+      AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+      AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
+      AI_PROVIDER_IDS.PLAYWRIGHT_META_AI,
+    ];
+
+  return {
+    appMeta: {
+      get: (key: string) => meta.get(key) ?? null,
+      set: (key: string, value: string) => {
+        meta.set(key, value);
+      },
+    },
+    projects: {
+      getStyleConfig: () => options?.projectStyle ?? null,
+    },
+    aiProviders: {
+      listEnabledOrdered: () =>
+        enabledIds.map((id, index) => ({
+          id,
+          name: id,
+          priority: index + 1,
+          enabled: 1,
+        })),
+      getById: (id: string) =>
+        enabledIds.includes(id)
+          ? { id, name: id, priority: enabledIds.indexOf(id) + 1, enabled: 1 }
+          : null,
+      setPriority: vi.fn(),
+    },
+  } as unknown as ConstructorParameters<typeof resolvePrimaryProviderId>[0];
+}
+
+describe('resolvePrimaryProviderId', () => {
+  it('uses project override when set', () => {
+    const db = mockDb({
+      globalPrimary: AI_PROVIDER_IDS.GEMINI_WEB_API,
+      projectStyle: JSON.stringify({
+        primaryProviderId: AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
+      }),
+    });
+    expect(resolvePrimaryProviderId(db, 'project-1')).toBe(
+      AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
+    );
+  });
+
+  it('inherits global meta when project uses global primary', () => {
+    const db = mockDb({
+      globalPrimary: AI_PROVIDER_IDS.PLAYWRIGHT_META_AI,
+      projectStyle: JSON.stringify({ preferNotebookPack: true }),
+    });
+    expect(resolvePrimaryProviderId(db, 'project-1')).toBe(
+      AI_PROVIDER_IDS.PLAYWRIGHT_META_AI,
+    );
+  });
+
+  it('falls back to first enabled translation provider', () => {
+    const db = mockDb({
+      enabledIds: [
+        AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+        AI_PROVIDER_IDS.GEMINI_WEB_API,
+      ],
+    });
+    expect(resolvePrimaryProviderId(db)).toBe(AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI);
+  });
+});
+
+describe('applyPrimaryProvider', () => {
+  it('sets AUTO routing, fallback, and priority order', () => {
+    const db = mockDb();
+    const service = {
+      setEnabled: vi.fn(),
+      setFallback: vi.fn(),
+      setPriority: vi.fn(),
+      manager: {
+        setRoutingMode: vi.fn(),
+        setPrimaryProviderId: vi.fn(),
+      },
+    } as unknown as AiProviderService;
+
+    applyPrimaryProvider(db, service, AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT);
+
+    expect(service.setEnabled).toHaveBeenCalledWith(
+      AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
+      true,
+    );
+    expect(service.manager.setRoutingMode).toHaveBeenCalledWith('AUTO');
+    expect(service.manager.setPrimaryProviderId).toHaveBeenCalledWith(
+      AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
+    );
+    expect(service.setFallback).toHaveBeenCalledWith(true);
+    expect(service.setPriority).toHaveBeenCalledWith(
+      AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
+      1,
+    );
+  });
+
+  it('rejects non-translation provider ids', () => {
+    const db = mockDb();
+    const service = {} as AiProviderService;
+    expect(() => applyPrimaryProvider(db, service, 'notebooklm')).toThrow(
+      /không hỗ trợ/,
+    );
+  });
+});

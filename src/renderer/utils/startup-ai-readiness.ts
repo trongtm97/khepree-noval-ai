@@ -1,5 +1,10 @@
 /** Issues surfaced on app open — before the user clicks Translate. */
 import type { AccountAvailabilityDto } from '@shared/schemas/account-availability';
+import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
+import {
+  reorderProvidersWithPrimary,
+  TRANSLATION_AI_PROVIDER_IDS,
+} from '@shared/constants/translation-ai-providers';
 
 export type StartupAiIssue =
   | 'no_google_account'
@@ -7,6 +12,12 @@ export type StartupAiIssue =
   | 'web_api_not_ready'
   | 'no_ai_provider'
   | 'check_failed';
+
+export interface StartupAiProviderRow {
+  id: string;
+  status: string;
+  enabled: boolean;
+}
 
 export interface StartupAiReadinessInput {
   googleAccounts: { availability: AccountAvailabilityDto }[];
@@ -16,6 +27,11 @@ export interface StartupAiReadinessInput {
   workerRunning: boolean;
   /** At least one enabled non-disabled AI provider row. */
   hasEnabledProvider: boolean;
+  providerRows?: StartupAiProviderRow[];
+  primaryProviderId?: string | null;
+  fallbackEnabled?: boolean;
+  /** At least one READY ChatGPT/Meta browser account. */
+  browserAiReady?: boolean;
 }
 
 export type StartupAiReadinessResult =
@@ -26,10 +42,62 @@ function upper(value: string | null | undefined): string {
   return (value ?? '').toUpperCase();
 }
 
+function isReady(value: string | null | undefined): boolean {
+  return upper(value) === 'READY';
+}
+
 function isWebApiReady(input: StartupAiReadinessInput): boolean {
   if (input.webApiHealth?.ok) return true;
-  const accountReady = input.webApiAccounts.some((a) => upper(a.status) === 'READY');
+  const accountReady = input.webApiAccounts.some((a) => isReady(a.status));
   return input.workerRunning && accountReady;
+}
+
+function enabledTranslationIds(input: StartupAiReadinessInput): string[] {
+  if (input.providerRows?.length) {
+    return TRANSLATION_AI_PROVIDER_IDS.filter((id) =>
+      input.providerRows!.some((row) => row.id === id && row.enabled),
+    );
+  }
+  return input.hasEnabledProvider ? [...TRANSLATION_AI_PROVIDER_IDS] : [];
+}
+
+function isPrimaryChannelReady(input: StartupAiReadinessInput): boolean {
+  const enabled = enabledTranslationIds(input);
+  if (enabled.length === 0) return false;
+
+  const primary =
+    input.primaryProviderId && enabled.includes(input.primaryProviderId)
+      ? input.primaryProviderId
+      : enabled[0];
+
+  const candidates =
+    input.fallbackEnabled === false
+      ? [primary]
+      : reorderProvidersWithPrimary(
+          enabled.map((id) => ({ providerId: id })),
+          primary,
+        ).map((row) => row.providerId);
+
+  for (const providerId of candidates) {
+    const row = input.providerRows?.find((p) => p.id === providerId);
+    if (row && isReady(row.status)) return true;
+
+    if (providerId === AI_PROVIDER_IDS.GEMINI_WEB_API && isWebApiReady(input)) {
+      return true;
+    }
+    if (
+      (providerId === AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT ||
+        providerId === AI_PROVIDER_IDS.PLAYWRIGHT_META_AI) &&
+      input.browserAiReady
+    ) {
+      return true;
+    }
+    if (providerId === AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI && isReady(row?.status)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -58,7 +126,7 @@ export function evaluateStartupAiReadiness(
 
   if (!input.hasEnabledProvider) {
     issues.push('no_ai_provider');
-  } else if (!isWebApiReady(input)) {
+  } else if (!isPrimaryChannelReady(input)) {
     issues.push('web_api_not_ready');
   }
 
@@ -67,7 +135,7 @@ export function evaluateStartupAiReadiness(
   }
 
   const detail =
-    !isWebApiReady(input) && input.webApiHealth?.message
+    !isPrimaryChannelReady(input) && input.webApiHealth?.message
       ? input.webApiHealth.message
       : null;
 

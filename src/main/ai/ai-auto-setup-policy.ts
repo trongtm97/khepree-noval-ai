@@ -12,7 +12,9 @@ export function applyRecommendedProviderOrder(ai: AiProviderService): void {
   ai.setEnabled(AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, true);
   ai.setPriority(AI_PROVIDER_IDS.GEMINI_WEB_API, 1);
   ai.setPriority(AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, 2);
-  ai.setPriority(AI_PROVIDER_IDS.GEMINI_OFFICIAL, 3);
+  ai.setPriority(AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT, 3);
+  ai.setPriority(AI_PROVIDER_IDS.PLAYWRIGHT_META_AI, 4);
+  ai.setPriority(AI_PROVIDER_IDS.GEMINI_OFFICIAL, 5);
   ai.setFallback(true, [...DEFAULT_FALLBACK_STATUSES]);
 }
 

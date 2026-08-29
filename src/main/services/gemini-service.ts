@@ -18,8 +18,7 @@ import {
   shouldEnableFailTrace,
   startFailTrace,
 } from '../automation/playwright-tracing';
-import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
-import { GEMINI_WEB_CHAT_URL } from '@shared/constants/notebook-role';
+import type { PackMode } from '@shared/constants/pack-mode';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
 import { profileLockManager } from '../automation/browser-runner/profile-lock';
 import { getBrowserRuntimeManager } from '../automation/browser-runner/browser-runtime-manager';
@@ -84,30 +83,47 @@ export class GeminiService {
     jobId?: string | null;
     /** Optional pre-assigned correlation (adapter requestId) for mid-flight cancel. */
     correlationId?: string | null;
+    /** Phase 5+: local_context → Gemini web chat; notebook_assisted → NotebookLM. */
+    packMode?: PackMode;
   }): Promise<GeminiSendResponse> {
     const project = this.db.projects.getById(input.projectId);
     if (!project) throw new Error(`Project not found: ${input.projectId}`);
     const account = this.db.googleAccounts.getById(input.accountId);
     if (!account) throw new Error(`Account not found: ${input.accountId}`);
 
-    const mapping = resolveTranslationNotebook(
-      this.db,
-      input.projectId,
-      input.accountId,
+    const packMode = input.packMode ?? 'local_context';
+    const { getNotebookSendReadinessService } = await import(
+      './notebook-send-readiness-singleton'
     );
-    const notebookUrl = mapping?.resource_url?.startsWith('http')
-      ? mapping.resource_url
-      : GEMINI_WEB_CHAT_URL;
-    const notebookRowId = mapping?.id ?? null;
+    const readiness = await getNotebookSendReadinessService().ensureForSend({
+      projectId: input.projectId,
+      accountId: input.accountId,
+      packMode,
+    });
 
-    if (
-      mapping &&
-      mapping.status !== 'ready' &&
-      mapping.status !== 'sync_pending'
-    ) {
-      throw new Error(
-        'Legacy Translation Notebook not ready — use Gemini Web API or provision Research Notebook for FULL analysis only.',
-      );
+    if (!readiness.ok) {
+      return {
+        correlationId: input.correlationId ?? newId(),
+        status: 'failed',
+        rawResponse: '',
+        rawResponsePath: null,
+        retainedRaw: false,
+        errorCode: 'NEEDS_ASSISTED',
+        errorMessage: readiness.message,
+      };
+    }
+
+    const notebookUrl = readiness.notebookUrl;
+    const notebookRowId = readiness.notebookRowId;
+    const mapping = readiness.mapping;
+
+    if (readiness.usedWebChatFallback) {
+      this.db.knowledgeSyncEvents.insert({
+        projectId: input.projectId,
+        eventType: 'TRANSLATION_NOTEBOOK_OPENED',
+        message: 'Playwright fallback Gemini web chat (legacy notebook ignored).',
+        metadata: { packMode, notebookRowId },
+      });
     }
 
     let requestRow: GeminiRequestRow | null = null;

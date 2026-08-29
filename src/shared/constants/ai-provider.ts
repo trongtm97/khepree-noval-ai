@@ -3,6 +3,8 @@ export const AI_PROVIDER_TYPES = [
   'PLAYWRIGHT_GEMINI',
   'GEMINI_WEB_API',
   'GEMINI_OFFICIAL',
+  'PLAYWRIGHT_CHATGPT',
+  'PLAYWRIGHT_META_AI',
 ] as const;
 
 export type AiProviderType = (typeof AI_PROVIDER_TYPES)[number];
@@ -30,7 +32,24 @@ export const AI_PROVIDER_IDS = {
   PLAYWRIGHT_GEMINI: 'prov-playwright-gemini',
   GEMINI_WEB_API: 'prov-gemini-web-api',
   GEMINI_OFFICIAL: 'prov-gemini-official',
+  PLAYWRIGHT_CHATGPT: 'prov-playwright-chatgpt',
+  PLAYWRIGHT_META_AI: 'prov-playwright-meta-ai',
 } as const;
+
+/** Playwright browser providers that use ai_accounts browser profiles (not Google workers). */
+export const BROWSER_AI_ACCOUNT_PROVIDER_TYPES = [
+  'PLAYWRIGHT_CHATGPT',
+  'PLAYWRIGHT_META_AI',
+] as const satisfies readonly AiProviderType[];
+
+export type BrowserAiAccountProviderType =
+  (typeof BROWSER_AI_ACCOUNT_PROVIDER_TYPES)[number];
+
+export function isBrowserAiAccountProvider(
+  type: AiProviderType,
+): type is BrowserAiAccountProviderType {
+  return (BROWSER_AI_ACCOUNT_PROVIDER_TYPES as readonly string[]).includes(type);
+}
 
 export const AI_RESPONSE_STATUSES = [
   'SUCCESS',
@@ -79,11 +98,11 @@ export function geminiWebSessionSecretKey(aiAccountId: string): string {
 export const AI_ERROR_MESSAGES_VI: Record<AiResponseStatus, string> = {
   SUCCESS: '',
   ERROR: 'Yêu cầu AI thất bại.',
-  LOGIN_REQUIRED: 'Tài khoản Google cần đăng nhập lại.',
-  SESSION_EXPIRED: 'Phiên Gemini đã hết hạn. Vui lòng kết nối lại.',
-  RATE_LIMIT: 'Gemini đang giới hạn yêu cầu.',
-  TIMEOUT: 'Hết thời gian chờ phản hồi từ Gemini.',
-  NETWORK_ERROR: 'Không thể kết nối Gemini.',
-  SERVICE_UNAVAILABLE: 'Dịch vụ Gemini tạm thời không khả dụng.',
+  LOGIN_REQUIRED: 'Tài khoản AI cần đăng nhập lại.',
+  SESSION_EXPIRED: 'Phiên AI đã hết hạn. Vui lòng kết nối lại.',
+  RATE_LIMIT: 'Dịch vụ AI đang giới hạn yêu cầu.',
+  TIMEOUT: 'Hết thời gian chờ phản hồi từ AI.',
+  NETWORK_ERROR: 'Không thể kết nối dịch vụ AI.',
+  SERVICE_UNAVAILABLE: 'Dịch vụ AI tạm thời không khả dụng.',
   UNKNOWN: 'Lỗi AI không xác định.',
 };

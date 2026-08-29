@@ -7,12 +7,14 @@ import { measureJobProgress } from '@shared/utils/job-progress';
 import { Button, Card, IconButton, ProgressBar } from '../../components/ui';
 import { DropdownMenu } from '../../components/overlay';
 import { useT } from '../../i18n';
+import { statusLabel } from '../../i18n/status';
 import { useUiShellStore } from '../../stores/ui-shell-store';
 import {
   accountDisplayName,
   chapterRange,
   friendlyChannel,
 } from './jobs-utils';
+import { JobSelectCheckbox } from './JobSelectCheckbox';
 
 export interface RunningJobCardProps {
   job: JobDto;
@@ -20,6 +22,8 @@ export interface RunningJobCardProps {
   accountById: Map<string, GoogleAccountDto>;
   accountOrder: Map<string, number>;
   busy: boolean;
+  selected: boolean;
+  onToggleSelect: (jobId: string) => void;
   onOpen: (jobId: string) => void;
   onPauseAll: () => void;
   onCancel: (jobId: string) => void;
@@ -32,6 +36,8 @@ export function RunningJobCard({
   accountById,
   accountOrder,
   busy,
+  selected,
+  onToggleSelect,
   onOpen,
   onPauseAll,
   onCancel,
@@ -48,6 +54,17 @@ export function RunningJobCard({
   const accountId = job.progress?.accountId ?? job.pinnedAccountId;
   const account = accountId ? accountById.get(accountId) : undefined;
   const channel = friendlyChannel(job);
+  const progressHint =
+    typeof job.progress?.paragraphsDone === 'number' &&
+    typeof job.progress?.paragraphsTotal === 'number' &&
+    job.progress.paragraphsTotal > 0
+      ? t('jobs.paragraphsProgress', {
+          done: String(job.progress.paragraphsDone),
+          total: String(job.progress.paragraphsTotal),
+        })
+      : measure.labelParts.length > 0
+        ? measure.labelParts.join(' · ')
+        : statusLabel(job.state);
 
   const openTranslator = () => {
     const title = titleFor(job.projectId);
@@ -58,21 +75,19 @@ export function RunningJobCard({
   return (
     <Card className="jobs-running-card">
       <div className="jobs-card-row">
+        <JobSelectCheckbox
+          jobId={job.id}
+          checked={selected}
+          disabled={busy}
+          ariaLabel={t('jobs.selectJobAria', { project: titleFor(job.projectId) })}
+          onToggle={onToggleSelect}
+        />
         <div className="jobs-card-main">
           <strong>{titleFor(job.projectId)}</strong>
           {range ? (
             <p className="muted jobs-card-sub">{t('jobs.chapterLabel', { range })}</p>
           ) : null}
-          {typeof job.progress?.paragraphsDone === 'number' &&
-          typeof job.progress?.paragraphsTotal === 'number' &&
-          job.progress.paragraphsTotal > 0 ? (
-            <p className="jobs-card-detail">
-              {t('jobs.paragraphsProgress', {
-                done: String(job.progress.paragraphsDone),
-                total: String(job.progress.paragraphsTotal),
-              })}
-            </p>
-          ) : null}
+          <p className="jobs-card-detail">{progressHint}</p>
           {account ? (
             <p className="muted jobs-card-sub">
               {t('jobs.aiAccount')}:{' '}
@@ -87,12 +102,7 @@ export function RunningJobCard({
           <ProgressBar
             value={measure.percent}
             indeterminate={measure.indeterminate}
-            label={
-              typeof job.progress?.paragraphsDone === 'number' &&
-              typeof job.progress?.paragraphsTotal === 'number'
-                ? `${job.progress.paragraphsDone} / ${job.progress.paragraphsTotal}`
-                : undefined
-            }
+            label={progressHint}
             aria-label={t('jobs.progressAria', {
               project: titleFor(job.projectId),
               percent: String(measure.percent ?? 0),

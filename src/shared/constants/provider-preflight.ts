@@ -19,6 +19,8 @@ export const AI_ROUTING_META_KEYS = {
   mode: 'ai.routing.mode',
   /** Optional pinned provider id when mode=PIN (else priority #1). */
   pinnedProviderId: 'ai.routing.pinned_provider_id',
+  /** Global default primary translation provider. */
+  primaryProviderId: 'ai.routing.primary_provider_id',
 } as const;
 
 export function isProviderPreflightUsable(result: ProviderPreflightResult): boolean {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
 import type { GoogleAccountDto } from '@shared/schemas/account';
 import type { AccountAvailabilitySummary } from '@shared/schemas/account-availability';
 import type { GoogleAccountPlan } from '@shared/constants/google-account';
@@ -26,6 +27,7 @@ import {
   AddGoogleAccountDialog,
   EditGoogleAccountDialog,
   AccountDetailsDrawer,
+  BrowserAiAccountSection,
   resolveAccountUiState,
   sortAccounts,
   matchesAccountFilter,
@@ -63,6 +65,7 @@ export function AccountsPage() {
   const [addStep, setAddStep] = useState<AddAccountStep>('create');
   const [addAccountId, setAddAccountId] = useState<string | null>(null);
   const [addEmailDraft, setAddEmailDraft] = useState('');
+  const [addLabelDraft, setAddLabelDraft] = useState('');
 
   const refresh = useCallback(async () => {
     const result = await window.novelTrans.accounts.list();
@@ -124,8 +127,14 @@ export function AccountsPage() {
     setAddStep('create');
     setAddAccountId(null);
     setAddEmailDraft('');
+    setAddLabelDraft('');
+  };
+
+  const handleAddCreateConfirm = () => {
     void run(null, async () => {
-      const result = await window.novelTrans.accounts.add({});
+      const result = await window.novelTrans.accounts.add({
+        label: addLabelDraft.trim() || undefined,
+      });
       setAddAccountId(result.account.id);
       setAddStep('login');
       try {
@@ -248,9 +257,6 @@ export function AccountsPage() {
         actions={
           <>
             <HelpContextButton articleId="google-accounts" />
-            <Button variant="primary" disabled={busyId !== null} onClick={startAddAccount}>
-              {t('actions.addGoogleAccount')}
-            </Button>
           </>
         }
       />
@@ -265,6 +271,18 @@ export function AccountsPage() {
         />
       ) : null}
 
+      <section className="accounts-section">
+        <header className="accounts-section-header">
+          <div className="accounts-section-heading">
+            <h2 className="accounts-section-title">{t('accounts.googleSectionTitle')}</h2>
+            <p className="accounts-section-desc">{t('accounts.googleSectionDesc')}</p>
+          </div>
+          <Button variant="primary" disabled={busyId !== null} onClick={startAddAccount}>
+            {t('actions.addGoogleAccount')}
+          </Button>
+        </header>
+
+        <div className="accounts-section-body">
       {accounts.length === 0 ? (
         <EmptyState
           icon={<Users />}
@@ -412,7 +430,25 @@ export function AccountsPage() {
         </>
       )}
 
-      <p className="muted accounts-security-note">{t('accounts.passwordNote')}</p>
+      <p className="accounts-security-note">{t('accounts.passwordNote')}</p>
+        </div>
+      </section>
+
+      <BrowserAiAccountSection
+        providerId={AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT}
+        providerLabel={t('settings.aiBrowserChatGpt')}
+        sectionTitle={t('accounts.chatgptSectionTitle')}
+        sectionDesc={t('accounts.chatgptSectionDesc')}
+        onToast={toast}
+      />
+
+      <BrowserAiAccountSection
+        providerId={AI_PROVIDER_IDS.PLAYWRIGHT_META_AI}
+        providerLabel={t('settings.aiBrowserMetaAi')}
+        sectionTitle={t('accounts.metaSectionTitle')}
+        sectionDesc={t('accounts.metaSectionDesc')}
+        onToast={toast}
+      />
 
       <Dialog
         open={removeTarget !== null}
@@ -450,8 +486,11 @@ export function AccountsPage() {
         step={addStep}
         accountId={addAccountId}
         busy={busyId !== null}
+        labelDraft={addLabelDraft}
+        onLabelDraftChange={setAddLabelDraft}
         emailDraft={addEmailDraft}
         onEmailDraftChange={setAddEmailDraft}
+        onCreateConfirm={handleAddCreateConfirm}
         onSignedIn={handleAddSignedIn}
         onReopenBrowser={handleAddReopenBrowser}
         onCompleteWithEmail={handleAddCompleteWithEmail}

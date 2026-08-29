@@ -1,6 +1,7 @@
 import { AiProviderService } from './ai-provider-service';
 import { getDatabase } from '../db/connection';
 import { getGeminiService } from '../services/gemini-service-singleton';
+import { getPlaywrightBrowserAiService } from '../services/playwright-browser-ai-service-singleton';
 import { getSecretStorage } from '../security';
 
 let instance: AiProviderService | null = null;
@@ -10,6 +11,7 @@ export function initializeAiProviderService(): AiProviderService {
     getDatabase(),
     getGeminiService(),
     getSecretStorage(),
+    getPlaywrightBrowserAiService(),
   );
   return instance;
 }

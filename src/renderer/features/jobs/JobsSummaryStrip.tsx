@@ -6,6 +6,9 @@ export interface JobsSummaryStripProps {
   attentionCount: number;
   usableWorkers: number;
   pausedCount: number;
+  inFlight?: number;
+  maxConcurrent?: number;
+  schedulerPaused?: boolean;
 }
 
 export function JobsSummaryStrip({
@@ -14,11 +17,29 @@ export function JobsSummaryStrip({
   attentionCount,
   usableWorkers,
   pausedCount,
+  inFlight,
+  maxConcurrent,
+  schedulerPaused,
 }: JobsSummaryStripProps) {
   const t = useT();
+  const slotsLabel =
+    typeof inFlight === 'number' && typeof maxConcurrent === 'number'
+      ? t('jobs.statSlots', {
+          inFlight: String(inFlight),
+          max: String(maxConcurrent),
+        })
+      : null;
 
   return (
     <div className="jobs-summary-strip" role="region" aria-label={t('jobs.summaryAria')}>
+      {schedulerPaused ? (
+        <div className="jobs-summary-item jobs-summary-item--paused">
+          <span className="jobs-summary-icon" aria-hidden>
+            ⏸
+          </span>
+          <span className="jobs-summary-label">{t('jobs.schedulerPausedBadge')}</span>
+        </div>
+      ) : null}
       <div className="jobs-summary-item">
         <span className="jobs-summary-icon jobs-summary-icon--running" aria-hidden>
           ●
@@ -53,6 +74,12 @@ export function JobsSummaryStrip({
         <span className="jobs-summary-label">{t('jobs.statAiReady')}</span>
         <strong className="jobs-summary-value">{usableWorkers}</strong>
       </div>
+      {slotsLabel ? (
+        <div className="jobs-summary-item">
+          <span className="jobs-summary-label">{t('jobs.statStreams')}</span>
+          <strong className="jobs-summary-value">{slotsLabel}</strong>
+        </div>
+      ) : null}
     </div>
   );
 }

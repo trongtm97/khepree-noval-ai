@@ -40,10 +40,12 @@ export interface AIProviderStatusSnapshot {
 export interface SendPromptOptions {
   requestId?: string;
   projectId?: string;
-  /** Google worker account (Playwright) or linked identity. */
+  /** Google worker account (Playwright Gemini) or linked identity. */
   googleAccountId?: string | null;
-  /** Explicit AI account for Web API. */
+  /** Explicit AI account for Web API or browser AI providers (ChatGPT/Meta). */
   aiAccountId?: string | null;
+  /** Browser profile dir for browser AI accounts. */
+  profileDirName?: string | null;
   model?: string | null;
   jobId?: string | null;
   maxTimeoutMs?: number;
@@ -57,6 +59,8 @@ export interface SendPromptOptions {
   notebookId?: string | null;
   /** Thread ref from initial send when still valid. */
   threadRef?: string | null;
+  /** Playwright send target — local_context vs notebook_assisted. */
+  packMode?: import('@shared/constants/pack-mode').PackMode;
 }
 
 export interface AIStreamChunk {

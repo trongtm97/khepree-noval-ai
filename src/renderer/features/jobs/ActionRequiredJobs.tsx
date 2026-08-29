@@ -6,11 +6,14 @@ import {
   friendlyJobSummary,
   jobSupportsPartialResume,
 } from './jobs-utils';
+import { JobSelectCheckbox } from './JobSelectCheckbox';
 
 export interface ActionRequiredJobsProps {
   jobs: JobDto[];
   titleFor: (projectId: string) => string;
   busy: boolean;
+  selectedJobIds: Set<string>;
+  onToggleSelect: (jobId: string) => void;
   onOpen: (jobId: string) => void;
   onRetry: (jobId: string) => void;
 }
@@ -19,6 +22,8 @@ export function ActionRequiredJobs({
   jobs,
   titleFor,
   busy,
+  selectedJobIds,
+  onToggleSelect,
   onOpen,
   onRetry,
 }: ActionRequiredJobsProps) {
@@ -39,6 +44,13 @@ export function ActionRequiredJobs({
           return (
             <Card key={job.id} className="jobs-attention-card">
               <div className="jobs-card-row">
+                <JobSelectCheckbox
+                  jobId={job.id}
+                  checked={selectedJobIds.has(job.id)}
+                  disabled={busy}
+                  ariaLabel={t('jobs.selectJobAria', { project: titleFor(job.projectId) })}
+                  onToggle={onToggleSelect}
+                />
                 <div className="jobs-card-main">
                   <strong>{titleFor(job.projectId)}</strong>
                   {range ? (

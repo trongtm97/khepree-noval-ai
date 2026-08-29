@@ -9,8 +9,11 @@ export interface AddGoogleAccountDialogProps {
   step: AddAccountStep;
   accountId: string | null;
   busy: boolean;
+  labelDraft: string;
+  onLabelDraftChange: (value: string) => void;
   emailDraft: string;
   onEmailDraftChange: (value: string) => void;
+  onCreateConfirm: () => void;
   onSignedIn: () => void;
   onReopenBrowser: () => void;
   onCompleteWithEmail: () => void;
@@ -21,8 +24,11 @@ export function AddGoogleAccountDialog({
   open,
   step,
   busy,
+  labelDraft,
+  onLabelDraftChange,
   emailDraft,
   onEmailDraftChange,
+  onCreateConfirm,
   onSignedIn,
   onReopenBrowser,
   onCompleteWithEmail,
@@ -51,14 +57,24 @@ export function AddGoogleAccountDialog({
 
   if (!open) return null;
 
+  const confirmLabel =
+    step === 'create'
+      ? t('actions.confirm')
+      : showEmail
+        ? t('actions.confirm')
+        : t('accounts.signedInButton');
+
+  const onConfirm =
+    step === 'create' ? onCreateConfirm : showEmail ? onCompleteWithEmail : onSignedIn;
+
   return (
     <Dialog
       open={open}
       title={t('accounts.addProgressTitle')}
-      confirmLabel={showEmail ? t('actions.confirm') : t('accounts.signedInButton')}
+      confirmLabel={confirmLabel}
       cancelLabel={t('actions.cancel')}
       busy={busy}
-      onConfirm={showEmail ? onCompleteWithEmail : onSignedIn}
+      onConfirm={onConfirm}
       onCancel={onCancel}
     >
       <ol className="account-add-steps">
@@ -76,6 +92,23 @@ export function AddGoogleAccountDialog({
         </li>
       </ol>
 
+      {step === 'create' ? (
+        <div className="account-add-name u-mt-2">
+          <label className="field-label">
+            {t('accounts.addDisplayNameOptional')}
+            <Input
+              value={labelDraft}
+              onChange={(e) => {
+                onLabelDraftChange(e.target.value);
+              }}
+              placeholder={t('accounts.displayNameFallback')}
+              autoFocus
+            />
+          </label>
+          <p className="muted u-text-sm">{t('accounts.addDisplayNameHint')}</p>
+        </div>
+      ) : null}
+
       {step === 'login' ? (
         <p className="muted account-add-hint">{t('accounts.addLoginHint')}</p>
       ) : null}
@@ -87,7 +120,9 @@ export function AddGoogleAccountDialog({
             type="email"
             placeholder={t('accounts.emailPlaceholder')}
             value={emailDraft}
-            onChange={(e) => { onEmailDraftChange(e.target.value); }}
+            onChange={(e) => {
+              onEmailDraftChange(e.target.value);
+            }}
             autoFocus
           />
         </div>

@@ -28,6 +28,8 @@ export const AiAccountDtoSchema = z.object({
   providerType: z.enum(AI_PROVIDER_TYPES).optional(),
   googleAccountId: z.string().uuid().nullable(),
   googleEmail: z.string().nullable(),
+  displayName: z.string().nullable().optional(),
+  profileDirName: z.string().nullable().optional(),
   sessionLocation: z.string(),
   status: z.enum(AI_ACCOUNT_STATUSES),
   lastUsedAt: z.string().nullable(),
@@ -51,6 +53,7 @@ export type AiModelDto = z.infer<typeof AiModelDtoSchema>;
 
 export const AiProviderListResponseSchema = z.object({
   providers: z.array(AiProviderDtoSchema),
+  primaryProviderId: z.string().nullable(),
   fallbackEnabled: z.boolean(),
   fallbackStatuses: z.array(z.enum(AI_RESPONSE_STATUSES)),
   workerInstalled: z.boolean(),
@@ -110,6 +113,7 @@ export const AiAccountCreateRequestSchema = z.object({
   providerId: z.string().min(1),
   googleAccountId: z.string().uuid().nullable().optional(),
   googleEmail: z.string().email().nullable().optional(),
+  displayName: z.string().min(1).optional(),
 });
 
 export const AiAccountPasteCookiesRequestSchema = z.object({
@@ -123,9 +127,19 @@ export const AiAccountIdRequestSchema = z.object({
   accountId: z.string().uuid(),
 });
 
+export const AiAccountUpdateDisplayNameRequestSchema = z.object({
+  accountId: z.string().uuid(),
+  displayName: z.string().min(1).max(200),
+});
+
 export const AiAccountActionResponseSchema = z.object({
   account: AiAccountDtoSchema,
   message: z.string().optional(),
+});
+
+export const AiBrowserAccountOpenLoginResponseSchema = z.object({
+  ok: z.boolean(),
+  message: z.string(),
 });
 
 export const AiModelsListRequestSchema = z.object({
@@ -141,4 +155,31 @@ export const AiWorkerInstallResponseSchema = z.object({
   message: z.string(),
   pythonPath: z.string().nullable(),
   venvPath: z.string().nullable(),
+});
+
+export const AiProviderGetRoutingRequestSchema = z.object({
+  projectId: z.string().uuid().optional(),
+});
+
+export const AiProviderRoutingResponseSchema = z.object({
+  primaryProviderId: z.string().nullable(),
+  globalPrimaryProviderId: z.string().nullable(),
+  fallbackEnabled: z.boolean(),
+  routingMode: z.enum(['AUTO', 'PIN']),
+});
+
+export const AiProviderSetPrimaryRequestSchema = z.object({
+  providerId: z.string().min(1),
+});
+
+export const ProjectTranslateAiSettingsResponseSchema = z.object({
+  preferNotebookPack: z.boolean(),
+  useGlobalPrimary: z.boolean(),
+  primaryProviderId: z.string().nullable(),
+});
+
+export const ProjectSetPrimaryProviderRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  useGlobalPrimary: z.boolean(),
+  primaryProviderId: z.string().min(1).nullable().optional(),
 });

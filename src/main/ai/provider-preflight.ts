@@ -4,7 +4,10 @@ import {
   isProviderPreflightUsable,
   type ProviderPreflightResult,
 } from '@shared/constants/provider-preflight';
-import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
+import {
+  AI_PROVIDER_IDS,
+  isBrowserAiAccountProvider,
+} from '@shared/constants/ai-provider';
 import type { NotebookRole } from '@shared/constants/notebook-role';
 import { resolveNotebookForPurpose } from '../notebook/notebook-resolver';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
@@ -56,6 +59,12 @@ export async function checkProviderForJob(
   }
   if (providerId === AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI) {
     return checkPlaywright(db, input, lightweight);
+  }
+  if (
+    providerId === AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT ||
+    providerId === AI_PROVIDER_IDS.PLAYWRIGHT_META_AI
+  ) {
+    return checkPlaywrightBrowserAi(db, input, providerId);
   }
 
   return {
@@ -427,6 +436,89 @@ async function deepPlaywrightProbe(
       checks: { runtimePresent: null },
     };
   }
+}
+
+async function checkPlaywrightBrowserAi(
+  db: DatabaseManager,
+  input: CheckProviderForJobInput,
+  providerId: string,
+): Promise<ProviderPreflightReport> {
+  const checks: Record<string, boolean | string | null> = {
+    browserEngineUsable: false,
+    aiAccountReady: false,
+    profileExists: false,
+  };
+
+  const browserHealth = assessBrowserDependencyHealth('AUTO');
+  checks.browserEngineUsable = browserHealth.browserUsable;
+  if (!browserHealth.browserUsable) {
+    return {
+      providerId,
+      result: 'UNAVAILABLE',
+      message: browserHealth.message,
+      checks,
+    };
+  }
+
+  const readyAccounts = db.aiAccounts.listReadyByProvider(providerId);
+  if (readyAccounts.length === 0) {
+    const any = db.aiAccounts.listByProvider(providerId);
+    const needsLogin = any.some((a) => a.status === 'LOGIN_REQUIRED');
+    return {
+      providerId,
+      result: needsLogin ? 'NEEDS_LOGIN' : 'UNAVAILABLE',
+      message: needsLogin
+        ? 'Tài khoản AI browser cần đăng nhập.'
+        : 'Chưa có tài khoản AI browser READY.',
+      checks,
+    };
+  }
+
+  const account =
+    (input.accountId
+      ? readyAccounts.find((a) => a.id === input.accountId)
+      : null) ?? readyAccounts[0];
+  checks.aiAccountReady = true;
+
+  if (!account.profile_dir_name) {
+    return {
+      providerId,
+      result: 'UNAVAILABLE',
+      message: 'Browser profile chưa được tạo.',
+      checks,
+    };
+  }
+
+  checks.profileExists = browserProfileManager.profileExists(account.profile_dir_name);
+  if (!checks.profileExists) {
+    return {
+      providerId,
+      result: 'UNAVAILABLE',
+      message: 'Thư mục browser profile không tồn tại.',
+      checks,
+    };
+  }
+
+  const profilePath = browserProfileManager.resolveProfilePath(account.profile_dir_name);
+  profileLockManager.recoverIfStale(profilePath);
+  if (profileLockManager.isLocked(profilePath)) {
+    const owner = profileLockManager.getOwner(profilePath);
+    if (owner !== account.id) {
+      return {
+        providerId,
+        result: 'PROFILE_BUSY',
+        message: `Profile đang bị giữ bởi: ${owner ?? 'unknown'}`,
+        checks,
+      };
+    }
+  }
+
+  return {
+    providerId,
+    result: 'READY',
+    message: 'Browser AI provider sẵn sàng.',
+    checks,
+  };
 }
 
 export function filterProvidersByPreflight(

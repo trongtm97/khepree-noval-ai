@@ -6,6 +6,9 @@ import { Button } from '../ui';
 import { SettingsDisclosure } from './SettingsDisclosure';
 import { SettingsSection } from './SettingsSection';
 import { SettingsStatus } from './SettingsStatus';
+import { PrimaryTranslationProviderPanel } from './PrimaryTranslationProviderPanel';
+import { PreferNotebookPackToggle } from './PreferNotebookPackToggle';
+import { ProjectPrimaryProviderPanel } from './ProjectPrimaryProviderPanel';
 
 function formatTechnical(technical: AiAutoSetupResult['technical']): string {
   if (!technical) return '';
@@ -64,7 +67,8 @@ export function AiSettingsPanel({
   };
 
   return (
-    <SettingsSection title={t('settings.ai')} description={t('settings.aiTabBody')}>
+    <>
+      <SettingsSection title={t('settings.ai')} description={t('settings.aiTabBody')}>
       {actionError ? <SettingsStatus tone="error">{actionError}</SettingsStatus> : null}
 
       {status ? (
@@ -159,6 +163,42 @@ export function AiSettingsPanel({
           </pre>
         </SettingsDisclosure>
       ) : null}
-    </SettingsSection>
+      </SettingsSection>
+
+      <SettingsSection
+        title={t('settings.primaryProviderSection')}
+        description={t('settings.primaryProviderSectionHelp')}
+      >
+        <PrimaryTranslationProviderPanel />
+      </SettingsSection>
+
+      <SettingsSection
+        title={t('settings.projectPrimaryProviderSection')}
+        description={t('settings.projectPrimaryProviderSectionHelp')}
+      >
+        <ProjectPrimaryProviderPanel />
+      </SettingsSection>
+
+      <SettingsSection
+        title={t('settings.aiBrowserAccountsSection')}
+        description={t('settings.aiBrowserAccountsSectionHelp')}
+      >
+        <Button
+          variant="secondary"
+          onClick={() => {
+            navigate('/accounts');
+          }}
+        >
+          {t('settings.aiBrowserAccountsManageLink')}
+        </Button>
+      </SettingsSection>
+
+      <SettingsSection
+        title={t('settings.preferNotebookPackSection')}
+        description={t('settings.preferNotebookPackSectionHelp')}
+      >
+        <PreferNotebookPackToggle />
+      </SettingsSection>
+    </>
   );
 }

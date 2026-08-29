@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { JobDto } from '@shared/schemas/job';
 import type { ProjectDto } from '@shared/schemas/import';
 import type { GoogleAccountDto } from '@shared/schemas/account';
@@ -16,7 +16,8 @@ import {
   selectRunningJobs,
 } from './jobs-utils';
 
-const POLL_MS = 10_000;
+const POLL_IDLE_MS = 10_000;
+const POLL_ACTIVE_MS = 4_000;
 
 export interface JobsOverviewData {
   projects: ProjectDto[];
@@ -49,7 +50,7 @@ export function useJobsOverview(): JobsOverviewData {
   const [scheduler, setScheduler] = useState<SchedulerSnap | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshError, setRefreshError] = useState<string | null>(null);
-  const initialLoadDone = useRef(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const refresh = useCallback(async () => {
     const results = await Promise.allSettled([
@@ -111,19 +112,9 @@ export function useJobsOverview(): JobsOverviewData {
         setRefreshError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
       })
       .finally(() => {
-        initialLoadDone.current = true;
+        setInitialLoadDone(true);
         setLoading(false);
       });
-
-    const id = window.setInterval(() => {
-      void refresh().catch(() => {
-        /* poll best-effort */
-      });
-    }, POLL_MS);
-
-    return () => {
-      window.clearInterval(id);
-    };
   }, [refresh, t]);
 
   const accountById = useMemo(
@@ -146,6 +137,30 @@ export function useJobsOverview(): JobsOverviewData {
   );
   const waitingCount = useMemo(() => countWaitingJobs(jobs), [jobs]);
   const pausedCount = useMemo(() => countPausedJobs(jobs), [jobs]);
+  const hasActiveWork = useMemo(
+    () =>
+      runningJobs.length > 0 ||
+      waitingCount > 0 ||
+      pausedCount > 0 ||
+      (scheduler?.inFlight ?? 0) > 0,
+    [runningJobs.length, waitingCount, pausedCount, scheduler?.inFlight],
+  );
+
+  useEffect(() => {
+    if (!initialLoadDone) return;
+
+    const pollMs = hasActiveWork ? POLL_ACTIVE_MS : POLL_IDLE_MS;
+    const id = window.setInterval(() => {
+      void refresh().catch(() => {
+        /* poll best-effort */
+      });
+    }, pollMs);
+
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [refresh, hasActiveWork, initialLoadDone]);
+
   const usableWorkers = useMemo(
     () =>
       accounts.length > 0

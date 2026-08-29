@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react';
 import type { JobAttemptDto } from '@shared/schemas/job';
 import { useT } from '../../i18n';
-import { JOB_PRIORITY, type PriorityBand } from './jobs-utils';
+import { JOB_PRIORITY, type JobBulkAction, type PriorityBand } from './jobs-utils';
 
 export function useJobsControls(refresh: () => Promise<void>) {
   const t = useT();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(() => new Set());
+  const [pendingBulkAction, setPendingBulkAction] = useState<JobBulkAction | null>(null);
   const [attempts, setAttempts] = useState<JobAttemptDto[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -13,6 +15,23 @@ export function useJobsControls(refresh: () => Promise<void>) {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [cancelJobId, setCancelJobId] = useState<string | null>(null);
+
+  const toggleJobSelection = useCallback((jobId: string) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobId)) next.delete(jobId);
+      else next.add(jobId);
+      return next;
+    });
+  }, []);
+
+  const selectAllJobs = useCallback((jobIds: string[]) => {
+    setSelectedJobIds(new Set(jobIds));
+  }, []);
+
+  const clearJobSelection = useCallback(() => {
+    setSelectedJobIds(new Set());
+  }, []);
 
   const openJob = useCallback(
     async (jobId: string) => {
@@ -120,8 +139,31 @@ export function useJobsControls(refresh: () => Promise<void>) {
     setCancelJobId(jobId);
   }, []);
 
+  const requestBulkAction = useCallback((action: JobBulkAction) => {
+    if (selectedJobIds.size === 0) return;
+    setPendingBulkAction(action);
+  }, [selectedJobIds.size]);
+
+  const confirmBulkAction = useCallback(async () => {
+    const action = pendingBulkAction;
+    if (!action || selectedJobIds.size === 0) return;
+    const jobIds = [...selectedJobIds];
+    await runControl(async () => {
+      const result = await window.novelTrans.jobs.bulk({ jobIds, action });
+      setPendingBulkAction(null);
+      clearJobSelection();
+      return { message: result.message };
+    });
+  }, [pendingBulkAction, selectedJobIds, runControl, clearJobSelection]);
+
+  const cancelBulkAction = useCallback(() => {
+    setPendingBulkAction(null);
+  }, []);
+
   return {
     selectedId,
+    selectedJobIds,
+    pendingBulkAction,
     attempts,
     drawerOpen,
     showAdvanced,
@@ -143,5 +185,11 @@ export function useJobsControls(refresh: () => Promise<void>) {
     cancelJob,
     requestCancel,
     setCancelJobId,
+    toggleJobSelection,
+    selectAllJobs,
+    clearJobSelection,
+    requestBulkAction,
+    confirmBulkAction,
+    cancelBulkAction,
   };
 }

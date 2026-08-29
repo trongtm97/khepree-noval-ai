@@ -14,13 +14,23 @@ import type {
 } from '@shared/schemas/ai-provider';
 import { AiProviderManager } from './ai-provider-manager';
 import { PlaywrightGeminiAdapter } from './adapters/playwright-gemini-adapter';
+import {
+  PlaywrightChatGptAdapter,
+  PlaywrightMetaAiAdapter,
+} from './adapters/playwright-browser-ai-adapters';
 import { GeminiWebApiProvider } from './adapters/gemini-webapi-provider';
 import { workerProcessManager } from './worker-process-manager';
 import { pathsService } from '../services/paths-service';
 import type { GeminiService } from '../services/gemini-service';
+import type { PlaywrightBrowserAiService } from '../services/playwright-browser-ai-service';
 import { logger } from '../logging/logger';
 import { getSecretStorage } from '../security';
 import { summarizeLinkedAiAccount } from './provider-account-summary';
+import { browserProfileManager } from '../automation/browser-runner/profile-manager';
+import { newId } from '../db/utils/uuid';
+import { nextSequentialDisplayName } from '@shared/utils/account-display-name';
+import { applyPrimaryProvider } from './primary-provider-policy';
+import { isTranslationAiProviderId } from '@shared/constants/translation-ai-providers';
 
 export class AiProviderService {
   readonly manager: AiProviderManager;
@@ -30,11 +40,14 @@ export class AiProviderService {
     private readonly db: DatabaseManager,
     geminiService: GeminiService,
     secretStorage: SecretStorageService,
+    browserAiService: PlaywrightBrowserAiService,
   ) {
     this.manager = new AiProviderManager(db);
     this.webApi = new GeminiWebApiProvider(db, secretStorage);
     this.manager.register(this.webApi);
     this.manager.register(new PlaywrightGeminiAdapter(geminiService));
+    this.manager.register(new PlaywrightChatGptAdapter(browserAiService));
+    this.manager.register(new PlaywrightMetaAiAdapter(browserAiService));
   }
 
   async initialize(): Promise<void> {
@@ -75,12 +88,26 @@ export class AiProviderService {
 
     return {
       providers,
+      primaryProviderId: this.manager.getPrimaryProviderId(),
       fallbackEnabled: this.manager.isFallbackEnabled(),
       fallbackStatuses: this.manager.getFallbackStatuses(),
       workerInstalled: runtime.installed,
       workerRunning: runtime.running,
       workerMessage: runtime.message,
     };
+  }
+
+  getRoutingConfig(projectId?: string | null) {
+    return {
+      primaryProviderId: this.manager.resolvePrimaryProviderIdForProject(projectId),
+      globalPrimaryProviderId: this.manager.getPrimaryProviderId(),
+      fallbackEnabled: this.manager.isFallbackEnabled(),
+      routingMode: this.manager.getRoutingMode(),
+    };
+  }
+
+  setPrimaryProvider(providerId: string) {
+    applyPrimaryProvider(this.db, this, providerId);
   }
 
   async healthReport() {
@@ -143,7 +170,12 @@ export class AiProviderService {
     }
     this.db.aiProviders.setPriority(current.id, previous.priority);
     this.db.aiProviders.setPriority(previous.id, current.priority);
-    return this.db.aiProviders.getById(providerId) ?? current;
+    const updated = this.db.aiProviders.getById(providerId) ?? current;
+    if (index === 1 && isTranslationAiProviderId(providerId)) {
+      this.manager.setPrimaryProviderId(providerId);
+      this.manager.setRoutingMode('AUTO');
+    }
+    return updated;
   }
 
   setEnabled(providerId: string, enabled: boolean) {
@@ -221,9 +253,16 @@ export class AiProviderService {
     providerId: string;
     googleAccountId?: string | null;
     googleEmail?: string | null;
+    displayName?: string;
   }): AiAccountDto {
     const provider = this.db.aiProviders.getById(input.providerId);
     if (!provider) throw new Error('Provider not found');
+    if (provider.type === 'PLAYWRIGHT_CHATGPT' || provider.type === 'PLAYWRIGHT_META_AI') {
+      return this.createBrowserAccount({
+        providerId: input.providerId,
+        displayName: input.displayName,
+      });
+    }
     if (provider.type !== 'GEMINI_WEB_API') {
       throw new Error('Chỉ Gemini Web API dùng tài khoản session riêng trong bảng này');
     }
@@ -388,8 +427,16 @@ export class AiProviderService {
   }
 
   async deleteAccount(accountId: string): Promise<{ ok: boolean }> {
-    await getSecretStorage().delete(geminiWebSessionSecretKey(accountId));
     const account = this.db.aiAccounts.getById(accountId);
+    if (!account) {
+      this.db.aiAccounts.delete(accountId);
+      return { ok: true };
+    }
+    const provider = this.db.aiProviders.getById(account.provider_id);
+    if (provider?.type === 'PLAYWRIGHT_CHATGPT' || provider?.type === 'PLAYWRIGHT_META_AI') {
+      return this.deleteBrowserAccount(accountId);
+    }
+    await getSecretStorage().delete(geminiWebSessionSecretKey(accountId));
     if (account?.session_location) {
       try {
         fs.rmSync(account.session_location, { recursive: true, force: true });
@@ -446,6 +493,119 @@ export class AiProviderService {
       }
     }
     return this.listModels(account.provider_id);
+  }
+
+  createBrowserAccount(input: {
+    providerId: string;
+    displayName?: string;
+  }): AiAccountDto {
+    const provider = this.db.aiProviders.getById(input.providerId);
+    if (!provider) throw new Error('Provider not found');
+    if (provider.type !== 'PLAYWRIGHT_CHATGPT' && provider.type !== 'PLAYWRIGHT_META_AI') {
+      throw new Error('Provider không hỗ trợ browser account');
+    }
+
+    const label = provider.type === 'PLAYWRIGHT_CHATGPT' ? 'ChatGPT' : 'Meta AI';
+    const existing = this.db.aiAccounts.listByProvider(input.providerId);
+    const displayName =
+      input.displayName?.trim() ||
+      nextSequentialDisplayName(label, existing.length);
+    const accountId = newId();
+    const { profileDirName, profilePath } = browserProfileManager.createProfileDirectory(
+      `ai-${accountId}`,
+    );
+
+    const row = this.db.aiAccounts.create({
+      provider_id: input.providerId,
+      session_location: profilePath,
+      display_name: displayName,
+      profile_dir_name: profileDirName,
+      status: 'LOGIN_REQUIRED',
+    });
+
+    const listed = this.listAccounts(input.providerId).find((a) => a.id === row.id);
+    if (!listed) throw new Error('Account missing after create');
+    return listed;
+  }
+
+  async openBrowserAccountLogin(input: { accountId: string }): Promise<{ ok: boolean; message: string }> {
+    const account = this.db.aiAccounts.getById(input.accountId);
+    if (!account) throw new Error('Account not found');
+    const provider = this.db.aiProviders.getById(account.provider_id);
+    if (!provider) throw new Error('Provider not found');
+    if (provider.type !== 'PLAYWRIGHT_CHATGPT' && provider.type !== 'PLAYWRIGHT_META_AI') {
+      throw new Error('Tài khoản không phải browser AI');
+    }
+    const { getPlaywrightBrowserAiService } = await import(
+      '../services/playwright-browser-ai-service-singleton'
+    );
+    return getPlaywrightBrowserAiService().openLoginBrowser({
+      aiAccountId: input.accountId,
+      providerType: provider.type as 'PLAYWRIGHT_CHATGPT' | 'PLAYWRIGHT_META_AI',
+    });
+  }
+
+  async verifyBrowserAccount(input: {
+    accountId: string;
+  }): Promise<{ account: AiAccountDto; message: string }> {
+    const accountRow = this.db.aiAccounts.getById(input.accountId);
+    if (!accountRow) throw new Error('Account not found');
+    const provider = this.db.aiProviders.getById(accountRow.provider_id);
+    if (!provider) throw new Error('Provider not found');
+    if (provider.type !== 'PLAYWRIGHT_CHATGPT' && provider.type !== 'PLAYWRIGHT_META_AI') {
+      throw new Error('Tài khoản không phải browser AI');
+    }
+    const { getPlaywrightBrowserAiService } = await import(
+      '../services/playwright-browser-ai-service-singleton'
+    );
+    const result = await getPlaywrightBrowserAiService().verifyLogin({
+      aiAccountId: input.accountId,
+      providerType: provider.type as 'PLAYWRIGHT_CHATGPT' | 'PLAYWRIGHT_META_AI',
+    });
+    const account = this.listAccounts().find((a) => a.id === input.accountId);
+    if (!account) throw new Error('Account not found after verify');
+    return { account, message: result.message };
+  }
+
+  async deleteBrowserAccount(accountId: string): Promise<{ ok: boolean }> {
+    const account = this.db.aiAccounts.getById(accountId);
+    if (!account) throw new Error('Account not found');
+
+    const { getPlaywrightBrowserAiService } = await import(
+      '../services/playwright-browser-ai-service-singleton'
+    );
+    await getPlaywrightBrowserAiService().releaseAccountResources(accountId);
+
+    if (account.profile_dir_name) {
+      try {
+        browserProfileManager.deleteProfileDirectory(account.profile_dir_name);
+      } catch {
+        // best-effort
+      }
+    }
+    this.db.aiAccounts.delete(accountId);
+    return { ok: true };
+  }
+
+  updateBrowserAccountDisplayName(
+    accountId: string,
+    displayName: string,
+  ): AiAccountDto {
+    const account = this.db.aiAccounts.getById(accountId);
+    if (!account) throw new Error('Account not found');
+    const provider = this.db.aiProviders.getById(account.provider_id);
+    if (
+      provider?.type !== 'PLAYWRIGHT_CHATGPT' &&
+      provider?.type !== 'PLAYWRIGHT_META_AI'
+    ) {
+      throw new Error('Tài khoản không phải browser AI');
+    }
+    const trimmed = displayName.trim();
+    if (!trimmed) throw new Error('Tên hiển thị không được trống');
+    this.db.aiAccounts.updateDisplayName(accountId, trimmed);
+    const listed = this.listAccounts().find((a) => a.id === accountId);
+    if (!listed) throw new Error('Account not found after update');
+    return listed;
   }
 
   async installWorker() {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
 import {
   evaluateTranslatePreflight,
   isJobTerminalState,
@@ -18,6 +19,17 @@ describe('evaluateTranslatePreflight', () => {
     notebookStatus: null as string | null,
     resolvedWorkerAccountId: 'acc-1' as string | null,
   };
+
+  it('ok when only browser AI account READY', () => {
+    const result = evaluateTranslatePreflight({
+      ...base,
+      aiAccounts: [],
+      browserAiAccounts: [{ status: 'READY' }],
+      notebookStatus: null,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.webApiReady).toBe(true);
+  });
 
   it('ok when Web API account READY', () => {
     const result = evaluateTranslatePreflight(base);
@@ -85,6 +97,31 @@ describe('evaluateTranslatePreflight', () => {
       notebookStatus: 'pending',
     });
     expect(result).toEqual({ ok: false, reason: 'no_channel' });
+  });
+
+  it('allows translate when only Playwright provider is enabled', () => {
+    const result = evaluateTranslatePreflight({
+      ...base,
+      aiAccounts: [{ status: 'LOGIN_REQUIRED' }],
+      enabledProviderIds: [AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI],
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.webApiReady).toBe(false);
+      expect(result.notebookReady).toBe(false);
+    }
+  });
+
+  it('requires Web API when only Web API provider is enabled', () => {
+    const blocked = evaluateTranslatePreflight({
+      ...base,
+      aiAccounts: [{ status: 'LOGIN_REQUIRED' }],
+      enabledProviderIds: [AI_PROVIDER_IDS.GEMINI_WEB_API],
+    });
+    expect(blocked.ok).toBe(false);
+    if (!blocked.ok) {
+      expect(blocked.reason).toBe('no_channel');
+    }
   });
 
   it('uses resolvedWorkerAccountId — never first READY', () => {

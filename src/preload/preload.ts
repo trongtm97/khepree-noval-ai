@@ -66,6 +66,12 @@ const api: NovelTransApi = {
     resolveWorker: (input) =>
       invokeChannel(IPC_CHANNELS.PROJECT_RESOLVE_WORKER, input),
     setWorker: (input) => invokeChannel(IPC_CHANNELS.PROJECT_SET_WORKER, input),
+    getTranslatePackSettings: (projectId) =>
+      invokeChannel(IPC_CHANNELS.PROJECT_GET_TRANSLATE_PACK_SETTINGS, { projectId }),
+    setPreferNotebookPack: (input) =>
+      invokeChannel(IPC_CHANNELS.PROJECT_SET_PREFER_NOTEBOOK_PACK, input),
+    setPrimaryProvider: (input) =>
+      invokeChannel(IPC_CHANNELS.PROJECT_SET_PRIMARY_PROVIDER, input),
   },
   editions: {
     list: (projectId) =>
@@ -377,6 +383,8 @@ const api: NovelTransApi = {
     setEnabled: (input) => invokeChannel(IPC_CHANNELS.AI_PROVIDER_SET_ENABLED, input),
     check: (input) => invokeChannel(IPC_CHANNELS.AI_PROVIDER_CHECK, input),
     setFallback: (input) => invokeChannel(IPC_CHANNELS.AI_PROVIDER_SET_FALLBACK, input),
+    getRouting: (input) => invokeChannel(IPC_CHANNELS.AI_PROVIDER_GET_ROUTING, input ?? {}),
+    setPrimary: (input) => invokeChannel(IPC_CHANNELS.AI_PROVIDER_SET_PRIMARY, input),
     installWorker: () => invokeChannel(IPC_CHANNELS.AI_PROVIDER_INSTALL_WORKER),
     autoSetupStatus: () => invokeChannel(IPC_CHANNELS.AI_AUTO_SETUP_STATUS),
     autoSetupRun: () => invokeChannel(IPC_CHANNELS.AI_AUTO_SETUP_RUN),
@@ -388,6 +396,11 @@ const api: NovelTransApi = {
     check: (input) => invokeChannel(IPC_CHANNELS.AI_ACCOUNT_CHECK, input),
     disable: (input) => invokeChannel(IPC_CHANNELS.AI_ACCOUNT_DISABLE, input),
     delete: (input) => invokeChannel(IPC_CHANNELS.AI_ACCOUNT_DELETE, input),
+    openBrowserLogin: (input) =>
+      invokeChannel(IPC_CHANNELS.AI_BROWSER_ACCOUNT_OPEN_LOGIN, input),
+    verifyBrowser: (input) => invokeChannel(IPC_CHANNELS.AI_BROWSER_ACCOUNT_VERIFY, input),
+    updateDisplayName: (input) =>
+      invokeChannel(IPC_CHANNELS.AI_ACCOUNT_UPDATE_DISPLAY_NAME, input),
   },
   aiModels: {
     list: (input) => invokeChannel(IPC_CHANNELS.AI_MODELS_LIST, input),

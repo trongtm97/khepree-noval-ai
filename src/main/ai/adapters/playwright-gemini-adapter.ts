@@ -131,7 +131,7 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
       ok: true,
       status: 'READY',
       message:
-        'Gemini Browser sẵn sàng (khi dịch vẫn cần Notebook mapping READY cho dự án).',
+        'Gemini Browser sẵn sàng (Phase 5: dịch qua web chat hoặc NotebookLM nếu bật).',
       accountEmail: usable.email,
     };
   }
@@ -218,6 +218,7 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
         headless: options.headless,
         maxTimeoutMs: options.maxTimeoutMs,
         correlationId,
+        packMode: options?.packMode,
       });
 
       const corr = sent.correlationId || correlationId;

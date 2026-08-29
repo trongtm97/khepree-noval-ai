@@ -6,6 +6,7 @@ import {
   AI_RESPONSE_STATUSES,
   AUTH_FALLBACK_STATUSES,
   DEFAULT_FALLBACK_STATUSES,
+  isBrowserAiAccountProvider,
   type AiProviderType,
   type AiResponseStatus,
 } from '@shared/constants/ai-provider';
@@ -15,7 +16,7 @@ import {
 } from '@shared/constants/provider-preflight';
 import type { IAIProvider } from './iai-provider';
 import type { AIResponse, SendPromptOptions } from './types';
-import { isGeminiSoftErrorText, geminiSoftErrorSnippet } from '@shared/utils/gemini-soft-error';
+import { isAiSoftErrorText, geminiSoftErrorSnippet } from '@shared/utils/ai-soft-error';
 import { userMessageForStatus } from './error-map';
 import { logger } from '../logging/logger';
 import { newId } from '../db/utils/uuid';
@@ -24,6 +25,8 @@ import type { RepairSendRequest, RepairSendResult } from '../jobs/repair-loop';
 import { getTranslationPackService } from '../services/translation-pack-service-singleton';
 import { resolveTranslationNotebook } from '../notebook/notebook-resolver';
 import type { PackMode } from '@shared/constants/pack-mode';
+import { readPreferNotebookPack } from '@shared/constants/project-style-config';
+import { resolveTranslationPackMode } from '../prompt/pack-mode-resolver';
 import { parseJobConfig } from '../jobs/batch-executor';
 import type { TranslationPackBuildResult } from '../services/translation-pack-service';
 import { ResponseParser } from '../jobs/response-parser';
@@ -75,6 +78,8 @@ import {
   repairContextSnapshot,
   lastAcceptedTargetParagraphs,
 } from '../jobs/repair-translation-context';
+import { resolvePrimaryProviderId } from './primary-provider-policy';
+import { reorderProvidersWithPrimary } from '@shared/constants/translation-ai-providers';
 
 /** Retries when a chunk fails transiently or returns zero translation lines. */
 const CHUNK_SEND_RETRIES = 2;
@@ -203,6 +208,21 @@ export class AiProviderManager {
     return this.db.aiProviders.listEnabledOrdered()[0]?.id ?? null;
   }
 
+  getPrimaryProviderId(): string | null {
+    return resolvePrimaryProviderId(this.db, null);
+  }
+
+  setPrimaryProviderId(providerId: string | null): void {
+    this.db.appMeta.set(
+      AI_ROUTING_META_KEYS.primaryProviderId,
+      providerId ?? '',
+    );
+  }
+
+  resolvePrimaryProviderIdForProject(projectId?: string | null): string | null {
+    return resolvePrimaryProviderId(this.db, projectId);
+  }
+
   /**
    * Ordered enabled providers — **DB priority first** (lower number = tried first).
    * Soft demote when notebook missing (legacy sync path). Prefer
@@ -242,7 +262,8 @@ export class AiProviderManager {
       });
     }
 
-    return result;
+    const primaryId = resolvePrimaryProviderId(this.db, options?.projectId);
+    return reorderProvidersWithPrimary(result, primaryId);
   }
 
   /**
@@ -277,8 +298,12 @@ export class AiProviderManager {
 
     const reports: ProviderPreflightReport[] = [];
     for (const provider of candidates) {
+      const accountId = this.resolveAccountIdForProvider(
+        provider,
+        options.googleAccountId,
+      );
       const report = await checkProviderForJob(this.db, {
-        accountId: options.googleAccountId,
+        accountId: accountId ?? options.googleAccountId,
         projectId: options.projectId,
         notebookRole: options.notebookRole ?? 'RESEARCH',
         requireNotebook: options.requireNotebook ?? false,
@@ -354,10 +379,14 @@ export class AiProviderManager {
       const provider = ordered[i];
       const row = this.db.aiProviders.getById(provider.providerId);
 
-      // Legacy skip if somehow selected without accounts (preflight should catch).
       if (provider.providerType === 'GEMINI_WEB_API') {
-        const readyAccounts = this.db.aiAccounts.listReadyByProvider(provider.providerId);
-        if (readyAccounts.length === 0) {
+        const linked = options?.googleAccountId
+          ? this.db.aiAccounts.findReadyForGoogleAccount(
+              provider.providerId,
+              options.googleAccountId,
+            )
+          : this.db.aiAccounts.listReadyByProvider(provider.providerId)[0];
+        if (!linked) {
           logger.info('Bỏ qua Gemini Web API — chưa có tài khoản READY', {
             providerId: provider.providerId,
           });
@@ -372,20 +401,47 @@ export class AiProviderManager {
         }
       }
 
-      const packForProvider = this.adaptPackForProvider(pack, provider, options);
+      if (isBrowserAiAccountProvider(provider.providerType)) {
+        const ready = this.db.aiAccounts.listReadyByProvider(provider.providerId);
+        if (ready.length === 0) {
+          logger.info('Bỏ qua browser AI provider — chưa có tài khoản READY', {
+            providerId: provider.providerId,
+            providerType: provider.providerType,
+          });
+          last = {
+            requestId: options?.requestId ?? newId(),
+            status: 'LOGIN_REQUIRED',
+            text: '',
+            errorCode: 'NO_AI_ACCOUNT',
+            errorMessage: userMessageForStatus('LOGIN_REQUIRED'),
+          };
+          continue;
+        }
+      }
+
+      const sendOptions = this.buildSendOptionsForProvider(provider, options);
+      if (!sendOptions) {
+        logger.info('Bỏ qua provider — không resolve được tài khoản', {
+          providerId: provider.providerId,
+        });
+        continue;
+      }
+
+      const packForProvider = this.adaptPackForProvider(pack, provider, sendOptions);
 
       logger.info('Đang sử dụng AI provider', {
         provider: provider.providerType,
         providerId: provider.providerId,
         event: 'REQUEST_STARTED',
         packModeHint:
-          provider.providerType === 'GEMINI_WEB_API' ? 'sqlite-local' : 'notebook',
+          provider.providerType === 'GEMINI_WEB_API'
+            ? 'sqlite-local'
+            : isBrowserAiAccountProvider(provider.providerType)
+              ? 'browser-ai'
+              : 'notebook',
       });
 
-      const response = await provider.sendPrompt(packForProvider, {
-        ...options,
-        requestId: options?.requestId ?? newId(),
-      });
+      const response = await provider.sendPrompt(packForProvider, sendOptions);
 
       if (response.status === 'SUCCESS') {
         if (!response.text.trim()) {
@@ -413,7 +469,7 @@ export class AiProviderManager {
           }
           return last;
         }
-        if (isGeminiSoftErrorText(response.text)) {
+        if (isAiSoftErrorText(response.text)) {
           const snippet = geminiSoftErrorSnippet(response.text);
           logger.warn('AI provider returned soft-error text as SUCCESS', {
             provider: provider.providerType,
@@ -505,7 +561,10 @@ export class AiProviderManager {
       );
     }
     const batchSize = resolveTranslateBatchParagraphs(ordered[0]?.providerType);
-    const playwrightFirst = ordered[0]?.providerType === 'PLAYWRIGHT_GEMINI';
+    const playwrightFirst =
+      ordered[0]?.providerType === 'PLAYWRIGHT_GEMINI' ||
+      ordered[0]?.providerType === 'PLAYWRIGHT_CHATGPT' ||
+      ordered[0]?.providerType === 'PLAYWRIGHT_META_AI';
     const chunks = playwrightFirst
       ? chunkParagraphBatchForPlaywright(paragraphs)
       : chunkParagraphBatch(paragraphs, batchSize);
@@ -562,6 +621,7 @@ export class AiProviderManager {
         projectId: ctx.job.project_id,
         googleAccountId: ctx.accountId,
         jobId: ctx.job.id,
+        packMode,
         pinnedProviderId:
           (config as { pinnedProviderId?: string }).pinnedProviderId ?? null,
       });
@@ -711,6 +771,7 @@ export class AiProviderManager {
           googleAccountId: ctx.accountId,
           jobId: ctx.job.id,
           requestId: newId(),
+          packMode,
           pinnedProviderId:
             (config as { pinnedProviderId?: string }).pinnedProviderId ?? null,
         });
@@ -858,18 +919,89 @@ export class AiProviderManager {
   }
 
   /**
-   * Phase 1: default LOCAL_CONTEXT — not Notebook-driven.
+   * Resolve pack mode from project preferNotebookPack (default local_context).
    */
-  private resolvePackMode(
-    _ctx: JobExecuteContext,
-    _providerType?: string,
+  private resolvePackModeForProject(
+    projectId: string,
+    accountId?: string | null,
   ): PackMode {
-    return 'local_context';
+    const prefer = readPreferNotebookPack(this.db.projects.getStyleConfig(projectId));
+    return resolveTranslationPackMode(this.db, {
+      projectId,
+      accountId,
+      preferNotebookPack: prefer,
+    }).packMode;
+  }
+
+  private resolvePackMode(ctx: JobExecuteContext, _providerType?: string): PackMode {
+    return this.resolvePackModeForProject(ctx.job.project_id, ctx.accountId);
   }
 
   /**
    * Phase 4: provider-neutral — same TranslationPack for every provider.
    */
+  private resolveAccountIdForProvider(
+    provider: IAIProvider,
+    jobGoogleAccountId: string,
+  ): string | null {
+    if (provider.providerType === 'PLAYWRIGHT_GEMINI') {
+      return jobGoogleAccountId;
+    }
+    if (provider.providerType === 'GEMINI_WEB_API') {
+      const linked = this.db.aiAccounts.findReadyForGoogleAccount(
+        provider.providerId,
+        jobGoogleAccountId,
+      );
+      return linked?.id ?? null;
+    }
+    if (isBrowserAiAccountProvider(provider.providerType)) {
+      return this.db.aiAccounts.pickLeastRecentlyUsedReady(provider.providerId)?.id ?? null;
+    }
+    return null;
+  }
+
+  private buildSendOptionsForProvider(
+    provider: IAIProvider,
+    base?: SendPromptOptions & { pinnedProviderId?: string | null },
+  ): (SendPromptOptions & { requestId: string }) | null {
+    const requestId = base?.requestId ?? newId();
+
+    if (provider.providerType === 'PLAYWRIGHT_GEMINI') {
+      if (!base?.googleAccountId) return null;
+      return { ...base, requestId, googleAccountId: base.googleAccountId };
+    }
+
+    if (provider.providerType === 'GEMINI_WEB_API') {
+      const linked = base?.googleAccountId
+        ? this.db.aiAccounts.findReadyForGoogleAccount(
+            provider.providerId,
+            base.googleAccountId,
+          )
+        : this.db.aiAccounts.listReadyByProvider(provider.providerId)[0];
+      if (!linked) return null;
+      return {
+        ...base,
+        requestId,
+        aiAccountId: linked.id,
+        googleAccountId: base?.googleAccountId ?? linked.google_account_id,
+      };
+    }
+
+    if (isBrowserAiAccountProvider(provider.providerType)) {
+      const account = this.db.aiAccounts.pickLeastRecentlyUsedReady(provider.providerId);
+      if (!account) return null;
+      return {
+        ...base,
+        requestId,
+        aiAccountId: account.id,
+        profileDirName: account.profile_dir_name,
+        googleAccountId: base?.googleAccountId ?? null,
+      };
+    }
+
+    return { ...base, requestId };
+  }
+
   private adaptPackForProvider(
     pack: TranslationPackDto,
     _provider: IAIProvider,
@@ -1329,12 +1461,18 @@ export class AiProviderManager {
       operationType,
     });
 
+    const repairPackMode = this.resolvePackModeForProject(
+      input.projectId,
+      input.accountId,
+    );
+
     const sendOnce = async (providerId: string, requestId: string) =>
       this.sendWithFallback(repairPack, {
         projectId: input.projectId,
         googleAccountId: input.accountId,
         jobId: input.jobId,
         requestId,
+        packMode: repairPackMode,
         pinnedProviderId: providerId,
         preserveRepairPrompt: true,
         notebookId: input.channel.notebookId,
@@ -1366,7 +1504,7 @@ export class AiProviderManager {
 
       const soft =
         playwrightResponse.errorCode === 'GEMINI_SOFT_ERROR' ||
-        isGeminiSoftErrorText(playwrightResponse.errorMessage) ||
+        isAiSoftErrorText(playwrightResponse.errorMessage) ||
         /something went wrong|hard time fulfilling/i.test(
           playwrightResponse.errorMessage ?? '',
         );
@@ -1740,6 +1878,10 @@ export function providerTypeLabel(type: AiProviderType): string {
       return 'Gemini Web API';
     case 'PLAYWRIGHT_GEMINI':
       return 'Gemini Browser';
+    case 'PLAYWRIGHT_CHATGPT':
+      return 'ChatGPT Browser';
+    case 'PLAYWRIGHT_META_AI':
+      return 'Meta AI Browser';
     case 'GEMINI_OFFICIAL':
       return 'Gemini Official API';
     default:

@@ -8,9 +8,25 @@ export type NotificationKind =
   | 'ERROR'
   | 'ACTION_REQUIRED';
 
-/** Sticky toasts stay until the user acts. ACTION_REQUIRED must not auto-hide. */
-export function shouldAutoDismissToast(kind: NotificationKind): boolean {
-  return kind !== 'ACTION_REQUIRED';
+/** All floating toasts auto-hide; persistent history stays in the notification panel. */
+export function shouldAutoDismissToast(_kind: NotificationKind): boolean {
+  return true;
+}
+
+const DEFAULT_TOAST_DURATION_MS: Record<NotificationKind, number> = {
+  SUCCESS: 4_000,
+  INFO: 4_000,
+  WARNING: 6_000,
+  ERROR: 8_000,
+  ACTION_REQUIRED: 12_000,
+};
+
+export function resolveToastDurationMs(
+  kind: NotificationKind,
+  overrideMs?: number,
+): number {
+  if (typeof overrideMs === 'number' && overrideMs > 0) return overrideMs;
+  return DEFAULT_TOAST_DURATION_MS[kind];
 }
 
 export interface ToastAction {

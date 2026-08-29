@@ -13,7 +13,7 @@ export const accountArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Thêm tài khoản Google' },
       {
         type: 'paragraph',
-        text: 'Đi tới Tài khoản Google → Thêm tài khoản Google. NovelTrans mở cửa sổ trình duyệt riêng (browser profile) — không dùng chung Chrome mặc định.',
+        text: 'Đi tới Tài khoản AI → phần Google / Gemini → Thêm tài khoản Google. NovelTrans mở cửa sổ trình duyệt riêng (browser profile) — không dùng chung Chrome mặc định.',
       },
       {
         type: 'paragraph',
@@ -44,7 +44,7 @@ export const accountArticles: HelpArticle[] = [
       },
       {
         type: 'actions',
-        items: [{ label: 'Mở Tài khoản Google', to: '/accounts' }],
+        items: [{ label: 'Mở Tài khoản AI', to: '/accounts' }],
       },
     ],
   },

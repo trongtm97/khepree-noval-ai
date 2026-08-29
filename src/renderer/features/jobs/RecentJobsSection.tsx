@@ -5,13 +5,23 @@ import { useT } from '../../i18n';
 import { statusLabel } from '../../i18n/status';
 import { formatRelativeDate } from '../../utils/format-relative-date';
 import { chapterRange } from './jobs-utils';
+import { JobSelectCheckbox } from './JobSelectCheckbox';
 
 export interface RecentJobsSectionProps {
   jobs: JobDto[];
   titleFor: (projectId: string) => string;
+  busy: boolean;
+  selectedJobIds: Set<string>;
+  onToggleSelect: (jobId: string) => void;
 }
 
-export function RecentJobsSection({ jobs, titleFor }: RecentJobsSectionProps) {
+export function RecentJobsSection({
+  jobs,
+  titleFor,
+  busy,
+  selectedJobIds,
+  onToggleSelect,
+}: RecentJobsSectionProps) {
   const t = useT();
   const navigate = useNavigate();
 
@@ -32,6 +42,13 @@ export function RecentJobsSection({ jobs, titleFor }: RecentJobsSectionProps) {
           return (
             <Card key={job.id} className="jobs-recent-card">
               <div className="jobs-card-row">
+                <JobSelectCheckbox
+                  jobId={job.id}
+                  checked={selectedJobIds.has(job.id)}
+                  disabled={busy}
+                  ariaLabel={t('jobs.selectJobAria', { project: titleFor(job.projectId) })}
+                  onToggle={onToggleSelect}
+                />
                 <div className="jobs-card-main">
                   <strong>{titleFor(job.projectId)}</strong>
                   {range ? (

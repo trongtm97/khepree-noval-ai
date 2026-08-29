@@ -15,5 +15,8 @@ export { AccountStatus } from './AccountStatus';
 export { AccountActionsMenu, AccountPrimaryActions } from './AccountActionsMenu';
 export { AddGoogleAccountDialog } from './AddGoogleAccountDialog';
 export type { AddAccountStep } from './AddGoogleAccountDialog';
+export { AddBrowserAiAccountDialog } from './AddBrowserAiAccountDialog';
+export { EditBrowserAiAccountDialog } from './EditBrowserAiAccountDialog';
+export { BrowserAiAccountSection } from './BrowserAiAccountSection';
 export { EditGoogleAccountDialog } from './EditGoogleAccountDialog';
 export { AccountDetailsDrawer } from './AccountDetailsDrawer';
