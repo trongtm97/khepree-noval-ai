@@ -96,7 +96,6 @@ import { getAccountWorkerService } from '../services/account-worker-singleton';
 import { toGoogleAccountDto } from '../services/account-dto';
 import { getAccountAvailabilityService } from '../services/account-availability-service';
 import { getDatabase } from '../db/connection';
-import { getDatabase } from '../db/connection';
 import { toProjectDto, toProjectDtoFromDb } from '../services/project-dto';
 import {
   createEdition,
@@ -288,6 +287,9 @@ import {
   ExportChapterRangeRequestSchema,
   ExportChapterResponseSchema,
   SelectExportDirectoryResponseSchema,
+  SetupStorageRootRequestSchema,
+  SetupStorageRootResponseSchema,
+  StorageHealthResultSchema,
   TermCommitImportRequestSchema,
   TermCommitImportResponseSchema,
   TermImportPreviewRequestSchema,
@@ -349,6 +351,8 @@ import {
   InteractiveRepairStartResponseSchema,
   ListProviderStatusResponseSchema,
 } from '@shared/schemas/diagnostics';
+import { SystemHealthResultSchema } from '@shared/schemas/system-health';
+import { runSystemHealthCheck } from '../services/system-health-service';
 import {
   GetSelectorOverridesResponseSchema,
   LoadSelectorOverridesRequestSchema,
@@ -420,6 +424,11 @@ import {
   AiProviderSetPriorityRequestSchema,
   AiWorkerInstallResponseSchema,
 } from '@shared/schemas/ai-provider';
+import {
+  AiAutoSetupResultSchema,
+  AiStatusSnapshotSchema,
+} from '@shared/schemas/ai-auto-setup';
+import { AiAutoSetupService } from '../ai/ai-auto-setup-service';
 import { z } from 'zod';
 
 function accountDto(accountId: string) {
@@ -2351,6 +2360,29 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_SETUP_STORAGE_ROOT,
+    createIpcHandler(SetupStorageRootRequestSchema, (request) => {
+      return SetupStorageRootResponseSchema.parse(
+        getPortabilityService().setupStorageRoot(request.root),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_CHECK_STORAGE_HEALTH,
+    createIpcHandlerNoArg(async () => {
+      return StorageHealthResultSchema.parse(await getPortabilityService().checkStorageHealth());
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PORTABILITY_BACKUP_NOW,
+    createIpcHandlerNoArg(async () => {
+      return z.object({ filePath: z.string() }).parse(await getPortabilityService().backupNow());
+    }),
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.TERM_PREVIEW_IMPORT,
     createIpcHandler(TermImportPreviewRequestSchema, (request) => {
       return TermImportPreviewResponseSchema.parse(getTermService().previewImport(request));
@@ -2454,6 +2486,13 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.DIAGNOSTICS_HEALTH_REPORT,
     createIpcHandlerNoArg(() => {
       return GetHealthReportResponseSchema.parse(getDiagnosticsService().buildHealthReport());
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.DIAGNOSTICS_RUN_SYSTEM_HEALTH,
+    createIpcHandlerNoArg(() => {
+      return SystemHealthResultSchema.parse(runSystemHealthCheck(getDatabase()));
     }),
   );
 
@@ -2721,6 +2760,22 @@ function registerAiProviderHandlers(): void {
         pythonPath: result.pythonPath,
         venvPath: result.venvPath,
       });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.AI_AUTO_SETUP_STATUS,
+    createIpcHandlerNoArg(() => {
+      const svc = new AiAutoSetupService(getDatabase(), getAiProviderService());
+      return AiStatusSnapshotSchema.parse(svc.statusSnapshot());
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.AI_AUTO_SETUP_RUN,
+    createIpcHandlerNoArg(async () => {
+      const svc = new AiAutoSetupService(getDatabase(), getAiProviderService());
+      return AiAutoSetupResultSchema.parse(await svc.run());
     }),
   );
 

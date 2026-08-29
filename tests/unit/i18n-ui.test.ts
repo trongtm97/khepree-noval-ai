@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import { vi as viMessages } from '../../src/renderer/i18n/vi';
 import { en as enMessages } from '../../src/renderer/i18n/en';
 import { detectErrorCode, friendlyError } from '../../src/renderer/i18n/errors';
@@ -18,7 +18,23 @@ function collectKeys(obj: unknown, prefix = ''): string[] {
   return keys;
 }
 
+function getByPath(obj: unknown, dotPath: string): unknown {
+  return dotPath.split('.').reduce<unknown>((acc, key) => {
+    if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
+      return (acc as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, obj);
+}
+
+const VIETNAMESE_DIACRITICS =
+  /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+
 describe('i18n', () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ preference: 'vi' });
+  });
+
   it('vi and en have matching leaf keys', () => {
     const viKeys = collectKeys(viMessages).sort();
     const enKeys = collectKeys(enMessages).sort();
@@ -26,14 +42,30 @@ describe('i18n', () => {
   });
 
   it('t() returns Vietnamese by default', () => {
-    useLocaleStore.setState({ locale: 'vi' });
     expect(t('nav.dashboard')).toBe('Tổng quan');
     expect(t('actions.save')).toBe('Lưu');
   });
 
   it('interpolates params', () => {
-    useLocaleStore.setState({ locale: 'vi' });
     expect(t('statusbar.jobsRunning', { count: 2 })).toContain('2');
+  });
+
+  it('en nav and settings strings are not Vietnamese leftovers', () => {
+    const prefixes = ['nav.', 'settings.'];
+    const hits: string[] = [];
+    for (const key of collectKeys(enMessages)) {
+      if (!prefixes.some((p) => key.startsWith(p))) continue;
+      const value = getByPath(enMessages, key);
+      if (typeof value !== 'string') continue;
+      if (VIETNAMESE_DIACRITICS.test(value)) {
+        hits.push(`${key}: ${value}`);
+      }
+      const viValue = getByPath(viMessages, key);
+      if (typeof viValue === 'string' && value === viValue && VIETNAMESE_DIACRITICS.test(value)) {
+        hits.push(`${key} (identical to vi): ${value}`);
+      }
+    }
+    expect(hits).toEqual([]);
   });
 });
 
@@ -54,7 +86,7 @@ describe('friendly errors', () => {
 
 describe('status labels', () => {
   it('maps job states to Vietnamese', () => {
-    useLocaleStore.setState({ locale: 'vi' });
+    useLocaleStore.setState({ preference: 'vi' });
     expect(statusLabel('READY')).toBe('Sẵn sàng');
     expect(statusLabel('NEEDS_ATTENTION')).toBe('Cần xử lý');
     expect(statusLabel('QUEUED')).toBe('Đang xếp hàng');

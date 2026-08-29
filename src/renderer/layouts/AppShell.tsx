@@ -335,7 +335,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
                     size="sm"
                     variant="primary"
                     onClick={() => {
-                      navigate('/settings?tab=aiProviders');
+                      navigate('/settings?tab=ai');
                     }}
                   >
                     {t('notifications.startupBannerCtaSettings')}
@@ -359,7 +359,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
                     size="sm"
                     variant="secondary"
                     onClick={() => {
-                      navigate('/settings?tab=aiProviders');
+                      navigate('/settings?tab=ai');
                     }}
                   >
                     {t('notifications.startupBannerCtaProviders')}

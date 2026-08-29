@@ -17,7 +17,7 @@ const empty: EditorContext = {
 
 describe('EditorContextPanel', () => {
   beforeEach(() => {
-    useLocaleStore.setState({ locale: 'vi' });
+    useLocaleStore.setState({ preference: 'vi' });
   });
 
   afterEach(() => {

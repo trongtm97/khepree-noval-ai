@@ -138,6 +138,32 @@ export const SelectBackupDirectoryResponseSchema = z.object({
   directory: z.string().nullable(),
 });
 
+export const SetupStorageRootRequestSchema = z.object({
+  root: z.string().min(1),
+});
+
+export const SetupStorageRootResponseSchema = z.object({
+  root: z.string(),
+  exportDirectory: z.string(),
+  backupDirectory: z.string(),
+});
+
+export const StorageHealthResultSchema = z.object({
+  ok: z.boolean(),
+  title: z.string(),
+  message: z.string(),
+  exportPath: z.string(),
+  exportOk: z.boolean(),
+  exportError: z.string().nullable(),
+  backupPath: z.string(),
+  backupOk: z.boolean(),
+  backupError: z.string().nullable(),
+  lastBackupAt: z.string().nullable(),
+  freeSpaceBytes: z.number().nullable(),
+});
+
+export type StorageHealthResult = z.infer<typeof StorageHealthResultSchema>;
+
 export const ResolveExportDirectoryRequestSchema = z.object({
   projectId: z.string().uuid(),
   editionId: z.string().uuid().nullable().optional(),

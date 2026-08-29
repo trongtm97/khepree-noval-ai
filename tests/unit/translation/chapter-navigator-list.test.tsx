@@ -72,7 +72,7 @@ const noop = {
 
 describe('ChapterNavigator', () => {
   beforeEach(() => {
-    useLocaleStore.setState({ locale: 'vi' });
+    useLocaleStore.setState({ preference: 'vi' });
     useTranslationWorkspaceStore.setState({ chapterListScrollByProject: {} });
     installListLayout();
   });

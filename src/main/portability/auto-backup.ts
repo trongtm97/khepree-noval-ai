@@ -172,6 +172,38 @@ export function applyRetention(backupsDir: string, retentionCount: number): void
   });
 }
 
+export async function runManualFullBackup(input: {
+  db: DatabaseManager;
+  dbPath: string;
+  backupsDir: string;
+}): Promise<string> {
+  const config = getAutoBackupConfig(input.db);
+  fs.mkdirSync(input.backupsDir, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const target = path.join(
+    input.backupsDir,
+    `${AUTO_PREFIX}${timestamp}${BACKUP_ARCHIVE_EXTENSION}`,
+  );
+
+  const result = await createBackupArchive({
+    kind: 'full',
+    db: input.db,
+    dbPath: input.dbPath,
+    backupsDir: input.backupsDir,
+    outputPath: target,
+    includeCredentials: false,
+  });
+
+  input.db.appMeta.set(AUTO_BACKUP_META_KEYS.lastRunAt, utcNow());
+  applyTieredRetention(input.backupsDir, {
+    daily: config.retentionDaily,
+    weekly: config.retentionWeekly,
+    monthly: config.retentionMonthly,
+  });
+  logger.info('Manual full backup created', { target: result.filePath });
+  return result.filePath;
+}
+
 export async function runAutoBackupIfDue(input: {
   db: DatabaseManager;
   dbPath: string;

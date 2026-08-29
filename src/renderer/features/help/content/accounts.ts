@@ -151,7 +151,7 @@ export const accountArticles: HelpArticle[] = [
       {
         type: 'actions',
         items: [
-          { label: 'Cài đặt Google Drive', to: '/settings?tab=googleAi' },
+          { label: 'Cài đặt Google Drive', to: '/settings?tab=ai' },
           { label: 'Tài khoản Google', to: '/accounts' },
         ],
       },

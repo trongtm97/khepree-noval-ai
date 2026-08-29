@@ -62,7 +62,7 @@ function renderRow(
 
 describe('EditorParagraphRow', () => {
   beforeEach(() => {
-    useLocaleStore.setState({ locale: 'vi' });
+    useLocaleStore.setState({ preference: 'vi' });
     useUiShellStore.setState({ showParagraphIds: false, showAdvancedTools: false });
     Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
       configurable: true,

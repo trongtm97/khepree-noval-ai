@@ -18,6 +18,7 @@ export { LogViewer } from './LogViewer';
 export type { LogLine } from './LogViewer';
 export { Tabs, TabPanel } from './Tabs';
 export { Switch } from './Switch';
+export { SegmentedControl } from './SegmentedControl';
 export { DataTable, WorkerStatus, AccountBadge, ChapterStatus } from './DataTable';
 /** Alias for StatusBadge used on job rows. */
 export { StatusBadge as JobStatus } from './JobStatus';

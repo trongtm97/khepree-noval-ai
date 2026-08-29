@@ -86,6 +86,8 @@ import type {
   RestoreBackupResponseSchema,
   SelectExportDirectoryResponseSchema,
   SelectExportPathResponseSchema,
+  SetupStorageRootResponseSchema,
+  StorageHealthResultSchema,
   TermCommitImportResponseSchema,
   TermImportPreviewResponseSchema,
 } from '../schemas/portability';
@@ -105,6 +107,7 @@ import type {
   InteractiveRepairStartResponseSchema,
   ListProviderStatusResponseSchema,
 } from '../schemas/diagnostics';
+import type { SystemHealthResultSchema } from '../schemas/system-health';
 import type {
   GetSelectorOverridesResponseSchema,
   LoadSelectorOverridesResponseSchema,
@@ -126,6 +129,10 @@ import type {
   AiProviderListResponseSchema,
   AiWorkerInstallResponseSchema,
 } from '../schemas/ai-provider';
+import type {
+  AiAutoSetupResultSchema,
+  AiStatusSnapshotSchema,
+} from '../schemas/ai-auto-setup';
 import type { AiResponseStatus } from '../constants/ai-provider';
 
 export interface NovelTransApi {
@@ -1128,10 +1135,16 @@ export interface NovelTransApi {
       editionId?: string | null;
       outputDirectory?: string;
     }) => Promise<z.infer<typeof ExportChapterResponseSchema>>;
+    setupStorageRoot: (input: {
+      root: string;
+    }) => Promise<z.infer<typeof SetupStorageRootResponseSchema>>;
+    checkStorageHealth: () => Promise<z.infer<typeof StorageHealthResultSchema>>;
+    backupNow: () => Promise<{ filePath: string }>;
   };
   diagnostics: {
     listProviders: () => Promise<z.infer<typeof ListProviderStatusResponseSchema>>;
     healthReport: () => Promise<z.infer<typeof GetHealthReportResponseSchema>>;
+    runSystemHealth: () => Promise<z.infer<typeof SystemHealthResultSchema>>;
     export: (input?: {
       outputPath?: string;
       accountId?: string;
@@ -1207,6 +1220,8 @@ export interface NovelTransApi {
       statuses?: AiResponseStatus[];
     }) => Promise<z.infer<typeof AiProviderListResponseSchema>>;
     installWorker: () => Promise<z.infer<typeof AiWorkerInstallResponseSchema>>;
+    autoSetupStatus: () => Promise<z.infer<typeof AiStatusSnapshotSchema>>;
+    autoSetupRun: () => Promise<z.infer<typeof AiAutoSetupResultSchema>>;
   };
   aiAccounts: {
     list: (input?: {

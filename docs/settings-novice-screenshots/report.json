@@ -1,0 +1,14 @@
+{
+  "ranAt": "2026-08-29T03:20:01.100Z",
+  "userData": "C:\\Users\\trong\\AppData\\Local\\Temp\\nts-novice-1787973601100",
+  "clicks": {
+    "total": 0,
+    "steps": []
+  },
+  "screenshots": {},
+  "jargon": {},
+  "persistence": {},
+  "errors": [
+    "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('.settings-page') to be visible\n"
+  ]
+}

@@ -331,10 +331,15 @@ const api: NovelTransApi = {
     exportChapter: (input) => invokeChannel(IPC_CHANNELS.PORTABILITY_EXPORT_CHAPTER, input),
     exportChapterRange: (input) =>
       invokeChannel(IPC_CHANNELS.PORTABILITY_EXPORT_CHAPTER_RANGE, input),
+    setupStorageRoot: (input) =>
+      invokeChannel(IPC_CHANNELS.PORTABILITY_SETUP_STORAGE_ROOT, input),
+    checkStorageHealth: () => invokeChannel(IPC_CHANNELS.PORTABILITY_CHECK_STORAGE_HEALTH),
+    backupNow: () => invokeChannel(IPC_CHANNELS.PORTABILITY_BACKUP_NOW),
   },
   diagnostics: {
     listProviders: () => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_LIST_PROVIDERS),
     healthReport: () => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_HEALTH_REPORT),
+    runSystemHealth: () => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_RUN_SYSTEM_HEALTH),
     export: (input) => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_EXPORT, input ?? {}),
     connectionTest: (input) =>
       invokeChannel(IPC_CHANNELS.DIAGNOSTICS_CONNECTION_TEST, input),
@@ -373,6 +378,8 @@ const api: NovelTransApi = {
     check: (input) => invokeChannel(IPC_CHANNELS.AI_PROVIDER_CHECK, input),
     setFallback: (input) => invokeChannel(IPC_CHANNELS.AI_PROVIDER_SET_FALLBACK, input),
     installWorker: () => invokeChannel(IPC_CHANNELS.AI_PROVIDER_INSTALL_WORKER),
+    autoSetupStatus: () => invokeChannel(IPC_CHANNELS.AI_AUTO_SETUP_STATUS),
+    autoSetupRun: () => invokeChannel(IPC_CHANNELS.AI_AUTO_SETUP_RUN),
   },
   aiAccounts: {
     list: (input) => invokeChannel(IPC_CHANNELS.AI_ACCOUNT_LIST, input ?? {}),

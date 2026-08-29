@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Card, SectionHeader } from '../ui';
+import { Button } from '../ui';
 import { useT } from '../../i18n';
+import { SettingsSection } from './SettingsSection';
+import { SettingsStatus } from './SettingsStatus';
+import { useSettingsFeedback } from './useSettingsFeedback';
 
-/** Global default export directory settings (Settings → Xuất dữ liệu). */
+/** Global default export directory settings (Settings → Lưu trữ). */
 export function ExportSettingsPanel() {
   const t = useT();
+  const { showSaved } = useSettingsFeedback();
   const [directory, setDirectory] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -26,7 +29,6 @@ export function ExportSettingsPanel() {
   const pickDirectory = async () => {
     setBusy(true);
     setError(null);
-    setMessage(null);
     try {
       const pick = await window.novelTrans.portability.selectExportDirectory();
       if (pick.canceled || !pick.directory) return;
@@ -35,7 +37,7 @@ export function ExportSettingsPanel() {
       });
       setDirectory(next.directory);
       setIsConfigured(next.isConfigured);
-      setMessage(t('exportDirectory.defaultSaved', { path: next.directory ?? '' }));
+      showSaved(t('exportDirectory.defaultSaved', { path: next.directory ?? '' }));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('exportDirectory.saveFailed'));
     } finally {
@@ -57,11 +59,11 @@ export function ExportSettingsPanel() {
   };
 
   return (
-    <Card as="section">
-      <SectionHeader title={t('exportDirectory.sectionTitle')} />
-      <p className="muted">{t('exportDirectory.sectionHelp')}</p>
-      {error ? <p className="banner banner-error">{error}</p> : null}
-      {message ? <p className="banner banner-success">{message}</p> : null}
+    <SettingsSection
+      title={t('exportDirectory.sectionTitle')}
+      description={t('exportDirectory.sectionHelp')}
+    >
+      {error ? <SettingsStatus tone="error">{error}</SettingsStatus> : null}
       <p>
         {isConfigured && directory
           ? directory
@@ -77,6 +79,6 @@ export function ExportSettingsPanel() {
           </Button>
         ) : null}
       </div>
-    </Card>
+    </SettingsSection>
   );
 }

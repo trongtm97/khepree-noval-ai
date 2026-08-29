@@ -73,7 +73,7 @@ export const aiProviderArticles: HelpArticle[] = [
       },
       {
         type: 'actions',
-        items: [{ label: 'Mở Cài đặt AI', to: '/settings' }],
+        items: [{ label: 'Mở Cài đặt AI', to: '/settings?tab=ai' }],
       },
     ],
   },

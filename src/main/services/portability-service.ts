@@ -22,6 +22,7 @@ import {
   setAutoBackupConfig,
   listBackupFiles,
   createManualDbBackup,
+  runManualFullBackup,
 } from '../portability/auto-backup';
 import {
   getBackupDirectory,
@@ -47,6 +48,10 @@ import {
   buildChapterRangeExportFilename,
   buildNovelExportFilename,
 } from '@shared/utils/sanitize-filename';
+import {
+  checkStorageHealth,
+  setupStorageRoot,
+} from '../portability/storage-setup-service';
 
 export class PortabilityService {
   constructor(
@@ -437,6 +442,23 @@ export class PortabilityService {
 
   createManualBackup(): { filePath: string } {
     const filePath = createManualDbBackup(this.getDbPath(), this.backupsDir());
+    return { filePath };
+  }
+
+  setupStorageRoot(root: string) {
+    return setupStorageRoot(this.getDb(), root);
+  }
+
+  async checkStorageHealth() {
+    return checkStorageHealth(this.getDb(), pathsService.getPath('backups'));
+  }
+
+  async backupNow(): Promise<{ filePath: string }> {
+    const filePath = await runManualFullBackup({
+      db: this.getDb(),
+      dbPath: this.getDbPath(),
+      backupsDir: this.backupsDir(),
+    });
     return { filePath };
   }
 }

@@ -150,7 +150,7 @@ export const operationsArticles: HelpArticle[] = [
       {
         type: 'actions',
         items: [
-          { label: 'Cài đặt xuất', to: '/settings?tab=export' },
+          { label: 'Cài đặt xuất', to: '/settings?tab=storage' },
           { label: 'Xuất dự án', to: '/export' },
         ],
       },

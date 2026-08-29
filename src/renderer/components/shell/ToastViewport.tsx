@@ -84,7 +84,7 @@ export function ToastViewport({
                   variant="secondary"
                   onClick={() => {
                     markRead(item.id);
-                    navigate('/settings?tab=aiProviders');
+                    navigate('/settings?tab=ai');
                   }}
                 >
                   {t('notifications.startupBannerCtaSettings')}

@@ -1,6 +1,6 @@
 # NovelTrans Studio
 
-Desktop Windows (10/11 x64) app for translating Chinese novels to Vietnamese using browser-automated Gemini / NotebookLM with the user's own Google accounts.
+Desktop Windows (10/11 x64) app for **multilingual novel translation**: detected source language, target translation editions, local-first project memory, and Gemini via Web API or browser automation with your own Google accounts. **Research Notebook** (NotebookLM) is optional—not required for core translation.
 
 **Version:** `0.1.0` (semantic versioning)
 
@@ -12,7 +12,7 @@ This tree includes the **Windows production packaging** pass (Forge installer, f
 
 ### Playwright / Gemini browser — not production-ready by default
 
-Do **not** claim the Playwright NotebookLM/Gemini path is production-ready unless [docs/REAL_GOOGLE_TEST_REPORT.md](docs/REAL_GOOGLE_TEST_REPORT.md) shows **Overall = PASS** for scenarios A–H.
+Do **not** claim the Playwright Gemini browser path is production-ready unless [docs/REAL_GOOGLE_TEST_REPORT.md](docs/REAL_GOOGLE_TEST_REPORT.md) shows **Overall = PASS** for scenarios A–H.
 
 ```bash
 copy google-smoke.config.example.json google-smoke.config.json
@@ -22,7 +22,7 @@ set NOVELTRANS_GOOGLE_SMOKE=1
 npm run test:google-smoke
 ```
 
-Or: Developer Diagnostics → **Run Real Google Smoke**.  
+Or: **Settings → Advanced → Diagnostics** or Developer Diagnostics → **Run Real Google Smoke**.  
 This suite is **opt-in** and is **not** part of default `npm test` / CI.
 
 ## Documentation

@@ -30,6 +30,10 @@ export const DEFAULT_RETENTION_WEEKLY = 4;
 export const DEFAULT_RETENTION_MONTHLY = 3;
 export const DEFAULT_AUTO_BACKUP_ENABLED = true;
 
+/** Subfolder names when user picks one storage root (Settings → Lưu trữ). */
+export const STORAGE_ROOT_EXPORT_SUBDIR = 'Exports';
+export const STORAGE_ROOT_BACKUP_SUBDIR = 'Backups';
+
 export const BACKUP_ARCHIVE_EXTENSION = '.nts-backup.zip';
 export const PROJECT_BACKUP_EXTENSION = '.nts-project.zip';
 

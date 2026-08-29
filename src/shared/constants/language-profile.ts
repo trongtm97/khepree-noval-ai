@@ -233,6 +233,13 @@ export function getLanguageProfile(code: string): LanguageProfile {
   };
 }
 
+/** Target language not fully verified for NovelTrans translation workflows. */
+export function isExperimentalTranslationLanguage(
+  profile: Pick<LanguageProfile, 'providerSupport' | 'novelTransVerification'>,
+): boolean {
+  return profile.providerSupport === 'CATALOG_ONLY';
+}
+
 export function isAutoLanguage(code: string | null | undefined): boolean {
   return (code ?? '').trim().toUpperCase() === LANGUAGE_AUTO;
 }

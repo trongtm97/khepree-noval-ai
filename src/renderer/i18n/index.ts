@@ -1,25 +1,62 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+  normalizeUiLocalePreference,
+  resolveUiLocale,
+  type UiLocaleCode,
+  type UiLocalePreference,
+} from '@shared/types/ui-locale';
 import { vi, type LocaleMessages } from './vi';
 import { en } from './en';
 
-export type LocaleCode = 'vi' | 'en';
+/** @deprecated Use UiLocaleCode from @shared/types/ui-locale */
+export type LocaleCode = UiLocaleCode;
 
-const catalogs: Record<LocaleCode, LocaleMessages> = { vi, en };
+export type { UiLocaleCode, UiLocalePreference, TranslationLanguageCode } from '@shared/types/ui-locale';
+
+const catalogs: Record<UiLocaleCode, LocaleMessages> = { vi, en };
 
 interface LocaleState {
-  locale: LocaleCode;
-  setLocale: (locale: LocaleCode) => void;
+  preference: UiLocalePreference;
+  setPreference: (preference: UiLocalePreference) => void;
+  /** @deprecated Use setPreference with vi | en */
+  setLocale: (locale: UiLocaleCode) => void;
 }
 
 export const useLocaleStore = create<LocaleState>()(
   persist(
-    (set) => ({
-      locale: 'vi',
-      setLocale: (locale) => set({ locale }),
+    (set, get) => ({
+      preference: 'vi',
+      setPreference: (preference) => {
+        const normalized = normalizeUiLocalePreference(preference);
+        const resolved = resolveUiLocale(normalized);
+        if (!(resolved in catalogs)) {
+          throw new Error('LOCALE_CATALOG_MISSING');
+        }
+        set({ preference: normalized });
+      },
+      setLocale: (locale) => {
+        get().setPreference(locale);
+      },
     }),
-    { name: 'noveltrans-locale' },
+    {
+      name: 'noveltrans-locale',
+      version: 1,
+      migrate: (persisted: unknown) => {
+        if (!persisted || typeof persisted !== 'object') {
+          return { preference: 'vi' satisfies UiLocalePreference };
+        }
+        const row = persisted as { preference?: unknown; locale?: unknown };
+        if (row.preference !== undefined) {
+          return { preference: normalizeUiLocalePreference(row.preference) };
+        }
+        if (row.locale === 'vi' || row.locale === 'en') {
+          return { preference: row.locale };
+        }
+        return { preference: 'vi' satisfies UiLocalePreference };
+      },
+    },
   ),
 );
 
@@ -34,8 +71,12 @@ function getByPath(obj: unknown, path: string): unknown {
   }, obj);
 }
 
-export function t(key: string, params?: Params, locale?: LocaleCode): string {
-  const code = locale ?? useLocaleStore.getState().locale;
+export function getResolvedUiLocale(): UiLocaleCode {
+  return resolveUiLocale(useLocaleStore.getState().preference);
+}
+
+export function t(key: string, params?: Params, locale?: UiLocaleCode): string {
+  const code = locale ?? getResolvedUiLocale();
   const catalog = catalogs[code];
   const raw = getByPath(catalog, key);
   let text = typeof raw === 'string' ? raw : key;
@@ -48,7 +89,8 @@ export function t(key: string, params?: Params, locale?: LocaleCode): string {
 }
 
 export function useT(): (key: string, params?: Params) => string {
-  const locale = useLocaleStore((s) => s.locale);
+  const preference = useLocaleStore((s) => s.preference);
+  const locale = useMemo(() => resolveUiLocale(preference), [preference]);
   return useCallback((key, params) => t(key, params, locale), [locale]);
 }
 

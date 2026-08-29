@@ -197,7 +197,7 @@ function virtualRowBoxes(container: HTMLElement): { start: number; size: number 
 
 describe('EditorVirtualList variable height', () => {
   beforeEach(() => {
-    useLocaleStore.setState({ locale: 'vi' });
+    useLocaleStore.setState({ preference: 'vi' });
     useUiShellStore.setState({ showParagraphIds: false, showAdvancedTools: false });
     globalThis.ResizeObserver = ResizeObserverMock;
     installLayoutMocks();
