@@ -50,8 +50,8 @@ function extractI18nKeys(source: string): string[] {
 }
 
 function loadLocale(keyPrefix: string): Record<string, string> {
-  const viPath = path.join(ROOT, 'src/renderer/i18n/vi.ts');
-  const enPath = path.join(ROOT, 'src/renderer/i18n/en.ts');
+  const viPath = path.join(ROOT, 'src/renderer/i18n/locales/vi/index.ts');
+  const enPath = path.join(ROOT, 'src/renderer/i18n/locales/en/index.ts');
   const text = fs.readFileSync(viPath, 'utf8') + fs.readFileSync(enPath, 'utf8');
   const out: Record<string, string> = {};
   const re = new RegExp(`(${keyPrefix.replace(/\./g, '\\.')}[\\w.]*)\\s*:\\s*'([^']*)'`, 'g');

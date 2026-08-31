@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { vi as viMessages } from '../../src/renderer/i18n/vi';
-import { en as enMessages } from '../../src/renderer/i18n/en';
+import { vi as viMessages } from '../../src/renderer/i18n/locales/vi';
+import { en as enMessages } from '../../src/renderer/i18n/locales/en';
 import { detectErrorCode, friendlyError } from '../../src/renderer/i18n/errors';
 import { statusLabel, statusTone } from '../../src/renderer/i18n/status';
 import { t, useLocaleStore } from '../../src/renderer/i18n';

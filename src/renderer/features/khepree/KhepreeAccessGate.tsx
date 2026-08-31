@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { KhepreeAccessState } from '@shared/schemas/khepree';
 import { useT } from '../../i18n';
-import { useLocaleStore } from '../../i18n';
 import { AppBrand } from '../../components/shell/AppBrand';
 import { Button } from '../../components/ui';
 
@@ -21,26 +20,6 @@ function GateLayout({ title, subtitle, children }: GateLayoutProps) {
         {children}
       </div>
     </div>
-  );
-}
-
-function LanguageGate({
-  onChoose,
-}: {
-  onChoose: (locale: 'vi' | 'en') => Promise<void>;
-}) {
-  const t = useT();
-  return (
-    <GateLayout title={t('khepree.language.title')} subtitle={t('khepree.language.subtitle')}>
-      <div className="khepree-gate__actions">
-        <Button type="button" variant="primary" onClick={() => void onChoose('vi')}>
-          Tiếng Việt
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => void onChoose('en')}>
-          English
-        </Button>
-      </div>
-    </GateLayout>
   );
 }
 
@@ -149,7 +128,6 @@ export function KhepreeAccessGate({
   state: KhepreeAccessState;
   children: ReactNode;
 }) {
-  const setPreference = useLocaleStore((s) => s.setPreference);
   const [busy, setBusy] = useState(false);
 
   if (state.gate === 'workspace' && state.canUseWorkspace) {
@@ -166,15 +144,6 @@ export function KhepreeAccessGate({
   };
 
   switch (state.gate) {
-    case 'language':
-      return (
-        <LanguageGate
-          onChoose={async (locale) => {
-            await window.novelTrans.khepree.setLocale({ locale });
-            setPreference(locale);
-          }}
-        />
-      );
     case 'login':
       return (
         <LoginGate

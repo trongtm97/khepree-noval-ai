@@ -365,18 +365,23 @@ import { getDiagnosticsService } from '../services/diagnostics-service-singleton
 import { getSetupService } from '../services/setup-service-singleton';
 import { getKhepreeAccessService } from '../khepree/khepree-access-singleton';
 import { assertKhepreeProductAccess } from '../khepree/product-access-boundary';
+import { getUiLanguageService } from '../services/ui-language-service-singleton';
 import {
   KhepreeGetAccessStateResponseSchema,
   KhepreeOpenExternalRequestSchema,
   KhepreeOpenExternalResponseSchema,
   KhepreeRefreshEntitlementResponseSchema,
   KhepreeRetryActivationResponseSchema,
-  KhepreeSetLocaleRequestSchema,
-  KhepreeSetLocaleResponseSchema,
   KhepreeSignOutResponseSchema,
   KhepreeStartCheckoutResponseSchema,
   KhepreeStartLoginResponseSchema,
 } from '@shared/schemas/khepree';
+import {
+  UiLanguageCompleteFirstRunRequestSchema,
+  UiLanguageSetRequestSchema,
+  UiLanguageSetResponseSchema,
+  UiLanguageStatusSchema,
+} from '@shared/schemas/ui-language';
 import { openKhepreeExternal } from '../khepree/external-links';
 import {
   checkForUpdates,
@@ -3050,10 +3055,27 @@ function registerAiProviderHandlers(): void {
   );
 
   ipcMain.handle(
-    IPC_CHANNELS.KHEPREE_SET_LOCALE,
-    createIpcHandler(KhepreeSetLocaleRequestSchema, (request) => {
-      const state = getKhepreeAccessService().setLocale(request.locale);
-      return KhepreeSetLocaleResponseSchema.parse({ ok: true, state });
+    IPC_CHANNELS.UI_LANGUAGE_GET,
+    createIpcHandlerNoArg(() => {
+      return UiLanguageStatusSchema.parse(getUiLanguageService().getStatus());
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.UI_LANGUAGE_SET,
+    createIpcHandler(UiLanguageSetRequestSchema, (request) => {
+      return UiLanguageSetResponseSchema.parse(
+        getUiLanguageService().setPreference(request.preference),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.UI_LANGUAGE_COMPLETE_FIRST_RUN,
+    createIpcHandler(UiLanguageCompleteFirstRunRequestSchema, (request) => {
+      return UiLanguageSetResponseSchema.parse(
+        getUiLanguageService().completeFirstRun(request.preference),
+      );
     }),
   );
 

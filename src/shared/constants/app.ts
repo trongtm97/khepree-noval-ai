@@ -6,5 +6,4 @@ export const EXECUTABLE_NAME = 'KhepreeNovelAI' as const;
 export const APP_DATA_DIR_NAME = 'KhepreeNovelAI' as const;
 export const DB_FILENAME = 'khepree-novel-ai.db' as const;
 export const LOG_FILENAME = 'khepree-novel-ai.log' as const;
-export const LOCALE_STORAGE_KEY = 'khepree-novel-ai-locale' as const;
 export const BROWSER_PROFILES_DIR = 'browser-profiles' as const;

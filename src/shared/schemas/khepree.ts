@@ -1,11 +1,9 @@
+import { z } from 'zod';
 import {
   KHEPREE_EXTERNAL_URLS,
   KHEPREE_GATE_PHASES,
   KHEPREE_HEARTBEAT_STATUSES,
 } from '../constants/khepree';
-import { z } from 'zod';
-
-const UiLocaleCodeSchema = z.enum(['vi', 'en']);
 
 export const KhepreeUserDisplaySchema = z.object({
   id: z.string(),
@@ -61,8 +59,6 @@ export type KhepreeAccessError = z.infer<typeof KhepreeAccessErrorSchema>;
 export const KhepreeAccessStateSchema = z.object({
   gate: z.enum(KHEPREE_GATE_PHASES),
   signedIn: z.boolean(),
-  localeChosen: z.boolean(),
-  locale: UiLocaleCodeSchema.optional(),
   user: KhepreeUserDisplaySchema.nullable(),
   plan: KhepreePlanDisplaySchema.nullable(),
   entitlement: KhepreeEntitlementStateSchema,
@@ -82,15 +78,6 @@ export const KhepreeAccessStateSchema = z.object({
 export type KhepreeAccessState = z.infer<typeof KhepreeAccessStateSchema>;
 
 export const KhepreeGetAccessStateResponseSchema = KhepreeAccessStateSchema;
-
-export const KhepreeSetLocaleRequestSchema = z.object({
-  locale: UiLocaleCodeSchema,
-});
-
-export const KhepreeSetLocaleResponseSchema = z.object({
-  ok: z.literal(true),
-  state: KhepreeAccessStateSchema,
-});
 
 export const KhepreeStartLoginResponseSchema = z.object({
   ok: z.literal(true),

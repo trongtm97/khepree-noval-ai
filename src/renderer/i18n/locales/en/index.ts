@@ -1,4 +1,4 @@
-import type { LocaleMessages } from './vi';
+import type { LocaleMessages } from '../vi';
 
 /** English stub — same shape as vi for future locale switch. */
 export const en: LocaleMessages = {

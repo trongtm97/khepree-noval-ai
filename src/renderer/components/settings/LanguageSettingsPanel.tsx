@@ -7,7 +7,7 @@ import {
   getLanguageProfile,
   isExperimentalTranslationLanguage,
 } from '@shared/constants/language-profile';
-import { useLocaleStore, useT } from '../../i18n';
+import { useLocaleStore, useT, applyUiLanguageStatus } from '../../i18n';
 import { LanguagePicker } from '../LanguagePicker';
 import { UiLocalePicker } from '../UiLocalePicker';
 import { SettingsGroup } from './SettingsGroup';
@@ -22,7 +22,6 @@ export function LanguageSettingsPanel(props: {
   const t = useT();
   const { showSaved } = useSettingsFeedback();
   const preference = useLocaleStore((s) => s.preference);
-  const setPreference = useLocaleStore((s) => s.setPreference);
 
   const [uiLocaleError, setUiLocaleError] = useState<string | null>(null);
   const [settings, setSettings] = useState<DefaultTargetLanguageSettings | null>(null);
@@ -63,12 +62,15 @@ export function LanguageSettingsPanel(props: {
   const handleUiLocaleChange = (next: UiLocalePreference) => {
     if (next === preference) return;
     setUiLocaleError(null);
-    try {
-      setPreference(next);
-      showSaved(t('settings.saved'));
-    } catch {
-      setUiLocaleError(t('settings.uiLocaleChangeFailed'));
-    }
+    void window.novelTrans.uiLanguage
+      .set({ preference: next })
+      .then((status) => {
+        applyUiLanguageStatus(status);
+        showSaved(t('settings.saved'));
+      })
+      .catch(() => {
+        setUiLocaleError(t('settings.uiLocaleChangeFailed'));
+      });
   };
 
   const handleTargetChange = (code: string) => {

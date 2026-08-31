@@ -1,15 +1,14 @@
-import { LOCALE_STORAGE_KEY } from '@shared/constants/app';
 import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import {
   normalizeUiLocalePreference,
   resolveUiLocale,
   type UiLocaleCode,
   type UiLocalePreference,
 } from '@shared/types/ui-locale';
-import { vi, type LocaleMessages } from './vi';
-import { en } from './en';
+import type { UiLanguageStatus } from '@shared/schemas/ui-language';
+import { vi, type LocaleMessages } from './locales/vi';
+import { en } from './locales/en';
 
 /** @deprecated Use UiLocaleCode from @shared/types/ui-locale */
 export type LocaleCode = UiLocaleCode;
@@ -20,46 +19,36 @@ const catalogs: Record<UiLocaleCode, LocaleMessages> = { vi, en };
 
 interface LocaleState {
   preference: UiLocalePreference;
+  hydrated: boolean;
   setPreference: (preference: UiLocalePreference) => void;
   /** @deprecated Use setPreference with vi | en */
   setLocale: (locale: UiLocaleCode) => void;
 }
 
-export const useLocaleStore = create<LocaleState>()(
-  persist(
-    (set, get) => ({
-      preference: 'vi',
-      setPreference: (preference) => {
-        const normalized = normalizeUiLocalePreference(preference);
-        const resolved = resolveUiLocale(normalized);
-        if (!(resolved in catalogs)) {
-          throw new Error('LOCALE_CATALOG_MISSING');
-        }
-        set({ preference: normalized });
-      },
-      setLocale: (locale) => {
-        get().setPreference(locale);
-      },
-    }),
-    {
-      name: LOCALE_STORAGE_KEY,
-      version: 1,
-      migrate: (persisted: unknown) => {
-        if (!persisted || typeof persisted !== 'object') {
-          return { preference: 'vi' satisfies UiLocalePreference };
-        }
-        const row = persisted as { preference?: unknown; locale?: unknown };
-        if (row.preference !== undefined) {
-          return { preference: normalizeUiLocalePreference(row.preference) };
-        }
-        if (row.locale === 'vi' || row.locale === 'en') {
-          return { preference: row.locale };
-        }
-        return { preference: 'vi' satisfies UiLocalePreference };
-      },
-    },
-  ),
-);
+/** In-memory only — persisted in SQLite app_meta via uiLanguage IPC. */
+export const useLocaleStore = create<LocaleState>()((set, get) => ({
+  preference: 'vi',
+  hydrated: false,
+  setPreference: (preference) => {
+    const normalized = normalizeUiLocalePreference(preference);
+    const resolved = resolveUiLocale(normalized);
+    if (!(resolved in catalogs)) {
+      throw new Error('LOCALE_CATALOG_MISSING');
+    }
+    set({ preference: normalized, hydrated: true });
+  },
+  setLocale: (locale) => {
+    get().setPreference(locale);
+  },
+}));
+
+/** Apply server-authoritative UI language (app_meta). */
+export function applyUiLanguageStatus(status: UiLanguageStatus): void {
+  useLocaleStore.setState({
+    preference: status.preference,
+    hydrated: true,
+  });
+}
 
 type Params = Record<string, string | number>;
 

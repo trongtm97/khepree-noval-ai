@@ -3,8 +3,6 @@
 export const KHEPREE_PRODUCT_ID = 'novel-ai' as const;
 
 export const KHEPREE_META_KEYS = {
-  localeChosen: 'khepree.locale.chosen',
-  localeCode: 'khepree.locale.code',
   installationId: 'khepree.device.installation_id',
   deviceId: 'khepree.device.device_id',
   deviceName: 'khepree.device.name',
@@ -28,7 +26,6 @@ export type KhepreeExternalLinkTarget = keyof typeof KHEPREE_EXTERNAL_URLS;
 
 /** Gate the renderer must pass before functional workspace. */
 export const KHEPREE_GATE_PHASES = [
-  'language',
   'login',
   'offline',
   'entitlement',

@@ -4,7 +4,7 @@ import {
   resolveSystemUiLocale,
   resolveUiLocale,
 } from '../../../src/shared/types/ui-locale';
-import { getResolvedUiLocale, t, useLocaleStore } from '../../../src/renderer/i18n';
+import { getResolvedUiLocale, t, useLocaleStore, applyUiLanguageStatus } from '../../../src/renderer/i18n';
 
 describe('ui locale resolution', () => {
   beforeEach(() => {
@@ -35,11 +35,23 @@ describe('ui locale resolution', () => {
     expect(getResolvedUiLocale()).toBe('en');
   });
 
-  it('persists preference after setPreference', () => {
+  it('stores preference in memory after setPreference', () => {
     useLocaleStore.getState().setPreference('en');
     expect(useLocaleStore.getState().preference).toBe('en');
     useLocaleStore.getState().setPreference('system');
     expect(useLocaleStore.getState().preference).toBe('system');
+  });
+
+  it('applyUiLanguageStatus hydrates from server state', () => {
+    applyUiLanguageStatus({
+      preference: 'en',
+      locale: 'en',
+      chosen: true,
+      needsFirstRunChooser: false,
+    });
+    expect(useLocaleStore.getState().preference).toBe('en');
+    expect(useLocaleStore.getState().hydrated).toBe(true);
+    expect(t('nav.dashboard')).toBe('Overview');
   });
 
   it('migrates legacy persisted locale field', () => {

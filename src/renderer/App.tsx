@@ -23,6 +23,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { LogsPage } from './pages/LogsPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
 import { SetupWizardPage } from './pages/SetupWizardPage';
+import { LanguageFirstRunPage } from './pages/LanguageFirstRunPage';
 import { KhepreePage } from './pages/KhepreePage';
 import { KhepreeAccessGate } from './features/khepree/KhepreeAccessGate';
 import { useKhepreeAccessState } from './features/khepree/useKhepreeAccessState';
@@ -33,15 +34,17 @@ import {
   useThemeStore,
   watchSystemTheme,
 } from './stores/theme-store';
-import { useT, t as i18nT, useLocaleStore } from './i18n';
+import { useT, t as i18nT, applyUiLanguageStatus } from './i18n';
 import type { GetInfoResponse } from '@shared/schemas/ipc';
 import type { SetupStatus } from '@shared/schemas/setup';
+import type { UiLanguageStatus } from '@shared/schemas/ui-language';
 
 export function App() {
   const t = useT();
   const themeMode = useThemeStore((state) => state.mode);
   const [appInfo, setAppInfo] = useState<GetInfoResponse | null>(null);
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
+  const [uiLanguage, setUiLanguage] = useState<UiLanguageStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { state: khepreeState, loading: khepreeLoading } = useKhepreeAccessState();
 
@@ -58,15 +61,17 @@ export function App() {
 
     void (async () => {
       try {
-        const [info, setup] = await Promise.all([
+        const [info, setup, language] = await Promise.all([
           window.novelTrans.getInfo(),
           window.novelTrans.setup.getStatus(),
+          window.novelTrans.uiLanguage.get(),
         ]);
-        if (alive.current) {
-          setAppInfo(info);
-          setSetupStatus(setup);
-          setLoadError(null);
-        }
+        if (!alive.current) return;
+        applyUiLanguageStatus(language);
+        setAppInfo(info);
+        setSetupStatus(setup);
+        setUiLanguage(language);
+        setLoadError(null);
       } catch (error: unknown) {
         if (alive.current) {
           const message =
@@ -81,15 +86,15 @@ export function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (khepreeState?.locale) {
-      useLocaleStore.getState().setPreference(khepreeState.locale);
-    }
-  }, [khepreeState?.locale]);
-
   const enterApp = async () => {
     const setup = await window.novelTrans.setup.getStatus();
     setSetupStatus(setup);
+  };
+
+  const completeLanguageFirstRun = async () => {
+    const language = await window.novelTrans.uiLanguage.get();
+    applyUiLanguageStatus(language);
+    setUiLanguage(language);
   };
 
   if (loadError) {
@@ -109,8 +114,20 @@ export function App() {
     );
   }
 
-  if (!appInfo || !setupStatus || khepreeLoading || !khepreeState) {
+  if (!appInfo || !setupStatus || !uiLanguage || khepreeLoading || !khepreeState) {
     return <LoadingScreen />;
+  }
+
+  if (uiLanguage.needsFirstRunChooser) {
+    return (
+      <ErrorBoundary>
+        <LanguageFirstRunPage
+          onComplete={() => {
+            void completeLanguageFirstRun();
+          }}
+        />
+      </ErrorBoundary>
+    );
   }
 
   const appContent = (() => {

@@ -1311,9 +1311,6 @@ export interface NovelTransApi {
   };
   khepree: {
     getAccessState: () => Promise<import('../schemas/khepree').KhepreeAccessState>;
-    setLocale: (input: {
-      locale: import('../types/ui-locale').UiLocaleCode;
-    }) => Promise<{ ok: true; state: import('../schemas/khepree').KhepreeAccessState }>;
     startLogin: () => Promise<{ ok: true; state: import('../schemas/khepree').KhepreeAccessState }>;
     retryColdStart: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
     retryActivation: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
@@ -1326,6 +1323,15 @@ export interface NovelTransApi {
     onAccessState: (
       callback: (state: import('../schemas/khepree').KhepreeAccessState) => void,
     ) => () => void;
+  };
+  uiLanguage: {
+    get: () => Promise<import('../schemas/ui-language').UiLanguageStatus>;
+    set: (input: {
+      preference: import('../types/ui-locale').UiLocalePreference;
+    }) => Promise<import('../schemas/ui-language').UiLanguageStatus>;
+    completeFirstRun: (input: {
+      preference: import('../types/ui-locale').UiLocaleCode;
+    }) => Promise<import('../schemas/ui-language').UiLanguageStatus>;
   };
 }
 

@@ -41,7 +41,12 @@ export function resolveSystemUiLocale(
   return 'vi';
 }
 
-export function resolveUiLocale(preference: UiLocalePreference): UiLocaleCode {
-  if (preference === 'system') return resolveSystemUiLocale();
+export function resolveUiLocale(
+  preference: UiLocalePreference,
+  systemLocale?: UiLocaleCode,
+): UiLocaleCode {
+  if (preference === 'system') {
+    return systemLocale ?? resolveSystemUiLocale();
+  }
   return preference;
 }

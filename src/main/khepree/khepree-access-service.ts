@@ -2,7 +2,6 @@ import { shell } from 'electron';
 import {
   KHEPREE_DEFAULT_HEARTBEAT_MS,
   KHEPREE_FEATURES,
-  KHEPREE_META_KEYS,
   type KhepreeGatePhase,
   type KhepreeHeartbeatStatus,
 } from '@shared/constants/khepree';
@@ -14,7 +13,6 @@ import type {
   KhepreeEntitlementState,
   KhepreeBillingState,
 } from '@shared/schemas/khepree';
-import type { UiLocaleCode } from '@shared/types/ui-locale';
 import type { DatabaseManager } from '../db/database-manager';
 import type { SecretStorageService } from '../security/secret-storage-service';
 import { logger } from '../logging/logger';
@@ -56,7 +54,7 @@ export class KhepreeAccessService {
   private features: Record<string, boolean> = {};
   private devicesUsed: number | null = null;
   private devicesMax: number | null = null;
-  private gate: KhepreeGatePhase = 'language';
+  private gate: KhepreeGatePhase = 'login';
   private heartbeatStatus: KhepreeHeartbeatStatus | null = null;
   private lastError: { code: string; message: string } | null = null;
   private loginInProgress = false;
@@ -65,7 +63,7 @@ export class KhepreeAccessService {
   private hasRefreshCredential = false;
 
   constructor(
-    private readonly getDb: () => DatabaseManager,
+    getDb: () => DatabaseManager,
     secretStorage: SecretStorageService,
   ) {
     this.api = createKhepreeApiClient(getKhepreeApiBaseUrl(), isKhepreeDevMockEnabled());
@@ -87,9 +85,6 @@ export class KhepreeAccessService {
   }
 
   getPublicState(): KhepreeAccessState {
-    const localeRaw = this.getDb().appMeta.get(KHEPREE_META_KEYS.localeCode);
-    const locale = localeRaw === 'en' || localeRaw === 'vi' ? localeRaw : undefined;
-    const localeChosen = this.getDb().appMeta.get(KHEPREE_META_KEYS.localeChosen) === '1';
     const leaseValid = isLeaseCurrentlyValid(this.currentLease);
     let leaseExpiresAt: string | null = null;
     let graceUntil: string | null = null;
@@ -101,8 +96,6 @@ export class KhepreeAccessService {
     return {
       gate: this.gate,
       signedIn: this.user != null && this.hasRefreshCredential,
-      localeChosen,
-      locale,
       user: this.user,
       plan: this.plan,
       entitlement: this.entitlement,
@@ -138,11 +131,7 @@ export class KhepreeAccessService {
   }
 
   async initializeOnColdStart(): Promise<KhepreeAccessState> {
-    this.resolveInitialGate();
-    if (this.gate === 'language') {
-      this.emit();
-      return this.getPublicState();
-    }
+    this.gate = 'login';
 
     const hasRefresh = this.sessionStore.hasRefreshToken();
     this.hasRefreshCredential = hasRefresh;
@@ -159,15 +148,6 @@ export class KhepreeAccessService {
     }
     this.emit();
     return this.getPublicState();
-  }
-
-  private resolveInitialGate(): void {
-    const localeChosen = this.getDb().appMeta.get(KHEPREE_META_KEYS.localeChosen) === '1';
-    if (!localeChosen) {
-      this.gate = 'language';
-      return;
-    }
-    this.gate = 'login';
   }
 
   private async performColdStartValidation(): Promise<void> {
@@ -264,17 +244,6 @@ export class KhepreeAccessService {
       code: error instanceof KhepreeAccessError ? error.code : 'COLD_START_FAILED',
       message: error instanceof Error ? error.message : 'Cold start validation failed',
     };
-  }
-
-  setLocale(locale: UiLocaleCode): KhepreeAccessState {
-    const db = this.getDb();
-    db.appMeta.set(KHEPREE_META_KEYS.localeCode, locale);
-    db.appMeta.set(KHEPREE_META_KEYS.localeChosen, '1');
-    if (this.gate === 'language') {
-      this.gate = 'login';
-    }
-    this.emit();
-    return this.getPublicState();
   }
 
   async startLogin(): Promise<KhepreeAccessState> {

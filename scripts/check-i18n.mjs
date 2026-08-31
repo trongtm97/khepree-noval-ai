@@ -84,8 +84,8 @@ function extractLeafKeys(filePath) {
   return keys;
 }
 
-const viKeys = extractLeafKeys(path.join(root, 'src/renderer/i18n/vi.ts'));
-const enKeys = extractLeafKeys(path.join(root, 'src/renderer/i18n/en.ts'));
+const viKeys = extractLeafKeys(path.join(root, 'src/renderer/i18n/locales/vi/index.ts'));
+const enKeys = extractLeafKeys(path.join(root, 'src/renderer/i18n/locales/en/index.ts'));
 
 const missingInEn = [...viKeys].filter((k) => !enKeys.has(k)).sort();
 const missingInVi = [...enKeys].filter((k) => !viKeys.has(k)).sort();

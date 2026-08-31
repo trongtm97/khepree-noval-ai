@@ -222,7 +222,6 @@ export const IPC_CHANNELS = {
   AI_MODELS_LIST: 'aiModels:list',
   AI_MODELS_SYNC: 'aiModels:sync',
   KHEPREE_GET_ACCESS_STATE: 'khepree:getAccessState',
-  KHEPREE_SET_LOCALE: 'khepree:setLocale',
   KHEPREE_START_LOGIN: 'khepree:startLogin',
   KHEPREE_RETRY_COLD_START: 'khepree:retryColdStart',
   KHEPREE_RETRY_ACTIVATION: 'khepree:retryActivation',
@@ -231,6 +230,9 @@ export const IPC_CHANNELS = {
   KHEPREE_SIGN_OUT: 'khepree:signOut',
   KHEPREE_OPEN_EXTERNAL: 'khepree:openExternal',
   KHEPREE_ACCESS_STATE: 'khepree:accessState',
+  UI_LANGUAGE_GET: 'uiLanguage:get',
+  UI_LANGUAGE_SET: 'uiLanguage:set',
+  UI_LANGUAGE_COMPLETE_FIRST_RUN: 'uiLanguage:completeFirstRun',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

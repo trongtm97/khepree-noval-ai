@@ -412,7 +412,6 @@ const api: NovelTransApi = {
   },
   khepree: {
     getAccessState: () => invokeChannel(IPC_CHANNELS.KHEPREE_GET_ACCESS_STATE),
-    setLocale: (input) => invokeChannel(IPC_CHANNELS.KHEPREE_SET_LOCALE, input),
     startLogin: () => invokeChannel(IPC_CHANNELS.KHEPREE_START_LOGIN),
     retryColdStart: () => invokeChannel(IPC_CHANNELS.KHEPREE_RETRY_COLD_START),
     retryActivation: () => invokeChannel(IPC_CHANNELS.KHEPREE_RETRY_ACTIVATION),
@@ -429,6 +428,12 @@ const api: NovelTransApi = {
         ipcRenderer.removeListener(IPC_CHANNELS.KHEPREE_ACCESS_STATE, listener);
       };
     },
+  },
+  uiLanguage: {
+    get: () => invokeChannel(IPC_CHANNELS.UI_LANGUAGE_GET),
+    set: (input) => invokeChannel(IPC_CHANNELS.UI_LANGUAGE_SET, input),
+    completeFirstRun: (input) =>
+      invokeChannel(IPC_CHANNELS.UI_LANGUAGE_COMPLETE_FIRST_RUN, input),
   },
   checkForUpdates: () => invokeChannel(IPC_CHANNELS.APP_CHECK_FOR_UPDATES),
 };
