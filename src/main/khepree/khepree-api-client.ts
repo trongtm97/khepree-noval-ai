@@ -3,16 +3,19 @@ import { randomUUID } from 'node:crypto';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
 import { KhepreeSignedLeaseSchema, type KhepreeSignedLease, type KhepreeSignedLeasePayload } from '@shared/schemas/khepree';
-import type { KhepreeHeartbeatStatus } from '@shared/constants/khepree';
+import type { KhepreeHeartbeatStatus, KhepreeCheckoutStatus } from '@shared/constants/khepree';
 import {
   KhepreeActivateDeviceResponseSchema,
   KhepreeAuthTokenResultSchema,
+  KhepreeCheckoutStatusResponseSchema,
   KhepreeCheckoutUrlResponseSchema,
   KhepreeColdStartResultSchema,
   KhepreeHeartbeatResponseSchema,
+  KhepreePlanCatalogResponseSchema,
   type KhepreeActivateDeviceResponse,
   type KhepreeAuthTokenResult,
   type KhepreeColdStartResult,
+  type KhepreePlanCatalogResponse,
 } from '@shared/schemas/khepree-api';
 import { getDevSigningKeys } from './dev-signing-keys';
 import { deriveS256Challenge } from './pkce';
@@ -90,7 +93,22 @@ export interface KhepreeApiClient {
     signature: string;
   }): Promise<{ status: KhepreeHeartbeatStatus }>;
 
-  getCheckoutUrl(input: { accessToken: string; productId: string }): Promise<{ checkoutUrl: string }>;
+  getCheckoutUrl(input: {
+    accessToken: string;
+    productId: string;
+    planId: string;
+  }): Promise<{ checkoutUrl: string; checkoutSessionId: string }>;
+
+  getCheckoutStatus(input: {
+    accessToken: string;
+    productId: string;
+    checkoutSessionId: string;
+  }): Promise<{ status: KhepreeCheckoutStatus }>;
+
+  getPlanCatalog(input: {
+    accessToken: string;
+    productId: string;
+  }): Promise<KhepreePlanCatalogResponse>;
 
   revokeSession(input: { accessToken: string }): Promise<{ ok: true }>;
 }
@@ -141,6 +159,54 @@ export const mockKhepreeHeartbeatState = {
   nextStatus: 'ACTIVE' as KhepreeHeartbeatStatus,
   networkFail: false,
 };
+
+export const mockKhepreeCheckoutState = {
+  statusSequence: ['PENDING', 'PENDING', 'ACCESS_ACTIVE'] as KhepreeCheckoutStatus[],
+  statusIndex: 0,
+  returnBadUrl: false,
+  invalidPlanIds: new Set<string>(),
+  /** After payment, entitlement cold-start may lag until this is cleared. */
+  entitlementPendingAfterPayment: false,
+};
+
+function buildMockPlanCatalog(): KhepreePlanCatalogResponse {
+  const hasEntitlement = process.env.KHEPREE_MOCK_NO_ENTITLEMENT !== '1';
+  return {
+    currentPlanId: hasEntitlement ? 'pro-90d' : null,
+    plans: [
+      {
+        planId: 'starter-90d',
+        planName: 'Starter',
+        price: 99_000,
+        currency: 'VND',
+        accessTerm: '90 days',
+        featureSummary: ['Translation', 'Export'],
+        isCurrent: false,
+        isUpgradeAvailable: true,
+      },
+      {
+        planId: 'pro-90d',
+        planName: 'Pro',
+        price: 199_000,
+        currency: 'VND',
+        accessTerm: '90 days',
+        featureSummary: ['Translation', 'Export', 'Multi-provider', 'Learning'],
+        isCurrent: hasEntitlement,
+        isUpgradeAvailable: !hasEntitlement,
+      },
+      {
+        planId: 'pro-365d',
+        planName: 'Pro Annual',
+        price: 699_000,
+        currency: 'VND',
+        accessTerm: '365 days',
+        featureSummary: ['Translation', 'Export', 'Multi-provider', 'Learning'],
+        isCurrent: false,
+        isUpgradeAvailable: true,
+      },
+    ],
+  };
+}
 
 /** In-process mock for dev — simulates Khepree API without network. */
 export class MockKhepreeApiClient implements KhepreeApiClient {
@@ -338,8 +404,61 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     return Promise.resolve({ status });
   }
 
-  getCheckoutUrl(): Promise<{ checkoutUrl: string }> {
-    return Promise.resolve({ checkoutUrl: 'https://account.khepree.com/checkout?mock=1' });
+  getCheckoutUrl(input: {
+    accessToken: string;
+    productId: string;
+    planId: string;
+  }): Promise<{ checkoutUrl: string; checkoutSessionId: string }> {
+    if (
+      mockKhepreeCheckoutState.invalidPlanIds.has(input.planId) ||
+      input.planId === 'bad-plan'
+    ) {
+      return Promise.reject(new KhepreeAccessError('INVALID_PLAN', 'Plan not available for checkout.'));
+    }
+    const catalog = buildMockPlanCatalog();
+    const known = catalog.plans.some((plan) => plan.planId === input.planId);
+    if (!known) {
+      return Promise.reject(new KhepreeAccessError('INVALID_PLAN', 'Plan not found.'));
+    }
+    if (mockKhepreeCheckoutState.returnBadUrl) {
+      return Promise.resolve({
+        checkoutUrl: 'https://evil.example/checkout',
+        checkoutSessionId: `mock-checkout-${input.planId}`,
+      });
+    }
+    return Promise.resolve({
+      checkoutUrl: `https://account.khepree.com/checkout?mock=1&plan=${encodeURIComponent(input.planId)}`,
+      checkoutSessionId: `mock-checkout-${input.planId}`,
+    });
+  }
+
+  getCheckoutStatus(_input: {
+    accessToken: string;
+    productId: string;
+    checkoutSessionId: string;
+  }): Promise<{ status: KhepreeCheckoutStatus }> {
+    const envStatus = process.env.KHEPREE_MOCK_CHECKOUT_STATUS as KhepreeCheckoutStatus | undefined;
+    if (envStatus) {
+      return Promise.resolve({ status: envStatus });
+    }
+    const seq = mockKhepreeCheckoutState.statusSequence;
+    const idx = mockKhepreeCheckoutState.statusIndex;
+    mockKhepreeCheckoutState.statusIndex = Math.min(idx + 1, seq.length);
+    const status = seq[Math.min(idx, seq.length - 1)] ?? 'PENDING';
+    if (status === 'ACCESS_ACTIVE' && mockKhepreeCheckoutState.entitlementPendingAfterPayment) {
+      return Promise.resolve({ status: 'PAID_ENTITLEMENT_PENDING' });
+    }
+    if (status === 'ACCESS_ACTIVE') {
+      delete process.env.KHEPREE_MOCK_NO_ENTITLEMENT;
+    }
+    return Promise.resolve({ status });
+  }
+
+  getPlanCatalog(_input: {
+    accessToken: string;
+    productId: string;
+  }): Promise<KhepreePlanCatalogResponse> {
+    return Promise.resolve(buildMockPlanCatalog());
   }
 
   revokeSession(): Promise<{ ok: true }> {
@@ -512,16 +631,53 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
   getCheckoutUrl(input: {
     accessToken: string;
     productId: string;
-  }): Promise<{ checkoutUrl: string }> {
+    planId: string;
+  }): Promise<{ checkoutUrl: string; checkoutSessionId: string }> {
     return this.request(
       '/billing/checkout-url',
       {
         method: 'POST',
         accessToken: input.accessToken,
-        body: JSON.stringify({ productId: input.productId }),
+        body: JSON.stringify({ productId: input.productId, planId: input.planId }),
       },
       KhepreeCheckoutUrlResponseSchema,
       'billing/checkout-url',
+    );
+  }
+
+  getCheckoutStatus(input: {
+    accessToken: string;
+    productId: string;
+    checkoutSessionId: string;
+  }): Promise<{ status: KhepreeCheckoutStatus }> {
+    return this.request(
+      '/billing/checkout-status',
+      {
+        method: 'POST',
+        accessToken: input.accessToken,
+        body: JSON.stringify({
+          productId: input.productId,
+          checkoutSessionId: input.checkoutSessionId,
+        }),
+      },
+      KhepreeCheckoutStatusResponseSchema,
+      'billing/checkout-status',
+    );
+  }
+
+  getPlanCatalog(input: {
+    accessToken: string;
+    productId: string;
+  }): Promise<KhepreePlanCatalogResponse> {
+    return this.request(
+      '/billing/plans',
+      {
+        method: 'POST',
+        accessToken: input.accessToken,
+        body: JSON.stringify({ productId: input.productId }),
+      },
+      KhepreePlanCatalogResponseSchema,
+      'billing/plans',
     );
   }
 
@@ -541,6 +697,12 @@ export function resetMockKhepreeApiStateForTests(): void {
   mockPendingAuth.clear();
   mockKhepreeHeartbeatState.nextStatus = 'ACTIVE';
   mockKhepreeHeartbeatState.networkFail = false;
+  mockKhepreeCheckoutState.statusSequence = ['PENDING', 'PENDING', 'ACCESS_ACTIVE'];
+  mockKhepreeCheckoutState.statusIndex = 0;
+  mockKhepreeCheckoutState.returnBadUrl = false;
+  mockKhepreeCheckoutState.invalidPlanIds = new Set();
+  mockKhepreeCheckoutState.entitlementPendingAfterPayment = false;
+  delete process.env.KHEPREE_MOCK_CHECKOUT_STATUS;
 }
 
 export function createKhepreeApiClient(baseUrl: string, useMock: boolean): KhepreeApiClient {

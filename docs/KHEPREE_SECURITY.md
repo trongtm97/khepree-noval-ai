@@ -74,6 +74,17 @@ Device limit UI: manage devices URL, retry activation (no re-login), sign out.
 - Sign out: best-effort server `/auth/logout`, then clear encrypted refresh token (device activation unchanged).
 - Device removal: always via account.khepree.com (no unsafe remote remove from desktop).
 
+## Plan upgrade & checkout (Phase N07)
+
+- Plan catalog from `POST /billing/plans` — price, currency, access term, features from API (no fake monthly labels).
+- Checkout: `POST /billing/checkout-url` with `planId` → validate URL allowlist → `shell.openExternal` in main only.
+- Renderer never receives checkout URL, session id, or payment credentials.
+- Main-process `KhepreeCheckoutPoller` polls `POST /billing/checkout-status` with backoff (3s→60s cap, 30 min timeout).
+- Stop polling on `ACCESS_ACTIVE`, `FAILED`, `CANCELLED`, timeout, or user cancel.
+- Success: cold-start refresh (session, entitlement, features, signed lease) — no restart, no re-login.
+- Entitlement-missing gate shows product info, plan cards, Visit Khepree, sign out.
+- Checkout logs redact URLs and session identifiers.
+
 ## OAuth browser login (Phase N03)
 
 - **Protocol:** `khepree-novel-ai://auth/callback` (registered as "Khepree Novel AI" in Windows installer)

@@ -88,3 +88,32 @@ export const KHEPREE_LOGIN_PHASES = [
 ] as const;
 
 export type KhepreeLoginPhase = (typeof KHEPREE_LOGIN_PHASES)[number];
+
+/** Checkout status from Khepree billing API — not browser redirect. */
+export const KHEPREE_CHECKOUT_STATUSES = [
+  'PENDING',
+  'PAID_ENTITLEMENT_PENDING',
+  'ACCESS_ACTIVE',
+  'FAILED',
+  'CANCELLED',
+] as const;
+
+export type KhepreeCheckoutStatus = (typeof KHEPREE_CHECKOUT_STATUSES)[number];
+
+/** Renderer-visible checkout UX phase (main process authoritative). */
+export const KHEPREE_CHECKOUT_PHASES = [
+  'idle',
+  'waiting',
+  'confirming',
+  'failed',
+  'cancelled',
+  'timeout',
+] as const;
+
+export type KhepreeCheckoutPhase = (typeof KHEPREE_CHECKOUT_PHASES)[number];
+
+/** Backoff poll delays (ms) — cap at last entry; never poll every second. */
+export const KHEPREE_CHECKOUT_POLL_DELAYS_MS = [3_000, 5_000, 8_000, 13_000, 21_000, 34_000, 55_000, 60_000] as const;
+
+/** Stop polling after this duration unless user keeps checking manually. */
+export const KHEPREE_CHECKOUT_POLL_TIMEOUT_MS = 30 * 60 * 1000;

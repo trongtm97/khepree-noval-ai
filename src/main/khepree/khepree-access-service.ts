@@ -4,6 +4,8 @@ import {
   KHEPREE_FEATURES,
   KHEPREE_OAUTH_REDIRECT_URI,
   type KhepreeAccessStatus,
+  type KhepreeCheckoutPhase,
+  type KhepreeCheckoutStatus,
   type KhepreeHeartbeatStatus,
   type KhepreeLoginPhase,
 } from '@shared/constants/khepree';
@@ -20,6 +22,7 @@ import type {
   KhepreeEntitlementState,
   KhepreeBillingState,
 } from '@shared/schemas/khepree';
+import type { KhepreePlanCatalogResponse } from '@shared/schemas/khepree-api';
 import type { DatabaseManager } from '../db/database-manager';
 import type { SecretStorageService } from '../security/secret-storage-service';
 import { logger } from '../logging/logger';
@@ -53,7 +56,9 @@ import {
   KhepreeSafeStorageRequiredError,
   isInvalidRefreshError,
 } from './errors';
-import { openValidatedKhepreeUrl } from './external-links';
+import { openValidatedKhepreeUrl, isAllowedKhepreeUrl } from './external-links';
+import { KhepreeCheckoutPoller } from './checkout-poller';
+import { redactCheckoutLogFields } from './checkout-log-safety';
 
 type AccessListener = (state: KhepreeAccessState) => void;
 type RuntimeRevocationHandler = (reason: string) => void;
@@ -80,6 +85,13 @@ export class KhepreeAccessService {
   private loginPhase: KhepreeLoginPhase | null = 'idle';
   private hasRefreshCredential = false;
   private runtimeRevocationHandler: RuntimeRevocationHandler | null = null;
+  private checkoutSessionId: string | null = null;
+  private lastValidatedCheckoutUrl: string | null = null;
+  private checkoutPhase: KhepreeCheckoutPhase = 'idle';
+  private checkoutPlanId: string | null = null;
+  private checkoutCanReopen = false;
+  private checkoutError: { code: string; message: string } | null = null;
+  private checkoutPoller: KhepreeCheckoutPoller | null = null;
 
   constructor(
     getDb: () => DatabaseManager,
@@ -138,6 +150,10 @@ export class KhepreeAccessService {
       error: this.lastError,
       canStartTranslation: this.canStartTranslation(),
       canUseWorkspace: this.canUseWorkspace(),
+      checkoutPhase: this.checkoutPhase,
+      checkoutPlanId: this.checkoutPlanId,
+      checkoutCanReopen: this.checkoutCanReopen,
+      checkoutError: this.checkoutError,
     };
   }
 
@@ -605,24 +621,262 @@ export class KhepreeAccessService {
     return this.getPublicState();
   }
 
-  async startCheckout(): Promise<KhepreeAccessState> {
+  async getPlanCatalog(): Promise<KhepreePlanCatalogResponse> {
+    const accessToken = await this.ensureAccessToken();
+    if (!accessToken) {
+      throw new KhepreeAccessError('AUTH_REQUIRED', 'Sign in to view plans.');
+    }
+    return this.api.getPlanCatalog({ accessToken, productId: getKhepreeProductId() });
+  }
+
+  async startCheckout(planId: string): Promise<KhepreeAccessState> {
+    this.stopCheckoutPolling();
+    this.checkoutError = null;
+
     const accessToken = await this.ensureAccessToken();
     if (!accessToken) {
       this.status = 'AUTH_REQUIRED';
       this.emit();
       return this.getPublicState();
     }
-    const { checkoutUrl } = await this.api.getCheckoutUrl({
-      accessToken,
-      productId: getKhepreeProductId(),
-    });
-    await openValidatedKhepreeUrl(checkoutUrl);
+
+    let checkoutUrl: string;
+    let checkoutSessionId: string;
+    try {
+      const result = await this.api.getCheckoutUrl({
+        accessToken,
+        productId: getKhepreeProductId(),
+        planId,
+      });
+      checkoutUrl = result.checkoutUrl;
+      checkoutSessionId = result.checkoutSessionId;
+    } catch (error) {
+      this.checkoutPhase = 'failed';
+      this.checkoutPlanId = planId;
+      this.checkoutCanReopen = false;
+      this.checkoutError = {
+        code: error instanceof KhepreeAccessError ? error.code : 'CHECKOUT_CREATE_FAILED',
+        message: error instanceof Error ? error.message : 'Could not start checkout.',
+      };
+      this.emit();
+      return this.getPublicState();
+    }
+
+    if (!isAllowedKhepreeUrl(checkoutUrl)) {
+      logger.warn('Blocked checkout URL from Khepree API', redactCheckoutLogFields({ planId }));
+      this.checkoutPhase = 'failed';
+      this.checkoutPlanId = planId;
+      this.checkoutCanReopen = false;
+      this.checkoutError = {
+        code: 'CHECKOUT_URL_BLOCKED',
+        message: 'Checkout URL was rejected for security.',
+      };
+      this.emit();
+      return this.getPublicState();
+    }
+
+    const opened = await openValidatedKhepreeUrl(checkoutUrl);
+    if (!opened) {
+      this.checkoutPhase = 'failed';
+      this.checkoutPlanId = planId;
+      this.checkoutCanReopen = false;
+      this.checkoutError = {
+        code: 'CHECKOUT_OPEN_FAILED',
+        message: 'Could not open checkout in browser.',
+      };
+      this.emit();
+      return this.getPublicState();
+    }
+
+    this.checkoutSessionId = checkoutSessionId;
+    this.lastValidatedCheckoutUrl = checkoutUrl;
+    this.checkoutPlanId = planId;
+    this.checkoutPhase = 'waiting';
+    this.checkoutCanReopen = true;
     this.billing = 'checkout_pending';
+    this.startCheckoutPolling();
     this.emit();
     return this.getPublicState();
   }
 
+  async cancelCheckout(): Promise<KhepreeAccessState> {
+    this.stopCheckoutPolling();
+    this.checkoutSessionId = null;
+    this.lastValidatedCheckoutUrl = null;
+    this.checkoutPhase = 'cancelled';
+    this.checkoutCanReopen = false;
+    this.checkoutPlanId = null;
+    if (this.billing === 'checkout_pending') {
+      this.billing = this.entitlement === 'active' ? 'active' : 'none';
+    }
+    this.emit();
+    return this.getPublicState();
+  }
+
+  async reopenCheckout(): Promise<KhepreeAccessState> {
+    if (!this.checkoutCanReopen || !this.lastValidatedCheckoutUrl) {
+      this.emit();
+      return this.getPublicState();
+    }
+    if (!isAllowedKhepreeUrl(this.lastValidatedCheckoutUrl)) {
+      this.checkoutCanReopen = false;
+      this.checkoutError = {
+        code: 'CHECKOUT_URL_BLOCKED',
+        message: 'Checkout URL is no longer valid.',
+      };
+      this.emit();
+      return this.getPublicState();
+    }
+    await openValidatedKhepreeUrl(this.lastValidatedCheckoutUrl);
+    if (this.checkoutPhase === 'cancelled' || this.checkoutPhase === 'timeout') {
+      this.checkoutPhase = 'waiting';
+      this.billing = 'checkout_pending';
+      this.startCheckoutPolling();
+    }
+    this.emit();
+    return this.getPublicState();
+  }
+
+  async checkCheckoutNow(): Promise<KhepreeAccessState> {
+    if (this.checkoutSessionId && this.checkoutPhase !== 'idle') {
+      await this.pollCheckoutOnce();
+    } else if (this.checkoutPhase === 'confirming') {
+      await this.refreshEntitlement();
+    } else {
+      await this.refreshEntitlement();
+    }
+    return this.getPublicState();
+  }
+
+  private startCheckoutPolling(): void {
+    this.stopCheckoutPolling();
+    this.checkoutPoller = new KhepreeCheckoutPoller(
+      async () => this.pollCheckoutOnce(),
+      () => this.handleCheckoutTimeout(),
+    );
+    this.checkoutPoller.start();
+  }
+
+  private stopCheckoutPolling(): void {
+    this.checkoutPoller?.stop();
+    this.checkoutPoller = null;
+  }
+
+  private handleCheckoutTimeout(): void {
+    this.stopCheckoutPolling();
+    this.checkoutPhase = 'timeout';
+    this.checkoutCanReopen = Boolean(this.lastValidatedCheckoutUrl);
+    if (this.billing === 'checkout_pending') {
+      this.billing = this.entitlement === 'active' ? 'active' : 'none';
+    }
+    this.emit();
+  }
+
+  /** @returns true when polling should stop */
+  private async pollCheckoutOnce(): Promise<boolean> {
+    if (!this.checkoutSessionId) return true;
+
+    const accessToken = await this.ensureAccessToken();
+    if (!accessToken) {
+      this.stopCheckoutPolling();
+      this.checkoutPhase = 'failed';
+      this.checkoutError = { code: 'AUTH_REQUIRED', message: 'Session expired during checkout.' };
+      this.emit();
+      return true;
+    }
+
+    let status: KhepreeCheckoutStatus;
+    try {
+      const result = await this.api.getCheckoutStatus({
+        accessToken,
+        productId: getKhepreeProductId(),
+        checkoutSessionId: this.checkoutSessionId,
+      });
+      status = result.status;
+    } catch (error) {
+      logger.warn(
+        'Khepree checkout status poll failed',
+        redactCheckoutLogFields({
+          code: error instanceof KhepreeAccessError ? error.code : 'UNKNOWN',
+        }),
+      );
+      return false;
+    }
+
+    switch (status) {
+      case 'PENDING':
+        this.checkoutPhase = 'waiting';
+        this.emit();
+        return false;
+      case 'PAID_ENTITLEMENT_PENDING':
+        this.checkoutPhase = 'confirming';
+        this.emit();
+        return false;
+      case 'ACCESS_ACTIVE':
+        await this.completeCheckoutSuccess();
+        return this.checkoutPhase === 'idle';
+      case 'FAILED':
+        this.stopCheckoutPolling();
+        this.checkoutSessionId = null;
+        this.checkoutPhase = 'failed';
+        this.checkoutCanReopen = false;
+        this.checkoutError = { code: 'CHECKOUT_FAILED', message: 'Payment failed.' };
+        if (this.billing === 'checkout_pending') {
+          this.billing = 'none';
+        }
+        this.emit();
+        return true;
+      case 'CANCELLED':
+        this.stopCheckoutPolling();
+        this.checkoutSessionId = null;
+        this.checkoutPhase = 'cancelled';
+        this.checkoutCanReopen = false;
+        if (this.billing === 'checkout_pending') {
+          this.billing = 'none';
+        }
+        this.emit();
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private async completeCheckoutSuccess(): Promise<void> {
+    this.checkoutError = null;
+
+    try {
+      await this.performColdStartValidation();
+    } catch (error) {
+      this.handleColdStartFailure(error);
+    }
+
+    if (this.status === 'ACTIVE' && this.entitlement === 'active') {
+      this.stopCheckoutPolling();
+      this.checkoutSessionId = null;
+      this.lastValidatedCheckoutUrl = null;
+      this.checkoutPhase = 'idle';
+      this.checkoutPlanId = null;
+      this.checkoutCanReopen = false;
+      this.billing = 'active';
+    } else {
+      this.checkoutPhase = 'confirming';
+      this.billing = 'checkout_pending';
+    }
+    this.emit();
+  }
+
+  private clearCheckoutState(): void {
+    this.stopCheckoutPolling();
+    this.checkoutSessionId = null;
+    this.lastValidatedCheckoutUrl = null;
+    this.checkoutPhase = 'idle';
+    this.checkoutPlanId = null;
+    this.checkoutCanReopen = false;
+    this.checkoutError = null;
+  }
+
   async signOut(): Promise<KhepreeAccessState> {
+    this.clearCheckoutState();
     const accessToken = this.sessionStore.getAccessToken() ?? (await this.ensureAccessToken());
     if (accessToken) {
       try {
@@ -775,6 +1029,7 @@ export class KhepreeAccessService {
   }
 
   async shutdown(): Promise<void> {
+    this.clearCheckoutState();
     this.oauthTransaction.clearTransaction();
   }
 }

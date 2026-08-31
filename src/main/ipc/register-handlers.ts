@@ -368,12 +368,17 @@ import { KHEPREE_FEATURES } from '@shared/constants/khepree';
 import { assertKhepreeProductAccess } from '../khepree/product-access-boundary';
 import { getUiLanguageService } from '../services/ui-language-service-singleton';
 import {
+  KhepreeCancelCheckoutResponseSchema,
+  KhepreeCheckCheckoutResponseSchema,
   KhepreeGetAccessStateResponseSchema,
+  KhepreeGetPlanCatalogResponseSchema,
   KhepreeOpenExternalRequestSchema,
   KhepreeOpenExternalResponseSchema,
   KhepreeRefreshEntitlementResponseSchema,
+  KhepreeReopenCheckoutResponseSchema,
   KhepreeRetryActivationResponseSchema,
   KhepreeSignOutResponseSchema,
+  KhepreeStartCheckoutRequestSchema,
   KhepreeStartCheckoutResponseSchema,
   KhepreeStartLoginResponseSchema,
 } from '@shared/schemas/khepree';
@@ -3123,12 +3128,50 @@ function registerAiProviderHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.KHEPREE_START_CHECKOUT,
-    createIpcHandlerNoArg(async () => {
-      const state = await getKhepreeAccessService().startCheckout();
+    createIpcHandler(KhepreeStartCheckoutRequestSchema, async (request) => {
+      const state = await getKhepreeAccessService().startCheckout(request.planId);
       return KhepreeStartCheckoutResponseSchema.parse({
-        ok: true,
+        ok: state.checkoutPhase !== 'failed',
         state,
       });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_CANCEL_CHECKOUT,
+    createIpcHandlerNoArg(async () => {
+      const state = await getKhepreeAccessService().cancelCheckout();
+      return KhepreeCancelCheckoutResponseSchema.parse({ ok: true, state });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_CHECK_CHECKOUT,
+    createIpcHandlerNoArg(async () => {
+      const state = await getKhepreeAccessService().checkCheckoutNow();
+      return KhepreeCheckCheckoutResponseSchema.parse({
+        ok: state.status === 'ACTIVE' || state.checkoutPhase === 'idle',
+        state,
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_REOPEN_CHECKOUT,
+    createIpcHandlerNoArg(async () => {
+      const state = await getKhepreeAccessService().reopenCheckout();
+      return KhepreeReopenCheckoutResponseSchema.parse({
+        ok: state.checkoutCanReopen || state.checkoutPhase === 'waiting',
+        state,
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_GET_PLAN_CATALOG,
+    createIpcHandlerNoArg(async () => {
+      const catalog = await getKhepreeAccessService().getPlanCatalog();
+      return KhepreeGetPlanCatalogResponseSchema.parse({ ok: true, catalog });
     }),
   );
 

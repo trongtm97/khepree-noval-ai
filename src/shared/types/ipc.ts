@@ -1315,7 +1315,19 @@ export interface NovelTransApi {
     retryColdStart: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
     retryActivation: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
     refreshEntitlement: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
-    startCheckout: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
+    startCheckout: (input: {
+      planId: string;
+    }) => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
+    cancelCheckout: () => Promise<{ ok: true; state: import('../schemas/khepree').KhepreeAccessState }>;
+    checkCheckout: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
+    reopenCheckout: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
+    getPlanCatalog: () => Promise<{
+      ok: boolean;
+      catalog: {
+        plans: import('../schemas/khepree-api').KhepreePlanCatalogItem[];
+        currentPlanId: string | null;
+      };
+    }>;
     signOut: () => Promise<{ ok: true; state: import('../schemas/khepree').KhepreeAccessState }>;
     openExternal: (input: {
       target: import('../constants/khepree').KhepreeExternalLinkTarget;

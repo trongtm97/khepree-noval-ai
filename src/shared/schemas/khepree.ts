@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import {
+  KHEPREE_CHECKOUT_PHASES,
   KHEPREE_EXTERNAL_URLS,
   KHEPREE_ACCESS_STATES,
   KHEPREE_HEARTBEAT_STATUSES,
   KHEPREE_LOGIN_PHASES,
 } from '../constants/khepree';
+import { KhepreePlanCatalogItemSchema } from './khepree-api';
 
 export const KhepreeUserDisplaySchema = z.object({
   id: z.string(),
@@ -75,6 +77,10 @@ export const KhepreeAccessStateSchema = z.object({
   error: KhepreeAccessErrorSchema.nullable(),
   canStartTranslation: z.boolean(),
   canUseWorkspace: z.boolean(),
+  checkoutPhase: z.enum(KHEPREE_CHECKOUT_PHASES),
+  checkoutPlanId: z.string().nullable(),
+  checkoutCanReopen: z.boolean(),
+  checkoutError: KhepreeAccessErrorSchema.nullable(),
 });
 
 export type KhepreeAccessState = z.infer<typeof KhepreeAccessStateSchema>;
@@ -114,7 +120,34 @@ export const KhepreeOpenExternalResponseSchema = z.object({
   ok: z.boolean(),
 });
 
+export const KhepreeStartCheckoutRequestSchema = z.object({
+  planId: z.string().min(1),
+});
+
 export const KhepreeStartCheckoutResponseSchema = z.object({
+  ok: z.boolean(),
+  state: KhepreeAccessStateSchema,
+});
+
+export const KhepreeGetPlanCatalogResponseSchema = z.object({
+  ok: z.boolean(),
+  catalog: z.object({
+    plans: z.array(KhepreePlanCatalogItemSchema),
+    currentPlanId: z.string().nullable(),
+  }),
+});
+
+export const KhepreeCancelCheckoutResponseSchema = z.object({
+  ok: z.literal(true),
+  state: KhepreeAccessStateSchema,
+});
+
+export const KhepreeCheckCheckoutResponseSchema = z.object({
+  ok: z.boolean(),
+  state: KhepreeAccessStateSchema,
+});
+
+export const KhepreeReopenCheckoutResponseSchema = z.object({
   ok: z.boolean(),
   state: KhepreeAccessStateSchema,
 });

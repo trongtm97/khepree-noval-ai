@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { KHEPREE_HEARTBEAT_STATUSES } from '../constants/khepree';
+import { KHEPREE_CHECKOUT_STATUSES, KHEPREE_HEARTBEAT_STATUSES } from '../constants/khepree';
 import {
   KhepreeBillingStateSchema,
   KhepreeEntitlementStateSchema,
@@ -86,6 +86,34 @@ export type KhepreeHeartbeatResponse = z.infer<typeof KhepreeHeartbeatResponseSc
 
 export const KhepreeCheckoutUrlResponseSchema = z.object({
   checkoutUrl: z.string().url(),
+  checkoutSessionId: z.string().min(1),
 });
 
 export type KhepreeCheckoutUrlResponse = z.infer<typeof KhepreeCheckoutUrlResponseSchema>;
+
+export const KhepreePlanCatalogItemSchema = z.object({
+  planId: z.string().min(1),
+  planName: z.string().min(1),
+  price: z.number().nonnegative(),
+  currency: z.string().min(1),
+  /** Provider-defined term, e.g. "90 days" — never invent "monthly". */
+  accessTerm: z.string().min(1),
+  featureSummary: z.array(z.string()),
+  isCurrent: z.boolean(),
+  isUpgradeAvailable: z.boolean(),
+});
+
+export type KhepreePlanCatalogItem = z.infer<typeof KhepreePlanCatalogItemSchema>;
+
+export const KhepreePlanCatalogResponseSchema = z.object({
+  plans: z.array(KhepreePlanCatalogItemSchema),
+  currentPlanId: z.string().nullable(),
+});
+
+export type KhepreePlanCatalogResponse = z.infer<typeof KhepreePlanCatalogResponseSchema>;
+
+export const KhepreeCheckoutStatusResponseSchema = z.object({
+  status: z.enum(KHEPREE_CHECKOUT_STATUSES),
+});
+
+export type KhepreeCheckoutStatusResponse = z.infer<typeof KhepreeCheckoutStatusResponseSchema>;

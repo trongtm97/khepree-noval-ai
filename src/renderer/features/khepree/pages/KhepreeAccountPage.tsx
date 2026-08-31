@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useT } from '../../../i18n';
 import { useKhepreeAccessState } from '../useKhepreeAccessState';
 import { Button, Card } from '../../../components/ui';
@@ -12,6 +13,7 @@ import { KHEPREE_PRODUCT_ID } from '@shared/constants/khepree';
 
 export function KhepreeAccountPage() {
   const t = useT();
+  const navigate = useNavigate();
   const { state } = useKhepreeAccessState();
   const renewal = state ? formatKhepreeRenewalLine(t, state) : null;
 
@@ -73,7 +75,7 @@ export function KhepreeAccountPage() {
             <Button type="button" variant="secondary" onClick={() => openKhepreeExternal('devices')}>
               {t('khepree.account.manageDevices')}
             </Button>
-            <Button type="button" variant="primary" onClick={() => void window.novelTrans.khepree.startCheckout()}>
+            <Button type="button" variant="primary" onClick={() => navigate('/khepree/plan')}>
               {t('khepree.account.upgradePlan')}
             </Button>
             <Button type="button" variant="secondary" onClick={() => openKhepreeExternal('account')}>

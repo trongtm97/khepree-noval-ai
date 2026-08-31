@@ -1,9 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import type { KhepreeAccessState } from '@shared/schemas/khepree';
 import type { KhepreeLoginPhase } from '@shared/constants/khepree';
+import { KHEPREE_PRODUCT_ID } from '@shared/constants/khepree';
 import { useT } from '../../i18n';
 import { AppBrand } from '../../components/shell/AppBrand';
 import { Button } from '../../components/ui';
+import { openKhepreeExternal } from './khepree-external';
+import { useKhepreePlanCatalog } from './useKhepreePlanCatalog';
+import { KhepreePlanCatalog } from './KhepreePlanCatalog';
+import { KhepreeCheckoutWaiting } from './KhepreeCheckoutWaiting';
 
 interface GateLayoutProps {
   title: string;
@@ -139,23 +144,72 @@ function OfflineColdStartGate({
 function EntitlementGate({
   titleKey,
   subtitleKey,
+  state,
+  busy,
   onUpgrade,
   onRefresh,
+  onVisit,
+  onSignOut,
 }: {
   titleKey: string;
   subtitleKey: string;
-  onUpgrade: () => Promise<void>;
+  state: KhepreeAccessState;
+  busy: boolean;
+  onUpgrade: (planId: string) => Promise<void>;
   onRefresh: () => Promise<void>;
+  onVisit: () => Promise<void>;
+  onSignOut: () => Promise<void>;
 }) {
   const t = useT();
+  const signedIn = state.signedIn;
+  const { plans, loading, error } = useKhepreePlanCatalog(signedIn);
+
+  const checkoutActive =
+    state.checkoutPhase === 'waiting' ||
+    state.checkoutPhase === 'confirming' ||
+    state.checkoutPhase === 'timeout';
+
+  if (checkoutActive) {
+    return (
+      <GateLayout title={t(titleKey)} subtitle={t(subtitleKey)}>
+        <KhepreeCheckoutWaiting
+          state={state}
+          busy={busy}
+          onCheck={async () => {
+            await window.novelTrans.khepree.checkCheckout();
+          }}
+          onCancel={runCheckoutCancel}
+          onReopen={runCheckoutReopen}
+        />
+      </GateLayout>
+    );
+  }
+
+  async function runCheckoutCancel(): Promise<void> {
+    await window.novelTrans.khepree.cancelCheckout();
+  }
+
+  async function runCheckoutReopen(): Promise<void> {
+    await window.novelTrans.khepree.reopenCheckout();
+  }
+
   return (
     <GateLayout title={t(titleKey)} subtitle={t(subtitleKey)}>
+      <p className="setup-wizard__hint">{t('khepree.plans.productInfo', { id: KHEPREE_PRODUCT_ID })}</p>
+      {loading ? <p className="setup-wizard__hint">{t('khepree.plans.loading')}</p> : null}
+      {error ? <p className="form-error">{error}</p> : null}
+      {!loading && !error && signedIn ? (
+        <KhepreePlanCatalog plans={plans} busy={busy} onUpgrade={(planId) => void onUpgrade(planId)} />
+      ) : null}
       <div className="khepree-gate__actions">
-        <Button type="button" variant="primary" onClick={() => void onUpgrade()}>
-          {t('khepree.entitlement.upgrade')}
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => void onRefresh()}>
+        <Button type="button" variant="secondary" disabled={busy} onClick={() => void onRefresh()}>
           {t('khepree.entitlement.refresh')}
+        </Button>
+        <Button type="button" variant="secondary" disabled={busy} onClick={() => void onVisit()}>
+          {t('khepree.plans.visitKhepree')}
+        </Button>
+        <Button type="button" variant="ghost" disabled={busy} onClick={() => void onSignOut()}>
+          {t('khepree.deviceLimit.signOut')}
         </Button>
       </div>
     </GateLayout>
@@ -311,8 +365,12 @@ export function KhepreeAccessGate({
         <EntitlementGate
           titleKey="khepree.entitlement.title"
           subtitleKey="khepree.entitlement.subtitle"
-          onUpgrade={() => run(() => window.novelTrans.khepree.startCheckout())}
-          onRefresh={() => run(() => window.novelTrans.khepree.refreshEntitlement())}
+          state={state}
+          busy={busy}
+          onUpgrade={(planId) => run(() => window.novelTrans.khepree.startCheckout({ planId }))}
+          onRefresh={() => run(() => window.novelTrans.khepree.checkCheckout())}
+          onVisit={() => run(async () => { await openKhepreeExternal('website'); })}
+          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
         />
       );
     case 'ENTITLEMENT_EXPIRED':
@@ -320,8 +378,12 @@ export function KhepreeAccessGate({
         <EntitlementGate
           titleKey="khepree.entitlementExpired.title"
           subtitleKey="khepree.entitlementExpired.subtitle"
-          onUpgrade={() => run(() => window.novelTrans.khepree.startCheckout())}
-          onRefresh={() => run(() => window.novelTrans.khepree.refreshEntitlement())}
+          state={state}
+          busy={busy}
+          onUpgrade={(planId) => run(() => window.novelTrans.khepree.startCheckout({ planId }))}
+          onRefresh={() => run(() => window.novelTrans.khepree.checkCheckout())}
+          onVisit={() => run(async () => { await openKhepreeExternal('website'); })}
+          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
         />
       );
     case 'ENTITLEMENT_SUSPENDED':
@@ -329,8 +391,12 @@ export function KhepreeAccessGate({
         <EntitlementGate
           titleKey="khepree.entitlementSuspended.title"
           subtitleKey="khepree.entitlementSuspended.subtitle"
-          onUpgrade={() => run(() => window.novelTrans.khepree.startCheckout())}
-          onRefresh={() => run(() => window.novelTrans.khepree.refreshEntitlement())}
+          state={state}
+          busy={busy}
+          onUpgrade={(planId) => run(() => window.novelTrans.khepree.startCheckout({ planId }))}
+          onRefresh={() => run(() => window.novelTrans.khepree.checkCheckout())}
+          onVisit={() => run(async () => { await openKhepreeExternal('website'); })}
+          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
         />
       );
     case 'DEVICE_LIMIT_REACHED':
