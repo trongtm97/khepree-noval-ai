@@ -2496,7 +2496,18 @@ export const en: LocaleMessages = {
       subtitle: 'Use your Khepree account in the browser. This app never asks for your password.',
       action: 'Sign in with Khepree',
       opening: 'Opening browser…',
+      waiting: 'Waiting for sign-in…',
+      exchanging: 'Completing sign-in…',
+      success: 'Sign-in successful',
+      cancelled: 'Sign-in cancelled',
+      expired: 'Sign-in expired — try again',
+      networkError: 'Network error — check your connection and retry',
       hint: 'Complete sign-in in your browser, then return here.',
+    },
+    validating: {
+      title: 'Restoring session',
+      subtitle: 'Verifying your Khepree account…',
+      body: 'Please wait while we validate your saved session.',
     },
     offline: {
       title: 'Connection required',

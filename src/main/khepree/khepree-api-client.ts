@@ -1,6 +1,7 @@
 import { createPrivateKey, sign } from 'node:crypto';
 import { randomUUID } from 'node:crypto';
 import type { ZodType } from 'zod';
+import { z } from 'zod';
 import { KhepreeSignedLeaseSchema, type KhepreeSignedLease, type KhepreeSignedLeasePayload } from '@shared/schemas/khepree';
 import type { KhepreeHeartbeatStatus } from '@shared/constants/khepree';
 import {
@@ -8,16 +9,38 @@ import {
   KhepreeAuthTokenResultSchema,
   KhepreeCheckoutUrlResponseSchema,
   KhepreeColdStartResultSchema,
-  KhepreeDeviceAuthStartResponseSchema,
   KhepreeHeartbeatResponseSchema,
   type KhepreeActivateDeviceResponse,
   type KhepreeAuthTokenResult,
   type KhepreeColdStartResult,
 } from '@shared/schemas/khepree-api';
 import { getDevSigningKeys } from './dev-signing-keys';
+import { deriveS256Challenge } from './pkce';
 import { KhepreeApiResponseInvalidError, KhepreeDeviceLimitError, KhepreeNetworkError, KhepreeAccessError } from './errors';
 
 export type { KhepreeAuthTokenResult, KhepreeColdStartResult };
+
+export interface DeviceAuthStartInput {
+  state: string;
+  codeChallenge: string;
+  codeChallengeMethod: 'S256';
+  redirectUri: string;
+  installationId: string;
+  devicePublicKey: string;
+  productId: string;
+}
+
+export interface DeviceAuthExchangeInput {
+  code: string;
+  state: string;
+  codeVerifier: string;
+  clientId: string;
+  redirectUri: string;
+  installationId: string;
+  devicePublicKey: string;
+  platform: string;
+  appVersion: string;
+}
 
 function parseApiResponse<T>(schema: ZodType<T>, body: unknown, context: string): T {
   const parsed = schema.safeParse(body);
@@ -27,19 +50,12 @@ function parseApiResponse<T>(schema: ZodType<T>, body: unknown, context: string)
   return parsed.data;
 }
 
-export interface KhepreeApiClient {
-  startDeviceAuth(input: {
-    installationId: string;
-    devicePublicKey: string;
-    productId: string;
-    redirectUri: string;
-  }): Promise<{ authUrl: string; state: string }>;
+const KhepreeOkResponseSchema = z.object({ ok: z.literal(true) });
 
-  completeDeviceAuth(input: {
-    state: string;
-    code: string;
-    installationId: string;
-  }): Promise<KhepreeAuthTokenResult>;
+export interface KhepreeApiClient {
+  startDeviceAuth(input: DeviceAuthStartInput): Promise<{ ok: true }>;
+
+  exchangeDeviceAuth(input: DeviceAuthExchangeInput): Promise<KhepreeAuthTokenResult>;
 
   refreshSession(input: {
     refreshToken: string;
@@ -106,36 +122,46 @@ function signLeasePayload(payload: KhepreeSignedLeasePayload): KhepreeSignedLeas
   return { payload, keyId: dev.keyId, signature };
 }
 
+/** Shared mock server state — persists across client instances like a real API. */
+const mockSessions = new Map<string, { user: KhepreeAuthTokenResult['user']; refreshToken: string }>();
+const mockDevices = new Map<string, { installationId: string; deviceId: string }>();
+const mockPendingAuth = new Map<
+  string,
+  { installationId: string; codeChallenge: string; redirectUri: string }
+>();
+
 /** In-process mock for dev — simulates Khepree API without network. */
 export class MockKhepreeApiClient implements KhepreeApiClient {
-  private sessions = new Map<string, { user: KhepreeAuthTokenResult['user']; refreshToken: string }>();
-  private devices = new Map<string, { installationId: string; deviceId: string }>();
-  private authStates = new Map<string, { installationId: string }>();
+  private sessions = mockSessions;
+  private devices = mockDevices;
+  private pendingAuth = mockPendingAuth;
 
-  startDeviceAuth(input: {
-    installationId: string;
-    devicePublicKey: string;
-    productId: string;
-    redirectUri: string;
-  }): Promise<{ authUrl: string; state: string }> {
-    const state = randomUUID();
-    this.authStates.set(state, { installationId: input.installationId });
-    const url = new URL(input.redirectUri);
-    url.searchParams.set('state', state);
-    url.searchParams.set('code', `mock-code-${state.slice(0, 8)}`);
-    return Promise.resolve({ authUrl: url.toString(), state });
+  startDeviceAuth(input: DeviceAuthStartInput): Promise<{ ok: true }> {
+    this.pendingAuth.set(input.state, {
+      installationId: input.installationId,
+      codeChallenge: input.codeChallenge,
+      redirectUri: input.redirectUri,
+    });
+    return Promise.resolve({ ok: true });
   }
 
-  completeDeviceAuth(input: {
-    state: string;
-    code: string;
-    installationId: string;
-  }): Promise<KhepreeAuthTokenResult> {
-    const pending = this.authStates.get(input.state);
-    if (pending?.installationId !== input.installationId) {
-      throw new Error('Invalid auth state');
+  exchangeDeviceAuth(input: DeviceAuthExchangeInput): Promise<KhepreeAuthTokenResult> {
+    const pending = this.pendingAuth.get(input.state);
+    if (!pending || pending.installationId !== input.installationId) {
+      return Promise.reject(new KhepreeAccessError('OAUTH_STATE_MISMATCH', 'Invalid auth state'));
     }
-    this.authStates.delete(input.state);
+    if (pending.redirectUri !== input.redirectUri) {
+      return Promise.reject(new KhepreeAccessError('OAUTH_REDIRECT_MISMATCH', 'Redirect URI mismatch'));
+    }
+    const derivedChallenge = deriveS256Challenge(input.codeVerifier);
+    if (derivedChallenge !== pending.codeChallenge) {
+      return Promise.reject(new KhepreeAccessError('OAUTH_PKCE_FAILED', 'PKCE verification failed'));
+    }
+    if (!input.code.startsWith('mock-code-')) {
+      return Promise.reject(new KhepreeAccessError('INVALID_AUTH_CODE', 'Invalid authorization code'));
+    }
+    this.pendingAuth.delete(input.state);
+
     const user: KhepreeAuthTokenResult['user'] = {
       id: randomUUID(),
       email: 'dev@khepree.local',
@@ -157,7 +183,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
   }): Promise<KhepreeAuthTokenResult> {
     const session = this.sessions.get(input.refreshToken);
     if (!session) {
-      throw new Error('Invalid refresh token');
+      return Promise.reject(new KhepreeAccessError('INVALID_REFRESH', 'Refresh token invalid'));
     }
     return Promise.resolve({
       accessToken: `mock-access-${session.user.id}`,
@@ -304,30 +330,21 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     return parseApiResponse(schema, body, context);
   }
 
-  startDeviceAuth(input: {
-    installationId: string;
-    devicePublicKey: string;
-    productId: string;
-    redirectUri: string;
-  }): Promise<{ authUrl: string; state: string }> {
+  startDeviceAuth(input: DeviceAuthStartInput): Promise<{ ok: true }> {
     return this.request(
       '/auth/device/start',
       { method: 'POST', body: JSON.stringify(input) },
-      KhepreeDeviceAuthStartResponseSchema,
+      KhepreeOkResponseSchema,
       'auth/device/start',
     );
   }
 
-  completeDeviceAuth(input: {
-    state: string;
-    code: string;
-    installationId: string;
-  }): Promise<KhepreeAuthTokenResult> {
+  exchangeDeviceAuth(input: DeviceAuthExchangeInput): Promise<KhepreeAuthTokenResult> {
     return this.request(
-      '/auth/device/complete',
+      '/auth/device/exchange',
       { method: 'POST', body: JSON.stringify(input) },
       KhepreeAuthTokenResultSchema,
-      'auth/device/complete',
+      'auth/device/exchange',
     );
   }
 
@@ -440,6 +457,12 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
       'billing/checkout-url',
     );
   }
+}
+
+export function resetMockKhepreeApiStateForTests(): void {
+  mockSessions.clear();
+  mockDevices.clear();
+  mockPendingAuth.clear();
 }
 
 export function createKhepreeApiClient(baseUrl: string, useMock: boolean): KhepreeApiClient {

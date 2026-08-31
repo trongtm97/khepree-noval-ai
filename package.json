@@ -5,6 +5,12 @@
   "description": "Windows desktop app for AI-assisted multilingual novel translation (Gemini, ChatGPT, Meta AI)",
   "main": ".vite/build/main.js",
   "private": true,
+  "protocols": [
+    {
+      "name": "Khepree Novel AI",
+      "schemes": ["khepree-novel-ai"]
+    }
+  ],
   "scripts": {
     "rebuild:electron-native": "npx @electron/rebuild -f -w better-sqlite3",
     "start": "npm run rebuild:electron-native && electron-forge start",

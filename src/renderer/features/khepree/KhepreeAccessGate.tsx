@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { KhepreeAccessState } from '@shared/schemas/khepree';
+import type { KhepreeLoginPhase } from '@shared/constants/khepree';
 import { useT } from '../../i18n';
 import { AppBrand } from '../../components/shell/AppBrand';
 import { Button } from '../../components/ui';
@@ -23,23 +24,86 @@ function GateLayout({ title, subtitle, children }: GateLayoutProps) {
   );
 }
 
+function loginPhaseLabel(
+  t: (key: string) => string,
+  phase: KhepreeLoginPhase | null,
+): string | null {
+  switch (phase) {
+    case 'opening_browser':
+      return t('khepree.login.opening');
+    case 'waiting_sign_in':
+      return t('khepree.login.waiting');
+    case 'exchanging':
+      return t('khepree.login.exchanging');
+    case 'success':
+      return t('khepree.login.success');
+    default:
+      return null;
+  }
+}
+
+function loginErrorMessage(
+  t: (key: string) => string,
+  code: string | undefined,
+  fallback: string | null,
+): string | null {
+  switch (code) {
+    case 'OAUTH_CANCELLED':
+      return t('khepree.login.cancelled');
+    case 'OAUTH_EXPIRED':
+      return t('khepree.login.expired');
+    case 'NETWORK_UNAVAILABLE':
+      return t('khepree.login.networkError');
+    default:
+      return fallback;
+  }
+}
+
 function LoginGate({
   busy,
+  loginPhase,
+  errorCode,
   error,
   onLogin,
 }: {
   busy: boolean;
+  loginPhase: KhepreeLoginPhase | null;
+  errorCode: string | undefined;
   error: string | null;
   onLogin: () => Promise<void>;
 }) {
   const t = useT();
+  const phaseLabel = loginPhaseLabel(t, loginPhase);
+  const errorMessage = loginErrorMessage(t, errorCode, error);
+  const inProgress =
+    loginPhase === 'opening_browser' ||
+    loginPhase === 'waiting_sign_in' ||
+    loginPhase === 'exchanging';
+
   return (
     <GateLayout title={t('khepree.login.title')} subtitle={t('khepree.login.subtitle')}>
-      {error ? <p className="form-error">{error}</p> : null}
-      <Button type="button" variant="primary" disabled={busy} onClick={() => void onLogin()}>
-        {busy ? t('khepree.login.opening') : t('khepree.login.action')}
+      {phaseLabel ? <p className="setup-wizard__hint">{phaseLabel}</p> : null}
+      {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
+      <Button
+        type="button"
+        variant="primary"
+        disabled={busy || inProgress}
+        onClick={() => void onLogin()}
+      >
+        {inProgress ? phaseLabel ?? t('khepree.login.opening') : t('khepree.login.action')}
       </Button>
-      <p className="setup-wizard__hint">{t('khepree.login.hint')}</p>
+      {!inProgress ? (
+        <p className="setup-wizard__hint">{t('khepree.login.hint')}</p>
+      ) : null}
+    </GateLayout>
+  );
+}
+
+function ValidatingGate() {
+  const t = useT();
+  return (
+    <GateLayout title={t('khepree.validating.title')} subtitle={t('khepree.validating.subtitle')}>
+      <p className="setup-wizard__hint">{t('khepree.validating.body')}</p>
     </GateLayout>
   );
 }
@@ -144,10 +208,14 @@ export function KhepreeAccessGate({
   };
 
   switch (state.gate) {
+    case 'validating':
+      return <ValidatingGate />;
     case 'login':
       return (
         <LoginGate
           busy={busy}
+          loginPhase={state.loginPhase}
+          errorCode={state.error?.code}
           error={state.error?.message ?? null}
           onLogin={() => run(() => window.novelTrans.khepree.startLogin())}
         />

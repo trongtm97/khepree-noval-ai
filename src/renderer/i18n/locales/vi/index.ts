@@ -2502,7 +2502,18 @@ export const vi = {
       subtitle: 'Dùng tài khoản Khepree trên trình duyệt. Ứng dụng không bao giờ hỏi mật khẩu.',
       action: 'Đăng nhập bằng Khepree',
       opening: 'Đang mở trình duyệt…',
+      waiting: 'Đang chờ đăng nhập…',
+      exchanging: 'Đang hoàn tất đăng nhập…',
+      success: 'Đăng nhập thành công',
+      cancelled: 'Đã hủy đăng nhập',
+      expired: 'Phiên đăng nhập hết hạn — thử lại',
+      networkError: 'Lỗi mạng — kiểm tra kết nối và thử lại',
       hint: 'Hoàn tất đăng nhập trên trình duyệt, rồi quay lại đây.',
+    },
+    validating: {
+      title: 'Đang khôi phục phiên',
+      subtitle: 'Đang xác minh tài khoản Khepree…',
+      body: 'Vui lòng chờ trong khi xác thực phiên đã lưu.',
     },
     offline: {
       title: 'Cần kết nối mạng',

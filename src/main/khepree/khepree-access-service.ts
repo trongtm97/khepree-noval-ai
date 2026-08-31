@@ -1,9 +1,11 @@
-import { shell } from 'electron';
+import { app, shell } from 'electron';
 import {
   KHEPREE_DEFAULT_HEARTBEAT_MS,
   KHEPREE_FEATURES,
+  KHEPREE_OAUTH_REDIRECT_URI,
   type KhepreeGatePhase,
   type KhepreeHeartbeatStatus,
+  type KhepreeLoginPhase,
 } from '@shared/constants/khepree';
 import type {
   KhepreeAccessState,
@@ -22,9 +24,15 @@ import {
   createKhepreeApiClient,
   type KhepreeApiClient,
 } from './khepree-api-client';
-import { OAuthLoopbackServer } from './oauth-loopback-server';
 import {
+  OAuthAuthTransactionManager,
+  buildPendingOAuthState,
+} from './oauth-auth-transaction';
+import { generatePkcePair } from './pkce';
+import {
+  buildKhepreeAuthorizeUrl,
   getKhepreeApiBaseUrl,
+  getKhepreeOAuthClientId,
   getKhepreeProductId,
   isKhepreeDevMockEnabled,
 } from './config';
@@ -36,6 +44,7 @@ import {
   KhepreeNetworkError,
   KhepreeProductAccessDeniedError,
   KhepreeSafeStorageRequiredError,
+  isInvalidRefreshError,
 } from './errors';
 import { openValidatedKhepreeUrl } from './external-links';
 
@@ -45,7 +54,7 @@ export class KhepreeAccessService {
   private readonly api: KhepreeApiClient;
   private readonly deviceIdentity: DeviceIdentityService;
   private readonly sessionStore: KhepreeSessionStore;
-  private readonly oauthServer = new OAuthLoopbackServer();
+  private readonly oauthTransaction = new OAuthAuthTransactionManager();
   private readonly listeners = new Set<AccessListener>();
 
   private currentLease: KhepreeSignedLease | null = null;
@@ -60,6 +69,7 @@ export class KhepreeAccessService {
   private heartbeatStatus: KhepreeHeartbeatStatus | null = null;
   private lastError: { code: string; message: string } | null = null;
   private loginInProgress = false;
+  private loginPhase: KhepreeLoginPhase | null = 'idle';
   private coldStartComplete = false;
   private protectedActionsBlocked = false;
   private hasRefreshCredential = false;
@@ -97,6 +107,7 @@ export class KhepreeAccessService {
 
     return {
       gate: this.gate,
+      loginPhase: this.loginPhase,
       signedIn: this.user != null && this.hasRefreshCredential,
       user: this.user,
       plan: this.plan,
@@ -132,16 +143,23 @@ export class KhepreeAccessService {
     );
   }
 
-  async initializeOnColdStart(): Promise<KhepreeAccessState> {
-    this.gate = 'login';
+  handleAuthCallbackUrl(rawUrl: string): void {
+    this.oauthTransaction.handleAuthCallbackUrl(rawUrl);
+  }
 
+  async initializeOnColdStart(): Promise<KhepreeAccessState> {
     const hasRefresh = this.sessionStore.hasRefreshToken();
     this.hasRefreshCredential = hasRefresh;
     if (!hasRefresh) {
       this.gate = 'login';
+      this.loginPhase = 'idle';
       this.emit();
       return this.getPublicState();
     }
+
+    this.gate = 'validating';
+    this.loginPhase = null;
+    this.emit();
 
     try {
       await this.performColdStartValidation();
@@ -163,18 +181,29 @@ export class KhepreeAccessService {
     let accessToken = this.sessionStore.getAccessToken();
 
     if (!accessToken) {
-      const refreshed = await this.api.refreshSession({
-        refreshToken,
-        installationId: identity.installationId,
-      });
-      await this.sessionStore.saveRefreshToken(refreshed.refreshToken, refreshed.user.id);
-      this.sessionStore.setAccessToken(
-        refreshed.accessToken,
-        refreshed.expiresIn,
-        refreshed.user.id,
-      );
-      this.user = refreshed.user;
-      accessToken = refreshed.accessToken;
+      try {
+        const refreshed = await this.api.refreshSession({
+          refreshToken,
+          installationId: identity.installationId,
+        });
+        await this.sessionStore.saveRefreshToken(refreshed.refreshToken, refreshed.user.id);
+        this.sessionStore.setAccessToken(
+          refreshed.accessToken,
+          refreshed.expiresIn,
+          refreshed.user.id,
+        );
+        this.user = refreshed.user;
+        accessToken = refreshed.accessToken;
+      } catch (error) {
+        if (isInvalidRefreshError(error)) {
+          await this.sessionStore.clearRefreshToken();
+          this.hasRefreshCredential = false;
+          this.gate = 'login';
+          this.loginPhase = 'idle';
+          return;
+        }
+        throw error;
+      }
     }
 
     const deviceId = identity.deviceId;
@@ -274,26 +303,63 @@ export class KhepreeAccessService {
     }
     this.loginInProgress = true;
     this.lastError = null;
+    this.loginPhase = 'opening_browser';
+    this.gate = 'login';
+    this.emit();
+
+    let oauthState: string | null = null;
+
     try {
       const identity = await this.deviceIdentity.getIdentity();
-      const { redirectUri } = await this.oauthServer.start();
-      const { authUrl, state } = await this.api.startDeviceAuth({
+      const pkce = generatePkcePair();
+      oauthState = buildPendingOAuthState();
+      this.oauthTransaction.beginTransaction(oauthState, pkce.codeVerifier);
+
+      await this.api.startDeviceAuth({
+        state: oauthState,
+        codeChallenge: pkce.codeChallenge,
+        codeChallengeMethod: pkce.codeChallengeMethod,
+        redirectUri: KHEPREE_OAUTH_REDIRECT_URI,
         installationId: identity.installationId,
         devicePublicKey: identity.publicKeySpki,
         productId: getKhepreeProductId(),
-        redirectUri,
+      });
+
+      const authUrl = buildKhepreeAuthorizeUrl({
+        state: oauthState,
+        codeChallenge: pkce.codeChallenge,
+        redirectUri: KHEPREE_OAUTH_REDIRECT_URI,
+        clientId: getKhepreeOAuthClientId(),
+        installationId: identity.installationId,
+        productId: getKhepreeProductId(),
       });
 
       await shell.openExternal(authUrl);
-      const callbackPromise = this.oauthServer.waitForCallback(state);
-      const { code } = await callbackPromise;
-      await this.oauthServer.stop();
+      this.loginPhase = 'waiting_sign_in';
+      this.emit();
 
-      const tokens = await this.api.completeDeviceAuth({
-        state,
+      if (isKhepreeDevMockEnabled()) {
+        this.scheduleDevMockOAuthCallback(oauthState);
+      }
+
+      const { code } = await this.oauthTransaction.waitForCallback(oauthState);
+      this.oauthTransaction.clearTransaction();
+
+      this.loginPhase = 'exchanging';
+      this.emit();
+
+      const tokens = await this.api.exchangeDeviceAuth({
         code,
+        state: oauthState,
+        codeVerifier: pkce.codeVerifier,
+        clientId: getKhepreeOAuthClientId(),
+        redirectUri: KHEPREE_OAUTH_REDIRECT_URI,
         installationId: identity.installationId,
+        devicePublicKey: identity.publicKeySpki,
+        platform: process.platform,
+        appVersion: app.getVersion(),
       });
+
       await this.sessionStore.saveRefreshToken(tokens.refreshToken, tokens.user.id);
       this.hasRefreshCredential = true;
       this.sessionStore.setAccessToken(tokens.accessToken, tokens.expiresIn, tokens.user.id);
@@ -315,6 +381,7 @@ export class KhepreeAccessService {
           this.devicesUsed = error.devicesUsed;
           this.devicesMax = error.devicesMax;
           this.lastError = { code: error.code, message: error.message };
+          this.loginPhase = 'idle';
           this.emit();
           return this.getPublicState();
         }
@@ -322,6 +389,7 @@ export class KhepreeAccessService {
       }
 
       await this.performColdStartValidation();
+      this.loginPhase = 'success';
       if (this.entitlement === 'none' || this.entitlement === 'expired') {
         this.gate = 'entitlement';
       } else {
@@ -329,17 +397,47 @@ export class KhepreeAccessService {
         this.coldStartComplete = true;
       }
     } catch (error) {
-      await this.oauthServer.stop();
-      this.lastError = {
-        code: error instanceof KhepreeAccessError ? error.code : 'LOGIN_FAILED',
-        message: error instanceof Error ? error.message : 'Login failed',
-      };
-      this.gate = 'login';
+      this.oauthTransaction.clearTransaction();
+      this.applyLoginFailure(error);
     } finally {
       this.loginInProgress = false;
+      if (this.loginPhase !== 'success') {
+        this.loginPhase = this.gate === 'login' ? 'idle' : this.loginPhase;
+      }
       this.emit();
     }
     return this.getPublicState();
+  }
+
+  private scheduleDevMockOAuthCallback(state: string): void {
+    setTimeout(() => {
+      this.oauthTransaction.handleAuthCallbackUrl(
+        `${KHEPREE_OAUTH_REDIRECT_URI}?code=mock-code-${state.slice(0, 8)}&state=${encodeURIComponent(state)}`,
+      );
+    }, 50);
+  }
+
+  private applyLoginFailure(error: unknown): void {
+    if (error instanceof KhepreeNetworkError) {
+      this.lastError = { code: error.code, message: error.message };
+      this.gate = 'offline';
+      return;
+    }
+    if (error instanceof KhepreeAccessError && error.code === 'OAUTH_CANCELLED') {
+      this.lastError = { code: error.code, message: error.message };
+      this.gate = 'login';
+      return;
+    }
+    if (error instanceof KhepreeAccessError && error.code === 'OAUTH_EXPIRED') {
+      this.lastError = { code: error.code, message: error.message };
+      this.gate = 'login';
+      return;
+    }
+    this.lastError = {
+      code: error instanceof KhepreeAccessError ? error.code : 'LOGIN_FAILED',
+      message: error instanceof Error ? error.message : 'Login failed',
+    };
+    this.gate = 'login';
   }
 
   async retryColdStart(): Promise<KhepreeAccessState> {
@@ -428,6 +526,7 @@ export class KhepreeAccessService {
 
   async signOut(): Promise<KhepreeAccessState> {
     await this.sessionStore.clearRefreshToken();
+    this.oauthTransaction.clearTransaction();
     this.hasRefreshCredential = false;
     this.user = null;
     this.plan = null;
@@ -440,6 +539,7 @@ export class KhepreeAccessService {
     this.coldStartComplete = false;
     this.protectedActionsBlocked = false;
     this.gate = 'login';
+    this.loginPhase = 'idle';
     this.lastError = null;
     this.emit();
     return this.getPublicState();
@@ -535,12 +635,16 @@ export class KhepreeAccessService {
       );
       this.user = refreshed.user;
       return refreshed.accessToken;
-    } catch {
+    } catch (error) {
+      if (isInvalidRefreshError(error)) {
+        await this.sessionStore.clearRefreshToken();
+        this.hasRefreshCredential = false;
+      }
       return null;
     }
   }
 
   async shutdown(): Promise<void> {
-    await this.oauthServer.stop();
+    this.oauthTransaction.clearTransaction();
   }
 }

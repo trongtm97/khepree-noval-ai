@@ -8,6 +8,28 @@ import {
   KhepreeUserDisplaySchema,
 } from './khepree';
 
+export const KhepreeDeviceAuthStartRequestSchema = z.object({
+  state: z.string().min(1),
+  codeChallenge: z.string().min(43),
+  codeChallengeMethod: z.literal('S256'),
+  redirectUri: z.string().min(1),
+  installationId: z.string().uuid(),
+  devicePublicKey: z.string().min(1),
+  productId: z.string().min(1),
+});
+
+export const KhepreeDeviceAuthExchangeRequestSchema = z.object({
+  code: z.string().min(1),
+  state: z.string().min(1),
+  codeVerifier: z.string().min(43),
+  clientId: z.string().min(1),
+  redirectUri: z.string().min(1),
+  installationId: z.string().uuid(),
+  devicePublicKey: z.string().min(1),
+  platform: z.string().min(1),
+  appVersion: z.string().min(1),
+});
+
 export const KhepreeDeviceAuthStartResponseSchema = z.object({
   authUrl: z.string().url(),
   state: z.string().min(1),

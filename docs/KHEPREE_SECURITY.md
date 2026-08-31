@@ -38,9 +38,17 @@ Every lease loaded from API or cache must pass:
 3. Expiry / grace window
 4. Binding to local `installationId`, `deviceId`, `productId`
 
-## Renderer boundary
+## OAuth browser login (Phase N03)
 
-IPC exposes `KhepreeAccessState` only — audited `allowsSecrets: noSecrets`. See `tests/unit/khepree/renderer-api-secrets.test.ts`.
+- **Protocol:** `khepree-novel-ai://auth/callback` (registered as "Khepree Novel AI" in Windows installer)
+- **PKCE:** S256 challenge/verifier generated in main process only
+- **Callback:** validated in `OAuthAuthTransactionManager` — scheme, path, state, expiry, replay protection
+- **Exchange:** `POST /auth/device/exchange` with code, verifier, clientId, redirectUri, device binding
+- **Persistence:** refresh token encrypted in secrets DB; access token memory-only
+- **Reopen:** saved session → `validating` gate → cold-start (no login screen first)
+- **Single instance:** `requestSingleInstanceLock` + `second-instance` forwards deep links
+
+Renderer calls `startLogin()` IPC only — never receives verifier, code, or tokens.
 
 ## Tests
 

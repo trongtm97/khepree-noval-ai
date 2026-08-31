@@ -42,6 +42,10 @@ import {
   startupKhepreeAccess,
   shutdownKhepreeAccess,
 } from './khepree/khepree-access-singleton';
+import {
+  flushQueuedKhepreeAuthCallback,
+  installKhepreeAuthDeepLinkHandlers,
+} from './khepree/auth-protocol-bootstrap';
 import { setKhepreeMainWindow } from './khepree/access-state-bridge';
 
 function isNativeModuleAbiMismatch(error: unknown): boolean {
@@ -73,6 +77,14 @@ async function showStartupFailureDialog(error: unknown): Promise<void> {
 /** Full application bootstrap (non-smoke path). */
 export function startApplication(): void {
   installMainCrashHandlers();
+
+  const gotSingleInstanceLock = app.requestSingleInstanceLock();
+  if (!gotSingleInstanceLock) {
+    app.quit();
+    return;
+  }
+
+  installKhepreeAuthDeepLinkHandlers();
 
   void app.whenReady().then(async () => {
     try {
@@ -151,6 +163,7 @@ function bootApplication(): void {
 
   const { secretStorage } = initializeSecurityServices();
   initializeKhepreeAccessService();
+  flushQueuedKhepreeAuthCallback();
   initializeAccountWorkerService();
   initializeImportService();
   initializeSourceFolderService();

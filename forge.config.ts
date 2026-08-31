@@ -71,6 +71,12 @@ const config: ForgeConfig = {
     appBundleId: 'com.khepree.novelai',
     appCopyright: `Copyright © ${new Date().getFullYear()} Khepree`,
     icon: path.join(__dirname, 'resources', 'icon'),
+    protocols: [
+      {
+        name: 'Khepree Novel AI',
+        schemes: ['khepree-novel-ai'],
+      },
+    ],
     // User data lives in %APPDATA%/KhepreeNovelAI — never under install dir.
     // Squirrel upgrades must not wipe AppData (DB, profiles, settings).
     // resources/workers: NovelTransGeminiWorker.exe only (no .venv / secrets / py source).

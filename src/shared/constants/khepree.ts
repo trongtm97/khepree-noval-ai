@@ -27,6 +27,7 @@ export type KhepreeExternalLinkTarget = keyof typeof KHEPREE_EXTERNAL_URLS;
 /** Gate the renderer must pass before functional workspace. */
 export const KHEPREE_GATE_PHASES = [
   'login',
+  'validating',
   'offline',
   'entitlement',
   'device_limit',
@@ -63,3 +64,23 @@ export const KHEPREE_DEFAULT_HEARTBEAT_MS = 15 * 60 * 1000;
 
 /** OAuth loopback callback path. */
 export const KHEPREE_OAUTH_CALLBACK_PATH = '/oauth/callback';
+
+/** Custom protocol for browser OAuth return (URL-safe scheme — registered as "Khepree Novel AI"). */
+export const KHEPREE_AUTH_PROTOCOL_SCHEME = 'khepree-novel-ai' as const;
+export const KHEPREE_OAUTH_CALLBACK_HOST = 'auth' as const;
+export const KHEPREE_OAUTH_CALLBACK_RELATIVE_PATH = '/callback' as const;
+export const KHEPREE_OAUTH_REDIRECT_URI =
+  `${KHEPREE_AUTH_PROTOCOL_SCHEME}://${KHEPREE_OAUTH_CALLBACK_HOST}${KHEPREE_OAUTH_CALLBACK_RELATIVE_PATH}` as const;
+
+/** @deprecated Use KHEPREE_OAUTH_CALLBACK_RELATIVE_PATH with protocol handler. */
+export const KHEPREE_LEGACY_OAUTH_LOOPBACK_PATH = KHEPREE_OAUTH_CALLBACK_PATH;
+
+export const KHEPREE_LOGIN_PHASES = [
+  'idle',
+  'opening_browser',
+  'waiting_sign_in',
+  'exchanging',
+  'success',
+] as const;
+
+export type KhepreeLoginPhase = (typeof KHEPREE_LOGIN_PHASES)[number];

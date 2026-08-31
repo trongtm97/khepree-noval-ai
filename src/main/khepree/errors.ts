@@ -76,6 +76,37 @@ export class KhepreeApiResponseInvalidError extends KhepreeAccessError {
   }
 }
 
+export class KhepreeOAuthExpiredError extends KhepreeAccessError {
+  constructor() {
+    super('OAUTH_EXPIRED', 'Sign-in expired. Try again.');
+    this.name = 'KhepreeOAuthExpiredError';
+  }
+}
+
+export class KhepreeOAuthStateMismatchError extends KhepreeAccessError {
+  constructor() {
+    super('OAUTH_STATE_MISMATCH', 'Sign-in state mismatch. Try again.');
+    this.name = 'KhepreeOAuthStateMismatchError';
+  }
+}
+
+export class KhepreeOAuthCallbackReplayError extends KhepreeAccessError {
+  constructor() {
+    super('OAUTH_CALLBACK_REPLAY', 'Duplicate sign-in callback rejected.');
+    this.name = 'KhepreeOAuthCallbackReplayError';
+  }
+}
+
+export function isInvalidRefreshError(error: unknown): boolean {
+  if (!(error instanceof KhepreeAccessError)) return false;
+  return (
+    error.code === 'INVALID_REFRESH' ||
+    error.code === 'INVALID_REFRESH_TOKEN' ||
+    error.code === 'SESSION_REVOKED' ||
+    error.code === 'HTTP_401'
+  );
+}
+
 export class KhepreeProductAccessDeniedError extends KhepreeAccessError {
   constructor(feature: string) {
     super('PRODUCT_ACCESS_DENIED', `Access denied for feature: ${feature}`);

@@ -3,6 +3,7 @@ import {
   KHEPREE_EXTERNAL_URLS,
   KHEPREE_GATE_PHASES,
   KHEPREE_HEARTBEAT_STATUSES,
+  KHEPREE_LOGIN_PHASES,
 } from '../constants/khepree';
 
 export const KhepreeUserDisplaySchema = z.object({
@@ -58,6 +59,7 @@ export type KhepreeAccessError = z.infer<typeof KhepreeAccessErrorSchema>;
 /** Sanitized state exposed to renderer — no tokens or private keys. */
 export const KhepreeAccessStateSchema = z.object({
   gate: z.enum(KHEPREE_GATE_PHASES),
+  loginPhase: z.enum(KHEPREE_LOGIN_PHASES).nullable(),
   signedIn: z.boolean(),
   user: KhepreeUserDisplaySchema.nullable(),
   plan: KhepreePlanDisplaySchema.nullable(),
