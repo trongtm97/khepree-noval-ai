@@ -23,6 +23,9 @@ import { SettingsPage } from './pages/SettingsPage';
 import { LogsPage } from './pages/LogsPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
 import { SetupWizardPage } from './pages/SetupWizardPage';
+import { KhepreePage } from './pages/KhepreePage';
+import { KhepreeAccessGate } from './features/khepree/KhepreeAccessGate';
+import { useKhepreeAccessState } from './features/khepree/useKhepreeAccessState';
 import { HelpPage } from './features/help/HelpPage';
 import { OverlayPlaygroundPage } from './pages/dev/OverlayPlaygroundPage';
 import {
@@ -30,7 +33,7 @@ import {
   useThemeStore,
   watchSystemTheme,
 } from './stores/theme-store';
-import { useT, t as i18nT } from './i18n';
+import { useT, t as i18nT, useLocaleStore } from './i18n';
 import type { GetInfoResponse } from '@shared/schemas/ipc';
 import type { SetupStatus } from '@shared/schemas/setup';
 
@@ -40,6 +43,7 @@ export function App() {
   const [appInfo, setAppInfo] = useState<GetInfoResponse | null>(null);
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const { state: khepreeState, loading: khepreeLoading } = useKhepreeAccessState();
 
   useEffect(() => {
     applyTheme(themeMode);
@@ -77,6 +81,12 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (khepreeState?.locale) {
+      useLocaleStore.getState().setPreference(khepreeState.locale);
+    }
+  }, [khepreeState?.locale]);
+
   const enterApp = async () => {
     const setup = await window.novelTrans.setup.getStatus();
     setSetupStatus(setup);
@@ -99,15 +109,15 @@ export function App() {
     );
   }
 
-  if (!appInfo || !setupStatus) {
+  if (!appInfo || !setupStatus || khepreeLoading || !khepreeState) {
     return <LoadingScreen />;
   }
 
-  const showOnboarding = !setupStatus.completed && !setupStatus.explored;
+  const appContent = (() => {
+    const showOnboarding = !setupStatus.completed && !setupStatus.explored;
 
-  if (showOnboarding) {
-    return (
-      <ErrorBoundary>
+    if (showOnboarding) {
+      return (
         <SetupWizardPage
           onComplete={() => {
             void enterApp();
@@ -116,12 +126,10 @@ export function App() {
             void enterApp();
           }}
         />
-      </ErrorBoundary>
-    );
-  }
+      );
+    }
 
-  return (
-    <ErrorBoundary>
+    return (
       <BrowserRouter>
         <AppShell appInfo={appInfo}>
           <Routes>
@@ -152,6 +160,7 @@ export function App() {
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/jobs" element={<JobsPage />} />
             <Route path="/learning" element={<LearningPage />} />
+            <Route path="/khepree" element={<KhepreePage appInfo={appInfo} />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/diagnostics" element={<DiagnosticsPage />} />
             <Route path="/logs" element={<LogsPage />} />
@@ -164,6 +173,12 @@ export function App() {
           </Routes>
         </AppShell>
       </BrowserRouter>
+    );
+  })();
+
+  return (
+    <ErrorBoundary>
+      <KhepreeAccessGate state={khepreeState}>{appContent}</KhepreeAccessGate>
     </ErrorBoundary>
   );
 }

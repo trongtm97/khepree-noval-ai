@@ -37,6 +37,12 @@ import {
 } from './automation/browser-runner/browser-runtime-manager';
 import { profileLockManager } from './automation/browser-runner/profile-lock';
 import { recoverJobsGeminiAndProfilesOnStartup } from './gemini/startup-recovery';
+import {
+  initializeKhepreeAccessService,
+  startupKhepreeAccess,
+  shutdownKhepreeAccess,
+} from './khepree/khepree-access-singleton';
+import { setKhepreeMainWindow } from './khepree/access-state-bridge';
 
 function isNativeModuleAbiMismatch(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
@@ -103,6 +109,7 @@ export function startApplication(): void {
     void (async () => {
       try {
         shutdownSourceFolderSubsystem();
+        await shutdownKhepreeAccess();
         await shutdownAutomationScheduler();
         await shutdownBrowserRuntimeManager();
         await shutdownAiProviderService();
@@ -143,6 +150,7 @@ function bootApplication(): void {
   }
 
   const { secretStorage } = initializeSecurityServices();
+  initializeKhepreeAccessService();
   initializeAccountWorkerService();
   initializeImportService();
   initializeSourceFolderService();
@@ -178,6 +186,11 @@ function bootApplication(): void {
   });
 
   registerIpcHandlers();
+  void startupKhepreeAccess().catch((error: unknown) => {
+    logger.warn('Khepree cold start deferred failure', {
+      message: error instanceof Error ? error.message : String(error),
+    });
+  });
   // Profile leases already recovered in recoverJobsGeminiAndProfilesOnStartup;
   // keep a second pass for leases created after DB init.
   try {
@@ -191,6 +204,7 @@ function bootApplication(): void {
     });
   }
   const mainWindow = createMainWindow();
+  setKhepreeMainWindow(mainWindow);
   setSourceFolderMainWindow(mainWindow);
   startupSourceFolderSubsystem();
   logger.info('Application started', {

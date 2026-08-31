@@ -1309,6 +1309,24 @@ export interface NovelTransApi {
       accountId: string;
     }) => Promise<z.infer<typeof AiModelsListResponseSchema>>;
   };
+  khepree: {
+    getAccessState: () => Promise<import('../schemas/khepree').KhepreeAccessState>;
+    setLocale: (input: {
+      locale: import('../types/ui-locale').UiLocaleCode;
+    }) => Promise<{ ok: true; state: import('../schemas/khepree').KhepreeAccessState }>;
+    startLogin: () => Promise<{ ok: true; state: import('../schemas/khepree').KhepreeAccessState }>;
+    retryColdStart: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
+    retryActivation: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
+    refreshEntitlement: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
+    startCheckout: () => Promise<{ ok: boolean; state: import('../schemas/khepree').KhepreeAccessState }>;
+    signOut: () => Promise<{ ok: true; state: import('../schemas/khepree').KhepreeAccessState }>;
+    openExternal: (input: {
+      target: import('../constants/khepree').KhepreeExternalLinkTarget;
+    }) => Promise<{ ok: boolean }>;
+    onAccessState: (
+      callback: (state: import('../schemas/khepree').KhepreeAccessState) => void,
+    ) => () => void;
+  };
 }
 
 declare global {

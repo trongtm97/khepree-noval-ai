@@ -22,7 +22,8 @@ export type IpcPermission =
   | 'export'
   | 'manage_diagnostics'
   | 'manage_setup'
-  | 'manage_ai_providers';
+  | 'manage_ai_providers'
+  | 'manage_khepree_access';
 
 export interface IpcChannelAudit {
   channel: IpcChannel;
@@ -1959,6 +1960,96 @@ export const IPC_CHANNEL_AUDIT: readonly IpcChannelAudit[] = [
     allowsDbQuery: true,
     allowsSecrets: noSecrets,
     notes: 'One-click AI check/fix: provider order, worker, Gemini probe',
+  },
+  {
+    channel: IPC_CHANNELS.KHEPREE_GET_ACCESS_STATE,
+    permission: 'manage_khepree_access',
+    allowsFilesystem: false,
+    allowsShell: false,
+    allowsDbQuery: false,
+    allowsSecrets: noSecrets,
+    notes: 'Sanitized Khepree access state — no tokens',
+  },
+  {
+    channel: IPC_CHANNELS.KHEPREE_SET_LOCALE,
+    permission: 'manage_khepree_access',
+    allowsFilesystem: false,
+    allowsShell: false,
+    allowsDbQuery: true,
+    allowsSecrets: noSecrets,
+    notes: 'First-run UI locale before login',
+  },
+  {
+    channel: IPC_CHANNELS.KHEPREE_START_LOGIN,
+    permission: 'manage_khepree_access',
+    allowsFilesystem: false,
+    allowsShell: true,
+    allowsDbQuery: false,
+    allowsSecrets: noSecrets,
+    notes: 'Opens Khepree browser login — no password IPC',
+  },
+  {
+    channel: IPC_CHANNELS.KHEPREE_RETRY_COLD_START,
+    permission: 'manage_khepree_access',
+    allowsFilesystem: false,
+    allowsShell: false,
+    allowsDbQuery: false,
+    allowsSecrets: noSecrets,
+    notes: 'Retry online cold-start validation',
+  },
+  {
+    channel: IPC_CHANNELS.KHEPREE_RETRY_ACTIVATION,
+    permission: 'manage_khepree_access',
+    allowsFilesystem: false,
+    allowsShell: false,
+    allowsDbQuery: false,
+    allowsSecrets: noSecrets,
+    notes: 'Retry device activation after slot freed',
+  },
+  {
+    channel: IPC_CHANNELS.KHEPREE_REFRESH_ENTITLEMENT,
+    permission: 'manage_khepree_access',
+    allowsFilesystem: false,
+    allowsShell: false,
+    allowsDbQuery: false,
+    allowsSecrets: noSecrets,
+    notes: 'Poll entitlement after checkout',
+  },
+  {
+    channel: IPC_CHANNELS.KHEPREE_START_CHECKOUT,
+    permission: 'manage_khepree_access',
+    allowsFilesystem: false,
+    allowsShell: true,
+    allowsDbQuery: false,
+    allowsSecrets: noSecrets,
+    notes: 'Open Khepree hosted checkout in system browser',
+  },
+  {
+    channel: IPC_CHANNELS.KHEPREE_SIGN_OUT,
+    permission: 'manage_khepree_access',
+    allowsFilesystem: false,
+    allowsShell: false,
+    allowsDbQuery: false,
+    allowsSecrets: noSecrets,
+    notes: 'Clear Khepree session credentials',
+  },
+  {
+    channel: IPC_CHANNELS.KHEPREE_OPEN_EXTERNAL,
+    permission: 'manage_khepree_access',
+    allowsFilesystem: false,
+    allowsShell: true,
+    allowsDbQuery: false,
+    allowsSecrets: noSecrets,
+    notes: 'Open allowlisted Khepree URL only',
+  },
+  {
+    channel: IPC_CHANNELS.KHEPREE_ACCESS_STATE,
+    permission: 'manage_khepree_access',
+    allowsFilesystem: false,
+    allowsShell: false,
+    allowsDbQuery: false,
+    allowsSecrets: noSecrets,
+    notes: 'Main→renderer access state push event',
   },
 ] as const;
 

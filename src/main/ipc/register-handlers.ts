@@ -363,6 +363,21 @@ import {
 } from '@shared/schemas/selector-override';
 import { getDiagnosticsService } from '../services/diagnostics-service-singleton';
 import { getSetupService } from '../services/setup-service-singleton';
+import { getKhepreeAccessService } from '../khepree/khepree-access-singleton';
+import { assertKhepreeProductAccess } from '../khepree/product-access-boundary';
+import {
+  KhepreeGetAccessStateResponseSchema,
+  KhepreeOpenExternalRequestSchema,
+  KhepreeOpenExternalResponseSchema,
+  KhepreeRefreshEntitlementResponseSchema,
+  KhepreeRetryActivationResponseSchema,
+  KhepreeSetLocaleRequestSchema,
+  KhepreeSetLocaleResponseSchema,
+  KhepreeSignOutResponseSchema,
+  KhepreeStartCheckoutResponseSchema,
+  KhepreeStartLoginResponseSchema,
+} from '@shared/schemas/khepree';
+import { openKhepreeExternal } from '../khepree/external-links';
 import {
   checkForUpdates,
   getUpdateProvider,
@@ -2007,6 +2022,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.JOB_ENQUEUE,
     createIpcHandler(JobEnqueueRequestSchema, (request) => {
+      assertKhepreeProductAccess();
       const result = getJobService().enqueueTranslate(request);
       return JobEnqueueResponseSchema.parse({
         job: result.job,
@@ -2018,6 +2034,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.JOB_ENQUEUE_NOVEL,
     createIpcHandler(JobEnqueueNovelRequestSchema, (request) => {
+      assertKhepreeProductAccess();
       const result = getJobService().enqueueTranslateNovel(request);
       return JobEnqueueNovelResponseSchema.parse(result);
     }),
@@ -3022,6 +3039,86 @@ function registerAiProviderHandlers(): void {
     createIpcHandler(AiAccountIdRequestSchema, async (request) => {
       const models = await getAiProviderService().syncModelsFromWorker(request.accountId);
       return AiModelsListResponseSchema.parse({ models });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_GET_ACCESS_STATE,
+    createIpcHandlerNoArg(() => {
+      return KhepreeGetAccessStateResponseSchema.parse(getKhepreeAccessService().getPublicState());
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_SET_LOCALE,
+    createIpcHandler(KhepreeSetLocaleRequestSchema, (request) => {
+      const state = getKhepreeAccessService().setLocale(request.locale);
+      return KhepreeSetLocaleResponseSchema.parse({ ok: true, state });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_START_LOGIN,
+    createIpcHandlerNoArg(async () => {
+      const state = await getKhepreeAccessService().startLogin();
+      return KhepreeStartLoginResponseSchema.parse({ ok: true, state });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_RETRY_COLD_START,
+    createIpcHandlerNoArg(async () => {
+      const state = await getKhepreeAccessService().retryColdStart();
+      return KhepreeRefreshEntitlementResponseSchema.parse({ ok: true, state });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_RETRY_ACTIVATION,
+    createIpcHandlerNoArg(async () => {
+      const state = await getKhepreeAccessService().retryActivation();
+      return KhepreeRetryActivationResponseSchema.parse({
+        ok: state.gate === 'workspace',
+        state,
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_REFRESH_ENTITLEMENT,
+    createIpcHandlerNoArg(async () => {
+      const state = await getKhepreeAccessService().refreshEntitlement();
+      return KhepreeRefreshEntitlementResponseSchema.parse({
+        ok: state.gate === 'workspace',
+        state,
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_START_CHECKOUT,
+    createIpcHandlerNoArg(async () => {
+      const state = await getKhepreeAccessService().startCheckout();
+      return KhepreeStartCheckoutResponseSchema.parse({
+        ok: true,
+        state,
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_SIGN_OUT,
+    createIpcHandlerNoArg(async () => {
+      const state = await getKhepreeAccessService().signOut();
+      return KhepreeSignOutResponseSchema.parse({ ok: true, state });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_OPEN_EXTERNAL,
+    createIpcHandler(KhepreeOpenExternalRequestSchema, async (request) => {
+      const ok = await openKhepreeExternal(request.target);
+      return KhepreeOpenExternalResponseSchema.parse({ ok });
     }),
   );
 }

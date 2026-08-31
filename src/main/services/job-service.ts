@@ -42,6 +42,7 @@ import { QaResultSchema, ParsedBatchResultSchema } from '@shared/schemas/output-
 import {
   PARALLEL_WAVES_UI_WARNING_VI,
 } from '@shared/constants/parallel-waves';
+import { assertKhepreeProductAccess } from '../khepree/product-access-boundary';
 
 export interface CreateRepairJobInput {
   projectId: string;
@@ -117,6 +118,7 @@ export class JobService {
    * Large chapters are chunked under the hood during send — not as separate jobs.
    */
   enqueueTranslate(input: EnqueueTranslateJobInput): { job: JobDto; jobs: JobDto[] } {
+    assertKhepreeProductAccess();
     healIdleWorkers(this.db);
     const dto = this.createTranslateJob(input);
     void this.prepareProfilesAndKickScheduler();
@@ -132,6 +134,7 @@ export class JobService {
     queuedCount: number;
     skippedCount: number;
   } {
+    assertKhepreeProductAccess();
     if (
       input.chapterFrom != null &&
       input.chapterTo != null &&

@@ -48,6 +48,7 @@ import { MIGRATION_039_EXPORT_DIRECTORY } from './039-export-directory';
 import { MIGRATION_040_LANGUAGE_CODE_NORMALIZATION } from './040-language-code-normalization';
 import { MIGRATION_041_MULTI_AI_PROVIDERS } from './041-multi-ai-providers';
 import { MIGRATION_042_EXECUTION_WORKER } from './042-execution-worker';
+import { MIGRATION_043_KHEPREE_DEVICE } from './043-khepree-device';
 
 export const MIGRATIONS: MigrationDefinition[] = [
   {
@@ -253,6 +254,11 @@ export const MIGRATIONS: MigrationDefinition[] = [
     version: 42,
     name: 'execution_worker',
     sql: MIGRATION_042_EXECUTION_WORKER,
+  },
+  {
+    version: 43,
+    name: 'khepree_device',
+    sql: MIGRATION_043_KHEPREE_DEVICE,
   },
 ];
 

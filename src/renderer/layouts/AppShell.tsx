@@ -13,6 +13,7 @@ import {
   HelpCircle,
   BookOpen,
   CircleUser,
+  Shield,
 } from 'lucide-react';
 import type { GetInfoResponse } from '@shared/schemas/ipc';
 import { useT } from '../i18n';
@@ -50,6 +51,7 @@ const PRIMARY_NAV = [
 
 const SECONDARY_NAV = [
   { to: '/accounts', key: 'nav.accounts', icon: CircleUser },
+  { to: '/khepree', key: 'nav.khepree', icon: Shield },
   { to: '/help', key: 'nav.help', icon: BookOpen },
   { to: '/settings', key: 'nav.settings', icon: Settings },
 ] as const;

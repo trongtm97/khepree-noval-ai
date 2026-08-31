@@ -221,6 +221,16 @@ export const IPC_CHANNELS = {
   AI_ACCOUNT_UPDATE_DISPLAY_NAME: 'aiAccount:updateDisplayName',
   AI_MODELS_LIST: 'aiModels:list',
   AI_MODELS_SYNC: 'aiModels:sync',
+  KHEPREE_GET_ACCESS_STATE: 'khepree:getAccessState',
+  KHEPREE_SET_LOCALE: 'khepree:setLocale',
+  KHEPREE_START_LOGIN: 'khepree:startLogin',
+  KHEPREE_RETRY_COLD_START: 'khepree:retryColdStart',
+  KHEPREE_RETRY_ACTIVATION: 'khepree:retryActivation',
+  KHEPREE_REFRESH_ENTITLEMENT: 'khepree:refreshEntitlement',
+  KHEPREE_START_CHECKOUT: 'khepree:startCheckout',
+  KHEPREE_SIGN_OUT: 'khepree:signOut',
+  KHEPREE_OPEN_EXTERNAL: 'khepree:openExternal',
+  KHEPREE_ACCESS_STATE: 'khepree:accessState',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

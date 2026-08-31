@@ -410,6 +410,26 @@ const api: NovelTransApi = {
     list: (input) => invokeChannel(IPC_CHANNELS.AI_MODELS_LIST, input),
     sync: (input) => invokeChannel(IPC_CHANNELS.AI_MODELS_SYNC, input),
   },
+  khepree: {
+    getAccessState: () => invokeChannel(IPC_CHANNELS.KHEPREE_GET_ACCESS_STATE),
+    setLocale: (input) => invokeChannel(IPC_CHANNELS.KHEPREE_SET_LOCALE, input),
+    startLogin: () => invokeChannel(IPC_CHANNELS.KHEPREE_START_LOGIN),
+    retryColdStart: () => invokeChannel(IPC_CHANNELS.KHEPREE_RETRY_COLD_START),
+    retryActivation: () => invokeChannel(IPC_CHANNELS.KHEPREE_RETRY_ACTIVATION),
+    refreshEntitlement: () => invokeChannel(IPC_CHANNELS.KHEPREE_REFRESH_ENTITLEMENT),
+    startCheckout: () => invokeChannel(IPC_CHANNELS.KHEPREE_START_CHECKOUT),
+    signOut: () => invokeChannel(IPC_CHANNELS.KHEPREE_SIGN_OUT),
+    openExternal: (input) => invokeChannel(IPC_CHANNELS.KHEPREE_OPEN_EXTERNAL, input),
+    onAccessState: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+        callback(payload as import('@shared/schemas/khepree').KhepreeAccessState);
+      };
+      ipcRenderer.on(IPC_CHANNELS.KHEPREE_ACCESS_STATE, listener);
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.KHEPREE_ACCESS_STATE, listener);
+      };
+    },
+  },
   checkForUpdates: () => invokeChannel(IPC_CHANNELS.APP_CHECK_FOR_UPDATES),
 };
 
