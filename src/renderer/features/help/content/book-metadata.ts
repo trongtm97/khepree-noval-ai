@@ -56,7 +56,7 @@ export const bookMetadataArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Chuẩn bị thông tin truyện' },
       {
         type: 'paragraph',
-        text: 'Ngoài các file chương TXT, bạn có thể chuẩn bị thêm metadata và tài liệu phụ trong cùng thư mục nguồn. NovelTrans tự phân loại — không gộp tên truyện, mô tả hay tóm tắt vào bảng chương.',
+        text: 'Ngoài các file chương TXT, bạn có thể chuẩn bị thêm metadata và tài liệu phụ trong cùng thư mục nguồn. Khepree Novel AI tự phân loại — không gộp tên truyện, mô tả hay tóm tắt vào bảng chương.',
       },
       {
         type: 'callout',
@@ -76,7 +76,7 @@ export const bookMetadataArticles: HelpArticle[] = [
 ├── 000002.txt
 └── ...`,
       },
-      { type: 'heading', level: 2, text: 'NovelTrans phân loại như thế nào' },
+      { type: 'heading', level: 2, text: 'Khepree Novel AI phân loại như thế nào' },
       {
         type: 'table',
         headers: ['Loại', 'Ví dụ file', 'Lưu vào đâu'],
@@ -94,7 +94,7 @@ export const bookMetadataArticles: HelpArticle[] = [
         type: 'callout',
         variant: 'warning',
         title: 'Quan trọng',
-        body: 'Tóm tắt chính thức (official summary) khác trạng thái truyện đang dịch (story state). NovelTrans không trộn hai loại dữ liệu này.',
+        body: 'Tóm tắt chính thức (official summary) khác trạng thái truyện đang dịch (story state). Khepree Novel AI không trộn hai loại dữ liệu này.',
       },
       {
         type: 'actions',
@@ -125,7 +125,7 @@ export const bookMetadataArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'File _BOOK_INFO.txt' },
       {
         type: 'paragraph',
-        text: 'Đặt file _BOOK_INFO.txt trong thư mục nguồn. Khi quét thư mục, NovelTrans đọc các cặp key: value và điền vào metadata dự án. Hỗ trợ nhãn tiếng Việt, tiếng Trung và tiếng Anh.',
+        text: 'Đặt file _BOOK_INFO.txt trong thư mục nguồn. Khi quét thư mục, Khepree Novel AI đọc các cặp key: value và điền vào metadata dự án. Hỗ trợ nhãn tiếng Việt, tiếng Trung và tiếng Anh.',
       },
       { type: 'heading', level: 2, text: 'Ví dụ mẫu' },
       { type: 'code', text: BOOK_INFO_SAMPLE },
@@ -166,7 +166,7 @@ export const bookMetadataArticles: HelpArticle[] = [
           },
           {
             q: 'Sửa _BOOK_INFO sau khi đã nhập?',
-            a: 'Quét lại thư mục. Nếu bạn đã chỉnh metadata trong app, NovelTrans ưu tiên dữ liệu đã xác nhận — có thể báo xung đột thay vì ghi đè.',
+            a: 'Quét lại thư mục. Nếu bạn đã chỉnh metadata trong app, Khepree Novel AI ưu tiên dữ liệu đã xác nhận — có thể báo xung đột thay vì ghi đè.',
           },
         ],
       },
@@ -193,7 +193,7 @@ export const bookMetadataArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Chương mở đầu và lời nói đầu' },
       {
         type: 'paragraph',
-        text: 'Tiểu thuyết Trung Quốc thường có nhiều phần đứng trước Chương 1. NovelTrans không coi tất cả là một chương thường hay metadata.',
+        text: 'Tiểu thuyết Trung Quốc thường có nhiều phần đứng trước Chương 1. Khepree Novel AI không coi tất cả là một chương thường hay metadata.',
       },
       { type: 'heading', level: 2, text: 'Tài liệu phụ (không dịch như chương)' },
       {
@@ -219,7 +219,7 @@ export const bookMetadataArticles: HelpArticle[] = [
         type: 'callout',
         variant: 'warning',
         title: 'Lưu ý',
-        body: 'Lời giới thiệu / tóm tắt marketing không được coi là chương. Nếu NovelTrans phân loại sai, đổi tên file theo quy ước (_SUMMARY.txt, 序章.txt…) rồi quét lại thư mục.',
+        body: 'Lời giới thiệu / tóm tắt marketing không được coi là chương. Nếu Khepree Novel AI phân loại sai, đổi tên file theo quy ước (_SUMMARY.txt, 序章.txt…) rồi quét lại thư mục.',
       },
       { type: 'heading', level: 2, text: 'Chương đặc biệt khác' },
       {
@@ -250,7 +250,7 @@ export const bookMetadataArticles: HelpArticle[] = [
     order: 0.7,
     relatedIds: ['book-info-file', 'book-metadata-prep', 'book-profile', 'connect-drive'],
     blocks: [
-      { type: 'heading', level: 1, text: 'Thông tin truyện trong NovelTrans' },
+      { type: 'heading', level: 1, text: 'Thông tin truyện trong Khepree Novel AI' },
       {
         type: 'paragraph',
         text: 'Từ trang Dự án, mở Thông tin truyện để xem và chỉnh metadata: tên gốc, tên Việt, tác giả, thể loại, mô tả, tóm tắt chính thức, ghi chú và danh sách tài liệu phụ đã nhập.',
@@ -294,7 +294,7 @@ export const bookMetadataArticles: HelpArticle[] = [
         type: 'callout',
         variant: 'warning',
         title: 'Ưu tiên khi quét lại',
-        body: 'Dữ liệu bạn đã sửa và lưu trong app được ưu tiên hơn _BOOK_INFO.txt mới. Sau khi sửa file nguồn, mở Thông tin truyện để so sánh — NovelTrans không ghi đè im lặng các trường đã xác nhận.',
+        body: 'Dữ liệu bạn đã sửa và lưu trong app được ưu tiên hơn _BOOK_INFO.txt mới. Sau khi sửa file nguồn, mở Thông tin truyện để so sánh — Khepree Novel AI không ghi đè im lặng các trường đã xác nhận.',
       },
       {
         type: 'callout',
@@ -368,7 +368,7 @@ export const bookMetadataArticles: HelpArticle[] = [
       },
       {
         type: 'paragraph',
-        text: 'Nếu tên file (001.txt) và tiêu đề trong nội dung (第二章) không khớp, NovelTrans cảnh báo "Xung đột số chương". Chọn dùng tên file, dùng nội dung, hoặc chỉnh thủ công — không tự chọn im lặng.',
+        text: 'Nếu tên file (001.txt) và tiêu đề trong nội dung (第二章) không khớp, Khepree Novel AI cảnh báo "Xung đột số chương". Chọn dùng tên file, dùng nội dung, hoặc chỉnh thủ công — không tự chọn im lặng.',
       },
       {
         type: 'callout',
@@ -411,7 +411,7 @@ export const bookMetadataArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Book Profile và file Notebook' },
       {
         type: 'paragraph',
-        text: 'Book Profile là bản tóm tắt metadata ngắn gọn (tên, tác giả, thể loại, mô tả rút gọn…) dùng khi dịch và đồng bộ lên Notebook. NovelTrans không gửi nguyên mô tả dài mỗi batch — giảm token và giữ ngữ cảnh ổn định.',
+        text: 'Book Profile là bản tóm tắt metadata ngắn gọn (tên, tác giả, thể loại, mô tả rút gọn…) dùng khi dịch và đồng bộ lên Notebook. Khepree Novel AI không gửi nguyên mô tả dài mỗi batch — giảm token và giữ ngữ cảnh ổn định.',
       },
       { type: 'heading', level: 2, text: 'File trên Google Drive' },
       {

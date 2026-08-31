@@ -9,7 +9,6 @@ export function formatBootstrapEditionHeaders(
   sourceLanguage: string,
   targetLanguage: string,
 ): { sourceHeader: string; targetHeader: string; scriptLines: string[] } {
-  const sourceProfile = getLanguageProfile(sourceLanguage);
   const targetProfile = getLanguageProfile(targetLanguage);
   return {
     sourceHeader: `Source: ${formatAiLanguageIdentity(sourceLanguage)}`,

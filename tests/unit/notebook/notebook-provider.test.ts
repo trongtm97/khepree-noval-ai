@@ -61,7 +61,7 @@ describe('NotebookProvider (fixture DOM)', () => {
     await page.goto(`${baseUrl}/broken.html`);
     const p = provider();
     expect(await p.detectAvailability()).toBe(false);
-    await expect(p.createNotebook('[NovelTrans] X')).rejects.toMatchObject({
+    await expect(p.createNotebook('[Khepree] X')).rejects.toMatchObject({
       code: 'SELECTOR_NOT_FOUND',
     });
   }, 15_000);
@@ -237,9 +237,9 @@ describe('NotebookProvider (fixture DOM)', () => {
     const name = formatNotebookName('Rename Me');
     await p.createNotebook(name);
     await p.openNotebook(name);
-    await p.renameNotebook('[NovelTrans] Renamed');
+    await p.renameNotebook('[Khepree] Renamed');
     const state = await p.getNotebookState();
-    expect(state.currentName).toBe('[NovelTrans] Renamed');
+    expect(state.currentName).toBe('[Khepree] Renamed');
   }, 15_000);
 
   it('captures diagnostics on SELECTOR_NOT_FOUND', async () => {
@@ -258,7 +258,7 @@ describe('NotebookProvider (fixture DOM)', () => {
 });
 
 describe('formatNotebookName', () => {
-  it('prefixes NovelTrans tag', () => {
-    expect(formatNotebookName('My Novel')).toBe('[NovelTrans] My Novel');
+  it('prefixes Khepree Novel AI tag', () => {
+    expect(formatNotebookName('My Novel')).toBe('[Khepree] My Novel');
   });
 });

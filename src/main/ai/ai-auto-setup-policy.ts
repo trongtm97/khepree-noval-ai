@@ -2,6 +2,11 @@ import {
   AI_PROVIDER_IDS,
   DEFAULT_FALLBACK_STATUSES,
 } from '@shared/constants/ai-provider';
+import type {
+  AiPreference,
+  AiProviderPreference,
+} from '@shared/constants/ai-preference';
+import { AI_PROVIDER_PREFERENCES } from '@shared/constants/ai-preference';
 import type { AiAutoSetupResult, AiAutoSetupStep } from '@shared/schemas/ai-auto-setup';
 import type { AiProviderService } from './ai-provider-service';
 
@@ -19,57 +24,62 @@ export function applyRecommendedProviderOrder(ai: AiProviderService): void {
 }
 
 export function evaluateAutoSetupOutcome(input: {
+  preference: AiPreference;
+  providerReady: Record<AiProviderPreference, boolean>;
+  anyAccount: boolean;
   usableAccountCount: number;
-  needsLogin: boolean;
-  hasAnyAccount: boolean;
-  geminiOk: boolean;
+  needsLogin: AiProviderPreference | null;
   workerOk: boolean;
-}): Pick<AiAutoSetupResult, 'outcome' | 'title' | 'message' | 'action'> {
-  if (!input.hasAnyAccount) {
+  anyProviderOk: boolean;
+}): Pick<AiAutoSetupResult, 'outcome' | 'title' | 'message' | 'action' | 'loginTarget'> {
+  const readyCount = AI_PROVIDER_PREFERENCES.filter((p) => input.providerReady[p]).length;
+
+  if (!input.anyAccount && readyCount === 0) {
     return {
       outcome: 'action_required',
-      title: 'Cần tài khoản Google',
-      message: 'Thêm tài khoản Google để dịch với Gemini.',
+      title: 'Cần tài khoản AI',
+      message: 'Thêm tài khoản AI để Khepree Novel AI có thể dịch truyện.',
       action: 'add_account',
+      loginTarget: null,
     };
   }
-  if (input.usableAccountCount === 0 && input.needsLogin) {
+
+  if (input.needsLogin) {
     return {
       outcome: 'action_required',
-      title: 'Cần đăng nhập Google',
-      message: 'Còn 1 bước cần bạn thực hiện: Đăng nhập tài khoản Google.',
+      title: 'Cần đăng nhập tài khoản AI',
+      message: 'Còn 1 bước cần bạn thực hiện: đăng nhập tài khoản AI.',
       action: 'login',
+      loginTarget: input.needsLogin,
     };
   }
-  if (input.geminiOk) {
+
+  if (input.anyProviderOk || readyCount > 0) {
     return {
       outcome: 'ready',
       title: '✓ AI sẵn sàng',
-      message: 'Gemini hoạt động bình thường.',
+      message: 'Các nhà cung cấp AI đã sẵn sàng cho dịch.',
       action: null,
+      loginTarget: null,
     };
   }
-  if (input.usableAccountCount === 0) {
-    return {
-      outcome: 'action_required',
-      title: 'Cần tài khoản Google',
-      message: 'Chưa có tài khoản Google sẵn sàng cho dịch.',
-      action: 'add_account',
-    };
-  }
-  if (!input.workerOk && !input.geminiOk) {
+
+  if (!input.workerOk) {
     return {
       outcome: 'failed',
-      title: 'Không thể khởi động Gemini',
-      message: 'Không thể khởi động Gemini. Thử sửa lại hoặc xem chi tiết.',
+      title: 'Không thể khởi động AI',
+      message: 'Không thể khởi động hệ thống AI. Thử sửa lại hoặc xem chi tiết.',
       action: null,
+      loginTarget: null,
     };
   }
+
   return {
     outcome: 'failed',
-    title: 'Không thể khởi động Gemini',
-    message: 'Gemini chưa phản hồi sẵn sàng. Thử sửa lại hoặc xem chi tiết.',
+    title: 'AI chưa sẵn sàng',
+    message: 'Chưa có nhà cung cấp AI phản hồi sẵn sàng. Thử sửa lại hoặc xem chi tiết.',
     action: null,
+    loginTarget: null,
   };
 }
 

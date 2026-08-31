@@ -20,8 +20,8 @@ async function seedVerifiedNotebook(
   db.notebooks.upsert({
     project_id: projectId,
     google_account_id: accountId,
-    notebook_name: '[NovelTrans] Hot',
-    notebook_role: 'TRANSLATION',
+    notebook_name: '[Khepree] Hot',
+    notebook_role: 'SINGLE',
     status: 'ready',
     instructions_hash: 'hash',
   });
@@ -126,7 +126,7 @@ describe('Notebook Hot Memory (structured SQLite deltas)', () => {
     }
 
     const hot = buildActiveHotMemoryText(db, projectId, { anchorChapter: 450 });
-    expect(hot).toContain('## HOT MEMORY — overrides stale Notebook');
+    expect(hot).toContain('## HOT MEMORY — active wave / queue deltas');
     expect(hot).toContain('天逆珠');
     expect(hot).toContain('Thiên Nghịch Châu');
     expect(hot).toContain('[LOCKED]');

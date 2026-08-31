@@ -1,28 +1,24 @@
 import type { DatabaseManager } from '../db/database-manager';
-import {
-  projectUsesGlobalPrimary,
-  readProjectPrimaryProviderOverride,
-} from '@shared/constants/project-style-config';
 import { AI_ROUTING_META_KEYS } from '@shared/constants/provider-preflight';
 import {
   isTranslationAiProviderId,
   TRANSLATION_AI_PROVIDER_IDS,
 } from '@shared/constants/translation-ai-providers';
+import {
+  buildReadinessFromDb,
+  resolveEffectivePrimaryProviderId,
+  writeAiPreference,
+} from './ai-preference-policy';
+import { preferenceFromProviderId } from '@shared/constants/ai-preference';
 import type { AiProviderService } from './ai-provider-service';
 
 export function resolvePrimaryProviderId(
   db: DatabaseManager,
   projectId?: string | null,
 ): string | null {
-  if (projectId) {
-    const style = db.projects.getStyleConfig(projectId);
-    if (!projectUsesGlobalPrimary(style)) {
-      const override = readProjectPrimaryProviderOverride(style);
-      if (override && isTranslationAiProviderId(override)) {
-        return override;
-      }
-    }
-  }
+  const readiness = buildReadinessFromDb(db);
+  const resolved = resolveEffectivePrimaryProviderId(db, readiness, projectId);
+  if (resolved) return resolved;
 
   const global = db.appMeta.get(AI_ROUTING_META_KEYS.primaryProviderId);
   if (global && global.length > 0 && isTranslationAiProviderId(global)) {
@@ -46,6 +42,11 @@ export function applyPrimaryProvider(
 
   const row = db.aiProviders.getById(providerId);
   if (!row) throw new Error('Provider not found');
+
+  const mapped = preferenceFromProviderId(providerId);
+  if (mapped) {
+    writeAiPreference(db, mapped);
+  }
 
   service.setEnabled(providerId, true);
   service.manager.setRoutingMode('AUTO');

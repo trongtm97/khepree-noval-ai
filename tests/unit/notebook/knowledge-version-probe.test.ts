@@ -74,8 +74,8 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Probe',
-      notebook_role: 'TRANSLATION',
+      notebook_name: '[Khepree] Probe',
+      notebook_role: 'SINGLE',
       notebook_id: 'nb-probe',
       resource_url: 'https://notebook.google.com/x',
       status: 'sync_pending',

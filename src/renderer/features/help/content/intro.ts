@@ -4,20 +4,20 @@ export const introArticles: HelpArticle[] = [
   {
     id: 'intro',
     categoryId: 'start',
-    title: 'NovelTrans Studio là gì?',
+    title: 'Khepree Novel AI là gì?',
     description: 'Giới thiệu phần mềm dịch tiểu thuyết Trung–Việt bằng Gemini.',
-    keywords: ['giới thiệu', 'noveltrans', 'gemini', 'dịch truyện', 'là gì'],
+    keywords: ['giới thiệu', 'Khepree Novel AI', 'gemini', 'dịch truyện', 'là gì'],
     order: 1,
     relatedIds: ['quick-start', 'google-accounts'],
     blocks: [
       {
         type: 'heading',
         level: 1,
-        text: 'NovelTrans Studio là gì?',
+        text: 'Khepree Novel AI là gì?',
       },
       {
         type: 'paragraph',
-        text: 'NovelTrans Studio là phần mềm Windows hỗ trợ dịch tiểu thuyết Trung Quốc sang tiếng Việt bằng Google Gemini qua tài khoản Google của bạn.',
+        text: 'Khepree Novel AI là phần mềm Windows hỗ trợ dịch tiểu thuyết Trung Quốc sang tiếng Việt bằng Google Gemini qua tài khoản Google của bạn.',
       },
       {
         type: 'paragraph',
@@ -38,7 +38,7 @@ export const introArticles: HelpArticle[] = [
         type: 'callout',
         variant: 'info',
         title: 'Thông tin',
-        body: 'NovelTrans không dùng tài khoản Google chung. Mỗi người dùng thêm tài khoản Google riêng. Dữ liệu truyện lưu trên máy tính của bạn (AppData).',
+        body: 'Khepree Novel AI không dùng tài khoản Google chung. Mỗi người dùng thêm tài khoản Google riêng. Dữ liệu truyện lưu trên máy tính của bạn (AppData).',
       },
     ],
   },
@@ -61,7 +61,7 @@ export const introArticles: HelpArticle[] = [
           },
           {
             title: 'Bộ nhớ AI cục bộ',
-            body: 'NovelTrans lưu nhân vật, thuật ngữ và ngữ cảnh trên máy (SQLite). NotebookLM Research là tùy chọn cho phân tích toàn truyện.',
+            body: 'Khepree Novel AI lưu nhân vật, thuật ngữ và ngữ cảnh trên máy (SQLite). NotebookLM Research là tùy chọn cho phân tích toàn truyện.',
           },
           {
             title: 'Nhập truyện',

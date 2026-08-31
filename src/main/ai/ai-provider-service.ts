@@ -7,6 +7,8 @@ import {
   geminiWebSessionSecretKey,
   type AiProviderType,
 } from '@shared/constants/ai-provider';
+import type { AiPreference, AiProviderPreference } from '@shared/constants/ai-preference';
+import { AI_PROVIDER_PREFERENCES } from '@shared/constants/ai-preference';
 import type {
   AiAccountDto,
   AiModelDto,
@@ -29,6 +31,13 @@ import { summarizeLinkedAiAccount } from './provider-account-summary';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
 import { newId } from '../db/utils/uuid';
 import { nextSequentialDisplayName } from '@shared/utils/account-display-name';
+import { getAccountAvailabilityService } from '../services/account-availability-service';
+import {
+  applyAiPreference,
+  buildProviderReadinessInput,
+  readAiPreference,
+  resolveEffectivePrimaryProviderId,
+} from './ai-preference-policy';
 import { applyPrimaryProvider } from './primary-provider-policy';
 import { isTranslationAiProviderId } from '@shared/constants/translation-ai-providers';
 
@@ -61,6 +70,7 @@ export class AiProviderService {
 
   listProviders(): {
     providers: AiProviderDto[];
+    primaryProviderId: string | null;
     fallbackEnabled: boolean;
     fallbackStatuses: string[];
     workerInstalled: boolean;
@@ -97,17 +107,115 @@ export class AiProviderService {
     };
   }
 
-  getRoutingConfig(projectId?: string | null) {
+  getGroupAccountReadiness(): Record<AiProviderPreference, boolean> {
+    const availabilitySvc = getAccountAvailabilityService(this.db);
+    const resolved = availabilitySvc.resolveAll();
+    let geminiUsable = false;
+    for (const av of resolved.values()) {
+      if (av.usableForNewJob) {
+        geminiUsable = true;
+        break;
+      }
+    }
+
+    const chatgptReady = this.db.aiAccounts
+      .listByProvider(AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT)
+      .some((a) => a.status === 'READY');
+    const metaReady = this.db.aiAccounts
+      .listByProvider(AI_PROVIDER_IDS.PLAYWRIGHT_META_AI)
+      .some((a) => a.status === 'READY');
+
+    const webApiReady =
+      this.db.aiProviders.getById(AI_PROVIDER_IDS.GEMINI_WEB_API)?.status === 'READY';
+
     return {
-      primaryProviderId: this.manager.resolvePrimaryProviderIdForProject(projectId),
-      globalPrimaryProviderId: this.manager.getPrimaryProviderId(),
-      fallbackEnabled: this.manager.isFallbackEnabled(),
-      routingMode: this.manager.getRoutingMode(),
+      GEMINI: geminiUsable || webApiReady,
+      CHATGPT: chatgptReady,
+      META_AI: metaReady,
     };
   }
 
+  buildReadinessInput() {
+    return buildProviderReadinessInput(
+      this.db,
+      () => this.listProviders(),
+      this.getGroupAccountReadiness(),
+    );
+  }
+
+  getRoutingConfig(projectId?: string | null) {
+    const readiness = this.buildReadinessInput();
+    const preference = readAiPreference(this.db);
+    const providers = this.listProviders().providers;
+    const groupReady = this.getGroupAccountReadiness();
+
+    const providerHealth = AI_PROVIDER_PREFERENCES.map((kind) => {
+      const row = providers.find((p) => {
+        if (kind === 'GEMINI') {
+          return (
+            p.id === AI_PROVIDER_IDS.GEMINI_WEB_API ||
+            p.id === AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI
+          );
+        }
+        if (kind === 'CHATGPT') return p.id === AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT;
+        return p.id === AI_PROVIDER_IDS.PLAYWRIGHT_META_AI;
+      });
+      const ok =
+        kind === 'GEMINI'
+          ? groupReady.GEMINI && (row?.status === 'READY' || groupReady.GEMINI)
+          : groupReady[kind] && row?.status === 'READY';
+      return {
+        preference: kind,
+        ok: Boolean(ok && row?.enabled !== false),
+        status: row?.status ?? 'UNKNOWN',
+      };
+    });
+
+    return {
+      aiPreference: preference,
+      primaryProviderId: resolveEffectivePrimaryProviderId(
+        this.db,
+        readiness,
+        projectId,
+      ),
+      globalPrimaryProviderId: resolveEffectivePrimaryProviderId(this.db, readiness, null),
+      fallbackEnabled: this.manager.isFallbackEnabled(),
+      routingMode: this.manager.getRoutingMode(),
+      providerHealth,
+    };
+  }
+
+  setAiPreference(preference: AiPreference) {
+    applyAiPreference(this.db, this, preference, this.buildReadinessInput());
+  }
+
   setPrimaryProvider(providerId: string) {
+    if (!isTranslationAiProviderId(providerId)) {
+      throw new Error('Provider không hỗ trợ làm nền tảng dịch chính');
+    }
     applyPrimaryProvider(this.db, this, providerId);
+  }
+
+  async checkAllProviders(): Promise<{ ok: boolean; message: string }> {
+    const providers = this.listProviders().providers.filter((p) => p.enabled);
+    const results: string[] = [];
+    let anyOk = false;
+    for (const provider of providers) {
+      if (!isTranslationAiProviderId(provider.id)) continue;
+      try {
+        const check = await this.checkProvider(provider.id);
+        if (check.ok) anyOk = true;
+        results.push(`${provider.name}: ${check.message}`);
+      } catch (error) {
+        results.push(
+          `${provider.name}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    return {
+      ok: anyOk,
+      message: results.join('\n'),
+    };
   }
 
   async healthReport() {

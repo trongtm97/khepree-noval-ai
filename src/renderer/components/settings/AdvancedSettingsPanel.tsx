@@ -8,6 +8,7 @@ import { Button, ErrorPanel, Switch } from '../ui';
 import { AiDiagnosticsSettingsPanel } from './AiDiagnosticsSettingsPanel';
 import { AiProvidersSettingsPanel } from './AiProvidersSettingsPanel';
 import { AiWebApiManualConnectPanel } from './AiWebApiManualConnectPanel';
+import { PreferNotebookPackToggle } from './PreferNotebookPackToggle';
 import { SettingsDisclosure } from './SettingsDisclosure';
 import { SettingsGroup } from './SettingsGroup';
 import { SettingsRow } from './SettingsRow';
@@ -97,6 +98,9 @@ export function AdvancedSettingsPanel({
         </SettingsDisclosure>
         <SettingsDisclosure title={t('settings.advancedWebApiManualTitle')}>
           <AiWebApiManualConnectPanel />
+        </SettingsDisclosure>
+        <SettingsDisclosure title={t('settings.legacyExperimentalSection')}>
+          <PreferNotebookPackToggle />
         </SettingsDisclosure>
       </SettingsSection>
 

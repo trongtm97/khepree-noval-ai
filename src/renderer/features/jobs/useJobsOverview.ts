@@ -3,6 +3,8 @@ import type { JobDto } from '@shared/schemas/job';
 import type { ProjectDto } from '@shared/schemas/import';
 import type { GoogleAccountDto } from '@shared/schemas/account';
 import { getUsableWorkerCount, countUsableAccounts } from '@shared/utils/worker-usability';
+import type { AiPreference } from '@shared/constants/ai-preference';
+import { DEFAULT_AI_PREFERENCE } from '@shared/constants/ai-preference';
 import { useT } from '../../i18n';
 import {
   type SchedulerSnap,
@@ -35,6 +37,7 @@ export interface JobsOverviewData {
   pausedCount: number;
   usableWorkers: number;
   runningCount: number;
+  aiPreference: import('@shared/constants/ai-preference').AiPreference;
   titleFor: (projectId: string) => string;
   accountById: Map<string, GoogleAccountDto>;
   jobById: Map<string, JobDto>;
@@ -48,6 +51,8 @@ export function useJobsOverview(): JobsOverviewData {
   const [jobs, setJobs] = useState<JobDto[]>([]);
   const [workers, setWorkers] = useState<WorkerRow[]>([]);
   const [scheduler, setScheduler] = useState<SchedulerSnap | null>(null);
+  const [aiPreference, setAiPreference] = useState<AiPreference>(DEFAULT_AI_PREFERENCE);
+  const [aiReadyProviders, setAiReadyProviders] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -59,6 +64,8 @@ export function useJobsOverview(): JobsOverviewData {
       window.novelTrans.jobs.list(undefined),
       window.novelTrans.jobs.schedulerStatus(),
       window.novelTrans.jobs.workers(),
+      window.novelTrans.aiProviders.getRouting(),
+      window.novelTrans.aiProviders.autoSetupStatus(),
     ]);
 
     const failures = results.filter((r) => r.status === 'rejected');
@@ -80,7 +87,8 @@ export function useJobsOverview(): JobsOverviewData {
       setRefreshError(null);
     }
 
-    const [projectResult, accountResult, jobResult, status, workerResult] = results;
+    const [projectResult, accountResult, jobResult, status, workerResult, routingResult, aiStatusResult] =
+      results;
 
     if (projectResult.status === 'fulfilled') {
       setProjects(projectResult.value.projects);
@@ -103,6 +111,14 @@ export function useJobsOverview(): JobsOverviewData {
     }
     if (workerResult.status === 'fulfilled') {
       setWorkers(workerResult.value.workers as WorkerRow[]);
+    }
+    if (routingResult.status === 'fulfilled') {
+      setAiPreference(routingResult.value.aiPreference);
+    }
+    if (aiStatusResult.status === 'fulfilled') {
+      setAiReadyProviders(
+        aiStatusResult.value.providerHealth.filter((row) => row.ok).length,
+      );
     }
   }, [t]);
 
@@ -161,13 +177,13 @@ export function useJobsOverview(): JobsOverviewData {
     };
   }, [refresh, hasActiveWork, initialLoadDone]);
 
-  const usableWorkers = useMemo(
-    () =>
+  const usableWorkers = useMemo(() => {
+    const googleUsable =
       accounts.length > 0
         ? countUsableAccounts(accounts)
-        : getUsableWorkerCount(workers, accountById),
-    [workers, accountById, accounts],
-  );
+        : getUsableWorkerCount(workers, accountById);
+    return Math.max(googleUsable, aiReadyProviders);
+  }, [workers, accountById, accounts, aiReadyProviders]);
   const runningCount = scheduler?.inFlight ?? runningJobs.length;
 
   return {
@@ -186,6 +202,7 @@ export function useJobsOverview(): JobsOverviewData {
     pausedCount,
     usableWorkers,
     runningCount,
+    aiPreference,
     titleFor,
     accountById,
     jobById,

@@ -33,7 +33,7 @@ function findPackagedExe() {
         continue;
       }
       if (st.isDirectory()) walk(full, depth + 1);
-      else if (name === 'NovelTransStudio.exe') candidates.push(full);
+      else if (name === 'KhepreeNovelAI.exe') candidates.push(full);
     }
   };
   walk(outDir);
@@ -85,7 +85,7 @@ async function main() {
 
   const exe = findPackagedExe();
   if (!exe) {
-    console.error('[smoke] NovelTransStudio.exe not found under out/');
+    console.error('[smoke] KhepreeNovelAI.exe not found under out/');
     process.exit(1);
   }
   console.log(`[smoke] exe=${exe}`);

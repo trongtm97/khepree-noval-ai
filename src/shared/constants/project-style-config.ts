@@ -1,3 +1,6 @@
+import type { AiPreference } from './ai-preference';
+import { isAiPreference, preferenceFromProviderId } from './ai-preference';
+
 /** Fields stored in project_settings.style_config JSON. */
 export interface ProjectStyleConfig {
   preset?: string;
@@ -7,6 +10,8 @@ export interface ProjectStyleConfig {
   preferNotebookPack?: boolean;
   /** Project override for primary translation AI provider; omit to inherit app default. */
   primaryProviderId?: string | null;
+  /** Project override for user-facing AI preference; omit to inherit app default. */
+  aiPreference?: string | null;
   [key: string]: unknown;
 }
 
@@ -51,12 +56,28 @@ export function readProjectPrimaryProviderOverride(
   return String(value);
 }
 
+export function readProjectAiPreferenceOverride(
+  styleConfigJson: string | null | undefined,
+): AiPreference | null {
+  const cfg = parseProjectStyleConfig(styleConfigJson);
+  if (cfg.aiPreference && isAiPreference(cfg.aiPreference)) {
+    return cfg.aiPreference;
+  }
+  const legacy = readProjectPrimaryProviderOverride(styleConfigJson);
+  if (legacy) {
+    const mapped = preferenceFromProviderId(legacy);
+    if (mapped) return mapped;
+  }
+  return null;
+}
+
 export function projectUsesGlobalPrimary(
   styleConfigJson: string | null | undefined,
 ): boolean {
-  return !Object.prototype.hasOwnProperty.call(
-    parseProjectStyleConfig(styleConfigJson),
-    'primaryProviderId',
+  const cfg = parseProjectStyleConfig(styleConfigJson);
+  return (
+    !Object.prototype.hasOwnProperty.call(cfg, 'aiPreference') &&
+    !Object.prototype.hasOwnProperty.call(cfg, 'primaryProviderId')
   );
 }
 
@@ -67,9 +88,33 @@ export function mergeProjectPrimaryProvider(
   const base = parseProjectStyleConfig(styleConfigJson);
   if (input.useGlobalPrimary) {
     delete base.primaryProviderId;
+    delete base.aiPreference;
   } else if (input.primaryProviderId) {
     base.primaryProviderId = input.primaryProviderId;
+    const mapped = preferenceFromProviderId(input.primaryProviderId);
+    if (mapped) {
+      base.aiPreference = mapped;
+    }
   } else {
+    delete base.primaryProviderId;
+    delete base.aiPreference;
+  }
+  return JSON.stringify(base);
+}
+
+export function mergeProjectAiPreference(
+  styleConfigJson: string | null | undefined,
+  input: { useGlobalPreference: boolean; aiPreference?: AiPreference | null },
+): string {
+  const base = parseProjectStyleConfig(styleConfigJson);
+  if (input.useGlobalPreference) {
+    delete base.aiPreference;
+    delete base.primaryProviderId;
+  } else if (input.aiPreference) {
+    base.aiPreference = input.aiPreference;
+    delete base.primaryProviderId;
+  } else {
+    delete base.aiPreference;
     delete base.primaryProviderId;
   }
   return JSON.stringify(base);

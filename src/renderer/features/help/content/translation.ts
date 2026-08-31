@@ -24,7 +24,7 @@ export const translationArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Notebook dùng để làm gì?' },
       {
         type: 'paragraph',
-        text: 'NotebookLM (Gemini Notebook) là bộ nhớ dài hạn giúp Gemini hiểu truyện. NovelTrans lưu dữ liệu chính trên máy (SQLite). Thuật ngữ, nhân vật, quan hệ và trạng thái cốt truyện được tổng hợp thành file kiến thức rồi đồng bộ sang Notebook. Khi dịch, Gemini dùng Notebook + Translation Pack (chỉ chương hiện tại + Hot Memory) — không cần gửi lại toàn bộ lịch sử mỗi lần.',
+        text: 'NotebookLM (Gemini Notebook) là bộ nhớ dài hạn giúp Gemini hiểu truyện. Khepree Novel AI lưu dữ liệu chính trên máy (SQLite). Thuật ngữ, nhân vật, quan hệ và trạng thái cốt truyện được tổng hợp thành file kiến thức rồi đồng bộ sang Notebook. Khi dịch, Gemini dùng Notebook + Translation Pack (chỉ chương hiện tại + Hot Memory) — không cần gửi lại toàn bộ lịch sử mỗi lần.',
       },
       {
         type: 'list',
@@ -41,7 +41,7 @@ export const translationArticles: HelpArticle[] = [
         type: 'callout',
         variant: 'info',
         title: 'SQLite mới là dữ liệu chính',
-        body: 'Nếu Notebook lỗi hoặc bị xóa, dữ liệu truyện trong NovelTrans không mất. Notebook không tự ghi đè database.',
+        body: 'Nếu Notebook lỗi hoặc bị xóa, dữ liệu truyện trong Khepree Novel AI không mất. Notebook không tự ghi đè database.',
       },
       { type: 'heading', level: 2, text: 'Luồng dịch' },
       {
@@ -49,10 +49,10 @@ export const translationArticles: HelpArticle[] = [
         ordered: true,
         items: [
           'Chương cần dịch',
-          'NovelTrans lấy Hot Memory / overrides',
+          'Khepree Novel AI lấy Hot Memory / overrides',
           'Gemini mở Notebook của truyện',
           'Notebook cung cấp bộ nhớ dài hạn',
-          'NovelTrans gửi Translation Pack (source + hot)',
+          'Khepree Novel AI gửi Translation Pack (source + hot)',
           'Gemini dịch → QA → cập nhật SQLite',
           'Đồng bộ lại Notebook theo lịch / sự kiện quan trọng',
         ],
@@ -109,7 +109,7 @@ export const translationArticles: HelpArticle[] = [
       },
       {
         type: 'paragraph',
-        text: 'Khi bấm dịch, NovelTrans tự heal: kiểm tra tài khoản Google, mở Gemini nếu cần đăng nhập, chuẩn bị Notebook/Drive. Chỉ khi không tự xong mới hiện nút Kiểm tra tài khoản Google / Mở NotebookLM.',
+        text: 'Khi bấm dịch, Khepree Novel AI tự heal: kiểm tra tài khoản Google, mở Gemini nếu cần đăng nhập, chuẩn bị Notebook/Drive. Chỉ khi không tự xong mới hiện nút Kiểm tra tài khoản Google / Mở NotebookLM.',
       },
       {
         type: 'paragraph',
@@ -195,21 +195,21 @@ export const translationArticles: HelpArticle[] = [
     id: 'auto-qa',
     categoryId: 'editor',
     title: 'Kiểm tra chất lượng tự động',
-    description: 'Cách NovelTrans kiểm tra đoạn thiếu và repair.',
+    description: 'Cách Khepree Novel AI kiểm tra đoạn thiếu và repair.',
     keywords: ['qa', 'kiểm tra', 'thiếu đoạn', 'repair', 'paragraph id'],
     order: 2,
     relatedIds: ['editor', 'troubleshooting-missing', 'workflow-steps'],
     blocks: [
-      { type: 'heading', level: 1, text: 'NovelTrans kiểm tra bản dịch như thế nào?' },
+      { type: 'heading', level: 1, text: 'Khepree Novel AI kiểm tra bản dịch như thế nào?' },
       {
         type: 'paragraph',
-        text: 'Mỗi đoạn nguồn có ID ổn định, ví dụ [C0451:P0001]. AI phải trả cùng ID. NovelTrans kiểm tra đoạn thiếu, trùng, rỗng, ID không hợp lệ và cấu trúc output.',
+        text: 'Mỗi đoạn nguồn có ID ổn định, ví dụ [C0451:P0001]. AI phải trả cùng ID. Khepree Novel AI kiểm tra đoạn thiếu, trùng, rỗng, ID không hợp lệ và cấu trúc output.',
       },
       {
         type: 'callout',
         variant: 'info',
         title: 'Thông tin',
-        body: 'Nếu AI bỏ sót vài đoạn, NovelTrans chỉ gửi lại các đoạn đó — không dịch lại cả chương trừ khi cần thiết.',
+        body: 'Nếu AI bỏ sót vài đoạn, Khepree Novel AI chỉ gửi lại các đoạn đó — không dịch lại cả chương trừ khi cần thiết.',
       },
     ],
   },
@@ -291,7 +291,7 @@ export const translationArticles: HelpArticle[] = [
   {
     id: 'source-language-detection',
     categoryId: 'translation',
-    title: 'NovelTrans xác định ngôn ngữ nguồn như thế nào?',
+    title: 'Khepree Novel AI xác định ngôn ngữ nguồn như thế nào?',
     description:
       'Ngôn ngữ nguồn được phát hiện từ nội dung truyện; gợi ý của bạn chỉ là tham khảo.',
     keywords: [
@@ -309,17 +309,17 @@ export const translationArticles: HelpArticle[] = [
       {
         type: 'heading',
         level: 1,
-        text: 'NovelTrans xác định ngôn ngữ nguồn như thế nào?',
+        text: 'Khepree Novel AI xác định ngôn ngữ nguồn như thế nào?',
       },
       {
         type: 'paragraph',
-        text: 'Bạn không cần biết chính xác ngôn ngữ của truyện. NovelTrans sẽ tự phân tích nội dung từ metadata, lời mở đầu và các chương đầu để xác định ngôn ngữ nguồn.',
+        text: 'Bạn không cần biết chính xác ngôn ngữ của truyện. Khepree Novel AI sẽ tự phân tích nội dung từ metadata, lời mở đầu và các chương đầu để xác định ngôn ngữ nguồn.',
       },
       {
         type: 'callout',
         variant: 'info',
         title: 'Gợi ý ≠ ngôn ngữ nguồn',
-        body: 'Nếu bạn cung cấp một gợi ý ngôn ngữ trong Tùy chọn nâng cao, phần mềm vẫn kiểm tra lại nội dung thực tế. Khi gợi ý và nội dung không khớp, NovelTrans ưu tiên ngôn ngữ được phát hiện từ nội dung để dịch.',
+        body: 'Nếu bạn cung cấp một gợi ý ngôn ngữ trong Tùy chọn nâng cao, phần mềm vẫn kiểm tra lại nội dung thực tế. Khi gợi ý và nội dung không khớp, Khepree Novel AI ưu tiên ngôn ngữ được phát hiện từ nội dung để dịch.',
       },
       {
         type: 'list',

@@ -160,10 +160,11 @@ export function buildMetaSheetRows(meta: TabularMeta): [string, string][] {
   return Object.entries(meta).map(([k, v]) => [k, v == null ? '' : String(v)]);
 }
 
-export function assertNovelTransMeta(meta: TabularMeta | undefined): void {
+export function assertKhepreeTabularMeta(meta: TabularMeta | undefined): void {
   if (!meta) return;
-  if (meta.noveltrans_format && meta.noveltrans_format !== NTS_TABULAR_FORMAT) {
-    throw new Error(`Unsupported noveltrans_format: ${meta.noveltrans_format}`);
+  const format = meta.khepree_format ?? meta.noveltrans_format;
+  if (format && format !== NTS_TABULAR_FORMAT) {
+    throw new Error(`Unsupported khepree_format: ${format}`);
   }
   if (meta.schema_version != null && Number(meta.schema_version) > TABULAR_SCHEMA_VERSION) {
     throw new Error(

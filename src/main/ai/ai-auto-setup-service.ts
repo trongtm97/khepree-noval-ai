@@ -1,8 +1,8 @@
 import type { DatabaseManager } from '../db/database-manager';
-import {
-  AI_PROVIDER_IDS,
-} from '@shared/constants/ai-provider';
+import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
 import type { AiAutoSetupResult, AiStatusSnapshot } from '@shared/schemas/ai-auto-setup';
+import type { AiProviderPreference } from '@shared/constants/ai-preference';
+import { AI_PROVIDER_PREFERENCES } from '@shared/constants/ai-preference';
 import { assessBrowserDependencyHealth } from '../automation/browser-runner/browser-dependency-health';
 import { getAccountAvailabilityService } from '../services/account-availability-service';
 import { getAccountWorkerService } from '../services/account-worker-singleton';
@@ -11,7 +11,18 @@ import {
   applyRecommendedProviderOrder,
   mergeAutoSetupResult,
 } from './ai-auto-setup-policy';
+import { readAiPreference } from './ai-preference-policy';
 import { workerProcessManager } from './worker-process-manager';
+
+function countBrowserAiAccounts(
+  db: DatabaseManager,
+  providerId: string,
+): { total: number; ready: number; needsLogin: boolean } {
+  const accounts = db.aiAccounts.listByProvider(providerId);
+  const ready = accounts.filter((a) => a.status === 'READY').length;
+  const needsLogin = accounts.some((a) => a.status === 'LOGIN_REQUIRED');
+  return { total: accounts.length, ready, needsLogin };
+}
 
 export class AiAutoSetupService {
   constructor(
@@ -20,72 +31,114 @@ export class AiAutoSetupService {
   ) {}
 
   statusSnapshot(): AiStatusSnapshot {
-    const availabilitySvc = getAccountAvailabilityService(this.db);
-    const summary = availabilitySvc.summarize();
-    const resolved = availabilitySvc.resolveAll();
-    const accounts = getAccountWorkerService().listAccounts();
-    const active = accounts.filter((a) => {
-      const av = resolved.get(a.id);
-      return av && av.availability !== 'PAUSED';
+    const preference = readAiPreference(this.db);
+    const groupReady = this.ai.getGroupAccountReadiness();
+    const providers = this.ai.listProviders().providers;
+
+    const providerHealth = AI_PROVIDER_PREFERENCES.map((kind) => {
+      const accountCount =
+        kind === 'GEMINI'
+          ? getAccountWorkerService().listAccounts().length
+          : countBrowserAiAccounts(
+              this.db,
+              kind === 'CHATGPT'
+                ? AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT
+                : AI_PROVIDER_IDS.PLAYWRIGHT_META_AI,
+            ).total;
+
+      const row = providers.find((p) => {
+        if (kind === 'GEMINI') {
+          return (
+            p.id === AI_PROVIDER_IDS.GEMINI_WEB_API ||
+            p.id === AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI
+          );
+        }
+        if (kind === 'CHATGPT') return p.id === AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT;
+        return p.id === AI_PROVIDER_IDS.PLAYWRIGHT_META_AI;
+      });
+
+      const ok = groupReady[kind] && (row?.status === 'READY' || groupReady[kind]);
+      return {
+        preference: kind,
+        ok: Boolean(ok && row?.enabled !== false),
+        accountCount,
+      };
     });
-    const usableCount = active.filter((a) => resolved.get(a.id)?.usableForNewJob).length;
 
-    const list = this.ai.listProviders();
-    const webApiReady =
-      list.providers.find((p) => p.id === AI_PROVIDER_IDS.GEMINI_WEB_API)?.status === 'READY';
-    const browserReady =
-      list.providers.find((p) => p.id === AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI)?.status === 'READY';
-    const geminiOk = webApiReady || browserReady || summary.ready > 0;
+    let loginRequired: AiProviderPreference | null = null;
+    const availabilitySvc = getAccountAvailabilityService(this.db);
+    const resolved = availabilitySvc.resolveAll();
+    const googleNeedsLogin = [...resolved.values()].some(
+      (av) => av.availability === 'LOGIN_REQUIRED',
+    );
+    if (googleNeedsLogin) loginRequired = 'GEMINI';
+    if (!loginRequired) {
+      if (
+        countBrowserAiAccounts(this.db, AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT).needsLogin
+      ) {
+        loginRequired = 'CHATGPT';
+      } else if (
+        countBrowserAiAccounts(this.db, AI_PROVIDER_IDS.PLAYWRIGHT_META_AI).needsLogin
+      ) {
+        loginRequired = 'META_AI';
+      }
+    }
 
-    const ready = usableCount > 0 && geminiOk;
+    const ready = providerHealth.some((p) => p.ok) && !loginRequired;
+    const usableAccountCount = providerHealth.reduce((n, p) => n + p.accountCount, 0);
 
     return {
       ready,
-      usableAccountCount: usableCount,
-      geminiOk,
-      statusLine: ready ? 'Sẵn sàng' : summary.ready > 0 ? 'Cần kiểm tra' : 'Chưa sẵn sàng',
-      detailLine: ready
-        ? 'Gemini hoạt động bình thường'
-        : usableCount === 0
-          ? 'Chưa có tài khoản Google sẵn sàng'
-          : null,
+      usableAccountCount,
+      aiPreference: preference,
+      providerHealth,
+      loginRequired,
+      geminiOk: groupReady.GEMINI,
     };
   }
 
   async run(): Promise<AiAutoSetupResult> {
     const steps: AiAutoSetupResult['steps'] = [];
     const technical: NonNullable<AiAutoSetupResult['technical']> = {};
+    const preference = readAiPreference(this.db);
+    const groupReady = this.ai.getGroupAccountReadiness();
 
     const availabilitySvc = getAccountAvailabilityService(this.db);
     const resolved = availabilitySvc.resolveAll();
-    const accounts = getAccountWorkerService().listAccounts();
-    const activeAccounts = accounts.filter((a) => {
-      const av = resolved.get(a.id);
-      return av && av.availability !== 'PAUSED';
-    });
-    const usableAccounts = activeAccounts.filter((a) => resolved.get(a.id)?.usableForNewJob);
-    const needsLogin = activeAccounts.some(
-      (a) => resolved.get(a.id)?.availability === 'LOGIN_REQUIRED',
+    const googleAccounts = getAccountWorkerService().listAccounts();
+    const chatgptCounts = countBrowserAiAccounts(
+      this.db,
+      AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
     );
+    const metaCounts = countBrowserAiAccounts(this.db, AI_PROVIDER_IDS.PLAYWRIGHT_META_AI);
+
+    const anyAccount =
+      googleAccounts.length > 0 || chatgptCounts.total > 0 || metaCounts.total > 0;
+
+    let needsLogin: AiProviderPreference | null = null;
+    if ([...resolved.values()].some((av) => av.availability === 'LOGIN_REQUIRED')) {
+      needsLogin = 'GEMINI';
+    } else if (chatgptCounts.needsLogin) {
+      needsLogin = 'CHATGPT';
+    } else if (metaCounts.needsLogin) {
+      needsLogin = 'META_AI';
+    }
 
     steps.push({
-      id: 'google_accounts',
-      ok: usableAccounts.length > 0,
-      message:
-        usableAccounts.length > 0
-          ? `${usableAccounts.length} tài khoản có thể sử dụng`
-          : activeAccounts.length > 0
-            ? 'Tài khoản cần đăng nhập lại'
-            : 'Chưa có tài khoản Google',
+      id: 'ai_accounts',
+      ok: anyAccount,
+      message: anyAccount ? 'Đã có tài khoản AI' : 'Chưa có tài khoản AI',
     });
 
-    if (usableAccounts.length === 0) {
+    if (!anyAccount) {
       return mergeAutoSetupResult(steps, technical, {
+        preference,
+        providerReady: groupReady,
+        anyAccount: false,
         usableAccountCount: 0,
-        needsLogin,
-        hasAnyAccount: activeAccounts.length > 0,
-        geminiOk: false,
+        needsLogin: null,
         workerOk: false,
+        anyProviderOk: false,
       });
     }
 
@@ -109,11 +162,7 @@ export class AiAutoSetupService {
         message: install.message,
       });
     } else {
-      steps.push({
-        id: 'worker_runtime',
-        ok: true,
-        message: 'Worker đã cài',
-      });
+      steps.push({ id: 'worker_runtime', ok: true, message: 'Worker đã cài' });
     }
 
     if (install.ok) {
@@ -141,21 +190,24 @@ export class AiAutoSetupService {
       message: 'Đã áp dụng cấu hình nhà cung cấp khuyên dùng',
     });
 
+    this.ai.setFallback(true);
     steps.push({
       id: 'fallback',
       ok: true,
       message: 'Tự động dùng phương án dự phòng khi cần',
     });
 
-    let geminiOk = false;
+    let anyProviderOk = false;
     for (const providerId of [
       AI_PROVIDER_IDS.GEMINI_WEB_API,
       AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+      AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
+      AI_PROVIDER_IDS.PLAYWRIGHT_META_AI,
     ]) {
       try {
         const check = await this.ai.checkProvider(providerId);
         technical[`provider_${providerId}`] = check.status;
-        if (check.ok) geminiOk = true;
+        if (check.ok) anyProviderOk = true;
         steps.push({
           id: `health_${providerId}`,
           ok: check.ok,
@@ -170,19 +222,17 @@ export class AiAutoSetupService {
       }
     }
 
-    const health = await this.ai.healthReport();
-    const webApi = health.providers.find((p) => p.id === AI_PROVIDER_IDS.GEMINI_WEB_API);
-    if (webApi) {
-      technical.webApiStatus = webApi.status;
-      if (webApi.ok) geminiOk = true;
-    }
+    const usableAccountCount =
+      googleAccounts.length + chatgptCounts.ready + metaCounts.ready;
 
     return mergeAutoSetupResult(steps, technical, {
-      usableAccountCount: usableAccounts.length,
+      preference,
+      providerReady: groupReady,
+      anyAccount,
+      usableAccountCount,
       needsLogin,
-      hasAnyAccount: activeAccounts.length > 0,
-      geminiOk,
       workerOk,
+      anyProviderOk,
     });
   }
 }

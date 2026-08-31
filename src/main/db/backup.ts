@@ -29,7 +29,7 @@ export function backupDatabaseFile(
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backupPath = path.join(
     backupsDir,
-    options?.fileName ?? `noveltrans-pre-migration-${timestamp}.db`,
+    options?.fileName ?? `khepree-novel-ai-pre-migration-${timestamp}.db`,
   );
   atomicBackupDatabase(dbPath, backupPath);
   return backupPath;

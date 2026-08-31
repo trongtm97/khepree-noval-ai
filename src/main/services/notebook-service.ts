@@ -1,3 +1,4 @@
+import { APP_NAME } from '@shared/constants/app';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import type { DatabaseManager } from '../db/database-manager';
@@ -142,7 +143,7 @@ function loadNotebookInstructions(
   const lines: string[] =
     role === 'RESEARCH'
       ? [
-          'Notebook RESEARCH — full corpus for whole-novel analysis (NovelTrans Studio).',
+          `Notebook RESEARCH — full corpus for whole-novel analysis (${APP_NAME}).`,
           '',
           'Contains NOVEL_PART_* sections (source corpus).',
           'Use for: terminology discovery, characters, relationships, world, plot.',
@@ -150,7 +151,7 @@ function loadNotebookInstructions(
           'Avoid future spoilers when answering — note first_seen_chapter when possible.',
         ]
       : [
-          `This Notebook is long-term knowledge memory for a novel translation project: ${sourceName} → ${targetName} (NovelTrans Studio).`,
+          `This Notebook is long-term knowledge memory for a novel translation project: ${sourceName} → ${targetName} (${APP_NAME}).`,
           `Source language: ${sourceName} (${sourceCode}). Target language: ${targetName} (${targetCode}).`,
           '',
           'Always prioritize these sources:',

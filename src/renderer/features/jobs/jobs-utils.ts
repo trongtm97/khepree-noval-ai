@@ -62,24 +62,13 @@ const TERMINAL_RECENT_STATES = new Set([
   'SKIPPED',
 ]);
 
+import { userFacingProviderLabel } from '@shared/utils/ai-preference-label';
+import { routingPreferenceLabel as routingPrefLabel } from './job-provider-ui';
+
+export { routingPrefLabel as routingPreferenceLabel };
+
 export function friendlyChannel(job: JobDto | null): string | null {
-  if (!job?.progress) return null;
-  const packMode = job.progress.packMode;
-  const provider = (job.progress.providerType ?? '').toUpperCase();
-  if (
-    packMode === 'notebook_assisted' &&
-    (provider.includes('NOTEBOOK') || job.progress.notebookId || job.progress.notebookName)
-  ) {
-    return 'Notebook';
-  }
-  if (
-    provider.includes('WEB') ||
-    provider.includes('PLAYWRIGHT') ||
-    provider.includes('GEMINI')
-  ) {
-    return 'Gemini';
-  }
-  return null;
+  return userFacingProviderLabel(job?.progress?.providerType);
 }
 
 export function knowledgeLabel(job: JobDto | null): string | null {

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import ExcelJS from 'exceljs';
+import { APP_NAME } from '@shared/constants/app';
 import { TABULAR_META_SHEET } from '@shared/constants/tabular';
 import { TRANSLATION_SPREADSHEET_SHEET } from '@shared/constants/translation-spreadsheet';
 import type { TabularMeta } from '@shared/schemas/tabular';
@@ -32,7 +33,7 @@ export async function writeTranslationSpreadsheetWorkbook(input: {
   editionId: string;
 }): Promise<void> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'NovelTrans Studio';
+  workbook.creator = APP_NAME;
   workbook.created = new Date();
 
   const metaSheet = workbook.addWorksheet(TABULAR_META_SHEET);

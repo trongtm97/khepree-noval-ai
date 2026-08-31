@@ -1,4 +1,4 @@
-export const OVERLAY_ROOT_ID = 'noveltrans-overlay-root';
+export const OVERLAY_ROOT_ID = 'khepree-overlay-root';
 
 /** Global portal mount — outside scroll/overflow containers. */
 export function ensureOverlayRoot(): HTMLElement {

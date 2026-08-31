@@ -21,7 +21,7 @@ import { JobsSummaryStrip } from '../features/jobs/JobsSummaryStrip';
 import { ProjectQueueSection } from '../features/jobs/ProjectQueueSection';
 import { RecentJobsSection } from '../features/jobs/RecentJobsSection';
 import { RunningJobCard } from '../features/jobs/RunningJobCard';
-import { collectManageableJobIds } from '../features/jobs/jobs-utils';
+import { collectManageableJobIds, routingPreferenceLabel } from '../features/jobs/jobs-utils';
 import { useJobsControls } from '../features/jobs/useJobsControls';
 import { useJobsOverview } from '../features/jobs/useJobsOverview';
 
@@ -35,6 +35,8 @@ export function JobsPage() {
     () => new Map(overview.accounts.map((a, i) => [a.id, i])),
     [overview.accounts],
   );
+
+  const aiRoutingLabel = routingPreferenceLabel(overview.aiPreference, t);
 
   const selected = controls.selectedId
     ? overview.jobById.get(controls.selectedId) ?? null
@@ -217,6 +219,7 @@ export function JobsPage() {
       ) : null}
 
       <ProjectQueueSection
+        aiRoutingLabel={aiRoutingLabel}
         queuedByProject={overview.queuedByProject}
         titleFor={overview.titleFor}
         busy={controls.busy}
@@ -234,17 +237,7 @@ export function JobsPage() {
         <p className="muted jobs-queue-empty">{t('jobs.queueEmptySubtle')}</p>
       ) : null}
 
-      <AiAccountSection
-        workers={overview.workers}
-        accounts={overview.accounts}
-        jobById={overview.jobById}
-        jobs={overview.jobs}
-        titleFor={overview.titleFor}
-        busy={controls.busy}
-        onRunControl={(fn) => {
-          void controls.runControl(fn);
-        }}
-      />
+      <AiAccountSection />
 
       <RecentJobsSection
         jobs={overview.recentJobs}

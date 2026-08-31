@@ -121,7 +121,7 @@ export function LanguagePicker({
         title={
           verified
             ? NOVELTRANS_VERIFICATION_LABELS_VI.VERIFIED
-            : 'Gemini hỗ trợ ngôn ngữ này. NovelTrans chưa kiểm thử đầy đủ quy trình dịch.'
+            : 'Gemini hỗ trợ ngôn ngữ này. Khepree Novel AI chưa kiểm thử đầy đủ quy trình dịch.'
         }
         aria-label={
           verified

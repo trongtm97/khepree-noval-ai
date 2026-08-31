@@ -19,8 +19,8 @@ export const CONTINUATION_REPAIR_THRESHOLD = 5;
 export const DEFAULT_TRANSLATE_BATCH_PARAGRAPHS = 12;
 
 /**
- * NotebookLM / Playwright can take much larger prompts than Web API.
- * Use when PLAYWRIGHT_GEMINI is the first ordered provider for the job.
+ * NotebookLM / browser transport can take much larger prompts than Web API.
+ * Use when first ordered provider has transport=BROWSER (see provider-capabilities).
  */
 export const PLAYWRIGHT_TRANSLATE_BATCH_PARAGRAPHS = 120;
 

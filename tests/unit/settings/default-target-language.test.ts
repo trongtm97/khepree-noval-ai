@@ -23,7 +23,7 @@ describe('default_target_language', () => {
   let db: DatabaseManager;
 
   beforeEach(() => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-settings-'));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'Khepree Novel AI-settings-'));
     const paths = resolveAppPaths(tempRoot);
     fs.mkdirSync(paths.data, { recursive: true });
     fs.mkdirSync(paths.backups, { recursive: true });

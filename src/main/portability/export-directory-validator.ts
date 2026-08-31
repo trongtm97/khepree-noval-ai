@@ -31,7 +31,7 @@ export function validateExportDirectory(
     if (!stat.isDirectory()) {
       return { valid: false, path: normalized, error: 'NOT_DIRECTORY' };
     }
-    const probe = path.join(normalized, `.noveltrans-write-probe-${process.pid}`);
+    const probe = path.join(normalized, `.khepree-write-probe-${process.pid}`);
     try {
       fs.writeFileSync(probe, '');
       fs.unlinkSync(probe);

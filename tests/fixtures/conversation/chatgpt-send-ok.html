@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ChatGPT harness — send ok</title>
+</head>
+<body>
+  <textarea id="prompt-textarea" data-testid="prompt-textarea" rows="4" cols="60"></textarea>
+  <button type="button" data-testid="send-button">Send</button>
+  <div id="thread">
+    <div data-message-author-role="assistant" class="markdown">Prior assistant reply.</div>
+  </div>
+  <script>
+    const composer = document.getElementById('prompt-textarea');
+    const thread = document.getElementById('thread');
+    let streaming = false;
+
+    document.querySelector('[data-testid="send-button"]').addEventListener('click', () => {
+      const text = (composer.value || composer.textContent || '').trim();
+      if (!text) return;
+
+      const user = document.createElement('div');
+      user.setAttribute('data-message-author-role', 'user');
+      user.textContent = text;
+      thread.appendChild(user);
+      composer.value = '';
+
+      streaming = true;
+      const stop = document.createElement('button');
+      stop.setAttribute('data-testid', 'stop-button');
+      stop.textContent = 'Stop';
+      document.body.appendChild(stop);
+
+      const assistant = document.createElement('div');
+      assistant.setAttribute('data-message-author-role', 'assistant');
+      assistant.className = 'markdown';
+      assistant.textContent = '';
+      thread.appendChild(assistant);
+
+      const reply = 'Synthetic ChatGPT response for harness fixture.';
+      let i = 0;
+      const tick = () => {
+        if (i < reply.length) {
+          assistant.textContent += reply[i++];
+          setTimeout(tick, 30);
+        } else {
+          streaming = false;
+          stop.remove();
+        }
+      };
+      setTimeout(tick, 80);
+    });
+  </script>
+</body>
+</html>

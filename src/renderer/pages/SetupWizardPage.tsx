@@ -5,6 +5,7 @@ import {
 } from '@shared/constants/setup';
 import type { SetupStatus } from '@shared/schemas/setup';
 import type { GoogleAccountDto } from '@shared/schemas/account';
+import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
 import { useT } from '../i18n';
 import { statusLabel } from '../i18n/status';
 import {
@@ -18,6 +19,10 @@ import {
 import { CreateProjectWizard } from '../components/CreateProjectWizard';
 import { LanguagePicker } from '../components/LanguagePicker';
 import type { LanguageProfileDto } from '@shared/schemas/language-profile';
+import {
+  AddBrowserAiAccountDialog,
+  type AiAccountProviderKind,
+} from '../features/accounts';
 
 const LOGIN_POLL_MS = 2500;
 const LOGIN_POLL_MAX = 48;
@@ -44,6 +49,9 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
   const [projectHint, setProjectHint] = useState<string | null>(null);
   const [setupLanguages, setSetupLanguages] = useState<LanguageProfileDto[]>([]);
   const [setupDefaultTarget, setSetupDefaultTarget] = useState<string | null>(null);
+  const [aiReady, setAiReady] = useState(false);
+  const [browserAddKind, setBrowserAddKind] = useState<AiAccountProviderKind | null>(null);
+  const [browserAddOpen, setBrowserAddOpen] = useState(false);
   const pollAbort = useRef<AbortController | null>(null);
 
   const refreshAccounts = useCallback(async () => {
@@ -53,12 +61,14 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
   }, []);
 
   const refresh = useCallback(async () => {
-    const [next, accountList] = await Promise.all([
+    const [next, accountList, aiStatus] = await Promise.all([
       window.novelTrans.setup.getStatus(),
       window.novelTrans.accounts.list(),
+      window.novelTrans.aiProviders.autoSetupStatus(),
     ]);
     setStatus(next);
     setAccounts(accountList.accounts);
+    setAiReady(aiStatus.ready);
   }, []);
 
   useEffect(() => {
@@ -86,7 +96,45 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
   }, [status?.step]);
 
   const readyAccounts = accounts.filter((a) => a.status === 'READY');
-  const geminiReady = accounts.some((a) => a.status === 'READY' && a.workerEnabled);
+  const anyAiReady = aiReady || readyAccounts.some((a) => a.workerEnabled);
+
+  const handleProviderPick = (kind: AiAccountProviderKind) => {
+    if (kind === 'gemini') {
+      void addAccount();
+      return;
+    }
+    setBrowserAddKind(kind);
+    setBrowserAddOpen(true);
+  };
+
+  const handleBrowserAdd = async (displayName: string) => {
+    if (!browserAddKind) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const providerId =
+        browserAddKind === 'meta'
+          ? AI_PROVIDER_IDS.PLAYWRIGHT_META_AI
+          : AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT;
+      const created = await window.novelTrans.aiAccounts.create({
+        providerId,
+        displayName: displayName || undefined,
+      });
+      setBrowserAddOpen(false);
+      const login = await window.novelTrans.aiAccounts.openBrowserLogin({
+        accountId: created.account.id,
+      });
+      if (!login.ok) {
+        throw new Error(login.message);
+      }
+      await window.novelTrans.aiAccounts.verifyBrowser({ accountId: created.account.id });
+      await refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const go = async (step: SetupWizardStep) => {
     setBusy(true);
@@ -247,39 +295,55 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
 
         {status.step === 'googleAccount' ? (
           <>
-            <h2>{t('setup.googleAccount')}</h2>
-            <p>
-              {t('setup.googleAccountBody', {
-                ready: String(readyAccounts.length),
-                count: String(accounts.length),
-              })}
+            <h2>{t('setup.connectAi')}</h2>
+            <p>{t('setup.connectAiBody')}</p>
+            <p className="muted">
+              {anyAiReady
+                ? t('setup.connectAiReady', { ready: '1' })
+                : t('setup.connectAiNotReady')}
             </p>
+            <p className="muted">{t('setup.connectAiAddLater')}</p>
             {loginHint ? <p className="muted">{loginHint}</p> : null}
             {pendingAccountId ? (
               <p className="muted">
                 <Spinner /> {t('setup.googleAccountWaiting')}
               </p>
             ) : null}
-            <ul className="setup-account-list">
-              {accounts.map((a) => (
-                <li key={a.id}>
-                  <span>{a.label || (a.email ?? a.id.slice(0, 8))}</span>
-                  <Badge tone={a.status === 'READY' ? 'success' : 'default'}>
-                    {statusLabel(a.status)}
-                  </Badge>
-                </li>
+            <div className="accounts-provider-picker">
+              {(
+                [
+                  ['gemini', 'accounts.providerGemini', 'accounts.addGeminiDesc'],
+                  ['chatgpt', 'accounts.providerChatGpt', 'accounts.addChatGptDesc'],
+                  ['meta', 'accounts.providerMetaAi', 'accounts.addMetaDesc'],
+                ] as const
+              ).map(([kind, titleKey, descKey]) => (
+                <button
+                  key={kind}
+                  type="button"
+                  className="accounts-provider-picker-item"
+                  disabled={busy}
+                  onClick={() => {
+                    handleProviderPick(kind);
+                  }}
+                >
+                  <strong>{t(titleKey)}</strong>
+                  <span className="muted u-text-sm">{t(descKey)}</span>
+                </button>
               ))}
-            </ul>
+            </div>
+            {accounts.length > 0 ? (
+              <ul className="setup-account-list">
+                {accounts.map((a) => (
+                  <li key={a.id}>
+                    <span>{a.label || (a.email ?? a.id.slice(0, 8))}</span>
+                    <Badge tone={a.status === 'READY' ? 'success' : 'default'}>
+                      {statusLabel(a.status)}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <div className="btn-row">
-              <Button
-                variant="secondary"
-                disabled={busy}
-                onClick={() => {
-                  void addAccount();
-                }}
-              >
-                {t('actions.addGoogleAccount')}
-              </Button>
               <Button
                 variant="secondary"
                 disabled={busy}
@@ -291,7 +355,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
               </Button>
               <Button
                 variant="primary"
-                disabled={busy || accounts.length < 1}
+                disabled={busy || !anyAiReady}
                 onClick={() => {
                   void go('testGemini');
                 }}
@@ -325,7 +389,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
             <h2>{t('setup.testGemini')}</h2>
             <p>{t('setup.testGeminiBody')}</p>
             <p className="muted">
-              {geminiReady ? t('setup.geminiReadyHint') : t('setup.geminiNotReadyHint')}
+              {anyAiReady ? t('setup.geminiReadyHint') : t('setup.geminiNotReadyHint')}
             </p>
             {testMessage ? <p className="success-text">{testMessage}</p> : null}
             <div className="btn-row">
@@ -516,6 +580,22 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
           </>
         ) : null}
       </Card>
+
+      <AddBrowserAiAccountDialog
+        open={browserAddOpen}
+        busy={busy}
+        providerLabel={
+          browserAddKind === 'meta'
+            ? t('accounts.providerMetaAi')
+            : t('accounts.providerChatGpt')
+        }
+        onConfirm={(name) => {
+          void handleBrowserAdd(name);
+        }}
+        onCancel={() => {
+          setBrowserAddOpen(false);
+        }}
+      />
     </div>
   );
 }

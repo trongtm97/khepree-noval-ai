@@ -19,6 +19,7 @@ import { useT } from '../i18n';
 import { helpArticleForRoute } from '../features/help/content';
 import { useUiShellStore, applyDensity } from '../stores/ui-shell-store';
 import { useNotificationStore } from '../stores/notification-store';
+import { AppBrand } from '../components/shell/AppBrand';
 import { IconButton, Drawer, Button } from '../components/ui';
 import { ToastViewport } from '../components/shell/ToastViewport';
 import { useSystemStatusPoll } from '../hooks/useSystemStatusPoll';
@@ -163,8 +164,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="sidebar-brand">
-            <h1>{t('app.name')}</h1>
-            <span className="version">v{appInfo.version}</span>
+            <AppBrand showVersion={appInfo.version} />
           </div>
           <IconButton
             label={sidebarCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}

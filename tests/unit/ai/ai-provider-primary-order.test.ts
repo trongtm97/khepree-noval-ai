@@ -39,16 +39,19 @@ describe('AiProviderManager primary ordering', () => {
             id: AI_PROVIDER_IDS.GEMINI_WEB_API,
             priority: 1,
             enabled: 1,
+            status: 'READY',
           },
           {
             id: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
             priority: 2,
             enabled: 1,
+            status: 'READY',
           },
           {
             id: AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
             priority: 3,
             enabled: 1,
+            status: 'READY',
           },
         ],
         getById: (id: string) => ({ id, priority: 1, enabled: 1 }),
@@ -64,6 +67,12 @@ describe('AiProviderManager primary ordering', () => {
       },
       notebooks: {
         listByProjectAndWorker: () => [],
+      },
+      googleAccounts: {
+        list: () => [{ id: 'ga-1', status: 'READY' as const }],
+      },
+      aiAccounts: {
+        listByProvider: () => [],
       },
     } as unknown as ConstructorParameters<typeof AiProviderManager>[0];
 

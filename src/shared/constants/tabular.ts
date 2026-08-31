@@ -34,7 +34,7 @@ export const TABULAR_PREVIEW_MAX_ROWS = 500;
 export const TABULAR_CSV_UTF8_BOM_DEFAULT = true;
 
 export const TABULAR_META_FIELDS = [
-  'noveltrans_format',
+  'khepree_format',
   'schema_version',
   'exported_at',
   'data_type',

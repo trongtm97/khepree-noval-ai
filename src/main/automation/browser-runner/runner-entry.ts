@@ -27,7 +27,7 @@ function main(): void {
 
   const diagnosticsDir =
     process.env.NOVELTRANS_AUTOMATION_DIAGNOSTICS_DIR ??
-    path.join(os.tmpdir(), 'noveltrans-automation');
+    path.join(os.tmpdir(), 'khepree-novel-ai-automation');
 
   const session = new BrowserSession({ diagnosticsDir });
 

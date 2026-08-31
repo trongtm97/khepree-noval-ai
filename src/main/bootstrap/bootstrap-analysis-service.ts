@@ -127,7 +127,7 @@ export class BootstrapAnalysisService {
       relationshipsUpserted: 0,
       termCandidatesCreated: 0,
       warnings: [
-        'Bộ nhớ AI ban đầu chưa được khởi tạo. NovelTrans sẽ xây dựng bộ nhớ dần trong quá trình dịch.',
+        'Bộ nhớ AI ban đầu chưa được khởi tạo. Khepree Novel AI sẽ xây dựng bộ nhớ dần trong quá trình dịch.',
       ],
       message: 'Đã bỏ qua khởi tạo bộ nhớ AI.',
       aiRequestCount: 0,
@@ -281,7 +281,7 @@ export class BootstrapAnalysisService {
         relationshipsUpserted: persisted.relationshipsUpserted,
         termCandidatesCreated: persisted.termCandidatesCreated,
         warnings,
-        message: `NovelTrans đã phân tích ${prep.chapterCountUsed} chương đầu và sẵn sàng bắt đầu dịch.`,
+        message: `Khepree Novel AI đã phân tích ${prep.chapterCountUsed} chương đầu và sẵn sàng bắt đầu dịch.`,
         aiRequestCount,
       };
     } catch (error) {

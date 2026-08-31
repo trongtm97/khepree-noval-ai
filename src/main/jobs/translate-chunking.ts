@@ -1,37 +1,34 @@
 import {
-  DEFAULT_TRANSLATE_BATCH_PARAGRAPHS,
   PLAYWRIGHT_MAX_SOURCE_CHARS_PER_CHUNK,
   PLAYWRIGHT_TRANSLATE_BATCH_PARAGRAPHS,
 } from '@shared/constants/job';
+import { resolveChunkingPolicy } from '@main/ai/provider-chunking-policy';
 import type { TermDeltaItem } from '@shared/schemas/term-delta';
 import type { MemoryDeltaItem } from '@shared/schemas/memory-delta';
 
 export function chunkParagraphBatch<T>(
   items: T[],
-  batchSize = DEFAULT_TRANSLATE_BATCH_PARAGRAPHS,
+  batchSize?: number,
 ): T[][] {
+  const size = batchSize ?? resolveChunkingPolicy(null).maxParagraphs;
   if (items.length === 0) return [];
-  if (items.length <= batchSize) return [items];
+  if (items.length <= size) return [items];
   const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += batchSize) {
-    chunks.push(items.slice(i, i + batchSize));
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
   }
   return chunks;
 }
 
-/** Web API stays small; Playwright providers use a larger paragraph batch. */
+/** Web API stays small; browser transport uses larger paragraph batch from capabilities. */
 export function resolveTranslateBatchParagraphs(
   firstProviderType: string | null | undefined,
 ): number {
-  if (
-    firstProviderType === 'PLAYWRIGHT_GEMINI' ||
-    firstProviderType === 'PLAYWRIGHT_CHATGPT' ||
-    firstProviderType === 'PLAYWRIGHT_META_AI'
-  ) {
-    return PLAYWRIGHT_TRANSLATE_BATCH_PARAGRAPHS;
-  }
-  return DEFAULT_TRANSLATE_BATCH_PARAGRAPHS;
+  return resolveChunkingPolicy(firstProviderType).maxParagraphs;
 }
+
+/** @deprecated Use isBrowserTransportType from provider-capabilities */
+export { isBrowserTransportType as isPlaywrightProviderType } from '@main/ai/provider-capabilities';
 
 /** Playwright: respect paragraph cap AND source char cap (large chapter → multiple sends). */
 export function chunkParagraphBatchForPlaywright<T extends { sourceText?: string }>(

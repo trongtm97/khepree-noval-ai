@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'noveltrans.recentLanguagePairs';
+const STORAGE_KEY = 'khepree-novel-ai.recentLanguagePairs';
 const MAX_RECENT = 8;
 
 export interface RecentLanguagePair {

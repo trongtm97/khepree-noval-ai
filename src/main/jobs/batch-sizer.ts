@@ -1,10 +1,7 @@
 import {
   DEFAULT_MAX_CHAPTERS_PER_JOB,
-  DEFAULT_TRANSLATE_BATCH_PARAGRAPHS,
-  PLAYWRIGHT_MAX_SOURCE_CHARS_PER_CHUNK,
-  PLAYWRIGHT_TRANSLATE_BATCH_PARAGRAPHS,
-  WEB_API_MAX_SOURCE_CHARS_PER_CHUNK,
 } from '@shared/constants/job';
+import { resolveProviderCharBudget as resolveCharBudgetFromCapabilities } from '@main/ai/provider-chunking-policy';
 import type { RepairParagraph } from './repair-strategies';
 
 export interface ChapterBatchInput {
@@ -45,24 +42,7 @@ export function resolveProviderCharBudget(
   providerType: string | null | undefined,
   history: BatchSizerHistory = DEFAULT_BATCH_SIZER_HISTORY,
 ): { maxSourceChars: number; maxParagraphs: number } {
-  const playwright = providerType === 'PLAYWRIGHT_GEMINI';
-  let maxSourceChars = playwright
-    ? PLAYWRIGHT_MAX_SOURCE_CHARS_PER_CHUNK
-    : WEB_API_MAX_SOURCE_CHARS_PER_CHUNK;
-  const maxParagraphs = playwright
-    ? PLAYWRIGHT_TRANSLATE_BATCH_PARAGRAPHS
-    : DEFAULT_TRANSLATE_BATCH_PARAGRAPHS;
-
-  if (history.recentIncompleteRate >= 0.35) {
-    maxSourceChars = Math.floor(maxSourceChars * 0.65);
-  } else if (history.recentIncompleteRate >= 0.15) {
-    maxSourceChars = Math.floor(maxSourceChars * 0.8);
-  }
-
-  const ratioHeadroom = history.avgOutputRatio > 1.5 ? 0.85 : 1;
-  maxSourceChars = Math.floor(maxSourceChars / ratioHeadroom);
-
-  return { maxSourceChars, maxParagraphs };
+  return resolveCharBudgetFromCapabilities(providerType, history);
 }
 
 export function historyFromProjectStats(stats: {

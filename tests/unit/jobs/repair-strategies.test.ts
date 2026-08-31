@@ -199,6 +199,7 @@ describe('classifyRepairReason + strategies', () => {
         passed: false,
         errors: [],
         warnings: [],
+        infos: [],
         missingParagraphIds: [],
         emptyParagraphIds: [],
         corruptParagraphIds: [],

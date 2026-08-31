@@ -58,7 +58,7 @@ export const operationsArticles: HelpArticle[] = [
         type: 'callout',
         variant: 'warning',
         title: 'Lưu ý',
-        body: 'Không chỉnh sửa file database hoặc log bằng công cụ ngoài khi NovelTrans đang chạy.',
+        body: 'Không chỉnh sửa file database hoặc log bằng công cụ ngoài khi Khepree Novel AI đang chạy.',
       },
       {
         type: 'actions',
@@ -139,7 +139,7 @@ export const operationsArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Chọn nơi lưu bản dịch' },
       {
         type: 'paragraph',
-        text: 'NovelTrans ưu tiên: (1) thư mục riêng của dự án nếu đã cấu hình; (2) thư mục xuất mặc định toàn cục; (3) hỏi một lần khi xuất lần đầu. Sau khi thiết lập, xuất TXT/DOCX không mở hộp thoại Save As mỗi lần.',
+        text: 'Khepree Novel AI ưu tiên: (1) thư mục riêng của dự án nếu đã cấu hình; (2) thư mục xuất mặc định toàn cục; (3) hỏi một lần khi xuất lần đầu. Sau khi thiết lập, xuất TXT/DOCX không mở hộp thoại Save As mỗi lần.',
       },
       {
         type: 'callout',

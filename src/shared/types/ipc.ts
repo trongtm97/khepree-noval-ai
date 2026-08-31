@@ -245,6 +245,8 @@ export interface NovelTransApi {
       preferNotebookPack: boolean;
       useGlobalPrimary: boolean;
       primaryProviderId: string | null;
+      aiPreference: import('../constants/ai-preference').AiPreference | null;
+      useGlobalPreference: boolean;
     }>;
     setPreferNotebookPack: (input: {
       projectId: string;
@@ -258,6 +260,19 @@ export interface NovelTransApi {
       preferNotebookPack: boolean;
       useGlobalPrimary: boolean;
       primaryProviderId: string | null;
+      aiPreference: import('../constants/ai-preference').AiPreference | null;
+      useGlobalPreference: boolean;
+    }>;
+    setAiPreference: (input: {
+      projectId: string;
+      useGlobalPreference: boolean;
+      aiPreference?: import('../constants/ai-preference').AiPreference;
+    }) => Promise<{
+      preferNotebookPack: boolean;
+      useGlobalPrimary: boolean;
+      primaryProviderId: string | null;
+      aiPreference: import('../constants/ai-preference').AiPreference | null;
+      useGlobalPreference: boolean;
     }>;
   };
   editions: {
@@ -1244,6 +1259,10 @@ export interface NovelTransApi {
     setPrimary: (input: {
       providerId: string;
     }) => Promise<z.infer<typeof AiProviderListResponseSchema>>;
+    setPreference: (input: {
+      preference: import('../constants/ai-preference').AiPreference;
+    }) => Promise<z.infer<typeof AiProviderListResponseSchema>>;
+    checkAll: () => Promise<{ ok: boolean; message: string }>;
     installWorker: () => Promise<z.infer<typeof AiWorkerInstallResponseSchema>>;
     autoSetupStatus: () => Promise<z.infer<typeof AiStatusSnapshotSchema>>;
     autoSetupRun: () => Promise<z.infer<typeof AiAutoSetupResultSchema>>;

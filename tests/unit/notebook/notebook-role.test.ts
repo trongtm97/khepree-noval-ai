@@ -24,7 +24,7 @@ describe('notebook role constants', () => {
         editionTitle: 'Tiên Nghịch',
       }),
     ).toBe('[Translation][VI] Tiên Nghịch');
-    expect(formatNotebookNameForRole('Test Novel', 'SINGLE')).toContain('[NovelTrans]');
+    expect(formatNotebookNameForRole('Test Novel', 'SINGLE')).toContain('[Khepree]');
   });
 
   it('infers SINGLE layout when legacy row exists', () => {
@@ -62,7 +62,7 @@ describe('notebook role resolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Role Novel',
+      notebook_name: '[Khepree] Role Novel',
       notebook_role: 'SINGLE',
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/single',
@@ -79,7 +79,7 @@ describe('notebook role resolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans Research] Role Novel',
+      notebook_name: '[Khepree Novel AI Research] Role Novel',
       notebook_role: 'RESEARCH',
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/research',
@@ -87,7 +87,7 @@ describe('notebook role resolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Role Novel',
+      notebook_name: '[Khepree] Role Novel',
       notebook_role: 'TRANSLATION',
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/translation',
@@ -104,7 +104,7 @@ describe('notebook role resolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Role Novel',
+      notebook_name: '[Khepree] Role Novel',
       notebook_role: 'TRANSLATION',
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/translate-only',
@@ -117,7 +117,7 @@ describe('notebook role resolver', () => {
     const row = db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Legacy',
+      notebook_name: '[Khepree] Legacy',
       notebook_role: 'TRANSLATION',
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/legacy',
@@ -131,7 +131,7 @@ describe('notebook role resolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans Research] Role Novel',
+      notebook_name: '[Khepree Novel AI Research] Role Novel',
       notebook_role: 'RESEARCH',
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/research-only',
@@ -139,7 +139,7 @@ describe('notebook role resolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Role Novel',
+      notebook_name: '[Khepree] Role Novel',
       notebook_role: 'TRANSLATION',
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/translate-only',
@@ -152,14 +152,14 @@ describe('notebook role resolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans Research] Role Novel',
+      notebook_name: '[Khepree Novel AI Research] Role Novel',
       notebook_role: 'RESEARCH',
       status: 'ready',
     });
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Role Novel',
+      notebook_name: '[Khepree] Role Novel',
       notebook_role: 'TRANSLATION',
       status: 'ready',
     });
@@ -169,7 +169,7 @@ describe('notebook role resolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Role Novel',
+      notebook_name: '[Khepree] Role Novel',
       notebook_role: 'SINGLE',
       status: 'ready',
     });
@@ -182,14 +182,14 @@ describe('notebook role resolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans Research] Role Novel',
+      notebook_name: '[Khepree Novel AI Research] Role Novel',
       notebook_role: 'RESEARCH',
       status: 'provisioning',
     });
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Role Novel',
+      notebook_name: '[Khepree] Role Novel',
       notebook_role: 'TRANSLATION',
       status: 'assisted_setup',
     });

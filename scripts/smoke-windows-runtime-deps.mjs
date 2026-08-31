@@ -25,7 +25,7 @@ function findPackagedDir() {
   for (const name of fs.readdirSync(outDir)) {
     const full = path.join(outDir, name);
     if (!fs.statSync(full).isDirectory()) continue;
-    const exe = path.join(full, 'NovelTransStudio.exe');
+    const exe = path.join(full, 'KhepreeNovelAI.exe');
     if (fs.existsSync(exe)) dirs.push(full);
   }
   dirs.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
@@ -75,7 +75,7 @@ async function main() {
 
   const appDir = findPackagedDir();
   if (!appDir) {
-    console.error('[runtime-deps] No packaged NovelTransStudio.exe under out/');
+    console.error('[runtime-deps] No packaged KhepreeNovelAI.exe under out/');
     process.exit(1);
   }
   console.log('[runtime-deps] packaged dir:', appDir);
@@ -136,8 +136,8 @@ async function main() {
   }
 
   // App exe exists (clean user can double-click)
-  const exe = path.join(appDir, 'NovelTransStudio.exe');
-  if (!fs.existsSync(exe)) failures.push('NovelTransStudio.exe missing');
+  const exe = path.join(appDir, 'KhepreeNovelAI.exe');
+  if (!fs.existsSync(exe)) failures.push('KhepreeNovelAI.exe missing');
 
   // Playwright modules live inside app.asar (copied by packageAfterCopy)
   let playwrightFound = false;

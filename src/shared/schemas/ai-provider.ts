@@ -5,6 +5,7 @@ import {
   AI_PROVIDER_TYPES,
   AI_RESPONSE_STATUSES,
 } from '../constants/ai-provider';
+import { AI_PREFERENCES } from '../constants/ai-preference';
 
 export const AiProviderDtoSchema = z.object({
   id: z.string().min(1),
@@ -162,10 +163,22 @@ export const AiProviderGetRoutingRequestSchema = z.object({
 });
 
 export const AiProviderRoutingResponseSchema = z.object({
+  aiPreference: z.enum(AI_PREFERENCES),
   primaryProviderId: z.string().nullable(),
   globalPrimaryProviderId: z.string().nullable(),
   fallbackEnabled: z.boolean(),
   routingMode: z.enum(['AUTO', 'PIN']),
+  providerHealth: z.array(
+    z.object({
+      preference: z.enum(['GEMINI', 'CHATGPT', 'META_AI']),
+      ok: z.boolean(),
+      status: z.string(),
+    }),
+  ),
+});
+
+export const AiProviderSetPreferenceRequestSchema = z.object({
+  preference: z.enum(AI_PREFERENCES),
 });
 
 export const AiProviderSetPrimaryRequestSchema = z.object({
@@ -176,6 +189,14 @@ export const ProjectTranslateAiSettingsResponseSchema = z.object({
   preferNotebookPack: z.boolean(),
   useGlobalPrimary: z.boolean(),
   primaryProviderId: z.string().nullable(),
+  aiPreference: z.enum(AI_PREFERENCES).nullable(),
+  useGlobalPreference: z.boolean(),
+});
+
+export const ProjectSetAiPreferenceRequestSchema = z.object({
+  projectId: z.string().uuid(),
+  useGlobalPreference: z.boolean(),
+  aiPreference: z.enum(AI_PREFERENCES).optional(),
 });
 
 export const ProjectSetPrimaryProviderRequestSchema = z.object({

@@ -120,7 +120,7 @@ describe('multilingual production acceptance', () => {
     });
     const edition = ensureDefaultEdition(db, project.id);
     db.projects.update(project.id, { target_language: 'en' });
-    db.translationEditions.update(edition.id, { target_language: 'en' });
+    db.translationEditions.update(edition.id, { targetLanguage: 'en' });
 
     const chapter = db.chapters.create({
       project_id: project.id,
@@ -172,6 +172,21 @@ describe('multilingual production acceptance', () => {
 
     const result = await manager.sendForJob({
       job,
+      executionTarget: {
+        workerId: `prov-playwright-gemini:${account.id}`,
+        providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+        providerType: 'PLAYWRIGHT_GEMINI',
+        accountKind: 'GOOGLE_ACCOUNT',
+        accountId: account.id,
+        concurrencyKey: account.id,
+        status: 'READY',
+        capabilities: {
+          browserProfile: true,
+          notebookRequired: false,
+          webApiWorker: false,
+        },
+        legacyWorkerStateId: null,
+      },
       accountId: account.id,
       profilePath: '/tmp/profile',
       leaseOwner: 'acceptance',

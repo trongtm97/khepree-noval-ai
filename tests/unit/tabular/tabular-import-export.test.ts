@@ -45,7 +45,7 @@ describe('tabular xlsx parser', () => {
     const filePath = path.join(tempDir, 'terms.xlsx');
     const workbook = new ExcelJS.Workbook();
     const meta = workbook.addWorksheet(TABULAR_META_SHEET);
-    meta.addRow(['noveltrans_format', NTS_TABULAR_FORMAT]);
+    meta.addRow(['khepree_format', NTS_TABULAR_FORMAT]);
     meta.addRow(['schema_version', String(TABULAR_SCHEMA_VERSION)]);
     meta.addRow(['data_type', 'terms']);
 
@@ -56,7 +56,7 @@ describe('tabular xlsx parser', () => {
     await workbook.xlsx.writeFile(filePath);
 
     const parsed = await parseTabularFile(filePath);
-    expect(parsed.meta?.noveltrans_format).toBe(NTS_TABULAR_FORMAT);
+    expect(parsed.meta?.khepree_format).toBe(NTS_TABULAR_FORMAT);
     expect(parsed.meta?.data_type).toBe('terms');
     const sheet = parsed.sheets.get('terms');
     expect(sheet?.rows).toHaveLength(1);

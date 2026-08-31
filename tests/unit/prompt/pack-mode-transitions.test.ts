@@ -139,7 +139,7 @@ describe('resolveTranslationPackMode (Phase 4 local-first)', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Pack Mode',
+      notebook_name: '[Khepree] Pack Mode',
       notebook_role: 'TRANSLATION',
       notebook_id: 'nb-pack-1',
       resource_url: 'https://notebook.google.com/x',

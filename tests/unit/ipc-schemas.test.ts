@@ -26,14 +26,14 @@ describe('IPC schemas', () => {
   it('validates version response', () => {
     const result = GetVersionResponseSchema.parse({
       version: '0.1.0',
-      name: 'NovelTrans Studio',
+      name: 'Khepree Novel AI',
     });
     expect(result.version).toBe('0.1.0');
   });
 
   it('validates getInfo response', () => {
     const result = GetInfoResponseSchema.parse({
-      name: 'NovelTrans Studio',
+      name: 'Khepree Novel AI',
       version: '0.1.0',
       platform: 'win32',
       arch: 'x64',
@@ -46,14 +46,14 @@ describe('IPC schemas', () => {
 
   it('validates getPaths response', () => {
     const result = GetPathsResponseSchema.parse({
-      root: 'C:\\Users\\test\\AppData\\Roaming\\noveltrans-studio',
-      data: 'C:\\Users\\test\\AppData\\Roaming\\noveltrans-studio\\data',
-      logs: 'C:\\Users\\test\\AppData\\Roaming\\noveltrans-studio\\logs',
+      root: 'C:\\Users\\test\\AppData\\Roaming\\KhepreeNovelAI',
+      data: 'C:\\Users\\test\\AppData\\Roaming\\KhepreeNovelAI\\data',
+      logs: 'C:\\Users\\test\\AppData\\Roaming\\KhepreeNovelAI\\logs',
       browserProfiles:
-        'C:\\Users\\test\\AppData\\Roaming\\noveltrans-studio\\browser-profiles',
-      exports: 'C:\\Users\\test\\AppData\\Roaming\\noveltrans-studio\\exports',
-      backups: 'C:\\Users\\test\\AppData\\Roaming\\noveltrans-studio\\backups',
-      cache: 'C:\\Users\\test\\AppData\\Roaming\\noveltrans-studio\\cache',
+        'C:\\Users\\test\\AppData\\Roaming\\KhepreeNovelAI\\browser-profiles',
+      exports: 'C:\\Users\\test\\AppData\\Roaming\\KhepreeNovelAI\\exports',
+      backups: 'C:\\Users\\test\\AppData\\Roaming\\KhepreeNovelAI\\backups',
+      cache: 'C:\\Users\\test\\AppData\\Roaming\\KhepreeNovelAI\\cache',
     });
     expect(result.logs).toContain('logs');
   });

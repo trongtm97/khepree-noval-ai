@@ -72,6 +72,8 @@ const api: NovelTransApi = {
       invokeChannel(IPC_CHANNELS.PROJECT_SET_PREFER_NOTEBOOK_PACK, input),
     setPrimaryProvider: (input) =>
       invokeChannel(IPC_CHANNELS.PROJECT_SET_PRIMARY_PROVIDER, input),
+    setAiPreference: (input) =>
+      invokeChannel(IPC_CHANNELS.PROJECT_SET_AI_PREFERENCE, input),
   },
   editions: {
     list: (projectId) =>
@@ -385,6 +387,8 @@ const api: NovelTransApi = {
     setFallback: (input) => invokeChannel(IPC_CHANNELS.AI_PROVIDER_SET_FALLBACK, input),
     getRouting: (input) => invokeChannel(IPC_CHANNELS.AI_PROVIDER_GET_ROUTING, input ?? {}),
     setPrimary: (input) => invokeChannel(IPC_CHANNELS.AI_PROVIDER_SET_PRIMARY, input),
+    setPreference: (input) => invokeChannel(IPC_CHANNELS.AI_PROVIDER_SET_PREFERENCE, input),
+    checkAll: () => invokeChannel(IPC_CHANNELS.AI_PROVIDER_CHECK_ALL),
     installWorker: () => invokeChannel(IPC_CHANNELS.AI_PROVIDER_INSTALL_WORKER),
     autoSetupStatus: () => invokeChannel(IPC_CHANNELS.AI_AUTO_SETUP_STATUS),
     autoSetupRun: () => invokeChannel(IPC_CHANNELS.AI_AUTO_SETUP_RUN),

@@ -23,6 +23,7 @@ import {
   KnowledgeSyncStateRepository,
   NotebookRepository,
   GeminiRequestRepository,
+  AiRequestRepository,
   AutomationEventRepository,
   JobRepository,
   WorkerStateRepository,
@@ -79,6 +80,7 @@ export class DatabaseManager {
   }
   readonly notebooks: NotebookRepository;
   readonly geminiRequests: GeminiRequestRepository;
+  readonly aiRequests: AiRequestRepository;
   readonly automationEvents: AutomationEventRepository;
   readonly jobs: JobRepository;
   readonly workerStates: WorkerStateRepository;
@@ -142,6 +144,7 @@ export class DatabaseManager {
     this.knowledgeSyncState = new KnowledgeSyncStateRepository(this.db);
     this.notebooks = new NotebookRepository(this.db);
     this.geminiRequests = new GeminiRequestRepository(this.db);
+    this.aiRequests = new AiRequestRepository(this.db);
     this.automationEvents = new AutomationEventRepository(this.db);
     this.jobs = new JobRepository(this.db);
     this.workerStates = new WorkerStateRepository(this.db);

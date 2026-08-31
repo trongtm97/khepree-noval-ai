@@ -58,7 +58,7 @@ describe('translation context diagnostics formatters', () => {
       providerType: 'PLAYWRIGHT_GEMINI',
       packMode: 'slim',
       notebookId: 'nb-1',
-      notebookName: '[NovelTrans][Translation] Tiên Nghịch',
+      notebookName: '[Khepree][Translation] Tiên Nghịch',
       localKnowledgeVersion: 48,
       knowledgeSourceMode: 'LOCAL_ONLY',
       hotDeltaCount: 0,
@@ -88,8 +88,8 @@ describe('buildTranslationContextDiagnostics', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans][Translation] Tiên Nghịch',
-      notebook_role: 'TRANSLATION',
+      notebook_name: '[Khepree][Translation] Tiên Nghịch',
+      notebook_role: 'SINGLE',
       notebook_id: 'nb-tien',
       resource_url: 'https://notebook.google.com/x',
       status: 'ready',
@@ -138,7 +138,7 @@ describe('buildTranslationContextDiagnostics', () => {
       },
     });
     expect(d.notebookName).toContain('Tiên Nghịch');
-    expect(d.notebookRole).toBe('TRANSLATION');
+    expect(d.notebookRole).toBe('SINGLE');
     expect(d.hotDeltaCount).toBe(2);
   });
 });

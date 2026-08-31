@@ -42,7 +42,7 @@ describe('deleteBrowserAccount', () => {
 
   it('releases browser resources before deleting profile and row', async () => {
     const db = createMockDb();
-    const service = new AiProviderService(db as never, {} as never);
+    const service = new AiProviderService(db as never, {} as never, {} as never, {} as never);
 
     const result = await service.deleteBrowserAccount('acc-1');
 

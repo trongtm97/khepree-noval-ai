@@ -13,14 +13,12 @@ This is the required output language.
 
 Translate:
 Arabic / العربية (ar) → Vietnamese / Tiếng Việt (vi)
-
 Continue from C000001:P000002.
 Do not repeat paragraphs already translated.
 Return only the remaining part.
 Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
 Do not renumber paragraph IDs — use exact source IDs.
 Translations must be in the target language.
-
 Source paragraphs (remaining):
 C000001:P000002 b"
 `;
@@ -38,14 +36,12 @@ This is the required output language.
 
 Translate:
 English / English (en) → Spanish / Español (es)
-
 Continue from C000001:P000002.
 Do not repeat paragraphs already translated.
 Return only the remaining part.
 Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
 Do not renumber paragraph IDs — use exact source IDs.
 Translations must be in the target language.
-
 Source paragraphs (remaining):
 C000001:P000002 b"
 `;
@@ -63,14 +59,12 @@ This is the required output language.
 
 Translate:
 English / English (en) → Vietnamese / Tiếng Việt (vi)
-
 Continue from C000001:P000002.
 Do not repeat paragraphs already translated.
 Return only the remaining part.
 Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
 Do not renumber paragraph IDs — use exact source IDs.
 Translations must be in the target language.
-
 Source paragraphs (remaining):
 C000001:P000002 b"
 `;
@@ -88,14 +82,12 @@ This is the required output language.
 
 Translate:
 Spanish / Español (es) → Vietnamese / Tiếng Việt (vi)
-
 Continue from C000001:P000002.
 Do not repeat paragraphs already translated.
 Return only the remaining part.
 Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
 Do not renumber paragraph IDs — use exact source IDs.
 Translations must be in the target language.
-
 Source paragraphs (remaining):
 C000001:P000002 b"
 `;
@@ -113,14 +105,12 @@ This is the required output language.
 
 Translate:
 Persian / فارسی (fa) → English / English (en)
-
 Continue from C000001:P000002.
 Do not repeat paragraphs already translated.
 Return only the remaining part.
 Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
 Do not renumber paragraph IDs — use exact source IDs.
 Translations must be in the target language.
-
 Source paragraphs (remaining):
 C000001:P000002 b"
 `;
@@ -138,14 +128,12 @@ This is the required output language.
 
 Translate:
 French / Français (fr) → German / Deutsch (de)
-
 Continue from C000001:P000002.
 Do not repeat paragraphs already translated.
 Return only the remaining part.
 Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
 Do not renumber paragraph IDs — use exact source IDs.
 Translations must be in the target language.
-
 Source paragraphs (remaining):
 C000001:P000002 b"
 `;
@@ -163,14 +151,12 @@ This is the required output language.
 
 Translate:
 Japanese / 日本語 (ja) → English / English (en)
-
 Continue from C000001:P000002.
 Do not repeat paragraphs already translated.
 Return only the remaining part.
 Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
 Do not renumber paragraph IDs — use exact source IDs.
 Translations must be in the target language.
-
 Source paragraphs (remaining):
 C000001:P000002 b"
 `;
@@ -188,14 +174,12 @@ This is the required output language.
 
 Translate:
 Korean / 한국어 (ko) → Vietnamese / Tiếng Việt (vi)
-
 Continue from C000001:P000002.
 Do not repeat paragraphs already translated.
 Return only the remaining part.
 Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
 Do not renumber paragraph IDs — use exact source IDs.
 Translations must be in the target language.
-
 Source paragraphs (remaining):
 C000001:P000002 b"
 `;
@@ -213,14 +197,12 @@ This is the required output language.
 
 Translate:
 Ukrainian / Українська (uk) → Polish / Polski (pl)
-
 Continue from C000001:P000002.
 Do not repeat paragraphs already translated.
 Return only the remaining part.
 Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
 Do not renumber paragraph IDs — use exact source IDs.
 Translations must be in the target language.
-
 Source paragraphs (remaining):
 C000001:P000002 b"
 `;
@@ -238,14 +220,12 @@ This is the required output language.
 
 Translate:
 Vietnamese / Tiếng Việt (vi) → English / English (en)
-
 Continue from C000001:P000002.
 Do not repeat paragraphs already translated.
 Return only the remaining part.
 Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
 Do not renumber paragraph IDs — use exact source IDs.
 Translations must be in the target language.
-
 Source paragraphs (remaining):
 C000001:P000002 b"
 `;
@@ -263,14 +243,12 @@ This is the required output language.
 
 Translate:
 Chinese (Simplified) / 简体中文 (zh-Hans) → Vietnamese / Tiếng Việt (vi)
-
 Continue from C000001:P000002.
 Do not repeat paragraphs already translated.
 Return only the remaining part.
 Keep protocol: <TRANSLATION>, <TERM_DELTA>, <MEMORY_DELTA> with full closing tags.
 Do not renumber paragraph IDs — use exact source IDs.
 Translations must be in the target language.
-
 Source paragraphs (remaining):
 C000001:P000002 b"
 `;
@@ -292,14 +270,16 @@ Arabic / العربية (ar) → Vietnamese / Tiếng Việt (vi)
 Previous response was missing translations for these paragraph IDs:
 C000001:P000001
 
-Local context (already translated — do NOT re-translate unless listed above):
+### Neighbor source (context only — do NOT re-translate)
 C000001:P000002 world
 
-Translate ONLY these source paragraphs into the target language:
+### Missing source
 C000001:P000001 hello
 
-Output ONLY the <TRANSLATION> section for the missing IDs.
-Use exact IDs. One line per ID. No other sections. No markdown fences.
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
@@ -323,14 +303,16 @@ English / English (en) → Spanish / Español (es)
 Previous response was missing translations for these paragraph IDs:
 C000001:P000001
 
-Local context (already translated — do NOT re-translate unless listed above):
+### Neighbor source (context only — do NOT re-translate)
 C000001:P000002 world
 
-Translate ONLY these source paragraphs into the target language:
+### Missing source
 C000001:P000001 hello
 
-Output ONLY the <TRANSLATION> section for the missing IDs.
-Use exact IDs. One line per ID. No other sections. No markdown fences.
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
@@ -354,14 +336,16 @@ English / English (en) → Vietnamese / Tiếng Việt (vi)
 Previous response was missing translations for these paragraph IDs:
 C000001:P000001
 
-Local context (already translated — do NOT re-translate unless listed above):
+### Neighbor source (context only — do NOT re-translate)
 C000001:P000002 world
 
-Translate ONLY these source paragraphs into the target language:
+### Missing source
 C000001:P000001 hello
 
-Output ONLY the <TRANSLATION> section for the missing IDs.
-Use exact IDs. One line per ID. No other sections. No markdown fences.
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
@@ -385,14 +369,16 @@ Spanish / Español (es) → Vietnamese / Tiếng Việt (vi)
 Previous response was missing translations for these paragraph IDs:
 C000001:P000001
 
-Local context (already translated — do NOT re-translate unless listed above):
+### Neighbor source (context only — do NOT re-translate)
 C000001:P000002 world
 
-Translate ONLY these source paragraphs into the target language:
+### Missing source
 C000001:P000001 hello
 
-Output ONLY the <TRANSLATION> section for the missing IDs.
-Use exact IDs. One line per ID. No other sections. No markdown fences.
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
@@ -416,14 +402,16 @@ Persian / فارسی (fa) → English / English (en)
 Previous response was missing translations for these paragraph IDs:
 C000001:P000001
 
-Local context (already translated — do NOT re-translate unless listed above):
+### Neighbor source (context only — do NOT re-translate)
 C000001:P000002 world
 
-Translate ONLY these source paragraphs into the target language:
+### Missing source
 C000001:P000001 hello
 
-Output ONLY the <TRANSLATION> section for the missing IDs.
-Use exact IDs. One line per ID. No other sections. No markdown fences.
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
@@ -447,14 +435,16 @@ French / Français (fr) → German / Deutsch (de)
 Previous response was missing translations for these paragraph IDs:
 C000001:P000001
 
-Local context (already translated — do NOT re-translate unless listed above):
+### Neighbor source (context only — do NOT re-translate)
 C000001:P000002 world
 
-Translate ONLY these source paragraphs into the target language:
+### Missing source
 C000001:P000001 hello
 
-Output ONLY the <TRANSLATION> section for the missing IDs.
-Use exact IDs. One line per ID. No other sections. No markdown fences.
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
@@ -478,14 +468,16 @@ Japanese / 日本語 (ja) → English / English (en)
 Previous response was missing translations for these paragraph IDs:
 C000001:P000001
 
-Local context (already translated — do NOT re-translate unless listed above):
+### Neighbor source (context only — do NOT re-translate)
 C000001:P000002 world
 
-Translate ONLY these source paragraphs into the target language:
+### Missing source
 C000001:P000001 hello
 
-Output ONLY the <TRANSLATION> section for the missing IDs.
-Use exact IDs. One line per ID. No other sections. No markdown fences.
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
@@ -509,14 +501,16 @@ Korean / 한국어 (ko) → Vietnamese / Tiếng Việt (vi)
 Previous response was missing translations for these paragraph IDs:
 C000001:P000001
 
-Local context (already translated — do NOT re-translate unless listed above):
+### Neighbor source (context only — do NOT re-translate)
 C000001:P000002 world
 
-Translate ONLY these source paragraphs into the target language:
+### Missing source
 C000001:P000001 hello
 
-Output ONLY the <TRANSLATION> section for the missing IDs.
-Use exact IDs. One line per ID. No other sections. No markdown fences.
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
@@ -540,14 +534,16 @@ Ukrainian / Українська (uk) → Polish / Polski (pl)
 Previous response was missing translations for these paragraph IDs:
 C000001:P000001
 
-Local context (already translated — do NOT re-translate unless listed above):
+### Neighbor source (context only — do NOT re-translate)
 C000001:P000002 world
 
-Translate ONLY these source paragraphs into the target language:
+### Missing source
 C000001:P000001 hello
 
-Output ONLY the <TRANSLATION> section for the missing IDs.
-Use exact IDs. One line per ID. No other sections. No markdown fences.
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
@@ -571,14 +567,16 @@ Vietnamese / Tiếng Việt (vi) → English / English (en)
 Previous response was missing translations for these paragraph IDs:
 C000001:P000001
 
-Local context (already translated — do NOT re-translate unless listed above):
+### Neighbor source (context only — do NOT re-translate)
 C000001:P000002 world
 
-Translate ONLY these source paragraphs into the target language:
+### Missing source
 C000001:P000001 hello
 
-Output ONLY the <TRANSLATION> section for the missing IDs.
-Use exact IDs. One line per ID. No other sections. No markdown fences.
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...
@@ -602,14 +600,16 @@ Chinese (Simplified) / 简体中文 (zh-Hans) → Vietnamese / Tiếng Việt (v
 Previous response was missing translations for these paragraph IDs:
 C000001:P000001
 
-Local context (already translated — do NOT re-translate unless listed above):
+### Neighbor source (context only — do NOT re-translate)
 C000001:P000002 world
 
-Translate ONLY these source paragraphs into the target language:
+### Missing source
 C000001:P000001 hello
 
-Output ONLY the <TRANSLATION> section for the missing IDs.
-Use exact IDs. One line per ID. No other sections. No markdown fences.
+Translate ONLY the missing source paragraphs listed above.
+Output ONLY the <TRANSLATION> section for those IDs.
+Use exact IDs. One physical line per ID. No TERM_DELTA or MEMORY_DELTA.
+No markdown fences. Do not re-translate neighbor or previous-context lines.
 
 <TRANSLATION>
 [C000001:P000001] TARGET_LANGUAGE_TRANSLATION...

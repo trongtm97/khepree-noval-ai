@@ -12,14 +12,12 @@ const ROOT = path.resolve(__dirname, '../../..');
 const GUARDED_FILES = [
   'src/renderer/pages/AiMemoryPage.tsx',
   'src/renderer/features/translation/hooks/useTranslationEditorController.tsx',
-  'src/main/notebook/notebook-bootstrap-service.ts',
   'src/main/services/translate-readiness-service.ts',
   'src/main/bootstrap/full-novel-preprocess-orchestrator.ts',
   'src/main/bootstrap/full-novel-preprocess-auto-service.ts',
   'src/main/services/project-dto.ts',
   'src/renderer/utils/translate-preflight.ts',
   'src/main/jobs/worker-pool.ts',
-  'src/main/learning/learning-pipeline.ts',
   'src/main/ipc/register-handlers.ts',
 ];
 

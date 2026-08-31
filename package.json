@@ -1,8 +1,8 @@
 {
-  "name": "noveltrans-studio",
-  "productName": "NovelTrans Studio",
+  "name": "khepree-novel-ai",
+  "productName": "Khepree Novel AI",
   "version": "0.1.0",
-  "description": "Desktop Windows app for Chinese to Vietnamese novel translation via browser-automated Gemini",
+  "description": "Windows desktop app for AI-assisted multilingual novel translation (Gemini, ChatGPT, Meta AI)",
   "main": ".vite/build/main.js",
   "private": true,
   "scripts": {

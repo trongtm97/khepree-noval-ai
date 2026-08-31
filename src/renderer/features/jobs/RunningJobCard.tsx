@@ -90,13 +90,18 @@ export function RunningJobCard({
           <p className="jobs-card-detail">{progressHint}</p>
           {account ? (
             <p className="muted jobs-card-sub">
-              {t('jobs.aiAccount')}:{' '}
-              {accountDisplayName(
-                account,
-                accountOrder.get(account.id) ?? 0,
-                t('jobs.accountFallback'),
-              )}
-              {channel ? ` · ${channel}` : ''}
+              {t('jobs.aiLine', {
+                provider: channel ?? t('jobs.aiUnknown'),
+                account: accountDisplayName(
+                  account,
+                  accountOrder.get(account.id) ?? 0,
+                  t('jobs.accountFallback'),
+                ),
+              })}
+            </p>
+          ) : channel ? (
+            <p className="muted jobs-card-sub">
+              {t('jobs.aiProviderOnly', { provider: channel })}
             </p>
           ) : null}
           <ProgressBar

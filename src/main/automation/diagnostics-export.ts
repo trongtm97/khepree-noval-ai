@@ -1,3 +1,4 @@
+import { APP_NAME } from '@shared/constants/app';
 import fs from 'node:fs';
 import path from 'node:path';
 import JSZip from 'jszip';
@@ -89,7 +90,7 @@ export async function buildDiagnosticsExportZip(input: {
   zip.file(
     'README.txt',
     [
-      'NovelTrans Studio diagnostics export',
+      `${APP_NAME} diagnostics export`,
       'Excludes cookies, OAuth tokens, browser profiles, and localStorage secrets.',
       `Generated: ${input.healthReport.generatedAt}`,
       '',

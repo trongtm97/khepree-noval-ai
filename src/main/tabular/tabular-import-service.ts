@@ -121,7 +121,7 @@ export class TabularImportService {
     let target = outputPath;
     if (!target) {
       const result = await dialog.showSaveDialog({
-        defaultPath: 'noveltrans-terms-template.xlsx',
+        defaultPath: 'khepree-novel-ai-terms-template.xlsx',
         filters: [{ name: 'Excel', extensions: ['xlsx'] }],
       });
       if (result.canceled || !result.filePath) {

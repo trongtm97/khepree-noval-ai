@@ -131,7 +131,7 @@ export function requireRepairTranslationContext(
     stylePolicyHash: partial.stylePolicyHash ?? null,
     knowledgeVersion: partial.knowledgeVersion ?? null,
     lockedTerms:
-      partial.lockedTerms.length > 0 ? partial.lockedTerms : configLocked,
+      (partial.lockedTerms?.length ?? 0) > 0 ? (partial.lockedTerms ?? []) : configLocked,
   };
 }
 

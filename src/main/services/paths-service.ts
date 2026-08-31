@@ -1,12 +1,12 @@
 import { app } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
-import { NOVELTRANS_APPDATA_DIR } from '@shared/constants/db';
+import { APP_DATA_DIR_NAME } from '@shared/constants/db';
 import { APP_PATH_DIRS, type AppPathKey } from '@shared/constants/paths';
 import type { AppPaths } from '@shared/schemas/ipc';
 
 export function resolveAppPaths(appDataRoot: string): AppPaths {
-  const root = path.join(appDataRoot, NOVELTRANS_APPDATA_DIR);
+  const root = path.join(appDataRoot, APP_DATA_DIR_NAME);
   return {
     root,
     data: path.join(root, APP_PATH_DIRS.data),

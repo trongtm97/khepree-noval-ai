@@ -1,5 +1,6 @@
 import type { DatabaseManager } from '../db/database-manager';
 import type { JobRow } from '../db/repositories/job-repository';
+import type { AiExecutionTarget } from '../ai/execution-target';
 import { runRepairLoop, type RepairSender } from './repair-loop';
 import type { RepairParagraph } from './repair-strategies';
 import type { LockedTermForQa } from './qa-checker';
@@ -15,9 +16,14 @@ import { newId } from '../db/utils/uuid';
 
 export interface JobExecuteContext {
   job: JobRow;
-  accountId: string;
+  executionTarget: AiExecutionTarget;
   profilePath: string;
   leaseOwner: string;
+  /**
+   * Transitional alias — equals executionTarget.accountId.
+   * New code must use executionTarget, not assume Google account.
+   */
+  accountId: string;
 }
 
 export interface InitialSendResult {
@@ -55,18 +61,25 @@ export class BatchExecutor {
     const leaseMs = this.options.leaseMs ?? DEFAULT_JOB_LEASE_MS;
     const heartbeatMs = this.options.leaseHeartbeatMs ?? DEFAULT_LEASE_HEARTBEAT_MS;
 
-    profileLockManager.acquireLease({
-      profilePath,
-      ownerId,
-      accountId: ctx.accountId,
-      operation: 'translation',
-      label: `Dịch job ${job.id.slice(0, 8)}…`,
-    });
-    const stopProfileHeartbeat = startLeaseHeartbeat(profileLockManager, {
-      profilePath,
-      ownerId,
-    });
-    if (job.worker_id) {
+    if (profilePath) {
+      profileLockManager.acquireLease({
+        profilePath,
+        ownerId,
+        accountId: ctx.executionTarget.concurrencyKey,
+        operation: 'translation',
+        label: `Dịch job ${job.id.slice(0, 8)}…`,
+      });
+    }
+    const stopProfileHeartbeat = profilePath
+      ? startLeaseHeartbeat(profileLockManager, {
+          profilePath,
+          ownerId,
+        })
+      : () => undefined;
+    const legacyWorkerId = ctx.executionTarget.legacyWorkerStateId;
+    if (legacyWorkerId) {
+      this.db.workerStates.markBusy(legacyWorkerId, job.id);
+    } else if (job.worker_id) {
       this.db.workerStates.markBusy(job.worker_id, job.id);
     }
 
@@ -84,7 +97,13 @@ export class BatchExecutor {
       this.db.jobs.updateState(job.id, 'SENDING');
       this.db.jobs.updateProgress(
         job.id,
-        JSON.stringify({ phase: 'sending', accountId: ctx.accountId }),
+        JSON.stringify({
+          phase: 'sending',
+          accountId: ctx.executionTarget.accountId,
+          executionWorkerId: ctx.executionTarget.workerId,
+          providerId: ctx.executionTarget.providerId,
+          accountKind: ctx.executionTarget.accountKind,
+        }),
       );
 
       let initial: InitialSendResult;
@@ -92,11 +111,11 @@ export class BatchExecutor {
         initial = await this.options.sendInitial(ctx);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        if (/QUOTA_LIMIT|quota/i.test(message) && job.worker_id) {
+        if (/QUOTA_LIMIT|quota/i.test(message) && legacyWorkerId) {
           const until = new Date(
             Date.now() + (this.options.quotaCooldownMs ?? DEFAULT_QUOTA_COOLDOWN_MS),
           ).toISOString();
-          this.db.workerStates.markLimited(job.worker_id, until, message);
+          this.db.workerStates.markLimited(legacyWorkerId, until, message);
           this.db.jobs.updateState(job.id, 'QUEUED', 'Worker LIMITED — requeued');
           this.db.jobs.releaseLease(job.id);
           return { finalState: 'QUEUED' };
@@ -163,8 +182,8 @@ export class BatchExecutor {
       }
       this.db.jobs.markNeedsAttention(job.id, 'EXECUTOR_ERROR', message);
       this.db.jobs.releaseLease(job.id);
-      if (job.worker_id) {
-        this.db.workerStates.setHealth(job.worker_id, 'NEEDS_ATTENTION', {
+      if (legacyWorkerId) {
+        this.db.workerStates.setHealth(legacyWorkerId, 'NEEDS_ATTENTION', {
           lastError: message,
         });
       }
@@ -172,27 +191,33 @@ export class BatchExecutor {
     } finally {
       clearInterval(heartbeat);
       stopProfileHeartbeat();
-      try {
-        profileLockManager.releaseLease(profilePath, ownerId);
-      } catch (error) {
-        logger.warn('Profile lease release failed', {
-          jobId: job.id,
-          message: error instanceof Error ? error.message : String(error),
-        });
-        profileLockManager.recoverIfStale(profilePath);
+      if (profilePath) {
+        try {
+          profileLockManager.releaseLease(profilePath, ownerId);
+        } catch (error) {
+          logger.warn('Profile lease release failed', {
+            jobId: job.id,
+            message: error instanceof Error ? error.message : String(error),
+          });
+          profileLockManager.recoverIfStale(profilePath);
+        }
+        try {
+          const { getBrowserRuntimeManager } = await import(
+            '../automation/browser-runner/browser-runtime-manager'
+          );
+          getBrowserRuntimeManager().adoptRuntimeLockIfNeeded(
+            ctx.executionTarget.concurrencyKey,
+            profilePath,
+          );
+        } catch {
+          // Runtime manager optional during early boot / tests without init
+        }
       }
-      try {
-        const { getBrowserRuntimeManager } = await import(
-          '../automation/browser-runner/browser-runtime-manager'
-        );
-        getBrowserRuntimeManager().adoptRuntimeLockIfNeeded(ctx.accountId, profilePath);
-      } catch {
-        // Runtime manager optional during early boot / tests without init
-      }
-      if (job.worker_id) {
-        const worker = this.db.workerStates.getById(job.worker_id);
+      const releaseWorkerId = legacyWorkerId ?? job.worker_id;
+      if (releaseWorkerId) {
+        const worker = this.db.workerStates.getById(releaseWorkerId);
         if (worker?.health === 'BUSY') {
-          this.db.workerStates.markReady(job.worker_id);
+          this.db.workerStates.markReady(releaseWorkerId);
         }
       }
     }

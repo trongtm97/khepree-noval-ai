@@ -62,7 +62,7 @@ export const useUiShellStore = create<UiShellState>()(
       setProjectsViewMode: (projectsViewMode) => set({ projectsViewMode }),
       setDashboardReadyShown: (dashboardReadyShown) => set({ dashboardReadyShown }),
     }),
-    { name: 'noveltrans-ui-shell' },
+    { name: 'khepree-novel-ai-ui-shell' },
   ),
 );
 

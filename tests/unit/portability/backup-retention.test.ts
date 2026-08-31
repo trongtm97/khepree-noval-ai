@@ -15,7 +15,7 @@ describe('atomic backup + tiered retention (Phase 8)', () => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nts-backup-'));
     backupsDir = path.join(tempRoot, 'backups');
     fs.mkdirSync(backupsDir, { recursive: true });
-    dbPath = path.join(tempRoot, 'noveltrans.db');
+    dbPath = path.join(tempRoot, 'khepree-novel-ai.db');
     const db = new Database(dbPath);
     db.exec(`CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT);
       INSERT INTO t (v) VALUES ('seed');`);
@@ -48,7 +48,7 @@ describe('atomic backup + tiered retention (Phase 8)', () => {
       '2026-06-01T10:00:00.000Z',
     ];
     for (const [i, stamp] of stamps.entries()) {
-      const file = path.join(backupsDir, `noveltrans-auto-${i}.nts-backup.zip`);
+      const file = path.join(backupsDir, `khepree-novel-ai-auto-${i}.nts-backup.zip`);
       fs.writeFileSync(file, 'x');
       fs.utimesSync(file, new Date(stamp), new Date(stamp));
     }

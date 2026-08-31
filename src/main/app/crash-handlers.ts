@@ -1,4 +1,5 @@
 import { app, dialog } from 'electron';
+import { APP_NAME } from '@shared/constants/app';
 import { logger } from '../logging/logger';
 
 let handlersInstalled = false;
@@ -24,7 +25,7 @@ export function installMainCrashHandlers(): void {
       if (app.isReady()) {
         void dialog.showMessageBox({
           type: 'error',
-          title: 'NovelTrans Studio',
+          title: APP_NAME,
           message: 'Unexpected error',
           detail: error.message,
         });

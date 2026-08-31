@@ -62,16 +62,6 @@ function upper(value: string | null | undefined): string {
   return (value ?? '').toUpperCase();
 }
 
-function isUsableHealth(value: string | null | undefined): boolean {
-  const s = upper(value);
-  return s === 'READY' || s === 'BUSY';
-}
-
-function needsLoginHeal(value: string | null | undefined): boolean {
-  const s = upper(value);
-  return s === 'LOGIN_REQUIRED' || s === 'NEEDS_ATTENTION';
-}
-
 /**
  * Auto-heal Google worker / Notebook before translate.
  * Only returns ok:false after heal attempts when user action is still required.
@@ -236,10 +226,6 @@ export class TranslateReadinessService {
       availability.availability === 'LOGIN_REQUIRED' ||
       availability.availability === 'NEEDS_ATTENTION'
     );
-  }
-
-  private isAccountUsable(accountId: string): boolean {
-    return getAccountAvailabilityService(this.db).resolve(accountId).usableForNewJob;
   }
 
   private hasWebApiReady(): boolean {

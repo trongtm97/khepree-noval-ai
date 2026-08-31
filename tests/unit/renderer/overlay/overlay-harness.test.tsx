@@ -79,7 +79,7 @@ describe('overlay harness', () => {
     const menu = document.querySelector('.translation-menu');
     expect(menu).not.toBeNull();
     if (!menu) return;
-    expect(menu.closest('#noveltrans-overlay-root')).toBeTruthy();
+    expect(menu.closest('#khepree-overlay-root')).toBeTruthy();
     const clipParent = screen.getByRole('button', { name: 'Open' }).parentElement;
     expect(clipParent?.contains(menu)).toBe(false);
   });
@@ -95,7 +95,7 @@ describe('overlay harness', () => {
     const menu = document.querySelector('.translation-menu');
     expect(menu).not.toBeNull();
     if (!menu) return;
-    expect(menu.closest('#noveltrans-overlay-root')).toBeTruthy();
+    expect(menu.closest('#khepree-overlay-root')).toBeTruthy();
     expect(screen.getByRole('menuitem', { name: 'Action' })).toBeTruthy();
   });
 
@@ -106,6 +106,6 @@ describe('overlay harness', () => {
       </ModalPortal>,
     );
     const dialog = screen.getByRole('dialog');
-    expect(dialog.closest('#noveltrans-overlay-root')).toBeTruthy();
+    expect(dialog.closest('#khepree-overlay-root')).toBeTruthy();
   });
 });

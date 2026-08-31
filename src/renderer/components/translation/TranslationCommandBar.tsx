@@ -25,9 +25,10 @@ import { TranslationJobStrip } from './TranslationJobStrip';
 import { TranslationIssueCounter } from './TranslationIssueCounter';
 import { TranslationChapterStatus } from './TranslationChapterStatus';
 import { EditorSaveChip } from './EditorSaveChip';
-import { TranslationSpreadsheetDialog } from '../TranslationSpreadsheetDialog';
 import { VirtualChapterPicker } from './VirtualChapterPicker';
 import { chapterMatchesSearch } from '../../utils/chapter-navigator';
+import { ProjectAiPreferenceDialog } from '../settings/ProjectAiPreferenceDialog';
+import { TranslationSpreadsheetDialog } from '../TranslationSpreadsheetDialog';
 import type { EditorFontPreset } from '../../stores/translation-workspace-store';
 
 export interface TranslationCommandBarProps {
@@ -141,6 +142,7 @@ export function TranslationCommandBar({
   const [exportOpen, setExportOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [spreadsheetOpen, setSpreadsheetOpen] = useState(false);
+  const [projectAiOpen, setProjectAiOpen] = useState(false);
   const [chapterFilter, setChapterFilter] = useState('');
   const projectTriggerRef = useRef<HTMLButtonElement>(null);
   const chapterTriggerRef = useRef<HTMLButtonElement>(null);
@@ -501,6 +503,16 @@ export function TranslationCommandBar({
                   {t('translation.showContext')}
                 </button>
               ) : null}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  closeMenus();
+                  setProjectAiOpen(true);
+                }}
+              >
+                {t('translation.projectAiPreference')}
+              </button>
               {onToggleReadingMode ? (
                 <button
                   type="button"
@@ -609,6 +621,14 @@ export function TranslationCommandBar({
           onNextChapter={onNextChapter}
         />
       ) : null}
+
+      <ProjectAiPreferenceDialog
+        open={projectAiOpen}
+        projectId={projectId}
+        onClose={() => {
+          setProjectAiOpen(false);
+        }}
+      />
     </div>
   );
 }

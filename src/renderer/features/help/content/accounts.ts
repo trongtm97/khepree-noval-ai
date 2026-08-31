@@ -13,7 +13,7 @@ export const accountArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Thêm tài khoản Google' },
       {
         type: 'paragraph',
-        text: 'Đi tới Tài khoản AI → phần Google / Gemini → Thêm tài khoản Google. NovelTrans mở cửa sổ trình duyệt riêng (browser profile) — không dùng chung Chrome mặc định.',
+        text: 'Đi tới Tài khoản AI → phần Google / Gemini → Thêm tài khoản Google. Khepree Novel AI mở cửa sổ trình duyệt riêng (browser profile) — không dùng chung Chrome mặc định.',
       },
       {
         type: 'paragraph',
@@ -23,7 +23,7 @@ export const accountArticles: HelpArticle[] = [
         type: 'callout',
         variant: 'warning',
         title: 'Quan trọng',
-        body: 'NovelTrans KHÔNG lưu mật khẩu Google. Chỉ lưu hồ sơ trình duyệt cục bộ đã đăng nhập.',
+        body: 'Khepree Novel AI KHÔNG lưu mật khẩu Google. Chỉ lưu hồ sơ trình duyệt cục bộ đã đăng nhập.',
       },
       { type: 'heading', level: 2, text: 'Các trạng thái tài khoản' },
       {
@@ -60,7 +60,7 @@ export const accountArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Sử dụng nhiều tài khoản' },
       {
         type: 'paragraph',
-        text: 'NovelTrans cho phép thêm nhiều tài khoản Google. Mỗi tài khoản có browser profile riêng, phiên Google riêng và trạng thái worker riêng.',
+        text: 'Khepree Novel AI cho phép thêm nhiều tài khoản Google. Mỗi tài khoản có browser profile riêng, phiên Google riêng và trạng thái worker riêng.',
       },
       { type: 'heading', level: 2, text: 'Chế độ Gắn tài khoản (PINNED)' },
       {
@@ -70,7 +70,7 @@ export const accountArticles: HelpArticle[] = [
       { type: 'heading', level: 2, text: 'Chế độ Chung pool (POOL)' },
       {
         type: 'paragraph',
-        text: 'NovelTrans chọn worker đang Sẵn sàng trong nhóm. Khi một tài khoản chạm hạn mức, tiến trình có thể chuyển sang worker khác nếu cấu hình cho phép.',
+        text: 'Khepree Novel AI chọn worker đang Sẵn sàng trong nhóm. Khi một tài khoản chạm hạn mức, tiến trình có thể chuyển sang worker khác nếu cấu hình cho phép.',
       },
       {
         type: 'callout',

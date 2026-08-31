@@ -1,15 +1,7 @@
-/** AppData subdirectory: %APPDATA%/NovelTrans/ */
-export const NOVELTRANS_APPDATA_DIR = 'NovelTrans' as const;
+import { APP_DATA_DIR_NAME, DB_FILENAME } from './app';
 
-export const DB_FILENAME = 'noveltrans.db' as const;
+/** AppData subdirectory: %APPDATA%/KhepreeNovelAI/ */
+export { APP_DATA_DIR_NAME, DB_FILENAME };
 
-/** @deprecated use @shared/constants/term */
-export {
-  TERM_SCOPES,
-  TERM_STATUSES,
-  TERM_TYPES,
-  type TermScope,
-  type TermStatus,
-  type TermType,
-} from './term';
-
+/** @deprecated use APP_DATA_DIR_NAME */
+export const NOVELTRANS_APPDATA_DIR = APP_DATA_DIR_NAME;

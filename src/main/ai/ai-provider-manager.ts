@@ -16,7 +16,7 @@ import {
 } from '@shared/constants/provider-preflight';
 import type { IAIProvider } from './iai-provider';
 import type { AIResponse, SendPromptOptions } from './types';
-import { isAiSoftErrorText, geminiSoftErrorSnippet } from '@shared/utils/ai-soft-error';
+import { classifyAiResponseText, isAiSoftErrorText } from '@shared/utils/provider-response-classifier';
 import { userMessageForStatus } from './error-map';
 import { logger } from '../logging/logger';
 import { newId } from '../db/utils/uuid';
@@ -80,6 +80,16 @@ import {
 } from '../jobs/repair-translation-context';
 import { resolvePrimaryProviderId } from './primary-provider-policy';
 import { reorderProvidersWithPrimary } from '@shared/constants/translation-ai-providers';
+import {
+  type AiExecutionTarget,
+  accountRefFromTarget,
+  buildSendPromptOptions,
+  legacyGoogleAccountId,
+  getProviderCapabilities,
+  providerIdForType,
+} from './execution-target';
+import { resolveChunkingPolicy } from './provider-chunking-policy';
+import { shouldSplitChunkOnSoftError } from './provider-retry-policy';
 
 /** Retries when a chunk fails transiently or returns zero translation lines. */
 const CHUNK_SEND_RETRIES = 2;
@@ -239,29 +249,6 @@ export class AiProviderManager {
       if (impl) result.push(impl);
     }
 
-    const notebookOk = (() => {
-      if (!options?.projectId || !options.googleAccountId) return false;
-      const mapping = resolveTranslationNotebook(
-        this.db,
-        options.projectId,
-        options.googleAccountId,
-      );
-      return Boolean(
-        mapping &&
-          (mapping.status === 'ready' ||
-            mapping.status === 'sync_pending' ||
-            mapping.status === 'stale'),
-      );
-    })();
-
-    if (!notebookOk) {
-      result.sort((a, b) => {
-        const score = (p: IAIProvider): number =>
-          p.providerType === 'PLAYWRIGHT_GEMINI' ? 1 : 0;
-        return score(a) - score(b);
-      });
-    }
-
     const primaryId = resolvePrimaryProviderId(this.db, options?.projectId);
     return reorderProvidersWithPrimary(result, primaryId);
   }
@@ -273,7 +260,7 @@ export class AiProviderManager {
    */
   async selectProvidersForJob(options: {
     projectId: string;
-    googleAccountId: string;
+    executionTarget: AiExecutionTarget;
     jobId?: string | null;
     notebookRole?: 'TRANSLATION' | 'RESEARCH' | 'SINGLE';
     /** Phase 5: translate jobs skip Notebook URL requirement. */
@@ -286,24 +273,40 @@ export class AiProviderManager {
       options.pinnedProviderId ??
       (mode === 'PIN' ? this.getPinnedProviderId() : null);
 
+    const googleId = legacyGoogleAccountId(options.executionTarget) ?? undefined;
     let candidates = this.selectOrderedProviders({
       projectId: options.projectId,
-      googleAccountId: options.googleAccountId,
+      googleAccountId: googleId,
     });
+
+    // Scheduled target's provider first
+    const targetProvider = candidates.find(
+      (p) => p.providerId === options.executionTarget.providerId,
+    );
+    if (targetProvider) {
+      candidates = [
+        targetProvider,
+        ...candidates.filter((p) => p.providerId !== targetProvider.providerId),
+      ];
+    }
 
     if (mode === 'PIN' && pinnedId) {
       const pinned = candidates.find((p) => p.providerId === pinnedId);
       candidates = pinned ? [pinned] : [];
     }
 
+    const accountRef = accountRefFromTarget(options.executionTarget);
     const reports: ProviderPreflightReport[] = [];
     for (const provider of candidates) {
-      const accountId = this.resolveAccountIdForProvider(
-        provider,
-        options.googleAccountId,
-      );
       const report = await checkProviderForJob(this.db, {
-        accountId: accountId ?? options.googleAccountId,
+        executionTarget:
+          provider.providerId === options.executionTarget.providerId
+            ? options.executionTarget
+            : undefined,
+        accountRef:
+          provider.providerId === options.executionTarget.providerId
+            ? accountRef
+            : this.accountRefForProvider(provider, options.executionTarget),
         projectId: options.projectId,
         notebookRole: options.notebookRole ?? 'RESEARCH',
         requireNotebook: options.requireNotebook ?? false,
@@ -327,17 +330,83 @@ export class AiProviderManager {
     return { providers, reports };
   }
 
+  private accountRefForProvider(
+    provider: IAIProvider,
+    target: AiExecutionTarget,
+  ): import('./execution-target').ProviderAccountRef {
+    if (provider.providerId === target.providerId) {
+      return accountRefFromTarget(target);
+    }
+    const caps = getProviderCapabilities(provider.providerType);
+    if (caps.transport === 'BROWSER' && caps.accountKind === 'GOOGLE_ACCOUNT') {
+      const g = legacyGoogleAccountId(target);
+      if (g) {
+        const profile = this.db.googleAccounts.getProfile(g);
+        return {
+          accountKind: 'GOOGLE_ACCOUNT',
+          accountId: g,
+          profileDirName: profile?.profile_dir_name ?? null,
+        };
+      }
+      const worker = this.db.workerStates.listEnabled().find((w) => {
+        const acct = this.db.googleAccounts.getById(w.google_account_id);
+        return acct?.status === 'READY';
+      });
+      if (!worker) {
+        throw new Error('No READY Google account for Playwright Gemini preflight');
+      }
+      const profile = this.db.googleAccounts.getProfile(worker.google_account_id);
+      return {
+        accountKind: 'GOOGLE_ACCOUNT',
+        accountId: worker.google_account_id,
+        profileDirName: profile?.profile_dir_name ?? null,
+      };
+    }
+    if (provider.providerType === 'GEMINI_WEB_API') {
+      if (target.accountKind === 'AI_ACCOUNT' && target.providerType === 'GEMINI_WEB_API') {
+        return accountRefFromTarget(target);
+      }
+      const g = legacyGoogleAccountId(target);
+      const linked = g
+        ? this.db.aiAccounts.findReadyForGoogleAccount(provider.providerId, g)
+        : this.db.aiAccounts.listReadyByProvider(provider.providerId)[0];
+      if (!linked) {
+        throw new Error('No READY Web API account for preflight');
+      }
+      return {
+        accountKind: 'AI_ACCOUNT',
+        accountId: linked.id,
+        profileDirName: linked.profile_dir_name,
+      };
+    }
+    if (isBrowserAiAccountProvider(provider.providerType)) {
+      const acc = this.db.aiAccounts.pickLeastRecentlyUsedReady(provider.providerId);
+      if (!acc) {
+        throw new Error(`No READY browser AI account for ${provider.providerId}`);
+      }
+      return {
+        accountKind: 'AI_ACCOUNT',
+        accountId: acc.id,
+        profileDirName: acc.profile_dir_name,
+      };
+    }
+    throw new Error(`Cannot resolve account ref for provider ${provider.providerId}`);
+  }
+
   async sendWithFallback(
     pack: TranslationPackDto,
-    options?: SendPromptOptions & { pinnedProviderId?: string | null },
+    options?: SendPromptOptions & {
+      pinnedProviderId?: string | null;
+      executionTarget?: AiExecutionTarget;
+    },
   ): Promise<AIResponse> {
     await this.initialize();
 
     let ordered: IAIProvider[];
-    if (options?.projectId && options.googleAccountId) {
+    if (options?.projectId && options.executionTarget) {
       const selected = await this.selectProvidersForJob({
         projectId: options.projectId,
-        googleAccountId: options.googleAccountId,
+        executionTarget: options.executionTarget,
         jobId: options.jobId ?? null,
         pinnedProviderId: options.pinnedProviderId ?? null,
       });
@@ -419,7 +488,11 @@ export class AiProviderManager {
         }
       }
 
-      const sendOptions = this.buildSendOptionsForProvider(provider, options);
+      const sendOptions = this.buildSendOptionsForProvider(
+        provider,
+        options,
+        options?.executionTarget,
+      );
       if (!sendOptions) {
         logger.info('Bỏ qua provider — không resolve được tài khoản', {
           providerId: provider.providerId,
@@ -433,12 +506,8 @@ export class AiProviderManager {
         provider: provider.providerType,
         providerId: provider.providerId,
         event: 'REQUEST_STARTED',
-        packModeHint:
-          provider.providerType === 'GEMINI_WEB_API'
-            ? 'sqlite-local'
-            : isBrowserAiAccountProvider(provider.providerType)
-              ? 'browser-ai'
-              : 'notebook',
+        transport: getProviderCapabilities(provider.providerType).transport,
+        packModeHint: options?.packMode ?? 'local_context',
       });
 
       const response = await provider.sendPrompt(packForProvider, sendOptions);
@@ -469,17 +538,19 @@ export class AiProviderManager {
           }
           return last;
         }
-        if (isAiSoftErrorText(response.text)) {
-          const snippet = geminiSoftErrorSnippet(response.text);
+        if (isAiSoftErrorText(response.text, provider.providerType)) {
+          const classified = classifyAiResponseText(response.text, provider.providerType);
+          const snippet = classified?.snippet ?? 'Provider returned non-translation text';
           logger.warn('AI provider returned soft-error text as SUCCESS', {
             provider: provider.providerType,
+            classified: classified?.kind,
             snippet,
           });
           last = {
             ...response,
             status: 'SERVICE_UNAVAILABLE',
             text: '',
-            errorCode: 'GEMINI_SOFT_ERROR',
+            errorCode: 'AI_SOFT_ERROR',
             errorMessage: snippet,
           };
           const canFallbackSoft =
@@ -548,7 +619,7 @@ export class AiProviderManager {
     await this.initialize();
     const { providers: ordered } = await this.selectProvidersForJob({
       projectId: ctx.job.project_id,
-      googleAccountId: ctx.accountId,
+      executionTarget: ctx.executionTarget,
       jobId: ctx.job.id,
       notebookRole: 'RESEARCH',
       requireNotebook: false,
@@ -561,12 +632,13 @@ export class AiProviderManager {
       );
     }
     const batchSize = resolveTranslateBatchParagraphs(ordered[0]?.providerType);
-    const playwrightFirst =
-      ordered[0]?.providerType === 'PLAYWRIGHT_GEMINI' ||
-      ordered[0]?.providerType === 'PLAYWRIGHT_CHATGPT' ||
-      ordered[0]?.providerType === 'PLAYWRIGHT_META_AI';
-    const chunks = playwrightFirst
-      ? chunkParagraphBatchForPlaywright(paragraphs)
+    const chunkPolicy = resolveChunkingPolicy(ordered[0]?.providerType);
+    const chunks = chunkPolicy.useBrowserChunking
+      ? chunkParagraphBatchForPlaywright(
+          paragraphs,
+          chunkPolicy.maxParagraphs,
+          chunkPolicy.maxSourceChars,
+        )
       : chunkParagraphBatch(paragraphs, batchSize);
     const totalParas = paragraphs.length;
     const chunkTotal = Math.max(1, chunks.length);
@@ -619,7 +691,7 @@ export class AiProviderManager {
       });
       const response = await this.sendWithFallback(pack, {
         projectId: ctx.job.project_id,
-        googleAccountId: ctx.accountId,
+        executionTarget: ctx.executionTarget,
         jobId: ctx.job.id,
         packMode,
         pinnedProviderId:
@@ -768,7 +840,7 @@ export class AiProviderManager {
 
         const response = await this.sendWithFallback(pack, {
           projectId: ctx.job.project_id,
-          googleAccountId: ctx.accountId,
+          executionTarget: ctx.executionTarget,
           jobId: ctx.job.id,
           requestId: newId(),
           packMode,
@@ -796,6 +868,7 @@ export class AiProviderManager {
           if (transient && attempt < CHUNK_SEND_RETRIES) {
             // Soft errors need longer cooldown than network blips.
             const soft =
+              response.errorCode === 'AI_SOFT_ERROR' ||
               response.errorCode === 'GEMINI_SOFT_ERROR' ||
               /something went wrong/i.test(lastFailMsg);
             const base = soft ? 4_000 : 2_000;
@@ -846,11 +919,16 @@ export class AiProviderManager {
       }
 
       if (chunkLines.length === 0) {
-        const canSplit =
-          chunk.length > 1 &&
-          (lastFailStatus == null ||
-            TRANSIENT_CHUNK_STATUSES.has(lastFailStatus) ||
-            lastErrorCode === 'GEMINI_SOFT_ERROR');
+        const canSplit = shouldSplitChunkOnSoftError({
+          classified:
+            lastErrorCode === 'AI_SOFT_ERROR' || lastErrorCode === 'GEMINI_SOFT_ERROR'
+              ? 'CONTENT_REJECTED'
+              : lastFailStatus === 'SERVICE_UNAVAILABLE'
+                ? 'SERVICE_UNAVAILABLE'
+                : null,
+          paragraphCount: chunk.length,
+          sendConfirmation: 'none',
+        });
         const halves = canSplit ? splitParagraphChunkInHalf(chunk) : null;
         if (halves) {
           logger.warn('Splitting soft-failed chunk and retrying halves', {
@@ -892,7 +970,7 @@ export class AiProviderManager {
       // Pace Web API between chunks to avoid "Sorry, something went wrong" streaks.
       if (
         queue.length > 0 &&
-        (lastProviderType === 'GEMINI_WEB_API' || !playwrightFirst)
+        getProviderCapabilities(lastProviderType).transport === 'LOCAL_WORKER'
       ) {
         await sleepMs(WEB_API_INTER_CHUNK_DELAY_MS);
       }
@@ -933,63 +1011,75 @@ export class AiProviderManager {
     }).packMode;
   }
 
-  private resolvePackMode(ctx: JobExecuteContext, _providerType?: string): PackMode {
-    return this.resolvePackModeForProject(ctx.job.project_id, ctx.accountId);
+  private packContextAccountId(ctx: JobExecuteContext): string | undefined {
+    if (ctx.executionTarget.accountKind === 'GOOGLE_ACCOUNT') {
+      return ctx.executionTarget.accountId;
+    }
+    const ai = this.db.aiAccounts.getById(ctx.executionTarget.accountId);
+    return ai?.google_account_id ?? undefined;
   }
 
-  /**
-   * Phase 4: provider-neutral — same TranslationPack for every provider.
-   */
-  private resolveAccountIdForProvider(
-    provider: IAIProvider,
-    jobGoogleAccountId: string,
-  ): string | null {
-    if (provider.providerType === 'PLAYWRIGHT_GEMINI') {
-      return jobGoogleAccountId;
-    }
-    if (provider.providerType === 'GEMINI_WEB_API') {
-      const linked = this.db.aiAccounts.findReadyForGoogleAccount(
-        provider.providerId,
-        jobGoogleAccountId,
-      );
-      return linked?.id ?? null;
-    }
-    if (isBrowserAiAccountProvider(provider.providerType)) {
-      return this.db.aiAccounts.pickLeastRecentlyUsedReady(provider.providerId)?.id ?? null;
-    }
-    return null;
+  private resolvePackMode(ctx: JobExecuteContext, _providerType?: string): PackMode {
+    const accountId =
+      ctx.executionTarget.accountKind === 'GOOGLE_ACCOUNT'
+        ? ctx.executionTarget.accountId
+        : legacyGoogleAccountId(ctx.executionTarget) ?? ctx.executionTarget.accountId;
+    return this.resolvePackModeForProject(ctx.job.project_id, accountId);
   }
 
   private buildSendOptionsForProvider(
     provider: IAIProvider,
     base?: SendPromptOptions & { pinnedProviderId?: string | null },
+    executionTarget?: AiExecutionTarget,
   ): (SendPromptOptions & { requestId: string }) | null {
     const requestId = base?.requestId ?? newId();
 
-    if (provider.providerType === 'PLAYWRIGHT_GEMINI') {
-      if (!base?.googleAccountId) return null;
-      return { ...base, requestId, googleAccountId: base.googleAccountId };
+    if (executionTarget && provider.providerId === executionTarget.providerId) {
+      return {
+        ...buildSendPromptOptions(executionTarget, base),
+        requestId,
+      };
     }
 
-    if (provider.providerType === 'GEMINI_WEB_API') {
-      const linked = base?.googleAccountId
-        ? this.db.aiAccounts.findReadyForGoogleAccount(
-            provider.providerId,
-            base.googleAccountId,
-          )
-        : this.db.aiAccounts.listReadyByProvider(provider.providerId)[0];
-      if (!linked) return null;
+    const sendCaps = getProviderCapabilities(provider.providerType);
+
+    if (sendCaps.transport === 'LOCAL_WORKER') {
+      const googleId =
+        executionTarget && executionTarget.accountKind === 'GOOGLE_ACCOUNT'
+          ? executionTarget.accountId
+          : base?.googleAccountId;
+      const linked = googleId
+        ? this.db.aiAccounts.findReadyForGoogleAccount(provider.providerId, googleId)
+        : executionTarget?.accountKind === 'AI_ACCOUNT' &&
+            executionTarget.providerType === 'GEMINI_WEB_API'
+          ? this.db.aiAccounts.getById(executionTarget.accountId)
+          : null;
+      if (!linked || linked.status !== 'READY') return null;
       return {
         ...base,
         requestId,
         aiAccountId: linked.id,
-        googleAccountId: base?.googleAccountId ?? linked.google_account_id,
+        googleAccountId: googleId ?? linked.google_account_id,
       };
     }
 
+    if (sendCaps.transport === 'BROWSER' && sendCaps.accountKind === 'GOOGLE_ACCOUNT') {
+      const googleId =
+        executionTarget && executionTarget.accountKind === 'GOOGLE_ACCOUNT'
+          ? executionTarget.accountId
+          : base?.googleAccountId;
+      if (!googleId) return null;
+      return { ...base, requestId, googleAccountId: googleId };
+    }
+
     if (isBrowserAiAccountProvider(provider.providerType)) {
-      const account = this.db.aiAccounts.pickLeastRecentlyUsedReady(provider.providerId);
-      if (!account) return null;
+      const account =
+        executionTarget &&
+        executionTarget.accountKind === 'AI_ACCOUNT' &&
+        executionTarget.providerId === provider.providerId
+          ? this.db.aiAccounts.getById(executionTarget.accountId)
+          : this.db.aiAccounts.pickLeastRecentlyUsedReady(provider.providerId);
+      if (!account || account.status !== 'READY') return null;
       return {
         ...base,
         requestId,
@@ -1053,7 +1143,7 @@ export class AiProviderManager {
     const chunkParagraphs = input.batchParagraphs.filter((p) =>
       input.paragraphIds.includes(p.paragraphId),
     );
-    const channel = this.resolveRepairChannel(ctx.job.id, ctx.accountId, {
+    const channel = this.resolveRepairChannel(ctx.job.id, ctx.executionTarget.accountId, {
       providerType: input.providerType ?? null,
       packMode: input.packMode,
     });
@@ -1092,7 +1182,7 @@ export class AiProviderManager {
           const sent = await this.sendRepairOrContinuation({
             jobId: ctx.job.id,
             projectId: ctx.job.project_id,
-            accountId: ctx.accountId,
+            accountId: ctx.executionTarget.accountId,
             repairBody: prompt,
             channel,
             requestId,
@@ -1188,7 +1278,7 @@ export class AiProviderManager {
       (progress.packMode
         ? buildTranslationContextDiagnostics(this.db, {
             projectId: ctx.job.project_id,
-            accountId: ctx.accountId,
+            accountId: ctx.executionTarget.accountId,
             providerType: progress.providerType ?? null,
             packDecision: {
               packMode: progress.packMode,
@@ -1230,7 +1320,7 @@ export class AiProviderManager {
           ...base,
           ...rest,
           ...diagnostics,
-          accountId: ctx.accountId,
+          accountId: ctx.executionTarget.accountId,
           notebookVerifiedVersion: diagnostics.notebookKnowledgeVersion,
         }),
       );
@@ -1242,7 +1332,7 @@ export class AiProviderManager {
       JSON.stringify({
         ...existing,
         ...rest,
-        accountId: ctx.accountId,
+        accountId: ctx.executionTarget.accountId,
       }),
     );
   }
@@ -1334,7 +1424,7 @@ export class AiProviderManager {
 
     const diagnostics = buildTranslationContextDiagnostics(this.db, {
       projectId: ctx.job.project_id,
-      accountId: ctx.accountId,
+      accountId: ctx.executionTarget.accountId,
       providerType,
       packDecision: {
         ...pack.packTelemetry,
@@ -1355,7 +1445,12 @@ export class AiProviderManager {
       diagnostics,
     });
 
-    if (diagnostics.notebookId && diagnostics.providerType === 'PLAYWRIGHT_GEMINI') {
+    const packCaps = getProviderCapabilities(providerType);
+    if (
+      diagnostics.notebookId &&
+      packCaps.supportsNotebookAssisted &&
+      pack.packMode === 'notebook_assisted'
+    ) {
       mergeJobProgressDiagnostics(this.db, ctx.job.id, diagnostics, {
         event: 'TRANSLATION_NOTEBOOK_OPENED',
         message: diagnostics.notebookName ?? diagnostics.notebookId,
@@ -1448,8 +1543,10 @@ export class AiProviderManager {
     targetParagraphIds?: string[];
     operationType?: TranslationPackOperation;
   }): Promise<RepairSendResult> {
-    const preferredType = input.channel.providerType ?? 'PLAYWRIGHT_GEMINI';
-    const preferPlaywright = preferredType === 'PLAYWRIGHT_GEMINI';
+    const preferredType = (input.channel.providerType ??
+      'GEMINI_WEB_API') as AiProviderType;
+    const preferredCaps = getProviderCapabilities(preferredType);
+    const preferredProviderId = providerIdForType(preferredType);
     const operationType = input.operationType ?? 'REPAIR';
 
     const repairPack = this.buildChannelRepairPack({
@@ -1479,65 +1576,64 @@ export class AiProviderManager {
         threadRef: input.channel.threadRef,
       });
 
-    if (preferPlaywright) {
-      const playwrightResponse = await sendOnce(
-        AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
-        input.requestId ?? newId(),
-      );
+    const firstResponse = await sendOnce(
+      preferredProviderId,
+      input.requestId ?? newId(),
+    );
 
-      if (playwrightResponse.status === 'SUCCESS' && playwrightResponse.text.trim()) {
+    if (firstResponse.status === 'SUCCESS' && firstResponse.text.trim()) {
+      const used: RepairChannelContext = {
+        ...input.channel,
+        providerType: preferredType,
+        accountId: input.accountId,
+        packMode: input.channel.packMode ?? 'local_context',
+        localContextSnapshot:
+          input.channel.localContextSnapshot ?? repairPack.baseContext,
+      };
+      this.persistChannelOnJobProgress(input.jobId, used);
+      return {
+        rawResponse: firstResponse.text,
+        inputRef: `corr:${firstResponse.requestId}`,
+        channel: used,
+      };
+    }
+
+    const soft =
+      firstResponse.errorCode === 'AI_SOFT_ERROR' ||
+      firstResponse.errorCode === 'GEMINI_SOFT_ERROR' ||
+      isAiSoftErrorText(firstResponse.errorMessage, preferredType) ||
+      /something went wrong|hard time fulfilling/i.test(firstResponse.errorMessage ?? '');
+    if (soft && preferredCaps.transport === 'BROWSER') {
+      await new Promise((r) => setTimeout(r, 5_000));
+      const retry = await sendOnce(preferredProviderId, newId());
+      if (retry.status === 'SUCCESS' && retry.text.trim()) {
         const used: RepairChannelContext = {
           ...input.channel,
-          providerType: 'PLAYWRIGHT_GEMINI',
+          providerType: preferredType,
           accountId: input.accountId,
-          packMode: input.channel.packMode ?? 'local_context',
           localContextSnapshot:
             input.channel.localContextSnapshot ?? repairPack.baseContext,
         };
         this.persistChannelOnJobProgress(input.jobId, used);
         return {
-          rawResponse: playwrightResponse.text,
-          inputRef: `corr:${playwrightResponse.requestId}`,
+          rawResponse: retry.text,
+          inputRef: `corr:${retry.requestId}`,
           channel: used,
         };
       }
+    }
 
-      const soft =
-        playwrightResponse.errorCode === 'GEMINI_SOFT_ERROR' ||
-        isAiSoftErrorText(playwrightResponse.errorMessage) ||
-        /something went wrong|hard time fulfilling/i.test(
-          playwrightResponse.errorMessage ?? '',
-        );
-      if (soft) {
-        await new Promise((r) => setTimeout(r, 5_000));
-        const retry = await sendOnce(AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, newId());
-        if (retry.status === 'SUCCESS' && retry.text.trim()) {
-          const used: RepairChannelContext = {
-            ...input.channel,
-            providerType: 'PLAYWRIGHT_GEMINI',
-            accountId: input.accountId,
-            localContextSnapshot:
-              input.channel.localContextSnapshot ?? repairPack.baseContext,
-          };
-          this.persistChannelOnJobProgress(input.jobId, used);
-          return {
-            rawResponse: retry.text,
-            inputRef: `corr:${retry.requestId}`,
-            channel: used,
-          };
-        }
-      }
+    if (!this.isFallbackEnabled()) {
+      throw new Error(
+        firstResponse.errorMessage ?? userMessageForStatus(firstResponse.status),
+      );
+    }
 
-      if (!this.isFallbackEnabled()) {
-        throw new Error(
-          playwrightResponse.errorMessage ??
-            userMessageForStatus(playwrightResponse.status),
-        );
-      }
-
-      logger.info('Repair failover Playwright → WebAPI (same local context pack)', {
+    if (preferredProviderId !== AI_PROVIDER_IDS.GEMINI_WEB_API) {
+      logger.info('Repair failover → Web API (same local context pack)', {
         jobId: input.jobId,
-        status: playwrightResponse.status,
+        from: preferredType,
+        status: firstResponse.status,
         operationType,
       });
     }
@@ -1575,6 +1671,9 @@ export class AiProviderManager {
     const job = this.db.jobs.getById(jobId);
     const fromProgress = readRepairChannelFromProgress(job?.progress);
     const latestReq = this.db.geminiRequests.findLatestByJob(jobId);
+    const primaryType = this.listRegistered().find(
+      (p) => p.providerId === resolvePrimaryProviderId(this.db, job?.project_id),
+    )?.providerType;
     const mapping =
       accountId || fromProgress.accountId
         ? resolveTranslationNotebook(
@@ -1588,7 +1687,8 @@ export class AiProviderManager {
       providerType:
         override?.providerType ??
         fromProgress.providerType ??
-        'PLAYWRIGHT_GEMINI',
+        primaryType ??
+        'GEMINI_WEB_API',
       accountId:
         override?.accountId ??
         fromProgress.accountId ??
@@ -1799,7 +1899,7 @@ export class AiProviderManager {
       projectId: ctx.job.project_id,
       chapterIds: limited,
       paragraphIds: ids.length > 0 ? ids : undefined,
-      googleAccountId: ctx.accountId,
+      googleAccountId: this.packContextAccountId(ctx),
       providerType,
       packMode,
       jobId: ctx.job.id,

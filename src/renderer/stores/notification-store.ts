@@ -99,6 +99,6 @@ export const useNotificationStore = create<NotificationState>()(
           items: state.items.map((i) => ({ ...i, toast: false })),
         })),
     }),
-    { name: 'noveltrans-notifications' },
+    { name: 'khepree-novel-ai-notifications' },
   ),
 );

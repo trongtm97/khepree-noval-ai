@@ -91,7 +91,7 @@ describe('friendlyChannel', () => {
         },
       }),
     );
-    expect(label).toBe('Notebook');
+    expect(label).toBe('Gemini');
   });
 });
 

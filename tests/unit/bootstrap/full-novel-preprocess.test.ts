@@ -93,8 +93,8 @@ describe('buildFullNovelPreprocessPrompt', () => {
       targetLanguage: 'vi',
     });
     expect(prompt).toContain('DO NOT TRANSLATE');
-    expect(prompt).toContain('SOURCE_LANGUAGE:');
-    expect(prompt).toContain('TARGET_LANGUAGE:');
+    expect(prompt).toContain('Source:');
+    expect(prompt).toContain('Target edition:');
     expect(prompt).not.toMatch(/Chinese → Vietnamese|中文→Tiếng Việt/i);
     for (const key of KNOWLEDGE_FILE_KEYS) {
       expect(prompt).toContain('file:' + key);

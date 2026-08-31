@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { LOG_FILENAME } from '@shared/constants/app';
 
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_MAX_FILES = 5;
@@ -17,7 +18,7 @@ export class FileWriter {
   private readonly maxFiles: number;
 
   constructor(options: FileWriterOptions) {
-    const fileName = options.fileName ?? 'noveltrans.log';
+    const fileName = options.fileName ?? LOG_FILENAME;
     this.logFilePath = path.join(options.logDir, fileName);
     this.maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
     this.maxFiles = options.maxFiles ?? DEFAULT_MAX_FILES;

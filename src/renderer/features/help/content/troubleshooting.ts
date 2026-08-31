@@ -62,7 +62,7 @@ export const troubleshootingArticles: HelpArticle[] = [
         'Chọn tài khoản báo Cần đăng nhập lại.',
         'Nhấn Mở trình duyệt hoặc Mở Gemini.',
         'Đăng nhập lại trong cửa sổ Google.',
-        'Quay lại NovelTrans, nhấn Kiểm tra phiên.',
+        'Quay lại Khepree Novel AI, nhấn Kiểm tra phiên.',
         'Tiếp tục hoặc Thử lại tiến trình đang chờ.',
       ]),
     ],
@@ -79,7 +79,7 @@ export const troubleshootingArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Google yêu cầu xác minh' },
       {
         type: 'paragraph',
-        text: 'NovelTrans tạm dừng tiến trình và hiển thị cảnh báo. Nhấn Xử lý hoặc Mở trình duyệt, hoàn thành bước xác minh trong cửa sổ Google, sau đó Tiếp tục tiến trình.',
+        text: 'Khepree Novel AI tạm dừng tiến trình và hiển thị cảnh báo. Nhấn Xử lý hoặc Mở trình duyệt, hoàn thành bước xác minh trong cửa sổ Google, sau đó Tiếp tục tiến trình.',
       },
     ],
   },
@@ -165,7 +165,7 @@ export const troubleshootingArticles: HelpArticle[] = [
         'Accounts → Open Browser → đăng nhập Google / mở https://notebooklm.google.com/ đến khi thấy danh sách notebook.',
         'Đảm bảo Drive đã Connect và folder dự án đã có file 00_BOOK_PROFILE.md … 05_STORY_STATE.md.',
         'Dịch truyện → Tiếp tục Notebook (Resume). Browser sẽ mở headed — hoàn tất tạo notebook / thêm nguồn / Configure → Custom.',
-        'Tên notebook phải đúng dạng: [NovelTrans] <tên dự án>.',
+        'Tên notebook phải đúng dạng: [Khepree] <tên dự án>.',
         'Vẫn lỗi: Chẩn đoán → Test Notebook / Interactive repair để ghi đè selector.',
       ]),
     ],
@@ -182,7 +182,7 @@ export const troubleshootingArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'AI bỏ sót nội dung' },
       {
         type: 'paragraph',
-        text: 'NovelTrans thường tự phát hiện ID đoạn thiếu và chạy repair. Nếu vẫn còn: Tiến trình → Xem chi tiết → Thử lại, hoặc sửa thủ công trong Dịch truyện.',
+        text: 'Khepree Novel AI thường tự phát hiện ID đoạn thiếu và chạy repair. Nếu vẫn còn: Tiến trình → Xem chi tiết → Thử lại, hoặc sửa thủ công trong Dịch truyện.',
       },
     ],
   },
@@ -218,7 +218,7 @@ export const troubleshootingArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Phần mềm bị đóng giữa lúc dịch' },
       {
         type: 'paragraph',
-        text: 'Mở lại NovelTrans. Hàng đợi tiến trình tự khôi phục — tiến trình dang dở có thể quay về đang chờ hoặc cần Thử lại. Dữ liệu dự án và bản dịch đã lưu không mất.',
+        text: 'Mở lại Khepree Novel AI. Hàng đợi tiến trình tự khôi phục — tiến trình dang dở có thể quay về đang chờ hoặc cần Thử lại. Dữ liệu dự án và bản dịch đã lưu không mất.',
       },
     ],
   },
@@ -246,7 +246,7 @@ export const metaArticles: HelpArticle[] = [
             a: 'Có. Mỗi tài khoản là một worker riêng với profile trình duyệt riêng.',
           },
           {
-            q: 'NovelTrans có lưu mật khẩu Google không?',
+            q: 'Khepree Novel AI có lưu mật khẩu Google không?',
             a: 'Không. Chỉ lưu hồ sơ trình duyệt đã đăng nhập trên máy bạn.',
           },
           {
@@ -255,7 +255,7 @@ export const metaArticles: HelpArticle[] = [
           },
           {
             q: 'Gemini dịch thiếu thì sao?',
-            a: 'NovelTrans phát hiện ID đoạn thiếu và tạo repair — xem mục Kiểm tra chất lượng tự động.',
+            a: 'Khepree Novel AI phát hiện ID đoạn thiếu và tạo repair — xem mục Kiểm tra chất lượng tự động.',
           },
           {
             q: 'Sửa bản dịch tay được không?',
@@ -263,7 +263,7 @@ export const metaArticles: HelpArticle[] = [
           },
           {
             q: 'Đổi tài khoản Google có mất dữ liệu truyện không?',
-            a: 'Không. Dữ liệu chính nằm trong NovelTrans trên máy bạn.',
+            a: 'Không. Dữ liệu chính nằm trong Khepree Novel AI trên máy bạn.',
           },
         ],
       },
@@ -297,17 +297,17 @@ export const metaArticles: HelpArticle[] = [
   {
     id: 'glossary',
     categoryId: 'glossary',
-    title: 'Thuật ngữ trong NovelTrans',
+    title: 'Thuật ngữ trong Khepree Novel AI',
     description: 'Giải thích thuật ngữ kỹ thuật đơn giản.',
     keywords: ['glossary', 'worker', 'batch', 'vault', 'qa'],
     order: 1,
     blocks: [
-      { type: 'heading', level: 1, text: 'Từ điển thuật ngữ NovelTrans' },
+      { type: 'heading', level: 1, text: 'Từ điển thuật ngữ Khepree Novel AI' },
       {
         type: 'table',
         headers: ['Thuật ngữ', 'Nghĩa'],
         rows: [
-          ['Worker', 'Tài khoản Google mà NovelTrans dùng chạy AI'],
+          ['Worker', 'Tài khoản Google mà Khepree Novel AI dùng chạy AI'],
           ['Batch / Lô chương', 'Nhóm chương xử lý trong một lượt'],
           ['Kho thuật ngữ', 'Từ điển dịch có phạm vi và ưu tiên'],
           ['Bộ nhớ truyện', 'Nhân vật, quan hệ, cốt truyện… của một bộ truyện'],

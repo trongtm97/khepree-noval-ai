@@ -14,7 +14,7 @@ export const useThemeStore = create<ThemeState>()(
       mode: 'dark',
       setMode: (mode) => set({ mode }),
     }),
-    { name: 'noveltrans-theme' },
+    { name: 'khepree-novel-ai-theme' },
   ),
 );
 

@@ -42,7 +42,7 @@ export function buildFullNovelPreprocessPrompt(input: PreprocessPromptInput): st
     targetHeader,
     ...scriptLines,
     '',
-    `Prepare memory for a novel translation project (${pairSummary}, NovelTrans).`,
+    `Prepare memory for a novel translation project (${pairSummary}, Khepree Novel AI).`,
     `Analyze uploaded source files in the source language profile above.`,
     'DO NOT translate chapter prose into the target edition language.',
     'DO NOT invent characters, terms, relationships, or world facts that do not appear in the sources.',

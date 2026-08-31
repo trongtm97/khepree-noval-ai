@@ -1,16 +1,20 @@
 # Notebook Architecture
 
+> **Optional.** Research Notebook (NotebookLM) is not the default critical path for translation. Local SQLite → markdown knowledge cache is the default AI context layer.
+
 ## Roles
 
 | Layer | Role |
 |-------|------|
 | **SQLite** | Source of truth — chapters, translations, terms, characters, relationships, story state, jobs, QA |
-| **Local knowledge cache** | Markdown `00–08` rebuilt from SQLite after every learning PASS |
-| **NotebookLM** | Optional AI knowledge layer — static file upload or copied text sources |
-| **Gemini** | Translation / reasoning engine — Notebook + TranslationPack |
-| **TranslationPack** | Current source + hot overrides (slim when Notebook grounding verified) |
+| **Local knowledge cache** | Default — markdown `00–08` rebuilt from SQLite after every learning PASS |
+| **Research Notebook (NotebookLM)** | **Optional** AI knowledge layer — static file upload or copied text sources |
+| **Gemini / ChatGPT / Meta AI** | Translation / reasoning engines — consume provider-neutral TranslationPack |
+| **TranslationPack** | Current source + hot overrides (slim when optional Notebook grounding verified) |
 
-Flow: `SQLite → NotebookKnowledgeBuilder → local cache → (optional) Notebook upload → Gemini → Parser/QA → SQLite → version bump`
+Flow: `SQLite → NotebookKnowledgeBuilder → local cache → (optional) Research Notebook upload → AI provider → Parser/QA → SQLite → version bump`
+
+**Legacy Translation Notebook** role is deprecated — translate uses local-context pack when no research mapping is ready.
 
 Notebook never writes SQLite directly. Chat history is not truth.
 
@@ -43,9 +47,10 @@ Notebook never writes SQLite directly. Chat history is not truth.
 
 ## Translate channel
 
-- Prefer **Playwright Gemini-in-Notebook** when mapping `ready` / `sync_pending` and grounding verified
-- Web API / no Notebook → **local_context pack** from SQLite (`ALLOW_HOT_CONTEXT_FALLBACK` default)
-- Thread rotation every N batches (default 30)
+- **Default:** local-context pack from SQLite (`ALLOW_HOT_CONTEXT_FALLBACK` default) — any AI provider
+- **Optional:** Playwright Gemini-in-Notebook when research mapping `ready` / grounding verified
+- Web API / no Notebook → local_context pack
+- Thread rotation every N batches (default 30) for Gemini-in-Notebook path
 
 ## Bootstrap
 

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog } from 'electron';
+import { APP_NAME } from '@shared/constants/app';
 import { createMainWindow } from './app/create-window';
 import { installMainCrashHandlers } from './app/crash-handlers';
 import { registerIpcHandlers } from './ipc/register-handlers';
@@ -53,7 +54,7 @@ async function showStartupFailureDialog(error: unknown): Promise<void> {
   try {
     await dialog.showMessageBox({
       type: 'error',
-      title: 'NovelTrans Studio — startup failed',
+      title: `${APP_NAME} — startup failed`,
       message: 'App could not start',
       detail: `${message.slice(0, 1200)}${abiHint}`,
       buttons: ['OK'],

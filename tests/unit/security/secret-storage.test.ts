@@ -45,7 +45,7 @@ describe('SecretStorageService', () => {
   let backupsDir: string;
 
   beforeEach(() => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-sec-'));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'Khepree Novel AI-sec-'));
     const paths = resolveAppPaths(tempRoot);
     dataDir = paths.data;
     backupsDir = paths.backups;
@@ -173,7 +173,7 @@ describe('AuditLog', () => {
   let backupsDir: string;
 
   beforeEach(() => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-audit-'));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'Khepree Novel AI-audit-'));
     const paths = resolveAppPaths(tempRoot);
     dataDir = paths.data;
     backupsDir = paths.backups;

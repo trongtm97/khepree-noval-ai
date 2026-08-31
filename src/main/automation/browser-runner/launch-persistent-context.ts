@@ -8,6 +8,14 @@ import {
 } from './browser-dependency-health';
 import { getBrowserEngineConfig } from './browser-engine-config';
 import type { ResolvedBrowserEngine } from './browser-engine-resolver';
+import { buildPlaywrightLaunchPatchOptions } from './browser-compatibility-patch';
+
+export {
+  BrowserCompatibilityPatch,
+  activeBrowserCompatibilityPatches,
+  buildPlaywrightLaunchPatchOptions,
+  playwrightLaunchAutomationOptions,
+} from './browser-compatibility-patch';
 
 export interface LaunchPersistentContextInput {
   profilePath: string;
@@ -22,8 +30,8 @@ export interface LaunchPersistentContextInput {
   /** Override advanced anti-detect flag. Default from config (OFF). */
   disableAutomationControlled?: boolean;
   /**
-   * Google account login compatibility: ignore Playwright `--enable-automation`
-   * and enable AutomationControlled blink disable. Account login opens only.
+   * {@link BrowserCompatibilityPatch.GOOGLE_LOGIN_LAUNCH} — Google account login only.
+   * ChatGPT / Meta AI must not set this.
    */
   loginCompat?: boolean;
   /** When set, writes engine-info.json for diagnostics. */
@@ -86,20 +94,6 @@ export function writeBrowserEngineDiagnostics(
   return filePath;
 }
 
-/** Playwright launch extras for automation / Google login compatibility. */
-export function playwrightLaunchAutomationOptions(options: {
-  loginCompat: boolean;
-  disableAutomationControlled: boolean;
-}): { args?: string[]; ignoreDefaultArgs?: string[] } {
-  const args = options.disableAutomationControlled
-    ? ['--disable-blink-features=AutomationControlled']
-    : [];
-  return {
-    ...(args.length > 0 ? { args } : {}),
-    ...(options.loginCompat ? { ignoreDefaultArgs: ['--enable-automation'] } : {}),
-  };
-}
-
 /**
  * Single entry for NovelTrans Playwright persistent contexts.
  * Dedicated userDataDir only — never OS Edge/Chrome default profile.
@@ -120,7 +114,7 @@ export async function launchNovelTransPersistentContext(
     input.disableAutomationControlled ??
     (loginCompat || config.disableAutomationControlled);
 
-  const automation = playwrightLaunchAutomationOptions({
+  const automation = buildPlaywrightLaunchPatchOptions({
     loginCompat,
     disableAutomationControlled,
   });

@@ -2,6 +2,10 @@ import type { JobDto } from '@shared/schemas/job';
 import { measureJobProgress } from '@shared/utils/job-progress';
 import { useT } from '../../i18n';
 import { Button } from '../ui';
+import {
+  jobProviderLabel,
+  readJobFallbackNotice,
+} from '../../features/jobs/job-provider-ui';
 
 interface TranslationJobStripProps {
   job: JobDto | null;
@@ -11,7 +15,7 @@ interface TranslationJobStripProps {
   onResume?: () => void;
 }
 
-/** Compact inline job status for command bar (<=28px). Absent when no job. */
+/** Compact inline job status below command bar. */
 export function TranslationJobStrip({
   job,
   preparing,
@@ -39,18 +43,27 @@ export function TranslationJobStrip({
         ? String(job.chapterFrom)
         : '…';
 
+  const provider = jobProviderLabel(job);
   const done = job.progress?.paragraphsDone;
   const total = job.progress?.paragraphsTotal;
   const paraLabel =
     typeof done === 'number' && typeof total === 'number' && total > 0
       ? t('translation.jobStripParas', { done: String(done), total: String(total) })
       : null;
+  const fallbackNotice = readJobFallbackNotice(job, t);
   const paused = job.state === 'PAUSED';
+
+  const activeLabel = provider
+    ? t('translation.jobStripActiveWithProvider', { range, provider })
+    : t('translation.jobStripActive', { range });
 
   return (
     <div className="translation-job-strip" role="status">
-      <span>{t('translation.jobStripActive', { range })}</span>
+      <span>{activeLabel}</span>
       {paraLabel ? <span>{paraLabel}</span> : null}
+      {fallbackNotice ? (
+        <span className="translation-job-strip__fallback">{fallbackNotice}</span>
+      ) : null}
       <div
         className="translation-job-strip__progress"
         role="progressbar"

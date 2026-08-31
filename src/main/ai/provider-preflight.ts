@@ -1,13 +1,12 @@
 import type { DatabaseManager } from '../db/database-manager';
 import type { IAIProvider } from './iai-provider';
 import {
+  AI_PROVIDER_IDS,
+} from '@shared/constants/ai-provider';
+import {
   isProviderPreflightUsable,
   type ProviderPreflightResult,
 } from '@shared/constants/provider-preflight';
-import {
-  AI_PROVIDER_IDS,
-  isBrowserAiAccountProvider,
-} from '@shared/constants/ai-provider';
 import type { NotebookRole } from '@shared/constants/notebook-role';
 import { resolveNotebookForPurpose } from '../notebook/notebook-resolver';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
@@ -15,9 +14,16 @@ import { profileLockManager } from '../automation/browser-runner/profile-lock';
 import { assessBrowserDependencyHealth } from '../automation/browser-runner/browser-dependency-health';
 import { workerProcessManager } from './worker-process-manager';
 import { logger } from '../logging/logger';
+import type { ProviderAccountRef } from './execution-target';
+import type { AiExecutionTarget } from './execution-target';
 
 export interface CheckProviderForJobInput {
-  accountId: string;
+  /** Explicit account — required when no executionTarget. */
+  accountRef?: ProviderAccountRef;
+  /** Scheduled execution target — preflight uses exact account, no LRU fallback. */
+  executionTarget?: AiExecutionTarget;
+  /** @deprecated Use accountRef or executionTarget */
+  accountId?: string;
   projectId: string;
   /** Default TRANSLATION for translate jobs. */
   notebookRole?: NotebookRole | 'TRANSLATION' | 'RESEARCH' | 'SINGLE';
@@ -53,18 +59,19 @@ export async function checkProviderForJob(
 ): Promise<ProviderPreflightReport> {
   const lightweight = input.lightweight !== false;
   const providerId = input.providerId;
+  const accountRef = resolveAccountRef(input);
 
   if (providerId === AI_PROVIDER_IDS.GEMINI_WEB_API) {
-    return checkWebApi(db, input);
+    return checkWebApi(db, input, accountRef);
   }
   if (providerId === AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI) {
-    return checkPlaywright(db, input, lightweight);
+    return checkPlaywright(db, input, lightweight, accountRef);
   }
   if (
     providerId === AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT ||
     providerId === AI_PROVIDER_IDS.PLAYWRIGHT_META_AI
   ) {
-    return checkPlaywrightBrowserAi(db, input, providerId);
+    return checkPlaywrightBrowserAi(db, input, providerId, accountRef);
   }
 
   return {
@@ -75,9 +82,29 @@ export async function checkProviderForJob(
   };
 }
 
+function resolveAccountRef(input: CheckProviderForJobInput): ProviderAccountRef {
+  if (input.executionTarget) {
+    return {
+      accountKind: input.executionTarget.accountKind,
+      accountId: input.executionTarget.accountId,
+      profileDirName: input.executionTarget.profileDirName ?? null,
+    };
+  }
+  if (input.accountRef) return input.accountRef;
+  if (input.accountId) {
+    return {
+      accountKind: 'GOOGLE_ACCOUNT',
+      accountId: input.accountId,
+      profileDirName: null,
+    };
+  }
+  throw new Error('checkProviderForJob requires executionTarget or accountRef');
+}
+
 async function checkWebApi(
   db: DatabaseManager,
-  input: CheckProviderForJobInput,
+  _input: CheckProviderForJobInput,
+  accountRef: ProviderAccountRef,
 ): Promise<ProviderPreflightReport> {
   const checks: Record<string, boolean | string | null> = {
     workerInstalled: false,
@@ -136,17 +163,25 @@ async function checkWebApi(
   }
 
   const ready =
-    (() => {
-      const readyList = db.aiAccounts.listReadyByProvider(AI_PROVIDER_IDS.GEMINI_WEB_API);
-      return (
-        readyList.find((a) => {
-          if (!input.accountId) return true;
-          return !a.google_account_id || a.google_account_id === input.accountId;
-        }) ?? readyList.at(0)
-      );
-    })();
+    accountRef.accountKind === 'AI_ACCOUNT'
+      ? db.aiAccounts.getById(accountRef.accountId)
+      : (() => {
+          const readyList = db.aiAccounts.listReadyByProvider(AI_PROVIDER_IDS.GEMINI_WEB_API);
+          return (
+            readyList.find((a) => {
+              if (accountRef.accountKind === 'GOOGLE_ACCOUNT') {
+                return !a.google_account_id || a.google_account_id === accountRef.accountId;
+              }
+              return false;
+            }) ?? null
+          );
+        })();
 
-  checks.aiAccountReady = Boolean(ready);
+  if (ready && ready.status !== 'READY') {
+    checks.aiAccountReady = false;
+  } else {
+    checks.aiAccountReady = Boolean(ready);
+  }
   if (!ready) {
     return {
       providerId: AI_PROVIDER_IDS.GEMINI_WEB_API,
@@ -168,6 +203,7 @@ async function checkPlaywright(
   db: DatabaseManager,
   input: CheckProviderForJobInput,
   lightweight: boolean,
+  accountRef: ProviderAccountRef,
 ): Promise<ProviderPreflightReport> {
   const checks: Record<string, boolean | string | null> = {
     profileExists: false,
@@ -180,7 +216,7 @@ async function checkPlaywright(
     quotaOrCaptcha: null,
   };
 
-  const account = db.googleAccounts.getById(input.accountId);
+  const account = db.googleAccounts.getById(accountRef.accountId);
   if (!account) {
     return {
       providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
@@ -210,7 +246,7 @@ async function checkPlaywright(
   }
   checks.googleSession = status === 'READY' || status === 'BUSY';
 
-  const profile = db.googleAccounts.getProfile(input.accountId);
+  const profile = db.googleAccounts.getProfile(accountRef.accountId);
   if (!profile?.profile_dir_name) {
     return {
       providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
@@ -235,17 +271,17 @@ async function checkPlaywright(
   if (profileLockManager.isLocked(profilePath)) {
     const canNest =
       profileLockManager.canNestLaunch(profilePath, {
-        accountId: input.accountId,
+        accountId: accountRef.accountId,
         jobId: input.jobId ?? null,
       }) ||
       profileLockManager.isHeldByJob(profilePath, input.jobId) ||
-      profileLockManager.isHeldByRuntime(profilePath, input.accountId);
+      profileLockManager.isHeldByRuntime(profilePath, accountRef.accountId);
     checks.profileLockOk = canNest;
     if (!canNest) {
       const owner = profileLockManager.getOwner(profilePath);
       // Accounts/manual browser uses ownerId === accountId and blocks translate.
-      if (owner === input.accountId) {
-        await freeManualAccountBrowser(input.accountId, profilePath);
+      if (owner === accountRef.accountId) {
+        await freeManualAccountBrowser(accountRef.accountId, profilePath);
         if (!profileLockManager.isLocked(profilePath)) {
           checks.profileLockOk = true;
         } else {
@@ -289,7 +325,7 @@ async function checkPlaywright(
     ? resolveNotebookForPurpose(
         db,
         input.projectId,
-        input.accountId,
+        accountRef.accountId,
         purpose,
       )
     : null;
@@ -340,7 +376,7 @@ async function checkPlaywright(
       };
     }
     try {
-      const deep = await deepPlaywrightProbe(input, notebookUrl);
+      const deep = await deepPlaywrightProbe(accountRef.accountId, notebookUrl);
       Object.assign(checks, deep.checks);
       if (deep.result !== 'READY') {
         return {
@@ -393,7 +429,7 @@ async function freeManualAccountBrowser(
 }
 
 async function deepPlaywrightProbe(
-  input: CheckProviderForJobInput,
+  accountId: string,
   _notebookUrl: string,
 ): Promise<{
   result: ProviderPreflightResult;
@@ -406,7 +442,7 @@ async function deepPlaywrightProbe(
       '../automation/browser-runner/browser-runtime-manager'
     );
     const mgr = getBrowserRuntimeManager();
-    const existing = mgr.getRuntime(input.accountId);
+    const existing = mgr.getRuntime(accountId);
     if (!existing) {
       return {
         result: 'READY',
@@ -440,8 +476,9 @@ async function deepPlaywrightProbe(
 
 async function checkPlaywrightBrowserAi(
   db: DatabaseManager,
-  input: CheckProviderForJobInput,
+  _input: CheckProviderForJobInput,
   providerId: string,
+  accountRef: ProviderAccountRef,
 ): Promise<ProviderPreflightReport> {
   const checks: Record<string, boolean | string | null> = {
     browserEngineUsable: false,
@@ -475,9 +512,19 @@ async function checkPlaywrightBrowserAi(
   }
 
   const account =
-    (input.accountId
-      ? readyAccounts.find((a) => a.id === input.accountId)
-      : null) ?? readyAccounts[0];
+    accountRef.accountKind === 'AI_ACCOUNT'
+      ? readyAccounts.find((a) => a.id === accountRef.accountId) ??
+        db.aiAccounts.getById(accountRef.accountId)
+      : null;
+
+  if (!account || account.status !== 'READY') {
+    return {
+      providerId,
+      result: 'UNAVAILABLE',
+      message: 'Tài khoản AI browser đã chọn không READY.',
+      checks,
+    };
+  }
   checks.aiAccountReady = true;
 
   if (!account.profile_dir_name) {

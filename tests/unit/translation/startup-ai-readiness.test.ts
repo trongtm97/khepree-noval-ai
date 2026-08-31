@@ -24,18 +24,36 @@ describe('evaluateStartupAiReadiness', () => {
     expect(result.ok).toBe(true);
   });
 
-  it('fails no_google_account', () => {
+  it('fails no_google_account when Gemini path blocked', () => {
     const result = evaluateStartupAiReadiness({
       ...ready,
       googleAccounts: [],
+      webApiHealth: { ok: false, status: 'ERROR', message: 'no cookies' },
+      webApiAccounts: [],
+      workerRunning: false,
+      browserAiReady: false,
+      providerRows: [
+        { id: AI_PROVIDER_IDS.GEMINI_WEB_API, status: 'ERROR', enabled: true },
+        { id: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, status: 'ERROR', enabled: true },
+      ],
+      primaryProviderId: AI_PROVIDER_IDS.GEMINI_WEB_API,
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.issues).toContain('no_google_account');
   });
 
-  it('fails google_needs_login', () => {
+  it('fails google_needs_login when Gemini browser path blocked', () => {
     const result = evaluateStartupAiReadiness({
       ...ready,
+      webApiHealth: { ok: false, status: 'ERROR', message: 'no cookies' },
+      webApiAccounts: [],
+      workerRunning: false,
+      browserAiReady: false,
+      providerRows: [
+        { id: AI_PROVIDER_IDS.GEMINI_WEB_API, status: 'ERROR', enabled: true },
+        { id: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, status: 'ERROR', enabled: true },
+      ],
+      primaryProviderId: AI_PROVIDER_IDS.GEMINI_WEB_API,
       googleAccounts: [
         { availability: mockAccountAvailability({ availability: 'LOGIN_REQUIRED', uiLane: 'login' }) },
       ],
@@ -121,14 +139,46 @@ describe('evaluateStartupAiReadiness', () => {
     expect(result).toEqual({ ok: true, issues: [] });
   });
 
-  it('ignores paused google accounts', () => {
+  it('ok when ChatGPT-only without Google accounts', () => {
+    const result = evaluateStartupAiReadiness({
+      ...ready,
+      googleAccounts: [],
+      webApiHealth: { ok: false, status: 'ERROR', message: 'no cookies' },
+      webApiAccounts: [{ status: 'LOGIN_REQUIRED' }],
+      workerRunning: false,
+      providerRows: [
+        { id: AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT, status: 'READY', enabled: true },
+      ],
+      primaryProviderId: AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
+      browserAiReady: true,
+    });
+    expect(result).toEqual({ ok: true, issues: [] });
+  });
+
+  it('does not require Google when only Meta AI is ready', () => {
+    const result = evaluateStartupAiReadiness({
+      ...ready,
+      googleAccounts: [],
+      webApiHealth: { ok: false, status: 'ERROR', message: 'no cookies' },
+      webApiAccounts: [],
+      workerRunning: false,
+      providerRows: [
+        { id: AI_PROVIDER_IDS.PLAYWRIGHT_META_AI, status: 'READY', enabled: true },
+      ],
+      primaryProviderId: AI_PROVIDER_IDS.PLAYWRIGHT_META_AI,
+      browserAiReady: true,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) expect(result.issues).not.toContain('no_google_account');
+  });
+
+  it('ignores paused google when Web API channel ready', () => {
     const result = evaluateStartupAiReadiness({
       ...ready,
       googleAccounts: [
         { availability: mockAccountAvailability({ availability: 'PAUSED', uiLane: 'paused' }) },
       ],
     });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.issues).toContain('no_google_account');
+    expect(result.ok).toBe(true);
   });
 });

@@ -33,6 +33,12 @@ function mockDb(options?: {
         meta.set(key, value);
       },
     },
+    googleAccounts: {
+      list: () => [] as { status: string }[],
+    },
+    aiAccounts: {
+      listByProvider: () => [] as { status: string }[],
+    },
     projects: {
       getStyleConfig: () => options?.projectStyle ?? null,
     },
@@ -43,14 +49,15 @@ function mockDb(options?: {
           name: id,
           priority: index + 1,
           enabled: 1,
+          status: 'READY',
         })),
       getById: (id: string) =>
         enabledIds.includes(id)
-          ? { id, name: id, priority: enabledIds.indexOf(id) + 1, enabled: 1 }
+          ? { id, name: id, priority: enabledIds.indexOf(id) + 1, enabled: 1, status: 'READY' }
           : null,
       setPriority: vi.fn(),
     },
-  } as unknown as ConstructorParameters<typeof resolvePrimaryProviderId>[0];
+  } as unknown as import('@main/db/database-manager').DatabaseManager;
 }
 
 describe('resolvePrimaryProviderId', () => {
@@ -76,14 +83,14 @@ describe('resolvePrimaryProviderId', () => {
     );
   });
 
-  it('falls back to first enabled translation provider', () => {
+  it('falls back to first ready provider under AUTO preference', () => {
     const db = mockDb({
       enabledIds: [
         AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
         AI_PROVIDER_IDS.GEMINI_WEB_API,
       ],
     });
-    expect(resolvePrimaryProviderId(db)).toBe(AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI);
+    expect(resolvePrimaryProviderId(db)).toBe(AI_PROVIDER_IDS.GEMINI_WEB_API);
   });
 });
 

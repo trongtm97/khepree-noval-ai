@@ -1,17 +1,19 @@
 # NovelTrans Studio — Architecture
 
-> Desktop Windows app for Chinese → Vietnamese novel translation via browser-automated Gemini/Notebook, using the user's own Google accounts.
+> Windows desktop app for AI-assisted **multilingual** novel translation.  
+> Local-first SQLite, multiple target editions, Gemini / ChatGPT / Meta AI via one provider-neutral pipeline.
 
 ## 1. Design Principles
 
 | Principle | Implementation |
 |-----------|----------------|
 | SQLite is source of truth | All project, term, memory, job state persisted locally |
-| Provider abstraction | `IAIProvider` → Playwright Gemini / Gemini Web API / future Official; swap AI backend without touching Translation Engine |
+| Provider abstraction | `IAIProvider` + `AiProviderManager` — swap Gemini / ChatGPT / Meta / Web API without touching Translation Engine |
+| Provider-neutral packs | `TranslationPackDto` built from project language pair + memory; same shape for every provider |
 | Process isolation | Browser automation + Python Gemini worker run outside renderer |
 | Security by default | `contextIsolation`, `sandbox`, Zod-validated IPC, `safeStorage` for secrets |
 | Resumable jobs | State machine persisted to DB; crash-safe |
-| Multi-backend AI | Default flows may use Playwright web UI **or** Gemini Web API worker; Official API optional later |
+| Multi-backend AI | Playwright browser (Gemini, ChatGPT, Meta AI) and/or Gemini Web API worker |
 
 ## 2. Process Model
 
@@ -35,7 +37,7 @@
 - Repository layer (only layer that executes SQL)
 - Service layer (business logic, orchestration)
 - Job Manager + Scheduler (multi-account, quota-aware)
-- AI Provider Manager (Playwright Gemini + Gemini Web API selection / fallback)
+- AI Provider Manager (Gemini / ChatGPT / Meta AI / Web API selection + fallback)
 - Browser Runner Manager (spawn/kill/monitor child processes)
 - Gemini Web API WorkerProcessManager (Python FastAPI on 127.0.0.1)
 - Credential Store (`safeStorage` encrypt/decrypt)
@@ -59,8 +61,9 @@
 ### Browser Runner (Child Process)
 
 - One process can host one or more Playwright contexts (configurable)
-- Each Google Account → persistent `userDataDir` at:
-  `{userData}/NovelTrans/browser-profiles/{workerId}/`
+- Each account → persistent `userDataDir` at:
+  `{userData}/NovelTrans/browser-profiles/{profileDirName}/`
+  (Google Gemini workers and generic AI browser accounts use separate profile dirs — never the OS default Chrome profile)
 - Communicates with main via structured messages (JSON over stdio or Node IPC)
 - Actions: launch, navigate, send prompt, scrape response, screenshot, health check
 - On login/2FA/CAPTCHA: emit `NEEDS_ATTENTION`, pause job
@@ -113,7 +116,7 @@ Cross-process types, Zod schemas, constants, pure utilities. No Electron, no Rea
 | `NotebookSyncService` | Rebuild local knowledge markdown; optional Notebook version probe |
 | `BackupService` | Full DB + config backup/restore |
 | `ExportService` | TXT/DOCX/EPUB export |
-| `AccountService` | Google account registry, worker binding |
+| `AccountService` | Google account registry + AI browser account registry (unified UI) |
 | `DiagnosticsService` | Log bundle, health checks |
 
 ### `src/main/source-folder/` (folder import + metadata)
@@ -128,7 +131,72 @@ Cross-process types, Zod schemas, constants, pure utilities. No Electron, no Rea
 | `source-folder-service.ts` | IPC orchestration, watcher, resync, import |
 | `chapter-file-detector.ts` | Filename + heading chapter detection |
 
-SQLite remains source of truth; local knowledge files + optional NotebookLM are the AI context layer. See [BOOK_METADATA.md](./BOOK_METADATA.md) and [NOTEBOOK_ARCHITECTURE.md](./NOTEBOOK_ARCHITECTURE.md).
+SQLite remains source of truth; local knowledge files + optional NotebookLM research grounding are an **optional** AI context layer. See [BOOK_METADATA.md](./BOOK_METADATA.md) and [NOTEBOOK_ARCHITECTURE.md](./NOTEBOOK_ARCHITECTURE.md).
+
+## 4a. AI execution architecture
+
+All translation and repair calls follow one path:
+
+```
+Translation Engine (BatchPlanner / BatchExecutor / OutputParser)
+        ↓
+Ai Routing (AiProviderManager — priority, capabilities, fallback)
+        ↓
+Execution Target
+├── Gemini — Playwright browser and/or Gemini Web API worker
+├── ChatGPT — Playwright browser (dedicated profile, user login)
+└── Meta AI — Playwright browser (dedicated profile, user login)
+        ↓
+Provider-neutral TranslationPack (prompt, language pair, terms, memory, source paragraphs)
+```
+
+**Key modules:** `ai-provider-manager.ts`, `execution-worker-resolver.ts`, `provider-capabilities.ts`, `playwright-browser-ai-service.ts`, `gemini-service.ts`.
+
+Jobs store `executionTarget` (provider + account kind + account id). ChatGPT and Meta jobs run with **zero Google accounts** when configured.
+
+See [AI_PROVIDER.md](./AI_PROVIDER.md), [MULTI_PROVIDER_ACCEPTANCE.md](./MULTI_PROVIDER_ACCEPTANCE.md).
+
+## 4b. Account model
+
+NovelTrans uses two persistence families behind one Accounts UI:
+
+| Kind | Storage | Used for | Login |
+|------|---------|----------|-------|
+| **Google account** | `worker_states` + browser profile | Playwright Gemini, optional NotebookLM research | Headed Google/Gemini browser; manual CAPTCHA/2FA |
+| **AI browser account** | `ai_accounts` + browser profile | ChatGPT, Meta AI Playwright providers | Headed provider URL; manual sign-in |
+
+**Why UI unifies them:** operators think in terms of "connected AI" — one place to add, verify, and delete accounts regardless of backend.
+
+**Why persistence stays separate:** Google workers predate multi-provider schema; Gemini cookies, worker leases, and Notebook mappings attach to Google rows. ChatGPT/Meta use `ai_accounts.profile_dir_name` and do not require Google sign-in.
+
+**Google account is not globally required.** Projects routed to ChatGPT or Meta AI only need a READY row in `ai_accounts` for that provider. Gemini paths (Playwright or Web API) still need Google session or cookies as today.
+
+No passwords stored. Sessions live in isolated Chromium profiles under `%APPDATA%\NovelTrans\browser-profiles\`.
+
+## 4c. Research Notebook (optional)
+
+NotebookLM is **research / optional grounding** — not the default critical path for translation.
+
+| Mode | Role |
+|------|------|
+| **Local knowledge cache** | Default — SQLite → markdown `00–08` under app cache; always available |
+| **Research Notebook** | Optional NotebookLM upload for richer grounding |
+| **Legacy Translation Notebook** | Deprecated — local-context pack used instead when mapping absent |
+
+Core translate flow: build `TranslationPack` from SQLite + local knowledge → send via chosen AI provider. Notebook provision/sync is best-effort before jobs; failure falls back to local context.
+
+See [NOTEBOOK_ARCHITECTURE.md](./NOTEBOOK_ARCHITECTURE.md).
+
+## 4d. Commercial licensing
+
+| Capability | Status |
+|------------|--------|
+| In-app license key / entitlement check | **NOT IMPLEMENTED** |
+| Billing / subscription | **NOT IMPLEMENTED** |
+| Marketing website integration | **NOT IMPLEMENTED** |
+
+Application is **UNLICENSED** in `package.json`. No fake license gates in code.
+
 
 ### `src/main/jobs/`
 
@@ -224,7 +292,7 @@ Every transition writes to `jobs` + `job_events` tables.
 
 ```
 Scheduler
-  ├── WorkerPool (1 worker = 1 Google account + 1 browser profile)
+  ├── WorkerPool (Google workers + AI browser accounts — one active job per profile)
   ├── QuotaTracker (rate limits per account, configurable)
   └── Policy: pause | switch-worker | queue
 ```
@@ -304,19 +372,34 @@ See `docs/IMPORT.md`.
 
 ## 11. Provider Swappability
 
-```typescript
-interface BrowserProvider {
-  readonly id: string;
-  launch(ctx: ProviderContext): Promise<void>;
-  sendTranslationRequest(req: TranslationRequest): Promise<RawProviderResponse>;
-  healthCheck(): Promise<ProviderHealth>;
-  dispose(): Promise<void>;
-}
-```
+Production providers implement `IAIProvider` and receive the same `TranslationPackDto`:
 
-Future providers (e.g. Claude web, local LLM UI) implement same interface. Job system depends on `BrowserProvider`, not Gemini specifics.
+| Provider type | Transport |
+|---------------|-----------|
+| `PLAYWRIGHT_GEMINI` | Playwright → Gemini web UI |
+| `GEMINI_WEB_API` | HTTP → Python worker on 127.0.0.1 |
+| `PLAYWRIGHT_CHATGPT` | Playwright → chatgpt.com |
+| `PLAYWRIGHT_META_AI` | Playwright → meta.ai |
+| `GEMINI_OFFICIAL` | Reserved / disabled |
 
-## 12. Development Phases
+Job system depends on `AiProviderManager`, not Gemini-specific code paths.
+
+## 12. Release readiness (architecture view)
+
+**Not production-ready** until live provider E2E passes. Documented blockers:
+
+| Area | Gap |
+|------|-----|
+| Live browser E2E | ChatGPT / Meta / Gemini smoke NOT_RUN in CI |
+| Send confirmation | Unit harness only |
+| Response anchoring | DOM-dependent; needs live verification |
+| Crash recovery | `ai_requests` planner wired for Gemini; ChatGPT/Meta partial |
+| Code signing / updates | Optional signing; placeholder update server |
+| Licensing | NOT IMPLEMENTED — no enforcement |
+
+See [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md), [PROJECT_STATE.md](./PROJECT_STATE.md).
+
+## 13. Development Phases
 
 | Phase | Focus | Exit Criteria |
 |-------|-------|---------------|
@@ -328,16 +411,16 @@ Future providers (e.g. Claude web, local LLM UI) implement same interface. Job s
 | **5 — Browser Automation Core** | Runner process, GeminiProvider skeleton, screenshots | Navigate Gemini logged in |
 | **6 — Job System** | State machine, batch planner, scheduler | Job runs end-to-end with mock provider |
 | **7 — Translation Loop** | Prompt builder, output parser, QA, repair | Real translation batch completes |
-| **8 — Notebook Integration** | NotebookProvider, local knowledge cache | Notebook-assisted translation |
+| **8 — Notebook Integration** | Optional NotebookLM research grounding | Local knowledge default; Notebook optional |
 | **9 — Editor & Export** | Parallel CN/VN editor, TXT/DOCX/EPUB export | Edit and export novel |
 | **10 — Local backup** | Atomic backup, portability, export bundles | Backup/restore without Drive |
 | **11 — Installer & Polish** | Squirrel installer, diagnostics, settings | Installable Windows build |
 
-## 13. Folder Structure
+## 14. Folder Structure
 
 See [PROJECT_STATE.md](./PROJECT_STATE.md) for the canonical directory tree.
 
-## 14. Key Risks
+## 15. Key Risks
 
 | Risk | Mitigation |
 |------|------------|

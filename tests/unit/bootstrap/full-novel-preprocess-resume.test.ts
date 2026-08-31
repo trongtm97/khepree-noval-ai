@@ -151,7 +151,7 @@ describe('full-novel preprocess repo resume', () => {
       content_hash: 'abc123',
       source_status: 'PENDING',
     });
-    db.fullNovelPreprocess.updatePartStatus(part.id, 'READY');
+    db.fullNovelPreprocess.updatePartStatus(part.id, 'READY', { uploaded_hash: 'abc123' });
     const again = db.fullNovelPreprocess.upsertPart({
       run_id: run.id,
       part_index: 0,

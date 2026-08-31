@@ -1,6 +1,6 @@
-# Translation Pack Builder (Phase 9)
+# Translation Pack Builder
 
-Minimal prompt assembly for Chinese → Vietnamese batches.
+Minimal prompt assembly for translation batches — **provider-neutral**, built from project `source_language` / `target_language` and edition context.
 
 ## Goal
 

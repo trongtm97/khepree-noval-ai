@@ -2,7 +2,7 @@ export const NOTEBOOK_URL = 'https://notebook.google.com/';
 /** Legacy host still redirects here. */
 export const NOTEBOOK_URL_LEGACY = 'https://notebooklm.google.com/';
 
-export const NOTEBOOK_NAME_PREFIX = '[NovelTrans]';
+export const NOTEBOOK_NAME_PREFIX = '[Khepree]';
 
 export function formatNotebookName(novelName: string): string {
   const cleaned = novelName.trim().replace(/\s+/g, ' ').slice(0, 120);

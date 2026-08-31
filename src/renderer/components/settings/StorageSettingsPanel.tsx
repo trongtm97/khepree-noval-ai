@@ -339,7 +339,7 @@ export function StorageSettingsPanel() {
             </div>
             {health ? (
               <div style={{ marginTop: '0.75rem' }}>
-                <SettingsStatus tone={health.ok ? 'success' : 'warning'}>
+                <SettingsStatus tone={health.ok ? 'success' : 'warn'}>
                   {health.title}
                 </SettingsStatus>
                 <p className="muted" style={{ margin: '0.35rem 0 0' }}>{health.message}</p>

@@ -172,7 +172,7 @@ describe('Learning local knowledge lifecycle', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: account.id,
-      notebook_name: '[NovelTrans] Sync Novel',
+      notebook_name: '[Khepree] Sync Novel',
       notebook_role: 'SINGLE',
       status: 'ready',
     });

@@ -27,7 +27,7 @@ describe('EditorContextPanel', () => {
   it('shows a compact empty message with secondary hint', () => {
     render(<EditorContextPanel context={empty} />);
     expect(screen.getByText('Chưa có ngữ cảnh liên quan cho đoạn này.')).toBeTruthy();
-    expect(screen.getByText(/NovelTrans sẽ bổ sung/)).toBeTruthy();
+    expect(screen.getByText(/Khepree Novel AI sẽ bổ sung/)).toBeTruthy();
     expect(screen.queryByText('Nhân vật')).toBeNull();
   });
 

@@ -1,3 +1,4 @@
+import { APP_NAME } from '@shared/constants/app';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Copy, CheckCircle2, Circle } from 'lucide-react';
@@ -186,7 +187,7 @@ export function HelpVersionFooter({ version }: { version: string }) {
   const [copied, setCopied] = useState(false);
 
   const copyInfo = async () => {
-    const text = `NovelTrans Studio v${version}`;
+    const text = `${APP_NAME} v${version}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);

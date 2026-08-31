@@ -47,6 +47,7 @@ import { MIGRATION_038_LOCAL_LEARNING_LOOP } from './038-local-learning-loop';
 import { MIGRATION_039_EXPORT_DIRECTORY } from './039-export-directory';
 import { MIGRATION_040_LANGUAGE_CODE_NORMALIZATION } from './040-language-code-normalization';
 import { MIGRATION_041_MULTI_AI_PROVIDERS } from './041-multi-ai-providers';
+import { MIGRATION_042_EXECUTION_WORKER } from './042-execution-worker';
 
 export const MIGRATIONS: MigrationDefinition[] = [
   {
@@ -247,6 +248,11 @@ export const MIGRATIONS: MigrationDefinition[] = [
     version: 41,
     name: 'multi_ai_providers',
     sql: MIGRATION_041_MULTI_AI_PROVIDERS,
+  },
+  {
+    version: 42,
+    name: 'execution_worker',
+    sql: MIGRATION_042_EXECUTION_WORKER,
   },
 ];
 

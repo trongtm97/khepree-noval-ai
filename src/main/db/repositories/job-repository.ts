@@ -18,6 +18,11 @@ export interface JobRow {
   chapter_to: number | null;
   worker_mode: string;
   pinned_account_id: string | null;
+  execution_worker_id: string | null;
+  execution_provider_id: string | null;
+  execution_provider_type: string | null;
+  execution_account_kind: string | null;
+  execution_account_id: string | null;
   attempt_count: number;
   lease_owner: string | null;
   lease_expires_at: string | null;
@@ -216,6 +221,43 @@ export class JobRepository extends BaseRepository {
     return this.getById(id);
   }
 
+  assignExecutionTarget(
+    id: string,
+    target: {
+      executionWorkerId: string;
+      executionProviderId: string;
+      executionProviderType: string;
+      executionAccountKind: string;
+      executionAccountId: string;
+      workerId?: string | null;
+    },
+  ): JobRow | null {
+    const now = utcNow();
+    this.db
+      .prepare(
+        `UPDATE jobs SET
+          execution_worker_id = ?,
+          execution_provider_id = ?,
+          execution_provider_type = ?,
+          execution_account_kind = ?,
+          execution_account_id = ?,
+          worker_id = COALESCE(?, worker_id),
+          updated_at = ?
+        WHERE id = ?`,
+      )
+      .run(
+        target.executionWorkerId,
+        target.executionProviderId,
+        target.executionProviderType,
+        target.executionAccountKind,
+        target.executionAccountId,
+        target.workerId ?? null,
+        now,
+        id,
+      );
+    return this.getById(id);
+  }
+
   setPinnedAccount(id: string, accountId: string | null, mode: WorkerMode): JobRow | null {
     this.db
       .prepare(
@@ -250,7 +292,7 @@ export class JobRepository extends BaseRepository {
   claimNext(options: {
     leaseOwner: string;
     leaseMs: number;
-    workerId: string;
+    workerId: string | null;
     accountId: string;
     projectId?: string | null;
     excludeProjectIds?: readonly string[];

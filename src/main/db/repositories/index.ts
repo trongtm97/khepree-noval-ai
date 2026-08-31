@@ -77,6 +77,8 @@ export { AiProviderRepository } from './ai-provider-repository';
 export type { AiProviderRow } from './ai-provider-repository';
 export { AiAccountRepository } from './ai-account-repository';
 export type { AiAccountRow, CreateAiAccountInput } from './ai-account-repository';
+export { AiRequestRepository } from './ai-request-repository';
+export type { AiRequestRow, CreateAiRequestInput } from './ai-request-repository';
 export { AiModelRepository } from './ai-model-repository';
 export type { AiModelRow, UpsertAiModelInput } from './ai-model-repository';
 export { KnowledgeFileRepository } from './knowledge-file-repository';

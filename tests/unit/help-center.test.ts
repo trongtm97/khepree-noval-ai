@@ -19,7 +19,7 @@ describe('help center content', () => {
 
   it('resolves default and by id', () => {
     expect(getDefaultArticleId()).toBe('quick-start');
-    expect(getHelpArticle('intro')?.title).toContain('NovelTrans');
+    expect(getHelpArticle('intro')?.title).toContain('Khepree Novel AI');
     expect(getHelpArticle('missing-id')?.id).toBe('quick-start');
   });
 

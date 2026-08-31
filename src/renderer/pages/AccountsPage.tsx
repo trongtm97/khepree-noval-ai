@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
+import { useSearchParams } from 'react-router-dom';
 import type { GoogleAccountDto } from '@shared/schemas/account';
-import type { AccountAvailabilitySummary } from '@shared/schemas/account-availability';
 import type { GoogleAccountPlan } from '@shared/constants/google-account';
+import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
 import { useT } from '../i18n';
 import { friendlyError } from '../i18n/errors';
 import {
@@ -23,65 +22,60 @@ import { useNotificationStore } from '../stores/notification-store';
 import { useUiShellStore } from '../stores/ui-shell-store';
 import {
   AccountsSummary,
-  AccountRow,
   AddGoogleAccountDialog,
   EditGoogleAccountDialog,
-  AccountDetailsDrawer,
-  BrowserAiAccountSection,
-  resolveAccountUiState,
-  sortAccounts,
-  matchesAccountFilter,
-  isBrowserSecurityError,
-  type AccountFilter,
+  EditBrowserAiAccountDialog,
+  AddAiAccountDialog,
+  AddBrowserAiAccountDialog,
+  UnifiedAccountCard,
+  UnifiedAccountDetailsDrawer,
+  useAiAccounts,
   type AddAccountStep,
+  type AccountFilter,
+  type AiAccountProviderKind,
+  type AiAccountViewModel,
+  type ProviderFilter,
+  computeUnifiedSummary,
+  matchesProviderFilter,
+  matchesAccountSearch,
+  matchesStatusFilter,
 } from '../features/accounts';
+
+function parseProviderParam(raw: string | null): ProviderFilter {
+  if (raw === 'gemini' || raw === 'chatgpt' || raw === 'meta') return raw;
+  return 'all';
+}
 
 export function AccountsPage() {
   const t = useT();
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const addToast = useNotificationStore((s) => s.add);
   const showAdvanced = useUiShellStore((s) => s.showAdvancedTools);
 
-  const [accounts, setAccounts] = useState<GoogleAccountDto[]>([]);
-  const [summary, setSummary] = useState<AccountAvailabilitySummary>({
-    ready: 0,
-    busy: 0,
-    paused: 0,
-    needsAttention: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
+  const providerParam = parseProviderParam(searchParams.get('provider'));
+  const { accounts, loading, error: loadError, refresh } = useAiAccounts(t('accounts.displayNameFallback'));
 
-  const [filter, setFilter] = useState<AccountFilter>('all');
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
+  const [statusFilter, setStatusFilter] = useState<AccountFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [removeTarget, setRemoveTarget] = useState<GoogleAccountDto | null>(null);
-  const [editTarget, setEditTarget] = useState<GoogleAccountDto | null>(null);
-  const [detailsTarget, setDetailsTarget] = useState<GoogleAccountDto | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<AiAccountViewModel | null>(null);
+  const [editGoogleTarget, setEditGoogleTarget] = useState<GoogleAccountDto | null>(null);
+  const [editBrowserTarget, setEditBrowserTarget] = useState<AiAccountViewModel | null>(null);
+  const [detailsTarget, setDetailsTarget] = useState<AiAccountViewModel | null>(null);
 
+  const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [addStep, setAddStep] = useState<AddAccountStep>('create');
   const [addAccountId, setAddAccountId] = useState<string | null>(null);
   const [addEmailDraft, setAddEmailDraft] = useState('');
   const [addLabelDraft, setAddLabelDraft] = useState('');
 
-  const refresh = useCallback(async () => {
-    const result = await window.novelTrans.accounts.list();
-    setAccounts(result.accounts);
-    setSummary(result.summary);
-  }, []);
-
-  useEffect(() => {
-    void refresh()
-      .catch((err: unknown) => {
-        setLoadError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [refresh, t]);
+  const [browserAddKind, setBrowserAddKind] = useState<AiAccountProviderKind | null>(null);
+  const [browserAddOpen, setBrowserAddOpen] = useState(false);
+  const [browserVerifyOpen, setBrowserVerifyOpen] = useState(false);
+  const [browserVerifyAccountId, setBrowserVerifyAccountId] = useState<string | null>(null);
 
   const toast = (kind: 'SUCCESS' | 'INFO' | 'ERROR', title: string) => {
     addToast({ kind, title, description: '', toast: true });
@@ -103,31 +97,60 @@ export function AccountsPage() {
       await action();
       await refresh();
     } catch (err: unknown) {
-      const raw =
-        err instanceof Error
-          ? err.message
-          : typeof err === 'string'
-            ? err
-            : err && typeof err === 'object' && 'message' in err
-              ? String(err.message)
-              : t('errors.UNKNOWN.title');
-      const msg = raw || t('errors.UNKNOWN.title');
+      const msg = err instanceof Error ? err.message : String(err);
       if (accountId) {
         setCardErrors((prev) => ({ ...prev, [accountId]: msg }));
       } else {
-        setLoadError(msg);
+        toast('ERROR', msg);
       }
     } finally {
       setBusyId(null);
     }
   };
 
+  const setProviderFilter = useCallback(
+    (filter: ProviderFilter) => {
+      if (filter === 'all') {
+        searchParams.delete('provider');
+      } else {
+        searchParams.set('provider', filter);
+      }
+      setSearchParams(searchParams, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const summary = useMemo(() => computeUnifiedSummary(accounts), [accounts]);
+
+  const filteredAccounts = useMemo(
+    () =>
+      accounts.filter(
+        (account) =>
+          matchesProviderFilter(account, providerParam) &&
+          matchesStatusFilter(account, statusFilter) &&
+          matchesAccountSearch(account, searchQuery),
+      ),
+    [accounts, providerParam, statusFilter, searchQuery],
+  );
+
+  const showProviderFilter = accounts.length > 0 || true;
+
   const startAddAccount = () => {
-    setAddOpen(true);
-    setAddStep('create');
-    setAddAccountId(null);
-    setAddEmailDraft('');
-    setAddLabelDraft('');
+    setAddPickerOpen(true);
+  };
+
+  const handleProviderPick = (kind: AiAccountProviderKind) => {
+    setAddPickerOpen(false);
+    if (kind === 'gemini') {
+      setAddOpen(true);
+      setAddStep('create');
+      setAddAccountId(null);
+      setAddEmailDraft('');
+      setAddLabelDraft('');
+      return;
+    }
+    setBrowserAddKind(kind);
+    setBrowserAddOpen(true);
   };
 
   const handleAddCreateConfirm = () => {
@@ -139,7 +162,6 @@ export function AccountsPage() {
       setAddStep('login');
       try {
         await window.novelTrans.accounts.completeLogin(result.account.id, {});
-        setAddStep('verify');
         setAddOpen(false);
         toast('SUCCESS', t('accounts.toastAdded'));
       } catch {
@@ -151,7 +173,6 @@ export function AccountsPage() {
   const handleAddSignedIn = () => {
     if (!addAccountId) return;
     void run(addAccountId, async () => {
-      setAddStep('verify');
       try {
         await window.novelTrans.accounts.completeLogin(addAccountId, {});
         setAddOpen(false);
@@ -185,32 +206,70 @@ export function AccountsPage() {
     });
   };
 
+  const handleBrowserAdd = (displayName: string) => {
+    const providerId =
+      browserAddKind === 'meta'
+        ? AI_PROVIDER_IDS.PLAYWRIGHT_META_AI
+        : AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT;
+    void run(null, async () => {
+      const created = await window.novelTrans.aiAccounts.create({
+        providerId,
+        displayName: displayName || undefined,
+      });
+      setBrowserAddOpen(false);
+      setBrowserVerifyAccountId(created.account.id);
+      setBrowserVerifyOpen(true);
+      const login = await window.novelTrans.aiAccounts.openBrowserLogin({
+        accountId: created.account.id,
+      });
+      if (!login.ok) {
+        throw new Error(login.message);
+      }
+    });
+  };
+
+  const handleBrowserVerify = () => {
+    if (!browserVerifyAccountId) return;
+    void run(browserVerifyAccountId, async () => {
+      await window.novelTrans.aiAccounts.verifyBrowser({
+        accountId: browserVerifyAccountId,
+      });
+      setBrowserVerifyOpen(false);
+      setBrowserVerifyAccountId(null);
+      toast('SUCCESS', t('accounts.toastCheckOk'));
+    });
+  };
+
   const confirmRemove = () => {
     if (!removeTarget) return;
-    const account = removeTarget;
-    if (!account.availability.canRemove) {
+    const target = removeTarget;
+    if (!target.canRemove) {
       setCardErrors((prev) => ({
         ...prev,
-        [account.id]: t('accounts.deleteBlockedBusy'),
+        [target.id]: t('accounts.deleteBlockedBusy'),
       }));
       setRemoveTarget(null);
       return;
     }
     setRemoveTarget(null);
-    void run(account.id, async () => {
-      await window.novelTrans.accounts.remove(account.id);
+    void run(target.id, async () => {
+      if (target.source.kind === 'google') {
+        await window.novelTrans.accounts.remove(target.id);
+      } else {
+        await window.novelTrans.aiAccounts.delete({ accountId: target.id });
+      }
       toast('SUCCESS', t('accounts.toastDeleted'));
     });
   };
 
-  const handleEditConfirm = (data: {
+  const handleGoogleEditConfirm = (data: {
     label: string;
     plan: GoogleAccountPlan;
     notes: string;
   }) => {
-    if (!editTarget) return;
-    const account = editTarget;
-    setEditTarget(null);
+    if (!editGoogleTarget) return;
+    const account = editGoogleTarget;
+    setEditGoogleTarget(null);
     void run(account.id, async () => {
       await window.novelTrans.accounts.rename(account.id, data.label);
       if (data.plan !== account.plan) {
@@ -224,15 +283,64 @@ export function AccountsPage() {
     });
   };
 
-  const sortedAccounts = useMemo(() => sortAccounts(accounts), [accounts]);
+  const openSite = (vm: AiAccountViewModel) => {
+    if (vm.source.kind === 'google') {
+      void run(vm.id, async () => {
+        await window.novelTrans.accounts.openBrowser(vm.id, 'gemini');
+      });
+    } else {
+      void run(vm.id, async () => {
+        const res = await window.novelTrans.aiAccounts.openBrowserLogin({ accountId: vm.id });
+        if (!res.ok) throw new Error(res.message);
+      });
+    }
+  };
 
-  const filteredAccounts = useMemo(
-    () =>
-      sortedAccounts.filter((account) =>
-        matchesAccountFilter(account, filter, searchQuery),
-      ),
-    [sortedAccounts, filter, searchQuery],
-  );
+  const checkAccount = (vm: AiAccountViewModel) => {
+    if (vm.source.kind === 'google') {
+      void run(vm.id, async () => {
+        const result = await window.novelTrans.accounts.testSession(vm.id);
+        if (result.reason === 'BROWSER_NOT_SECURE') {
+          setCardErrors((prev) => ({
+            ...prev,
+            [vm.id]: t('accounts.browserNotSecureFriendly'),
+          }));
+          return;
+        }
+        toast(
+          result.usable ? 'SUCCESS' : 'ERROR',
+          result.usable ? t('accounts.toastCheckOk') : t('accounts.toastCheckFailed'),
+        );
+      }, { clearCardError: false });
+    } else {
+      void run(vm.id, async () => {
+        await window.novelTrans.aiAccounts.verifyBrowser({ accountId: vm.id });
+        toast('SUCCESS', t('accounts.toastCheckOk'));
+      });
+    }
+  };
+
+  const pauseAccount = (vm: AiAccountViewModel) => {
+    void run(vm.id, async () => {
+      if (vm.source.kind === 'google') {
+        await window.novelTrans.accounts.disable(vm.id);
+      } else {
+        await window.novelTrans.aiAccounts.disable({ accountId: vm.id });
+      }
+      toast('SUCCESS', t('accounts.toastPaused'));
+    });
+  };
+
+  const resumeAccount = (vm: AiAccountViewModel) => {
+    void run(vm.id, async () => {
+      if (vm.source.kind === 'google') {
+        await window.novelTrans.accounts.enable(vm.id);
+      } else {
+        await window.novelTrans.aiAccounts.verifyBrowser({ accountId: vm.id });
+      }
+      toast('SUCCESS', t('accounts.toastResumed'));
+    });
+  };
 
   if (loading) {
     return (
@@ -256,6 +364,9 @@ export function AccountsPage() {
         description={t('accounts.subtitle')}
         actions={
           <>
+            <Button variant="primary" disabled={busyId !== null} onClick={startAddAccount}>
+              {t('accounts.addAiAccount')}
+            </Button>
             <HelpContextButton articleId="google-accounts" />
           </>
         }
@@ -271,29 +382,43 @@ export function AccountsPage() {
         />
       ) : null}
 
-      <section className="accounts-section">
-        <header className="accounts-section-header">
-          <div className="accounts-section-heading">
-            <h2 className="accounts-section-title">{t('accounts.googleSectionTitle')}</h2>
-            <p className="accounts-section-desc">{t('accounts.googleSectionDesc')}</p>
-          </div>
-          <Button variant="primary" disabled={busyId !== null} onClick={startAddAccount}>
-            {t('actions.addGoogleAccount')}
-          </Button>
-        </header>
-
-        <div className="accounts-section-body">
       {accounts.length === 0 ? (
         <EmptyState
           icon={<Users />}
-          title={t('accounts.emptyTitle')}
-          description={t('accounts.emptyDesc')}
-          actionLabel={t('actions.addGoogleAccount')}
+          title={t('accounts.emptyUnifiedTitle')}
+          description={t('accounts.emptyUnifiedDesc')}
+          actionLabel={t('accounts.addAiAccount')}
           onAction={startAddAccount}
         />
       ) : (
         <>
           <AccountsSummary counts={summary} />
+
+          {showProviderFilter ? (
+            <div className="accounts-provider-filter btn-row" role="tablist">
+              {(
+                [
+                  ['all', 'accounts.filterAll'],
+                  ['gemini', 'accounts.providerGemini'],
+                  ['chatgpt', 'accounts.providerChatGpt'],
+                  ['meta', 'accounts.providerMetaAi'],
+                ] as const
+              ).map(([value, labelKey]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={providerParam === value}
+                  className={`btn btn-sm ${providerParam === value ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => {
+                    setProviderFilter(value);
+                  }}
+                >
+                  {t(labelKey)}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           {accounts.length > 5 ? (
             <div className="accounts-toolbar btn-row">
@@ -301,12 +426,16 @@ export function AccountsPage() {
                 type="search"
                 placeholder={t('accounts.searchPlaceholder')}
                 value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); }}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                }}
                 className="accounts-search-input"
               />
               <Select
-                value={filter}
-                onChange={(e) => { setFilter(e.target.value as AccountFilter); }}
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as AccountFilter);
+                }}
                 aria-label={t('accounts.filterLabel')}
               >
                 <option value="all">{t('accounts.filterAll')}</option>
@@ -319,109 +448,42 @@ export function AccountsPage() {
           ) : null}
 
           <div className="account-list">
-            {filteredAccounts.map((account) => {
-              const state = resolveAccountUiState(account);
-              const busy = busyId === account.id || busyId === 'global';
-
-              return (
-                <AccountRow
-                  key={account.id}
-                  account={account}
-                  busy={busy}
-                  showNotebook={showAdvanced}
-                  cardError={cardErrors[account.id] ?? null}
-                  onOpenGemini={() => {
-                    void run(account.id, async () => {
-                      await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
-                    });
-                  }}
-                  onCheck={() => {
-                    void run(account.id, async () => {
-                      const result = await window.novelTrans.accounts.testSession(account.id);
-                      if (result.reason === 'BROWSER_NOT_SECURE') {
-                        setCardErrors((prev) => ({
-                          ...prev,
-                          [account.id]: t('accounts.browserNotSecureFriendly'),
-                        }));
-                        return;
-                      }
-                      toast(
-                        result.usable ? 'SUCCESS' : 'ERROR',
-                        result.usable
-                          ? t('accounts.toastCheckOk')
-                          : t('accounts.toastCheckFailed'),
-                      );
-                    }, { clearCardError: false });
-                  }}
-                  onLogin={() => {
-                    void run(account.id, async () => {
-                      await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
-                    });
-                  }}
-                  onHandle={() => {
-                    if (state === 'login') {
-                      void run(account.id, async () => {
-                        await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
-                      });
-                    } else {
-                      void run(account.id, async () => {
-                        const result = await window.novelTrans.accounts.testSession(account.id);
-                        if (!result.usable) {
-                          await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
-                        }
-                      });
-                    }
-                  }}
-                  onResume={() => {
-                    void run(account.id, async () => {
-                      await window.novelTrans.accounts.enable(account.id);
-                      toast('SUCCESS', t('accounts.toastResumed'));
-                    });
-                  }}
-                  onPause={() => {
-                    void run(account.id, async () => {
-                      await window.novelTrans.accounts.disable(account.id);
-                      toast('SUCCESS', t('accounts.toastPaused'));
-                    });
-                  }}
-                  onRename={() => { setEditTarget(account); }}
-                  onChangePlan={(plan) => {
-                    void run(account.id, async () => {
-                      await window.novelTrans.accounts.setPlan(account.id, plan);
-                      toast('SUCCESS', t('accounts.toastPlanChanged'));
-                    });
-                  }}
-                  onEditNotes={() => { setEditTarget(account); }}
-                  onOpenNotebook={() => {
-                    void run(account.id, async () => {
-                      await window.novelTrans.accounts.openBrowser(account.id, 'notebook');
-                    });
-                  }}
-                  onDetails={() => { setDetailsTarget(account); }}
-                  onDelete={() => { setRemoveTarget(account); }}
-                  onReopenBrowser={() => {
-                    void run(account.id, async () => {
-                      try {
-                        await window.novelTrans.accounts.openBrowser(account.id, 'gemini');
-                      } catch (err: unknown) {
-                        const msg = err instanceof Error ? err.message : String(err);
-                        if (isBrowserSecurityError(msg)) {
-                          setCardErrors((prev) => ({
-                            ...prev,
-                            [account.id]: msg,
-                          }));
-                          return;
-                        }
-                        throw err;
-                      }
-                    }, { clearCardError: false });
-                  }}
-                  onViewGuide={() => {
-                    navigate('/help/google-accounts');
-                  }}
-                />
-              );
-            })}
+            {filteredAccounts.map((account) => (
+              <UnifiedAccountCard
+                key={`${account.providerKind}-${account.id}`}
+                account={account}
+                busy={busyId === account.id || busyId === 'global'}
+                cardError={cardErrors[account.id] ?? null}
+                onOpenSite={() => {
+                  openSite(account);
+                }}
+                onCheck={() => {
+                  checkAccount(account);
+                }}
+                onLogin={() => {
+                  openSite(account);
+                }}
+                onPause={() => {
+                  pauseAccount(account);
+                }}
+                onResume={() => {
+                  resumeAccount(account);
+                }}
+                onRename={() => {
+                  if (account.source.kind === 'google') {
+                    setEditGoogleTarget(account.source.account);
+                  } else {
+                    setEditBrowserTarget(account);
+                  }
+                }}
+                onDetails={() => {
+                  setDetailsTarget(account);
+                }}
+                onDelete={() => {
+                  setRemoveTarget(account);
+                }}
+              />
+            ))}
           </div>
 
           {filteredAccounts.length === 0 && accounts.length > 0 ? (
@@ -431,53 +493,13 @@ export function AccountsPage() {
       )}
 
       <p className="accounts-security-note">{t('accounts.passwordNote')}</p>
-        </div>
-      </section>
 
-      <BrowserAiAccountSection
-        providerId={AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT}
-        providerLabel={t('settings.aiBrowserChatGpt')}
-        sectionTitle={t('accounts.chatgptSectionTitle')}
-        sectionDesc={t('accounts.chatgptSectionDesc')}
-        onToast={toast}
-      />
-
-      <BrowserAiAccountSection
-        providerId={AI_PROVIDER_IDS.PLAYWRIGHT_META_AI}
-        providerLabel={t('settings.aiBrowserMetaAi')}
-        sectionTitle={t('accounts.metaSectionTitle')}
-        sectionDesc={t('accounts.metaSectionDesc')}
-        onToast={toast}
-      />
-
-      <Dialog
-        open={removeTarget !== null}
-        title={t('accounts.deleteConfirmTitle', {
-          email: removeTarget?.email ?? removeTarget?.label ?? '',
-        })}
-        description={t('accounts.deleteConfirmBody')}
-        confirmLabel={t('accounts.deleteAccount')}
-        cancelLabel={t('actions.cancel')}
-        danger
+      <AddAiAccountDialog
+        open={addPickerOpen}
         busy={busyId !== null}
-        onConfirm={confirmRemove}
-        onCancel={() => { setRemoveTarget(null); }}
-      />
-
-      <EditGoogleAccountDialog
-        account={editTarget}
-        busy={busyId !== null}
-        onConfirm={handleEditConfirm}
-        onCancel={() => { setEditTarget(null); }}
-      />
-
-      <AccountDetailsDrawer
-        account={detailsTarget}
-        showAdvanced={showAdvanced}
-        onClose={() => { setDetailsTarget(null); }}
-        onCopyPath={(path) => {
-          void navigator.clipboard.writeText(path);
-          toast('SUCCESS', t('accounts.toastCopied'));
+        onSelect={handleProviderPick}
+        onCancel={() => {
+          setAddPickerOpen(false);
         }}
       />
 
@@ -498,6 +520,90 @@ export function AccountsPage() {
           setAddOpen(false);
           setAddStep('create');
           setAddAccountId(null);
+        }}
+      />
+
+      <AddBrowserAiAccountDialog
+        open={browserAddOpen}
+        providerLabel={
+          browserAddKind === 'meta'
+            ? t('accounts.providerMetaAi')
+            : t('accounts.providerChatGpt')
+        }
+        busy={busyId !== null}
+        onConfirm={handleBrowserAdd}
+        onCancel={() => {
+          setBrowserAddOpen(false);
+        }}
+      />
+
+      <Dialog
+        open={browserVerifyOpen}
+        title={t('accounts.verifyLoginTitle')}
+        description={t('accounts.verifyLoginHint')}
+        confirmLabel={t('accounts.signedInButton')}
+        cancelLabel={t('actions.cancel')}
+        busy={busyId !== null}
+        onConfirm={handleBrowserVerify}
+        onCancel={() => {
+          setBrowserVerifyOpen(false);
+        }}
+      />
+
+      <Dialog
+        open={removeTarget !== null}
+        title={t('accounts.deleteConfirmTitle', {
+          email: removeTarget?.displayName ?? '',
+        })}
+        description={t('accounts.deleteConfirmBody')}
+        confirmLabel={t('accounts.deleteAccount')}
+        cancelLabel={t('actions.cancel')}
+        danger
+        busy={busyId !== null}
+        onConfirm={confirmRemove}
+        onCancel={() => {
+          setRemoveTarget(null);
+        }}
+      />
+
+      <EditGoogleAccountDialog
+        account={editGoogleTarget}
+        busy={busyId !== null}
+        onConfirm={handleGoogleEditConfirm}
+        onCancel={() => {
+          setEditGoogleTarget(null);
+        }}
+      />
+
+      <EditBrowserAiAccountDialog
+        account={editBrowserTarget?.source.kind === 'ai' ? editBrowserTarget.source.account : null}
+        busy={busyId !== null}
+        onConfirm={(displayName) => {
+          const target = editBrowserTarget;
+          if (!target || target.source.kind !== 'ai') return;
+          setEditBrowserTarget(null);
+          void run(target.id, async () => {
+            await window.novelTrans.aiAccounts.updateDisplayName({
+              accountId: target.id,
+              displayName,
+            });
+            toast('SUCCESS', t('accounts.toastUpdated'));
+          });
+        }}
+        onCancel={() => {
+          setEditBrowserTarget(null);
+        }}
+      />
+
+      <UnifiedAccountDetailsDrawer
+        account={detailsTarget}
+        showAdvanced={showAdvanced}
+        onClose={() => {
+          setDetailsTarget(null);
+        }}
+        onCopyPath={(path) => {
+          void navigator.clipboard.writeText(path);
+          toast('SUCCESS', t('accounts.toastCopied'));
         }}
       />
     </div>

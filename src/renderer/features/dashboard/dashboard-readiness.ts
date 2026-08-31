@@ -32,8 +32,10 @@ export function resolveDashboardReadiness(input: {
   accounts: AccountReadinessInput[];
   hasCompletedJob: boolean;
   priorityProject?: ProjectDto | null;
+  /** Any translation AI channel ready (Gemini, ChatGPT, Meta, Web API). */
+  anyAiChannelReady?: boolean;
 }): DashboardReadiness {
-  const { projects, accounts, hasCompletedJob, priorityProject } = input;
+  const { projects, accounts, hasCompletedJob, priorityProject, anyAiChannelReady } = input;
   const hasProject = projects.length > 0;
   const hasTranslation =
     projects.some((p) => (p.translatedChapterCount ?? 0) > 0) || hasCompletedJob;
@@ -47,7 +49,10 @@ export function resolveDashboardReadiness(input: {
       a.availability.availability === 'NEEDS_ATTENTION' ||
       a.availability.availability === 'UNAVAILABLE',
   );
-  const aiReady = usable > 0 && !needsLogin && !needsAttention;
+  const aiReady =
+    anyAiChannelReady === true
+      ? true
+      : usable > 0 && !needsLogin && !needsAttention;
 
   const accountSummary: AccountAvailabilitySummary = {
     ready: accounts.filter((a) => a.availability.availability === 'READY').length,
@@ -96,6 +101,7 @@ export function resolveOnboardingSteps(input: {
   accounts: AccountReadinessInput[];
   hasCompletedJob: boolean;
   priorityProject?: ProjectDto | null;
+  anyAiChannelReady?: boolean;
 }): OnboardingStep[] {
   const readiness = resolveDashboardReadiness(input);
   const project = input.priorityProject ?? input.projects.find((p) => p.status !== 'archived') ?? null;

@@ -50,14 +50,14 @@ describe('consecutive chapter freshness hardening', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] A',
+      notebook_name: '[Khepree] A',
       notebook_role: 'SINGLE',
       status: 'ready',
     });
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountIdB,
-      notebook_name: '[NovelTrans] B',
+      notebook_name: '[Khepree] B',
       notebook_role: 'SINGLE',
       status: 'sync_pending',
     });

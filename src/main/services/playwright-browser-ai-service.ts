@@ -13,7 +13,6 @@ import { browserProfileManager } from '../automation/browser-runner/profile-mana
 import { profileLockManager, startLeaseHeartbeat } from '../automation/browser-runner/profile-lock';
 import { getBrowserRuntimeManager } from '../automation/browser-runner/browser-runtime-manager';
 import { launchNovelTransPersistentContext } from '../automation/browser-runner/launch-persistent-context';
-import { applyPlaywrightStealth } from '../automation/providers/playwright-stealth';
 import { AutomationError } from '../automation/errors/automation-errors';
 import { pathsService } from './paths-service';
 import { logger } from '../logging/logger';
@@ -220,9 +219,7 @@ export class PlaywrightBrowserAiService {
       headless: false,
       headlessDefault: false,
       diagnosticsDir,
-      loginCompat: true,
     });
-    await applyPlaywrightStealth(launched.context);
     this.loginContexts.set(input.aiAccountId, launched.context);
     launched.context.on('close', () => {
       this.loginContexts.delete(input.aiAccountId);
@@ -319,7 +316,6 @@ export class PlaywrightBrowserAiService {
           headlessDefault: true,
           diagnosticsDir,
         });
-        await applyPlaywrightStealth(launched.context);
         page = launched.context.pages()[0] ?? (await launched.context.newPage());
         await page.goto(SITE_LOGIN_URL[site], { waitUntil: 'domcontentloaded', timeout: 60_000 });
         await page.waitForTimeout(1500);

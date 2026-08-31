@@ -111,8 +111,8 @@ describe('FULL-novel Notebook grounding E2E', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Grounding Translation',
-      notebook_role: 'TRANSLATION',
+      notebook_name: '[Khepree] Grounding Translation',
+      notebook_role: 'SINGLE',
       notebook_id: 'nb-grounding',
       resource_url: 'https://notebook.google.com/grounding',
       status: 'sync_pending',

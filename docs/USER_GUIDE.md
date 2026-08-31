@@ -1,98 +1,68 @@
 # User Guide — NovelTrans Studio
 
+NovelTrans Studio is a Windows desktop app for AI-assisted **multilingual** novel translation. You choose source (auto-detected) and target languages per project/edition. AI providers include **Gemini**, **ChatGPT**, and **Meta AI** — connect at least one; Google account is required **only for Gemini paths**, not for ChatGPT or Meta AI alone.
+
 ## First run
 
 On first launch, the setup wizard walks through:
 
 1. Welcome  
 2. App storage (`%APPDATA%\NovelTrans`)  
-3. Google account (browser login)  
-4. Drive connection (optional — skip allowed)  
-5. Import first novel (can continue and import later)  
-6. Create Notebook (provision after setup)  
-7. Test Gemini / browser profile  
-8. Ready  
+3. **Connect AI** — pick Gemini, ChatGPT, or Meta AI (not Google-only)  
+4. Import first novel (can skip and import later)  
+5. Optional Research Notebook setup (skip allowed — local knowledge is default)  
+6. Verify AI session in browser profile  
+7. Ready  
 
 ## Typical workflow
 
-1. **Accounts** — Add Google account; complete Gemini login in the dedicated browser profile.  
-1b. **AI Providers** (optional) — Settings → Nhà cung cấp AI: install Web API worker, paste Gemini cookies, set priority / fallback.  
-2. **Projects** — Create project from source folder (TXT per chapter); optional `_BOOK_INFO.txt` and prologue files.  
-3. **Project info** — Review/edit metadata; sync Book Profile to Notebook (`/projects/:id/info`).  
+1. **Accounts / AI** — Add and verify at least one provider:
+   - **Gemini:** Google account + headed browser login in dedicated profile (or Web API cookies in Settings).
+   - **ChatGPT / Meta AI:** Open provider login browser; sign in manually; Verify — **no Google account needed**.
+2. **Projects** — Create project from source folder (TXT per chapter); optional `_BOOK_INFO.txt` and prologue files. Set source + target language.  
+3. **Project info** — Review/edit metadata; optional Book Profile sync to Research Notebook.  
 4. **Terms / Characters** — Review Term Vault and memory.  
-5. **Drive** (optional) — Configure OAuth client in Settings; connect account Drive.  
-6. **Notebook** — Provision NotebookLM for project + worker (`00_BOOK_PROFILE.md` … `05_STORY_STATE.md`).  
-7. **Pack / Jobs** — Build translation pack; enqueue jobs (chapters ordered by `sequence_order`).  
-8. **Editor** — Review / lock / version paragraphs.  
-9. **Export** — TXT / DOCX / EPUB; backup archives.  
-10. **Diagnostics** — Connection tests, selector overrides, repair mode.
+5. **Optional Research Notebook** — NotebookLM grounding for research; core translation works from local SQLite knowledge without it.  
+6. **Jobs** — Enqueue translation jobs (chapters ordered by `sequence_order`); provider shown on running jobs.  
+7. **Translation workspace** — Review / lock / version paragraphs.  
+8. **Export** — TXT / DOCX / EPUB; backup archives.  
+9. **Diagnostics** — Connection tests, selector overrides, repair mode.
 
-## Google Drive OAuth setup
+## AI providers (Settings → Nhà cung cấp AI)
 
-Need when using **Drive** features.
+| Provider | What you need |
+|----------|----------------|
+| Gemini (browser) | Google sign-in in NovelTrans browser profile |
+| Gemini Web API | Python worker + session cookies |
+| ChatGPT | ChatGPT sign-in in dedicated profile |
+| Meta AI | Meta sign-in in dedicated profile |
 
-1. Open [Google Cloud Console](https://console.cloud.google.com/). Create project or pick existing project.
-2. Go to **APIs & Services → Library**. Enable **Google Drive API**.
-3. Go to **APIs & Services → OAuth consent screen**.
-4. Set app type to **External**. Fill app name and support email.
-5. Add scope:
-   - `https://www.googleapis.com/auth/drive.file` for app-managed files only, or
-   - `https://www.googleapis.com/auth/drive.readonly` for read-only testing.
-6. Add your Google account to **Test users** if app still in testing mode.
-7. Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
-8. Choose **Desktop app**.
-9. Download JSON credentials.
+Enable priority and optional fallback between providers. Jobs use the project's configured provider / routing policy.
 
-Expected JSON shape:
+## Google account (Gemini only)
 
-```json
-{
-  "installed": {
-    "client_id": "xxx.apps.googleusercontent.com",
-    "client_secret": "GOCSPX-xxx",
-    "redirect_uris": [
-      "http://127.0.0.1"
-    ]
-  }
-}
-```
+When using Playwright Gemini or optional NotebookLM research:
 
-In NovelTrans Studio:
+1. **Accounts** → Add Google account.  
+2. Complete sign-in in the headed browser window (password, 2FA, CAPTCHA — you handle manually).  
+3. **Verify** when prompted.  
 
-1. Open **Settings → Google Drive OAuth**.
-2. Paste `client_id`.
-3. Paste `client_secret` if Google client includes one.
-4. Save.
-5. Open **Google Accounts** page.
-6. Click **Connect Drive** for account you want.
+Session persists in `%APPDATA%\NovelTrans\browser-profiles\` — not your normal Chrome profile.
 
-Notes:
+## Optional Research Notebook
 
-- App uses Desktop OAuth loopback flow on localhost / `127.0.0.1`.
-- First successful consent should return refresh token. App stores it encrypted.
-- If token revoked or expired, Drive status becomes `auth_required`. Reconnect account.
-- Do not share downloaded OAuth JSON, refresh tokens, or browser profile files.
+NotebookLM can ground AI with uploaded knowledge files. **Not required** for translation — local markdown built from SQLite is the default context.
 
-## Book metadata (optional)
+Project → **Bộ nhớ AI**: bootstrap / rebuild local knowledge; optionally provision Research Notebook when you want NotebookLM grounding.
 
-Place in the same source folder as chapter files:
+## Backups
 
-- `_BOOK_INFO.txt` — key/value metadata (VI / ZH / EN keys)
-- `_SUMMARY.txt`, `_AUTHOR_NOTE.txt` — auxiliary documents (not chapters)
-- `序章.txt`, `000000_Prologue.txt` — prologue chapters (translated like story content)
+Settings → Portability: automatic daily backups, manual export, restore preview. All data stays under `%APPDATA%\NovelTrans\`.
 
-No metadata files required — enter info later in **Thông tin truyện**. Official summary ≠ story state updated during translation.
+## Troubleshooting
 
-In-app guide: **Hướng dẫn → Dự án** or articles `book-metadata-prep`, `book-profile`. See [BOOK_METADATA.md](./BOOK_METADATA.md).
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for CAPTCHA, session expiry, provider login, and job recovery.
 
-## Updates
+## Licensing
 
-Settings → **Check for Updates**. Without a production update server, the app reports updates unavailable (install new builds manually).
-
-## Backup / restore
-
-Use Export & Backup (`/export`). Full backup excludes browser profiles and credentials by default. Prefer restore preview + confirm overwrite.
-
-## Support data
-
-Do not send cookies, OAuth tokens, or raw browser profiles. Prefer Diagnostics → Export ZIP (sanitized).
+The application is **UNLICENSED** — no in-app license key or billing. Commercial licensing is **not implemented** yet.

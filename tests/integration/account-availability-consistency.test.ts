@@ -67,7 +67,7 @@ describe('account availability consistency', () => {
 
   beforeEach(() => {
     resetAccountAvailabilityServiceForTests();
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-avail-'));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'khepree-novel-ai-avail-'));
     pathsService.initializeAt(tempRoot);
     const paths = resolveAppPaths(tempRoot);
     dataDir = paths.data;

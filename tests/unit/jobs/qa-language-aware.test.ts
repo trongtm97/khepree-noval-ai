@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { ResponseParser } from '@main/jobs/response-parser';
-import { runLocalQa } from '@main/jobs/qa-checker';
+import { runLocalQa, type QaCheckerInput } from '@main/jobs/qa-checker';
 import { classifyRepairReason } from '@main/jobs/repair-strategies';
-import type { ParsedBatchResult } from '@shared/schemas/output-protocol';
+import type { ParsedBatchResult, QaIssue } from '@shared/schemas/output-protocol';
 
 const P1 = '[C000001:P000001]';
 const parser = new ResponseParser();
@@ -23,7 +23,7 @@ function qaWithPair(
   sourceText: string,
   sourceLanguage: string,
   targetLanguage: string,
-  extras?: Parameters<typeof runLocalQa>[0],
+  extras?: Partial<Pick<QaCheckerInput, 'lockedTerms' | 'lockedAddressTerms'>>,
 ): ReturnType<typeof runLocalQa> {
   const parsed = parseOk(lines);
   return runLocalQa({
@@ -73,10 +73,10 @@ describe('language-aware QA — wrong target language', () => {
         targetLanguage,
       );
       expect(
-        qa.errors.some((e) => e.code === 'target_language_mismatch') ||
-          qa.warnings.some((e) => e.code === 'target_language_mismatch'),
+        qa.errors.some((e: QaIssue) => e.code === 'target_language_mismatch') ||
+          qa.warnings.some((e: QaIssue) => e.code === 'target_language_mismatch'),
       ).toBe(true);
-      if (qa.errors.some((e) => e.code === 'target_language_mismatch')) {
+      if (qa.errors.some((e: QaIssue) => e.code === 'target_language_mismatch')) {
         expect(qa.verdict).toBe('REPAIR_REQUIRED');
       }
     },
@@ -90,8 +90,8 @@ describe('language-aware QA — wrong target language', () => {
       'en',
     );
     expect(
-      qa.errors.some((e) => e.code === 'target_language_mismatch') ||
-        qa.warnings.some((e) => e.code === 'target_language_mismatch'),
+      qa.errors.some((e: QaIssue) => e.code === 'target_language_mismatch') ||
+        qa.warnings.some((e: QaIssue) => e.code === 'target_language_mismatch'),
     ).toBe(true);
   });
 
@@ -102,7 +102,7 @@ describe('language-aware QA — wrong target language', () => {
       'ar',
       'fr',
     );
-    expect(qa.errors.some((e) => e.code === 'target_language_mismatch')).toBe(false);
+    expect(qa.errors.some((e: QaIssue) => e.code === 'target_language_mismatch')).toBe(false);
     expect(qa.verdict).toBe('PASS');
   });
 
@@ -113,7 +113,7 @@ describe('language-aware QA — wrong target language', () => {
       'en',
       'es',
     );
-    expect(qa.errors.some((e) => e.code === 'target_language_mismatch')).toBe(false);
+    expect(qa.errors.some((e: QaIssue) => e.code === 'target_language_mismatch')).toBe(false);
     expect(qa.verdict).toBe('PASS');
   });
 });
@@ -123,7 +123,7 @@ describe('language-aware QA — source leakage', () => {
     const source =
       'He walked to the market and bought some bread for dinner tonight after work.';
     const qa = qaWithPair([`${P1} ${source}`], source, 'en', 'es');
-    expect(qa.warnings.some((e) => e.code === 'source_leakage')).toBe(true);
+    expect(qa.warnings.some((e: QaIssue) => e.code === 'source_leakage')).toBe(true);
     expect(qa.verdict).toBe('PASS_WITH_WARNINGS');
   });
 
@@ -131,14 +131,14 @@ describe('language-aware QA — source leakage', () => {
     const source =
       'Él caminó por el mercado y compró pan fresco para la cena de esta noche después del trabajo.';
     const qa = qaWithPair([`${P1} ${source}`], source, 'es', 'en');
-    expect(qa.warnings.some((e) => e.code === 'source_leakage')).toBe(true);
+    expect(qa.warnings.some((e: QaIssue) => e.code === 'source_leakage')).toBe(true);
     expect(qa.verdict).toBe('PASS_WITH_WARNINGS');
   });
 
   it('zh → vi warns on large unchanged CJK span', () => {
     const cjk = '李逍遥走进青云门的大门然后继续往前走去';
     const qa = qaWithPair([`${P1} ${cjk}`], cjk, 'zh-Hans', 'vi');
-    expect(qa.warnings.some((e) => e.code === 'source_leakage')).toBe(true);
+    expect(qa.warnings.some((e: QaIssue) => e.code === 'source_leakage')).toBe(true);
   });
 
   it('ignores locked term preferred form in leakage check', () => {
@@ -151,7 +151,7 @@ describe('language-aware QA — source leakage', () => {
         lockedTerms: [{ source: '王林', preferred: 'Wang Lin' }],
       },
     );
-    expect(qa.warnings.some((e) => e.code === 'source_leakage')).toBe(false);
+    expect(qa.warnings.some((e: QaIssue) => e.code === 'source_leakage')).toBe(false);
   });
 });
 
@@ -172,7 +172,7 @@ describe('language-aware QA — locked terms & edition leak', () => {
         ],
       },
     );
-    expect(qa.errors.some((e) => e.code === 'edition_term_leak')).toBe(true);
+    expect(qa.errors.some((e: QaIssue) => e.code === 'edition_term_leak')).toBe(true);
     expect(qa.verdict).toBe('MANUAL_REVIEW');
     expect(classifyRepairReason(parseOk([`${P1} Vương Lâm walked.`]), qa)).toBe(
       'TERM_VIOLATION',
@@ -214,7 +214,7 @@ describe('language-aware QA — locked terms & edition leak', () => {
         ],
       },
     );
-    expect(qa.errors.some((e) => e.code === 'locked_term_forbidden_variant')).toBe(true);
+    expect(qa.errors.some((e: QaIssue) => e.code === 'locked_term_forbidden_variant')).toBe(true);
   });
 });
 
@@ -236,7 +236,7 @@ describe('language-aware QA — address consistency', () => {
         ],
       },
     );
-    expect(qa.warnings.some((e) => e.code === 'address_inconsistency')).toBe(true);
+    expect(qa.warnings.some((e: QaIssue) => e.code === 'address_inconsistency')).toBe(true);
     expect(qa.verdict).toBe('PASS_WITH_WARNINGS');
   });
 });
@@ -261,7 +261,7 @@ describe('language-aware QA — structural checks preserved', () => {
   it('wrong language error triggers CORRUPT_PARAGRAPH repair reason', () => {
     const qa = qaWithPair([`${P1} ${KANA_HEAVY}`], 'test', 'ja', 'en');
     const parsed = parseOk([`${P1} ${KANA_HEAVY}`]);
-    if (qa.errors.some((e) => e.code === 'target_language_mismatch')) {
+    if (qa.errors.some((e: QaIssue) => e.code === 'target_language_mismatch')) {
       expect(classifyRepairReason(parsed, qa)).toBe('CORRUPT_PARAGRAPH');
     }
   });

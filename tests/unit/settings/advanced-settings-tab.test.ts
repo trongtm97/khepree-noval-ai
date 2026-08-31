@@ -13,7 +13,7 @@ describe('Advanced settings tab (Phase 6)', () => {
 
     expect(advanced).toContain('advancedUiSection');
     expect(advanced).toContain('advancedAiSection');
-    expect(advanced).toContain('AdvancedParallelSettingsPanel');
+    expect(advanced).toContain('AiProvidersSettingsPanel');
     expect(advanced).toContain('SystemHealthPanel');
     expect(advanced).toContain('SettingsDisclosure');
     expect(advanced).toContain('currentVersion');

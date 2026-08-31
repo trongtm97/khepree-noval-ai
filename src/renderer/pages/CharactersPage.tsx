@@ -9,6 +9,7 @@ import type {
   StoryStateDto,
 } from '@shared/schemas/memory';
 import { useT } from '../i18n';
+import { confirmDangerous } from '../utils/confirm-dangerous';
 import { friendlyError } from '../i18n/errors';
 import { characterStatusLabel } from '../i18n/enums';
 import {
@@ -156,7 +157,7 @@ export function CharactersPage() {
     : null;
 
   const mergeDuplicates = (group: DuplicateCharacterGroup) => {
-    const ok = window.confirm(t('characters.mergeConfirm', { name: group.translatedName }));
+    const ok = confirmDangerous(t('characters.mergeConfirm', { name: group.translatedName }));
     if (!ok) return;
     const [keep, ...rest] = group.characters;
     void run(async () => {

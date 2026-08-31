@@ -93,6 +93,7 @@ import { logger } from '../logging/logger';
 import { assertIpcAuditComplete } from '../security/ipc-audit';
 import { getSecretStorage, getAuditLog } from '../security';
 import { getAccountWorkerService } from '../services/account-worker-singleton';
+import type { GoogleAccountDetail } from '../db/repositories/google-account-repository';
 import { toGoogleAccountDto } from '../services/account-dto';
 import { getAccountAvailabilityService } from '../services/account-availability-service';
 import { getDatabase } from '../db/connection';
@@ -425,8 +426,10 @@ import {
   AiProviderListResponseSchema,
   AiProviderRoutingResponseSchema,
   AiProviderSetPrimaryRequestSchema,
+  AiProviderSetPreferenceRequestSchema,
   AiProviderSetEnabledRequestSchema,
   AiProviderSetPriorityRequestSchema,
+  ProjectSetAiPreferenceRequestSchema,
   ProjectSetPrimaryProviderRequestSchema,
   ProjectTranslateAiSettingsResponseSchema,
   AiWorkerInstallResponseSchema,
@@ -439,9 +442,11 @@ import { AiAutoSetupService } from '../ai/ai-auto-setup-service';
 import { z } from 'zod';
 import {
   mergePreferNotebookPack,
+  mergeProjectAiPreference,
   mergeProjectPrimaryProvider,
   projectUsesGlobalPrimary,
   readPreferNotebookPack,
+  readProjectAiPreferenceOverride,
   readProjectPrimaryProviderOverride,
 } from '@shared/constants/project-style-config';
 
@@ -454,7 +459,7 @@ function accountDto(accountId: string) {
   return GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail, availability));
 }
 
-function accountDtoFromDetail(detail: NonNullable<ReturnType<typeof getAccountWorkerService>['getAccount']>) {
+function accountDtoFromDetail(detail: GoogleAccountDetail) {
   const availability = getAccountAvailabilityService(getDatabase()).resolve(detail.id);
   return GoogleAccountDtoSchema.parse(toGoogleAccountDto(detail, availability));
 }
@@ -947,6 +952,8 @@ export function registerIpcHandlers(): void {
           preferNotebookPack,
           useGlobalPrimary: projectUsesGlobalPrimary(style),
           primaryProviderId: readProjectPrimaryProviderOverride(style),
+          aiPreference: readProjectAiPreferenceOverride(style),
+          useGlobalPreference: projectUsesGlobalPrimary(style),
         });
       },
     ),
@@ -992,6 +999,33 @@ export function registerIpcHandlers(): void {
         preferNotebookPack: readPreferNotebookPack(style),
         useGlobalPrimary: projectUsesGlobalPrimary(style),
         primaryProviderId: readProjectPrimaryProviderOverride(style),
+        aiPreference: readProjectAiPreferenceOverride(style),
+        useGlobalPreference: projectUsesGlobalPrimary(style),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_SET_AI_PREFERENCE,
+    createIpcHandler(ProjectSetAiPreferenceRequestSchema, async (request) => {
+      const db = getDatabase();
+      const project = db.projects.getById(request.projectId);
+      if (!project) throw new Error(`Project not found: ${request.projectId}`);
+      const merged = mergeProjectAiPreference(
+        db.projects.getStyleConfig(request.projectId),
+        {
+          useGlobalPreference: request.useGlobalPreference,
+          aiPreference: request.aiPreference ?? null,
+        },
+      );
+      db.projects.setStyleConfig(request.projectId, merged);
+      const style = db.projects.getStyleConfig(request.projectId);
+      return ProjectTranslateAiSettingsResponseSchema.parse({
+        preferNotebookPack: readPreferNotebookPack(style),
+        useGlobalPrimary: projectUsesGlobalPrimary(style),
+        primaryProviderId: readProjectPrimaryProviderOverride(style),
+        aiPreference: readProjectAiPreferenceOverride(style),
+        useGlobalPreference: projectUsesGlobalPrimary(style),
       });
     }),
   );
@@ -2281,7 +2315,7 @@ export function registerIpcHandlers(): void {
       const result = await dialog.showOpenDialog({
         properties: ['openFile'],
         filters: [
-          { name: 'NovelTrans backup', extensions: ['nts-backup', 'nts-project', 'zip'] },
+          { name: 'Khepree Novel AI backup', extensions: ['nts-backup', 'nts-project', 'zip'] },
           { name: 'ZIP', extensions: ['zip'] },
         ],
       });
@@ -2843,6 +2877,21 @@ function registerAiProviderHandlers(): void {
     createIpcHandler(AiProviderSetPrimaryRequestSchema, (request) => {
       getAiProviderService().setPrimaryProvider(request.providerId);
       return AiProviderListResponseSchema.parse(getAiProviderService().listProviders());
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.AI_PROVIDER_SET_PREFERENCE,
+    createIpcHandler(AiProviderSetPreferenceRequestSchema, (request) => {
+      getAiProviderService().setAiPreference(request.preference);
+      return AiProviderListResponseSchema.parse(getAiProviderService().listProviders());
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.AI_PROVIDER_CHECK_ALL,
+    createIpcHandlerNoArg(async () => {
+      return getAiProviderService().checkAllProviders();
     }),
   );
 

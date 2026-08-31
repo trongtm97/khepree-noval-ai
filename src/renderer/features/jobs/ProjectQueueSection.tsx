@@ -11,6 +11,7 @@ import { JobSelectCheckbox } from './JobSelectCheckbox';
 export interface ProjectQueueSectionProps {
   queuedByProject: [string, JobDto[]][];
   titleFor: (projectId: string) => string;
+  aiRoutingLabel: string;
   busy: boolean;
   selectedJobIds: Set<string>;
   onToggleSelect: (jobId: string) => void;
@@ -20,6 +21,7 @@ export interface ProjectQueueSectionProps {
 export function ProjectQueueSection({
   queuedByProject,
   titleFor,
+  aiRoutingLabel,
   busy,
   selectedJobIds,
   onToggleSelect,
@@ -41,6 +43,7 @@ export function ProjectQueueSection({
             key={projectId}
             projectJobs={projectJobs}
             title={titleFor(projectId)}
+            aiRoutingLabel={aiRoutingLabel}
             busy={busy}
             selectedJobIds={selectedJobIds}
             onToggleSelect={onToggleSelect}
@@ -58,6 +61,7 @@ export function ProjectQueueSection({
 function QueueProjectCard({
   projectJobs,
   title,
+  aiRoutingLabel,
   busy,
   selectedJobIds,
   onToggleSelect,
@@ -71,6 +75,7 @@ function QueueProjectCard({
   onToggleSelect: (jobId: string) => void;
   onSetPriority: (jobIds: string[], band: PriorityBand) => void;
   onOpenProject: () => void;
+  aiRoutingLabel: string;
 }) {
   const t = useT();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -91,6 +96,7 @@ function QueueProjectCard({
               range: range ?? '—',
             })}
           </p>
+          <p className="muted jobs-card-sub">{t('jobs.queueAiLabel', { ai: aiRoutingLabel })}</p>
         </div>
         <div className="jobs-card-actions">
           <label className="jobs-priority-field">

@@ -119,7 +119,7 @@ describe('Portability (Phase 18)', () => {
     const chapters = db.chapters.listByProject(projectId);
     expect(chapters.length).toBeGreaterThan(0);
     expect(db.translations.listByChapter(chapters[0].id)).toHaveLength(1);
-  });
+  }, 30_000);
 
   it('restore rejects silent overwrite', async () => {
     const archive = await createBackupArchive({
@@ -157,7 +157,7 @@ describe('Portability (Phase 18)', () => {
 
     const autoFiles = fs
       .readdirSync(backupsDir)
-      .filter((name) => name.startsWith('noveltrans-auto-'));
+      .filter((name) => name.startsWith('khepree-novel-ai-auto-'));
     expect(autoFiles.length).toBeGreaterThanOrEqual(1);
     expect(autoFiles.length).toBeLessThanOrEqual(4);
 

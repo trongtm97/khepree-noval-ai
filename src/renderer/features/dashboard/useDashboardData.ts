@@ -42,6 +42,7 @@ export function useDashboardData(): DashboardData {
   const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [jobs, setJobs] = useState<JobDto[]>([]);
   const [accounts, setAccounts] = useState<GoogleAccountDto[]>([]);
+  const [aiChannelReady, setAiChannelReady] = useState(false);
   const [termsReviewCount, setTermsReviewCount] = useState(0);
   const [termCandidatesByProject, setTermCandidatesByProject] = useState<Map<string, number>>(
     new Map(),
@@ -66,11 +67,12 @@ export function useDashboardData(): DashboardData {
 
     const errors: string[] = [];
 
-    const [projectsRes, jobsRes, accountsRes, termsRes] = await Promise.allSettled([
+    const [projectsRes, jobsRes, accountsRes, termsRes, aiStatusRes] = await Promise.allSettled([
       window.novelTrans.projects.list(),
       window.novelTrans.jobs.list(undefined),
       window.novelTrans.accounts.list(),
       window.novelTrans.terms.reviewQueue(),
+      window.novelTrans.aiProviders.autoSetupStatus(),
     ]);
 
     if (projectsRes.status === 'rejected') {
@@ -104,6 +106,10 @@ export function useDashboardData(): DashboardData {
       setTermsReviewCount(termsRes.value.terms.length);
     } else {
       errors.push('terms');
+    }
+
+    if (aiStatusRes.status === 'fulfilled') {
+      setAiChannelReady(aiStatusRes.value.ready);
     }
 
     const activeProjects = projectList.filter((p) => p.status !== 'archived').slice(0, 5);
@@ -186,8 +192,9 @@ export function useDashboardData(): DashboardData {
         accounts: accounts.map((a) => ({ availability: a.availability })),
         hasCompletedJob,
         priorityProject,
+        anyAiChannelReady: aiChannelReady,
       }),
-    [projects, accounts, hasCompletedJob, priorityProject],
+    [projects, accounts, hasCompletedJob, priorityProject, aiChannelReady],
   );
 
   const actions = useMemo(
@@ -226,8 +233,9 @@ export function useDashboardData(): DashboardData {
         accounts,
         hasCompletedJob,
         priorityProject,
+        anyAiChannelReady: aiChannelReady,
       }),
-    [projects, accounts, hasCompletedJob, priorityProject],
+    [projects, accounts, hasCompletedJob, priorityProject, aiChannelReady],
   );
 
   const priorityNewChapterCount =

@@ -1,3 +1,4 @@
+import { DB_FILENAME } from '@shared/constants/app';
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
@@ -16,7 +17,7 @@ import { newId } from '../db/utils/uuid';
 import { utcNow } from '../db/utils/timestamps';
 
 const MANIFEST_NAME = 'manifest.json';
-const DB_ENTRY = 'noveltrans.db';
+const DB_ENTRY = DB_FILENAME;
 const SETTINGS_ENTRY = 'app-settings.json';
 const TERMS_ENTRY = 'terms-vault.json';
 const AUTOMATION_ENTRY = 'automation-config.json';
@@ -116,8 +117,8 @@ export async function createBackupArchive(input: CreateArchiveInput): Promise<Cr
 
   const defaultName =
     input.kind === 'full'
-      ? `noveltrans-full-${timestamp()}.nts-backup.zip`
-      : `noveltrans-project-${sanitizeFileName(manifest.projectTitle ?? 'project')}-${timestamp()}.nts-project.zip`;
+      ? `khepree-novel-ai-full-${timestamp()}.nts-backup.zip`
+      : `khepree-novel-ai-project-${sanitizeFileName(manifest.projectTitle ?? 'project')}-${timestamp()}.nts-project.zip`;
 
   const outputPath = input.outputPath ?? path.join(input.backupsDir, defaultName);
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });

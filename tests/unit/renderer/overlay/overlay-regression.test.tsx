@@ -76,7 +76,7 @@ describe('overlay regression matrix', () => {
       const menu = document.querySelector('.language-picker-menu');
       expect(menu).not.toBeNull();
       if (!menu) return;
-      expect(menu.closest('#noveltrans-overlay-root')).toBeTruthy();
+      expect(menu.closest('#khepree-overlay-root')).toBeTruthy();
 
       const width = (menu as HTMLElement).style.width;
       if (width) {
@@ -101,7 +101,7 @@ describe('overlay regression matrix', () => {
 
       const result = assertOverlayVisible(menu, { viewport: { width: vp.width, height: vp.height } });
       expect(result.hasSize || menu.textContent?.includes('Copy')).toBe(true);
-      expect(menu.closest('#noveltrans-overlay-root')).toBeTruthy();
+      expect(menu.closest('#khepree-overlay-root')).toBeTruthy();
     });
   }
 

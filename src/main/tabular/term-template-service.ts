@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { APP_NAME } from '@shared/constants/app';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -58,11 +59,11 @@ const SAMPLE_ROWS: Record<string, string>[] = [
 
 export async function writeTermVaultTemplate(outputPath: string): Promise<string> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'NovelTrans Studio';
+  workbook.creator = APP_NAME;
   workbook.created = new Date();
 
   const meta = {
-    noveltrans_format: NTS_TABULAR_FORMAT,
+    khepree_format: NTS_TABULAR_FORMAT,
     schema_version: TABULAR_SCHEMA_VERSION,
     exported_at: new Date().toISOString(),
     data_type: 'terms' as const,

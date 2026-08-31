@@ -91,11 +91,6 @@ export function LanguageSettingsPanel(props: {
 
   return (
     <>
-      <SettingsSection
-        title={t('settings.languageTabLabel')}
-        description={t('settings.languageTabDescription')}
-      />
-
       <SettingsSection title={t('settings.uiLocaleSection')}>
         <SettingsGroup>
           <SettingsRow

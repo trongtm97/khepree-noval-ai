@@ -16,7 +16,7 @@ describe('memory engine', () => {
   let db: DatabaseManager | null = null;
 
   beforeEach(() => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-memory-'));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'Khepree Novel AI-memory-'));
     const paths = resolveAppPaths(tempRoot);
     dataDir = paths.data;
     backupsDir = paths.backups;

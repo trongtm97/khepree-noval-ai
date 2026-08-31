@@ -170,7 +170,8 @@ describe('NotebookSyncService hot memory', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Test',
+      notebook_name: '[Khepree] Test',
+      notebook_role: 'SINGLE',
       status: 'ready',
       instructions_hash: 'abc123',
     });
@@ -211,7 +212,8 @@ describe('NotebookSyncService hot memory', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Test',
+      notebook_name: '[Khepree] Test',
+      notebook_role: 'SINGLE',
       status: 'sync_pending',
       instructions_hash: 'abc123',
     });
@@ -282,7 +284,8 @@ describe('NotebookSyncService hot memory', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountId,
-      notebook_name: '[NovelTrans] Test',
+      notebook_name: '[Khepree] Test',
+      notebook_role: 'SINGLE',
       status: 'ready',
       instructions_hash: null,
     });

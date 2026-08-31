@@ -7,7 +7,6 @@ import {
   formatLanguagePairLabel,
   formatLanguagePairInline,
   formatLanguagePairStacked,
-  getLanguageProfile,
   languageCompactLabel,
   listLanguageProfiles,
   normalizeLanguageCode,

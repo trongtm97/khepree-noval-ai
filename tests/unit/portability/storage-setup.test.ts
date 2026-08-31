@@ -6,6 +6,7 @@ import {
   STORAGE_ROOT_BACKUP_SUBDIR,
   STORAGE_ROOT_EXPORT_SUBDIR,
 } from '../../../src/shared/constants/portability';
+import type { DatabaseManager } from '../../../src/main/db/database-manager';
 import { setupStorageRoot } from '../../../src/main/portability/storage-setup-service';
 
 function mockDb() {
@@ -20,7 +21,7 @@ function mockDb() {
         meta.delete(key);
       },
     },
-  } as never;
+  } as unknown as DatabaseManager;
 }
 
 describe('storage-setup-service', () => {

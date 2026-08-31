@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
-import { NOVELTRANS_APPDATA_DIR, DB_FILENAME } from '@shared/constants/db';
+import { APP_DATA_DIR_NAME, DB_FILENAME } from '@shared/constants/db';
 import { resolveAppPaths } from '@main/services/paths-service';
 import { createDatabaseManager, closeDatabase } from '@main/db/connection';
 import { withTransaction } from '@main/db/transaction';
@@ -12,11 +12,11 @@ import { MIGRATIONS, migrationChecksum } from '@main/db/migrations';
 import { backupDatabaseFile, restoreDatabaseFromBackup } from '@main/db/backup';
 
 describe('resolveAppPaths', () => {
-  it('places database under AppData/NovelTrans/data/', () => {
+  it('places database under AppData/KhepreeNovelAI/data/', () => {
     const appData = path.join(os.tmpdir(), 'appdata-test');
     const paths = resolveAppPaths(appData);
-    expect(paths.root).toBe(path.join(appData, NOVELTRANS_APPDATA_DIR));
-    expect(path.join(paths.data, DB_FILENAME)).toContain('NovelTrans');
+    expect(paths.root).toBe(path.join(appData, APP_DATA_DIR_NAME));
+    expect(path.join(paths.data, DB_FILENAME)).toContain('KhepreeNovelAI');
     expect(path.join(paths.data, DB_FILENAME)).toContain('data');
   });
 });
@@ -27,7 +27,7 @@ describe('DatabaseManager', () => {
   let backupsDir: string;
 
   beforeEach(() => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-db-'));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'Khepree Novel AI-db-'));
     const paths = resolveAppPaths(tempRoot);
     dataDir = paths.data;
     backupsDir = paths.backups;
@@ -46,7 +46,7 @@ describe('DatabaseManager', () => {
     const dbPath = path.join(dataDir, DB_FILENAME);
 
     expect(fs.existsSync(dbPath)).toBe(true);
-    expect(db.getSchemaVersion()).toBe(36);
+    expect(db.getSchemaVersion()).toBe(MIGRATIONS.at(-1)!.version);
 
     const tables = db
       .getConnection()
@@ -187,7 +187,7 @@ describe('DatabaseManager', () => {
       const db = createDatabaseManager({ dataDir, backupsDir });
       const project = db.projects.getById(projectId);
       expect(project?.title).toBe('Persistent Novel');
-      expect(db.getSchemaVersion()).toBe(36);
+      expect(db.getSchemaVersion()).toBe(MIGRATIONS.at(-1)!.version);
       db.close();
     }
   });

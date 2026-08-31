@@ -1,5 +1,7 @@
+import fs from 'node:fs';
 import { BrowserWindow, nativeTheme } from 'electron';
 import path from 'node:path';
+import { APP_NAME } from '@shared/constants/app';
 import { attachWindowSecurityGuards } from './window-security';
 
 const TITLE_BAR_HEIGHT = 32;
@@ -17,13 +19,24 @@ function getTitleBarOverlay(): Electron.TitleBarOverlay | undefined {
   };
 }
 
+function resolveWindowIcon(): string | undefined {
+  const candidates = [
+    path.join(process.cwd(), 'resources', 'icon.ico'),
+    path.join(__dirname, '..', '..', 'resources', 'icon.ico'),
+    path.join(__dirname, '..', '..', '..', 'resources', 'icon.ico'),
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate));
+}
+
 export function createMainWindow(): BrowserWindow {
+  const iconPath = resolveWindowIcon();
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
     minHeight: 640,
-    title: 'NovelTrans Studio',
+    title: APP_NAME,
+    ...(iconPath ? { icon: iconPath } : {}),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#0D0F12' : '#F8F9FA',
     ...(process.platform === 'win32'
       ? {

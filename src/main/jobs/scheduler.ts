@@ -1,5 +1,5 @@
 import type { DatabaseManager } from '../db/database-manager';
-import { WorkerPool } from './worker-pool';
+import { ExecutionTargetPool } from './execution-target-pool';
 import { BatchExecutor, newLeaseOwner, type JobInitialSender } from './batch-executor';
 import type { RepairSender } from './repair-loop';
 import {
@@ -23,12 +23,13 @@ import {
   canAdmitJob,
   effectivePerProjectMax,
   loadConcurrencyPolicy,
-  providerKindForWorker,
   resolveGlobalMaxWorkers,
   saveConcurrencyPolicy,
   type ConcurrencyPolicyPatch,
   type InFlightSlot,
 } from './concurrency-policy';
+import { providerKindForTarget } from './execution-target-utils';
+import type { AiExecutionTarget } from '../ai/execution-target';
 
 export interface SchedulerOptions {
   concurrencyPolicy?: Partial<ConcurrencyPolicy>;
@@ -51,7 +52,7 @@ export interface SchedulerOptions {
  * - No in-memory-only queue
  * - ConcurrencyPolicy: global / per-provider / per-account / per-project
  * - Fair project round-robin (no single novel starves queue)
- * - Fair worker pick: priority, quota, LRU — not first DB row
+ * - Fair execution-target pick: priority, quota, LRU — not first DB row
  */
 export class AutomationScheduler {
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -61,7 +62,7 @@ export class AutomationScheduler {
   private readonly inFlightMeta = new Map<string, InFlightSlot>();
   /** Round-robin cursor over queued projects. */
   private projectRrCursor = 0;
-  private readonly pool: WorkerPool;
+  private readonly pool: ExecutionTargetPool;
   private readonly executor: BatchExecutor;
   private readonly leaseOwner: string;
   private readonly tickMs: number;
@@ -72,7 +73,7 @@ export class AutomationScheduler {
     private readonly db: DatabaseManager,
     options: SchedulerOptions,
   ) {
-    this.pool = new WorkerPool(db);
+    this.pool = new ExecutionTargetPool(db);
     this.executor = new BatchExecutor(db, {
       sendInitial: options.sendInitial,
       sendRepair: options.sendRepair,
@@ -194,10 +195,11 @@ export class AutomationScheduler {
     this.db.workerStates.clearExpiredLimits();
 
     const policy = this.resolvePolicy();
-    const readyWorkers = this.pool.listAvailable();
+    const busyAccountIds = this.busyAccountIds();
+    const readyTargets = this.pool.listAvailable({ busyAccountIds });
     const globalMax = resolveGlobalMaxWorkers(
       policy,
-      readyWorkers.length + this.countBusyWorkers(),
+      readyTargets.length + this.countBusyWorkers(),
     );
     let capacity = globalMax - this.inFlight.size;
     if (capacity <= 0) return;
@@ -213,71 +215,98 @@ export class AutomationScheduler {
       const projectMax = effectivePerProjectMax(policy);
       if ((snap.byProject.get(projectId) ?? 0) >= projectMax) continue;
 
-      const workers = this.pool.listAvailableFair({ projectId });
-      if (workers.length === 0) continue;
+      const targets = this.pool.listAvailableFair({ projectId, busyAccountIds });
+      if (targets.length === 0) continue;
 
-      for (const worker of workers) {
-        const providerKind = providerKindForWorker(this.db, worker.google_account_id);
+      for (const target of targets) {
+        const providerKind = providerKindForTarget(target);
         snap = buildConcurrencySnapshot(this.inFlightMeta.values());
         if (
           !canAdmitJob(policy, snap, {
             projectId,
-            accountId: worker.google_account_id,
+            accountId: target.concurrencyKey,
             providerKind,
           })
         ) {
           continue;
         }
 
+        const workerStateId = target.legacyWorkerStateId ?? null;
         const job = this.db.jobs.claimNext({
           leaseOwner: this.leaseOwner,
           leaseMs: this.leaseMs,
-          workerId: worker.id,
-          accountId: worker.google_account_id,
+          workerId: workerStateId,
+          accountId: target.concurrencyKey,
           projectId,
         });
         if (!job) continue;
 
+        this.db.jobs.assignExecutionTarget(job.id, {
+          executionWorkerId: target.workerId,
+          executionProviderId: target.providerId,
+          executionProviderType: target.providerType,
+          executionAccountKind: target.accountKind,
+          executionAccountId: target.accountId,
+          workerId: target.legacyWorkerStateId ?? null,
+        });
+
         const slot: InFlightSlot = {
           jobId: job.id,
           projectId: job.project_id,
-          accountId: worker.google_account_id,
+          accountId: target.concurrencyKey,
           providerKind,
         };
         this.inFlight.add(job.id);
         this.inFlightMeta.set(job.id, slot);
-        this.db.workerStates.markBusy(worker.id, job.id);
+        if (target.legacyWorkerStateId) {
+          this.db.workerStates.markBusy(target.legacyWorkerStateId, job.id);
+        }
         this.db.jobs.updateState(job.id, 'WAITING_WORKER');
 
-        const profile = this.db.googleAccounts.getProfile(worker.google_account_id);
-        if (!profile) {
+        const profilePath = this.resolveProfilePath(target);
+        if (target.capabilities.browserProfile && !profilePath) {
           this.db.jobs.updateState(job.id, 'QUEUED', 'Missing profile');
           this.db.jobs.releaseLease(job.id);
-          this.db.workerStates.markReady(worker.id);
+          if (target.legacyWorkerStateId) {
+            this.db.workerStates.markReady(target.legacyWorkerStateId);
+          }
           this.inFlight.delete(job.id);
           this.inFlightMeta.delete(job.id);
           continue;
         }
-        const profilePath = browserProfileManager.resolveProfilePath(
-          profile.profile_dir_name,
-        );
-        void this.runJob(
-          job.id,
-          worker.google_account_id,
-          profilePath,
-          worker.id,
-        );
+
+        void this.runJob(job.id, target, profilePath);
         claimedThisTick += 1;
         capacity -= 1;
+        busyAccountIds.add(target.concurrencyKey);
         this.projectRrCursor = (this.projectRrCursor + 1) % Math.max(projects.length, 1);
         break;
       }
     }
 
     if (claimedThisTick === 0 && projects.length > 0) {
-      // No claim possible this tick — nudge cursor so we don't stick forever.
       this.projectRrCursor = (this.projectRrCursor + 1) % projects.length;
     }
+  }
+
+  private busyAccountIds(): Set<string> {
+    const busy = new Set<string>();
+    for (const slot of this.inFlightMeta.values()) {
+      busy.add(slot.accountId);
+    }
+    return busy;
+  }
+
+  private resolveProfilePath(target: AiExecutionTarget): string {
+    if (!target.profileDirName) {
+      if (target.accountKind === 'GOOGLE_ACCOUNT') {
+        const profile = this.db.googleAccounts.getProfile(target.accountId);
+        if (!profile?.profile_dir_name) return '';
+        return browserProfileManager.resolveProfilePath(profile.profile_dir_name);
+      }
+      return '';
+    }
+    return browserProfileManager.resolveProfilePath(target.profileDirName);
   }
 
   private fairProjectOrder(): string[] {
@@ -312,18 +341,17 @@ export class AutomationScheduler {
 
   private async runJob(
     jobId: string,
-    accountId: string,
+    target: AiExecutionTarget,
     profilePath: string,
-    workerId: string,
   ): Promise<void> {
     try {
-      this.db.jobs.assignWorker(jobId, workerId);
       const fresh = this.db.jobs.getById(jobId);
       if (!fresh) return;
 
       await this.executor.execute({
         job: fresh,
-        accountId,
+        executionTarget: target,
+        accountId: target.accountId,
         profilePath,
         leaseOwner: this.leaseOwner,
       });

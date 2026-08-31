@@ -39,7 +39,9 @@ function issueBody(issues: StartupAiIssue[], detail: string | null): string {
     if (detail) parts.push(detail);
     return parts.join(' ');
   }
-  if (issues.includes('no_google_account')) {
+  if (issues.includes('no_ai_account')) {
+    parts.push(t('notifications.startupNoAiAccountBody'));
+  } else if (issues.includes('no_google_account')) {
     parts.push(t('notifications.startupNoGoogleBody'));
   } else if (issues.includes('google_needs_login')) {
     parts.push(t('notifications.startupGoogleLoginBody'));
@@ -148,9 +150,6 @@ export function useStartupAiReadiness(intervalMs = 60_000): StartupAiReadinessSt
         healthRes?.providers.find((p) => p.id === AI_PROVIDER_IDS.GEMINI_WEB_API) ??
         healthRes?.providers.find((p) => p.type === 'GEMINI_WEB_API') ??
         null;
-
-      const enabledProviders =
-        listRes?.providers.filter((p) => p.enabled).map((p) => p.id) ?? [];
 
       const next = evaluateStartupAiReadiness({
         googleAccounts: (accountsRes?.accounts ?? []).map((a) => ({

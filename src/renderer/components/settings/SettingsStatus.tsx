@@ -5,7 +5,7 @@ export function SettingsStatus({
   children,
   live,
 }: {
-  tone?: 'info' | 'warn' | 'error';
+  tone?: 'info' | 'warn' | 'error' | 'success';
   children: ReactNode;
   live?: 'polite' | 'assertive';
 }) {

@@ -20,6 +20,15 @@ function chapter(
 }
 
 describe('batch-sizer', () => {
+  it('ChatGPT browser gets same large char budget as other browser providers', () => {
+    const chatgpt = planChapterBatches(
+      [chapter(1, 'c1', 5000), chapter(2, 'c2', 5000), chapter(3, 'c3', 5000)],
+      { maxChaptersUser: 3, providerType: 'PLAYWRIGHT_CHATGPT' },
+    );
+    expect(chatgpt).toHaveLength(1);
+    expect(chatgpt[0]?.chosenChapterCount).toBe(3);
+  });
+
   it('keeps small multi-chapter batch when under char budget', () => {
     const chapters = [
       chapter(1, 'c1', 5000),

@@ -5,27 +5,27 @@
   box-sizing: border-box;
 }
 
-#noveltrans-overlay-root [data-nt-overlay='modal-backdrop'] {
+#khepree-overlay-root [data-nt-overlay='modal-backdrop'] {
   z-index: var(--z-modal);
 }
 
-#noveltrans-overlay-root [data-nt-overlay='modal'] {
+#khepree-overlay-root [data-nt-overlay='modal'] {
   z-index: calc(var(--z-modal) + 1);
 }
 
-#noveltrans-overlay-root [data-nt-overlay='drawer-backdrop'] {
+#khepree-overlay-root [data-nt-overlay='drawer-backdrop'] {
   z-index: var(--z-modal);
 }
 
-#noveltrans-overlay-root [data-nt-overlay='drawer'] {
+#khepree-overlay-root [data-nt-overlay='drawer'] {
   z-index: calc(var(--z-modal) + 1);
 }
 
-body[data-nt-modal-open] #noveltrans-overlay-root [data-nt-overlay='popover'] {
+body[data-nt-modal-open] #khepree-overlay-root [data-nt-overlay='popover'] {
   z-index: calc(var(--z-modal) + 2);
 }
 
-#noveltrans-overlay-root .nt-toast-viewport {
+#khepree-overlay-root .nt-toast-viewport {
   z-index: var(--z-toast);
 }
 

@@ -17,7 +17,7 @@ import { logger } from '../logging/logger';
 import { createBackupArchive } from './backup-archive';
 import { resolveBackupDirectory } from './backup-directory';
 
-const AUTO_PREFIX = 'noveltrans-auto-';
+const AUTO_PREFIX = 'khepree-novel-ai-auto-';
 
 export interface TieredRetentionConfig {
   daily: number;
@@ -286,7 +286,7 @@ export function stopAutoBackupScheduler(): void {
 export function createManualDbBackup(dbPath: string, backupsDir: string): string {
   fs.mkdirSync(backupsDir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const target = path.join(backupsDir, `noveltrans-manual-${timestamp}.db`);
+  const target = path.join(backupsDir, `khepree-novel-ai-manual-${timestamp}.db`);
   atomicBackupDatabase(dbPath, target);
   return target;
 }

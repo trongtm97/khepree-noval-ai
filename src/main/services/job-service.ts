@@ -37,7 +37,7 @@ import {
   repairContextSnapshot,
 } from '../jobs/repair-translation-context';
 import { logger } from '../logging/logger';
-import { isGeminiSoftErrorText } from '@shared/utils/gemini-soft-error';
+import { isAiSoftErrorText } from '@shared/utils/provider-response-classifier';
 import { QaResultSchema, ParsedBatchResultSchema } from '@shared/schemas/output-protocol';
 import {
   PARALLEL_WAVES_UI_WARNING_VI,
@@ -704,9 +704,12 @@ export class JobService {
           };
         }
         const config = parseConfig(row.config);
+        const progress = parseProgress(row.progress);
+        const providerType =
+          typeof progress.providerType === 'string' ? progress.providerType : undefined;
         const lastRaw = findLastOutput(this.db.jobs.listAttempts(jobId));
         // Soft-error / empty output: repair-from-last-output just fails again → requeue fresh.
-        if (!lastRaw || isGeminiSoftErrorText(lastRaw)) {
+        if (!lastRaw || isAiSoftErrorText(lastRaw, providerType)) {
           return {
             job: this.retryFailed(jobId),
             message: 'Job requeued',

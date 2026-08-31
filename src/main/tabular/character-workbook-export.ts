@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { APP_NAME } from '@shared/constants/app';
 import fs from 'node:fs';
 import path from 'node:path';
 import { TABULAR_META_SHEET } from '@shared/constants/tabular';
@@ -132,7 +133,7 @@ export async function writeCharacterWorkbookXlsx(input: {
   data: CharacterWorkbookExportData;
 }): Promise<void> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'NovelTrans Studio';
+  workbook.creator = APP_NAME;
   workbook.created = new Date();
 
   const metaSheet = workbook.addWorksheet(TABULAR_META_SHEET);

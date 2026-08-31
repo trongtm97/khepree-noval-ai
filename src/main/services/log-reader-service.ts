@@ -1,3 +1,4 @@
+import { LOG_FILENAME } from '@shared/constants/app';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { LogsTailRequest, LogsTailResponse } from '@shared/schemas/logs';
@@ -5,7 +6,7 @@ import { pathsService } from './paths-service';
 
 export function tailApplicationLogs(request: LogsTailRequest = {}): LogsTailResponse {
   const logDir = pathsService.getPath('logs');
-  const logPath = path.join(logDir, 'noveltrans.log');
+  const logPath = path.join(logDir, LOG_FILENAME);
   const maxLines = request.maxLines ?? 500;
   const levelFilter = request.level ?? 'all';
 

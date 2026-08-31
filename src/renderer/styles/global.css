@@ -113,9 +113,75 @@ body {
 
 .sidebar-brand {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
   min-width: 0;
+  flex: 1;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.app-brand-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.app-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.app-brand-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.app-brand-name-line {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.app-brand--loading .app-brand-name-line {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.app-brand-version {
+  font-size: var(--font-small);
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.app-brand--loading {
+  flex-direction: column;
+  text-align: center;
+  gap: var(--space-3);
+}
+
+.app-brand--loading .app-brand-logo {
+  width: 56px;
+  height: 56px;
+}
+
+.app-brand--loading .app-brand-text {
+  align-items: center;
+}
+
+.app-brand--loading .app-brand-name {
+  align-items: center;
 }
 
 .sidebar-header h1 {
@@ -127,9 +193,14 @@ body {
   text-overflow: ellipsis;
 }
 
-.sidebar-collapsed .sidebar-brand span,
+.sidebar-collapsed .sidebar-brand .app-brand-text,
 .sidebar-collapsed .sidebar-header h1 {
   display: none;
+}
+
+.sidebar-collapsed .sidebar-brand .app-brand-logo {
+  width: 24px;
+  height: 24px;
 }
 
 .sidebar-header .version {
@@ -818,7 +889,7 @@ body {
     --sidebar-width: var(--sidebar-collapsed-width);
   }
 
-  .app-shell:not(.sidebar-pinned) .sidebar-brand span,
+  .app-shell:not(.sidebar-pinned) .sidebar-brand .app-brand-text,
   .app-shell:not(.sidebar-pinned) .sidebar-header h1,
   .app-shell:not(.sidebar-pinned) .nav-link span {
     display: none;
@@ -1199,6 +1270,165 @@ body {
   flex-wrap: wrap;
   gap: 0.35rem;
   align-items: flex-start;
+}
+
+.accounts-provider-filter {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.accounts-provider-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.accounts-provider-picker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.accounts-provider-picker-item:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--bg-secondary);
+}
+
+.settings-ai-preference {
+  border: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-ai-preference__legend {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.settings-ai-preference__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.settings-ai-health-list {
+  list-style: none;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.settings-ai-health-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 16rem;
+}
+
+.settings-ai-health-ok {
+  color: var(--success, #16a34a);
+}
+
+.settings-ai-health-bad {
+  color: var(--muted-fg, #888);
+}
+
+.translation-command-bar__ai-chip {
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.translation-command-bar__ai-chip:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.account-provider-badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.account-provider-avatar {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.account-actions-menu {
+  position: relative;
+}
+
+.account-actions-menu summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.account-actions-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.account-actions-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  min-width: 11rem;
+  padding: var(--space-2);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.account-actions-dropdown button {
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.account-actions-dropdown button:hover:not(:disabled) {
+  background: var(--bg-secondary);
+}
+
+.account-actions-dropdown button.danger {
+  color: var(--danger);
+}
+
+.account-actions-dropdown hr {
+  border: none;
+  border-top: 1px solid var(--border-strong);
+  margin: 0.25rem 0;
+}
+
+.account-primary-actions {
+  flex-wrap: wrap;
 }
 
 /* --- Google Accounts UX redesign --- */

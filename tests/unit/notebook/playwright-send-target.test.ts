@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { DatabaseManager } from '@main/db/database-manager';
 import { GEMINI_WEB_CHAT_URL } from '@shared/constants/notebook-role';
 import {

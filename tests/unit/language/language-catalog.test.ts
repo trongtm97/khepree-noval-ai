@@ -84,7 +84,7 @@ describe('World Language Catalog', () => {
     expect(GEMINI_WEB_OFFICIAL_AUDIT_DATE).toBe('2026-08-29');
   });
 
-  it('NovelTrans VERIFIED is subset of official Web languages', () => {
+  it('Khepree Novel AI VERIFIED is subset of official Web languages', () => {
     for (const code of NOVELTRANS_VERIFIED_CODES) {
       expect(GEMINI_WEB_OFFICIAL_CODES.has(code)).toBe(true);
       expect(getLanguageProfile(code).novelTransVerification).toBe('VERIFIED');

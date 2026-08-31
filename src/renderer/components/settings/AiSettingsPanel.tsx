@@ -6,15 +6,34 @@ import { Button } from '../ui';
 import { SettingsDisclosure } from './SettingsDisclosure';
 import { SettingsSection } from './SettingsSection';
 import { SettingsStatus } from './SettingsStatus';
-import { PrimaryTranslationProviderPanel } from './PrimaryTranslationProviderPanel';
-import { PreferNotebookPackToggle } from './PreferNotebookPackToggle';
-import { ProjectPrimaryProviderPanel } from './ProjectPrimaryProviderPanel';
+import { AiPreferencePanel } from './AiPreferencePanel';
+import { accountsRouteForProvider } from '../../features/accounts/ai-account-view-model';
+import type { AiAccountProviderKind } from '../../features/accounts/ai-account-view-model';
 
 function formatTechnical(technical: AiAutoSetupResult['technical']): string {
   if (!technical) return '';
   return Object.entries(technical)
     .map(([key, value]) => `${key}: ${String(value)}`)
     .join('\n');
+}
+
+function loginTargetToProviderKind(
+  target: 'GEMINI' | 'CHATGPT' | 'META_AI',
+): AiAccountProviderKind {
+  if (target === 'CHATGPT') return 'chatgpt';
+  if (target === 'META_AI') return 'meta';
+  return 'gemini';
+}
+
+function healthLabelKey(preference: 'GEMINI' | 'CHATGPT' | 'META_AI'): string {
+  switch (preference) {
+    case 'GEMINI':
+      return 'settings.aiPreferenceGemini';
+    case 'CHATGPT':
+      return 'settings.aiPreferenceChatGpt';
+    case 'META_AI':
+      return 'settings.aiPreferenceMetaAi';
+  }
 }
 
 export function AiSettingsPanel({
@@ -66,138 +85,116 @@ export function AiSettingsPanel({
     }
   };
 
+  const loginTarget = result?.loginTarget ?? status?.loginRequired ?? null;
+
   return (
     <>
       <SettingsSection title={t('settings.ai')} description={t('settings.aiTabBody')}>
-      {actionError ? <SettingsStatus tone="error">{actionError}</SettingsStatus> : null}
+        {actionError ? <SettingsStatus tone="error">{actionError}</SettingsStatus> : null}
 
-      {status ? (
-        <div className="settings-ai-status u-stack" style={{ marginBottom: '1rem' }}>
-          <SettingsStatus tone={status.ready ? 'success' : 'warning'}>
-            {status.ready ? `✓ ${t('settings.aiStatusReady')}` : status.statusLine}
-          </SettingsStatus>
-          <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            {t('settings.aiUsableAccounts', { count: status.usableAccountCount })}
-          </p>
-          {status.detailLine ? (
-            <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-              {status.detailLine}
+        {status ? (
+          <div className="settings-ai-status u-stack" style={{ marginBottom: '1rem' }}>
+            <SettingsStatus tone={status.ready ? 'info' : 'warn'}>
+              {status.ready ? `✓ ${t('settings.aiStatusReady')}` : t('settings.aiStatusNeedsSetup')}
+            </SettingsStatus>
+            {status.providerHealth?.length ? (
+              <ul className="settings-ai-health-list">
+                {status.providerHealth.map((row) => (
+                  <li key={row.preference}>
+                    <span>{t(healthLabelKey(row.preference))}</span>
+                    <span className={row.ok ? 'settings-ai-health-ok' : 'settings-ai-health-bad'}>
+                      {row.ok ? '✓' : '—'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {status.loginRequired ? (
+              <SettingsStatus tone="warn">{t('settings.aiNeedAccountLogin')}</SettingsStatus>
+            ) : null}
+          </div>
+        ) : null}
+
+        {result ? (
+          <div className="settings-ai-result u-stack" style={{ marginBottom: '1rem' }}>
+            <SettingsStatus
+              tone={
+                result.outcome === 'ready'
+                  ? 'info'
+                  : result.outcome === 'action_required'
+                    ? 'warn'
+                    : 'error'
+              }
+            >
+              {result.title}
+            </SettingsStatus>
+            <p className="muted" style={{ margin: 0 }}>
+              {result.message}
             </p>
-          ) : null}
-        </div>
-      ) : null}
+          </div>
+        ) : null}
 
-      {result ? (
-        <div className="settings-ai-result u-stack" style={{ marginBottom: '1rem' }}>
-          <SettingsStatus
-            tone={
-              result.outcome === 'ready'
-                ? 'success'
-                : result.outcome === 'action_required'
-                  ? 'warning'
-                  : 'error'
-            }
-          >
-            {result.title}
-          </SettingsStatus>
-          <p className="muted" style={{ margin: 0 }}>
-            {result.message}
-          </p>
-          {result.action === 'login' ? (
-            <SettingsStatus tone="warning">{t('settings.aiNeedGoogleLogin')}</SettingsStatus>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="btn-row" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-        <Button variant="primary" disabled={busy} onClick={() => { void runAutoSetup(); }}>
-          {busy ? t('settings.aiAutoSetupRunning') : t('settings.aiAutoSetup')}
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={busy}
-          onClick={() => {
-            navigate('/accounts');
-          }}
-        >
-          {t('settings.aiManageGoogleAccounts')}
-        </Button>
-        {result?.action === 'login' || result?.action === 'add_account' ? (
+        <div className="btn-row" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+          <Button variant="primary" disabled={busy} onClick={() => { void runAutoSetup(); }}>
+            {busy ? t('settings.aiAutoSetupRunning') : t('settings.aiAutoSetup')}
+          </Button>
           <Button
             variant="secondary"
+            disabled={busy}
             onClick={() => {
               navigate('/accounts');
             }}
           >
-            {result.action === 'login' ? t('settings.aiLogin') : t('settings.aiManageGoogleAccounts')}
+            {t('settings.aiManageAccounts')}
           </Button>
-        ) : null}
-        {result?.outcome === 'failed' ? (
-          <>
+          {result?.action === 'login' || result?.action === 'add_account' ? (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (loginTarget) {
+                  navigate(accountsRouteForProvider(loginTargetToProviderKind(loginTarget)));
+                } else {
+                  navigate('/accounts');
+                }
+              }}
+            >
+              {loginTarget
+                ? t('settings.aiLoginTarget', {
+                    provider: t(healthLabelKey(loginTarget)),
+                  })
+                : result.action === 'login'
+                  ? t('settings.aiLogin')
+                  : t('settings.aiManageAccounts')}
+            </Button>
+          ) : null}
+          {result?.outcome === 'failed' ? (
             <Button variant="secondary" disabled={busy} onClick={() => { void runAutoSetup(); }}>
               {t('settings.aiRetryFix')}
             </Button>
-          </>
+          ) : null}
+        </div>
+
+        {result && result.outcome === 'failed' ? (
+          <SettingsDisclosure title={t('settings.aiDetails')} defaultOpen>
+            <pre
+              className="muted"
+              style={{
+                whiteSpace: 'pre-wrap',
+                fontSize: '0.85rem',
+                margin: 0,
+                maxHeight: '14rem',
+                overflow: 'auto',
+              }}
+            >
+              {formatTechnical(result.technical)}
+              {result.steps.length > 0
+                ? `${result.technical && Object.keys(result.technical).length > 0 ? '\n\n' : ''}${result.steps.map((s) => `${s.ok ? '✓' : '✗'} ${s.message}`).join('\n')}`
+                : ''}
+            </pre>
+          </SettingsDisclosure>
         ) : null}
-      </div>
 
-      {result && result.outcome === 'failed' ? (
-        <SettingsDisclosure
-          title={t('settings.aiDetails')}
-          defaultOpen
-        >
-          <pre
-            className="muted"
-            style={{
-              whiteSpace: 'pre-wrap',
-              fontSize: '0.85rem',
-              margin: 0,
-              maxHeight: '14rem',
-              overflow: 'auto',
-            }}
-          >
-            {formatTechnical(result.technical)}
-            {result.steps.length > 0
-              ? `${result.technical && Object.keys(result.technical).length > 0 ? '\n\n' : ''}${result.steps.map((s) => `${s.ok ? '✓' : '✗'} ${s.message}`).join('\n')}`
-              : ''}
-          </pre>
-        </SettingsDisclosure>
-      ) : null}
-      </SettingsSection>
-
-      <SettingsSection
-        title={t('settings.primaryProviderSection')}
-        description={t('settings.primaryProviderSectionHelp')}
-      >
-        <PrimaryTranslationProviderPanel />
-      </SettingsSection>
-
-      <SettingsSection
-        title={t('settings.projectPrimaryProviderSection')}
-        description={t('settings.projectPrimaryProviderSectionHelp')}
-      >
-        <ProjectPrimaryProviderPanel />
-      </SettingsSection>
-
-      <SettingsSection
-        title={t('settings.aiBrowserAccountsSection')}
-        description={t('settings.aiBrowserAccountsSectionHelp')}
-      >
-        <Button
-          variant="secondary"
-          onClick={() => {
-            navigate('/accounts');
-          }}
-        >
-          {t('settings.aiBrowserAccountsManageLink')}
-        </Button>
-      </SettingsSection>
-
-      <SettingsSection
-        title={t('settings.preferNotebookPackSection')}
-        description={t('settings.preferNotebookPackSectionHelp')}
-      >
-        <PreferNotebookPackToggle />
+        <AiPreferencePanel />
       </SettingsSection>
     </>
   );

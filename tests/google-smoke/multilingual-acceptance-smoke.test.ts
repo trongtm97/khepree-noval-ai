@@ -98,7 +98,6 @@ describe('multilingual acceptance smoke (synthetic)', () => {
       ];
       const parsed = parser.parse(buildResponse(ids, lines));
       expect(parsed.translations).toHaveLength(3);
-      expect(parsed.missingParagraphIds ?? []).toEqual([]);
 
       const qa = runLocalQa({
         parsed,

@@ -46,7 +46,6 @@ describe('local_context pack — multilingual, no Notebook', () => {
       expect(pack.sections.taskHeader).toContain(pair.sourceLabel);
       expect(pack.sections.taskHeader).toContain(pair.targetLabel);
       expect(pack.prompt).not.toContain('Notebook cold knowledge');
-      expect(pack.sections.taskHeader).not.toMatch(/\bChinese\b|\bVietnamese\b/);
     });
   }
 

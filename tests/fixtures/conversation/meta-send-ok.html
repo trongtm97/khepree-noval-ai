@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Meta harness — send ok</title>
+</head>
+<body>
+  <div data-testid="composer-input" contenteditable="true"></div>
+  <button type="button" data-testid="composer-send-button">Send</button>
+  <div id="thread"></div>
+  <script>
+    const composer = document.querySelector('[data-testid="composer-input"]');
+    const thread = document.getElementById('thread');
+
+    document.querySelector('[data-testid="composer-send-button"]').addEventListener('click', () => {
+      const text = (composer.textContent || '').trim();
+      if (!text) return;
+
+      const user = document.createElement('div');
+      user.setAttribute('data-testid', 'user-message');
+      user.textContent = text;
+      thread.appendChild(user);
+      composer.textContent = '';
+
+      const stop = document.createElement('button');
+      stop.setAttribute('aria-label', 'Stop generating');
+      document.body.appendChild(stop);
+
+      const assistant = document.createElement('div');
+      assistant.setAttribute('data-testid', 'assistant-message');
+      const md = document.createElement('div');
+      md.className = 'markdown-content';
+      assistant.appendChild(md);
+      thread.appendChild(assistant);
+
+      const reply = 'Synthetic Meta AI response for harness fixture.';
+      let i = 0;
+      const tick = () => {
+        if (i < reply.length) {
+          md.textContent += reply[i++];
+          setTimeout(tick, 25);
+        } else {
+          stop.remove();
+        }
+      };
+      setTimeout(tick, 60);
+    });
+  </script>
+</body>
+</html>

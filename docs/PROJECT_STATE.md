@@ -1,6 +1,18 @@
 # NovelTrans Studio — Project State
 
-> Last updated: 2026-08-28
+> Last updated: 2026-08-29
+
+## Status legend
+
+| Label | Meaning |
+|-------|---------|
+| **IMPLEMENTED** | Code merged; unit/integration tests may pass |
+| **REAL TEST PASSED** | Live browser, manual QA, or opt-in smoke suite verified |
+| **NOT IMPLEMENTED** | Not built yet |
+
+Do **not** mark browser providers production-ready without **REAL TEST PASSED** live smoke for that provider.
+
+---
 
 ## Completed
 
@@ -119,21 +131,80 @@
 - [x] Docs rewrite: ARCHITECTURE, DATABASE, NOTEBOOK_ARCHITECTURE, HELP_SYSTEM, PROJECT_STATE
 - [x] Deleted obsolete `docs/DRIVE.md`; audit in `docs/DRIVE_REMOVAL_AUDIT.md`
 
+### Multi-Provider Browser AI — ChatGPT & Meta AI (2026-08-29) — **IMPLEMENTED**
+
+- [x] `PLAYWRIGHT_CHATGPT` / `PLAYWRIGHT_META_AI` provider types + adapters
+- [x] `PlaywrightBrowserAiService` — headed login, session verify, send via `browser-runtime-manager`
+- [x] `AiProviderManager.sendForJob` routes all providers through same `TranslationPack` pipeline
+- [x] `execution-worker-resolver` — ChatGPT/Meta schedulable with **zero Google accounts**
+- [x] Capability-driven routing + batch sizing per transport
+- [x] Migration / schema for `ai_accounts` browser profiles
+- [x] `docs/AI_EXECUTION_WORKER_AUDIT.md`, `docs/CAPABILITY_DRIVEN_ROUTING.md`
+
+**REAL TEST PASSED:** mock integration only (`tests/integration/multi-provider-acceptance.test.ts` — 19/19).  
+**NOT REAL TEST PASSED:** live browser smoke per provider (`scripts/browser-conversation-smoke.ts` — NOT_RUN).
+
+### Multi-Provider UX (Phase 6, 2026-08-29) — **IMPLEMENTED**
+
+- [x] Provider-aware job UI (strip, drawer, running card, dashboard banner)
+- [x] Setup wizard multi-provider picker (Gemini / ChatGPT / Meta AI)
+- [x] Onboarding "Kết nối AI" — not Google-only
+- [x] `docs/MULTI_PROVIDER_UX_AUDIT.md`
+
+### Multi-Provider Acceptance Matrix (Phase 7, 2026-08-29)
+
+| Layer | Status |
+|-------|--------|
+| Mock full pipeline (Gemini + ChatGPT + Meta) | **REAL TEST PASSED** (integration) |
+| Zero-Google ChatGPT / Meta jobs | **REAL TEST PASSED** (integration) |
+| Live browser login + send per provider | **NOT REAL TEST PASSED** |
+| `docs/MULTI_PROVIDER_ACCEPTANCE.md` | Written — verdict **READY FOR EXTENDED TEST** |
+
+### Browser Compatibility — Remove Stealth Dependency (Phase 8, 2026-08-29) — **IMPLEMENTED**
+
+- [x] Deleted `playwright-stealth.ts`; ChatGPT/Meta use standard Playwright
+- [x] `BrowserCompatibilityPatch.GOOGLE_LOGIN_LAUNCH` scoped to Gemini Google login only
+- [x] `docs/BROWSER_COMPATIBILITY_AUDIT.md`
+- [x] Unit tests: `tests/unit/automation/browser-compatibility-patch.test.ts`
+
+**REAL TEST PASSED:** unit/architecture tests only. Live login persistence across restart — manual.
+
+### Documentation Reconciliation (Phase 9, 2026-08-29) — **IMPLEMENTED**
+
+- [x] README, PROJECT_STATE, ARCHITECTURE aligned to actual multi-provider architecture
+- [x] IMPLEMENTED vs REAL TEST PASSED separation
+- [x] Commercial licensing documented as NOT IMPLEMENTED
+- [x] Release blockers explicit in PROJECT_STATE + RELEASE_CHECKLIST
+
 ## In Progress
 
 - [ ] Playwright send-path hardening (selectors / confirm-sent / wait strategy) — **not started**; engine layer only
+- [ ] Live browser smoke — ChatGPT, Meta AI, Gemini (**REAL TEST PASSED** gate for release)
 
 ## Not Started
 
-### Follow-ups — Bundle Python runtime; Official Gemini API provider; lease renewal during long AI calls
+### Follow-ups — Bundle Python runtime; Official Gemini API provider; lease renewal during long AI calls; commercial licensing; billing; website
 
 ## Next Recommended Step
 
-**Do not ship.** See [FINAL_RELEASE_AUDIT.md](./FINAL_RELEASE_AUDIT.md) — verdict **NOT READY**.
+**Do not ship.** See [FINAL_RELEASE_AUDIT.md](./FINAL_RELEASE_AUDIT.md) — verdict **NOT READY** (historical audit; blockers below still apply).
+
+### Release blockers (explicit)
+
+| Blocker | Status | Notes |
+|---------|--------|-------|
+| Real provider E2E (live browser send) | **OPEN** | Mock PASS only; smoke NOT_RUN |
+| Send confirmation reliability | **OPEN** | Harness unit PASS; live unverified |
+| Response anchoring / correlation extract | **OPEN** | Partial; provider DOM drift risk |
+| Crash recovery (ChatGPT/Meta `ai_requests`) | **OPEN** | Gemini planner only today |
+| Code signing / auto-update production server | **OPEN** | Optional signing; placeholder update provider |
+| Commercial licensing enforcement | **NOT IMPLEMENTED** | UNLICENSED; no in-app license checks |
 
 Priority order:
-1. Playwright send-path hardening (confirm sent, reduce `waitForTimeout`, correlation extract)
-2. Lease renewal during Gemini/repair
-3. Startup crash-attempt + gemini_request recovery
-4. Sanitize auto DB backups; constrain import paths; restore UI
-5. Embedded Python for Web API worker (optional)
+1. Live browser smoke per provider (login → send → verify → restart)
+2. Playwright send-path hardening (confirm sent, reduce `waitForTimeout`, correlation extract)
+3. Browser AI crash recovery planner for ChatGPT/Meta
+4. Lease renewal during long AI calls
+5. Code signing + production update channel (when product ready)
+6. Commercial licensing (later — separate from core translation)
+

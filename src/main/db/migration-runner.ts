@@ -67,7 +67,7 @@ export function runMigrations(
 
     if (currentVersion > 0 && fs.existsSync(options.dbPath)) {
       backupPath = backupDatabaseFile(options.dbPath, options.backupsDir, {
-        fileName: `noveltrans-migration-v${migration.version}-${new Date().toISOString().replace(/[:.]/g, '-')}.db`,
+        fileName: `khepree-novel-ai-migration-v${migration.version}-${new Date().toISOString().replace(/[:.]/g, '-')}.db`,
       });
       lastBackupPath = backupPath;
     }

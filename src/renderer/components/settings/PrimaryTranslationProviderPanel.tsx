@@ -14,6 +14,10 @@ import { SettingsGroup } from './SettingsGroup';
 import { SettingsRow } from './SettingsRow';
 import { SettingsStatus } from './SettingsStatus';
 import { useSettingsFeedback } from './useSettingsFeedback';
+import {
+  accountsRouteForProvider,
+  providerKindFromTranslationProviderId,
+} from '../../features/accounts/ai-account-view-model';
 
 function primaryLabelKey(id: TranslationAiProviderId): string {
   switch (id) {
@@ -32,9 +36,15 @@ function primaryLabelKey(id: TranslationAiProviderId): string {
 
 function needsAccountsLink(id: TranslationAiProviderId): boolean {
   return (
+    id === AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI ||
     id === AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT ||
     id === AI_PROVIDER_IDS.PLAYWRIGHT_META_AI
   );
+}
+
+function accountsLinkForPrimary(id: TranslationAiProviderId): string {
+  const kind = providerKindFromTranslationProviderId(id);
+  return accountsRouteForProvider(kind);
 }
 
 export function PrimaryTranslationProviderPanel() {
@@ -172,7 +182,7 @@ export function PrimaryTranslationProviderPanel() {
           variant="secondary"
           disabled={busy}
           onClick={() => {
-            navigate('/accounts');
+            navigate(accountsLinkForPrimary(primaryId));
           }}
         >
           {t('settings.primaryProviderManageAccounts')}

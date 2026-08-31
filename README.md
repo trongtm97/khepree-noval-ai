@@ -1,29 +1,45 @@
 # NovelTrans Studio
 
-Desktop Windows (10/11 x64) app for **multilingual novel translation**: detected source language, target translation editions, local-first project memory, and Gemini via Web API or browser automation with your own Google accounts. **Research Notebook** (NotebookLM) is optional—not required for core translation.
+NovelTrans Studio is a Windows desktop application for AI-assisted multilingual novel translation.
+
+## Core concepts
+
+- **Automatic source-language detection** — script + AI-assisted catalog validation
+- **User-selected target language** — per project / edition
+- **Local-first SQLite knowledge/memory** — terms, characters, story state, jobs
+- **Multiple translation editions** — same source, different target languages or styles
+- **Gemini / ChatGPT / Meta AI provider support** — routed through one translation pipeline
+- **Multi-account / concurrent translation** — per-provider browser profiles and worker scheduling
+- **Optional Research Notebook** — NotebookLM grounding; not required for core translation
+- **Local backups / export** — atomic DB backup, TXT / DOCX / EPUB export
 
 **Version:** `0.1.0` (semantic versioning)
 
 ## Status
 
-Phases 0–19 complete (scaffold → diagnostics). See [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md).
+Phases 0–19 complete (scaffold → diagnostics). Multi-provider browser AI (ChatGPT, Meta AI) and UX passes through Phase 8 (browser compatibility) are **implemented in code** — see [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md).
 
-This tree includes the **Windows production packaging** pass (Forge installer, first-run wizard, crash handlers, update provider abstraction). Treat as **release candidate** until [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) items are marked PASS.
+**Not production-ready.** Browser providers need live smoke tests before release claims. See [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) and [docs/MULTI_PROVIDER_ACCEPTANCE.md](docs/MULTI_PROVIDER_ACCEPTANCE.md).
 
-### Playwright / Gemini browser — not production-ready by default
+### Provider live-test gate
 
-Do **not** claim the Playwright Gemini browser path is production-ready unless [docs/REAL_GOOGLE_TEST_REPORT.md](docs/REAL_GOOGLE_TEST_REPORT.md) shows **Overall = PASS** for scenarios A–H.
+Do **not** claim ChatGPT, Meta AI, or Playwright Gemini paths are production-ready until live browser smoke passes:
+
+```bash
+# After manual login in Accounts
+npx tsx scripts/browser-conversation-smoke.ts
+npx tsx scripts/browser-conversation-smoke-report.ts
+```
+
+Gemini Google smoke (opt-in, separate suite):
 
 ```bash
 copy google-smoke.config.example.json google-smoke.config.json
-# profilePath = logged-in NovelTrans browser profile
-# notebookUrl = dedicated SMOKE notebook (never a production novel)
 set NOVELTRANS_GOOGLE_SMOKE=1
 npm run test:google-smoke
 ```
 
-Or: **Settings → Advanced → Diagnostics** or Developer Diagnostics → **Run Real Google Smoke**.  
-This suite is **opt-in** and is **not** part of default `npm test` / CI.
+These suites are **opt-in** and are **not** part of default `npm test` / CI.
 
 ## Documentation
 
@@ -32,7 +48,8 @@ This suite is **opt-in** and is **not** part of default `npm test` / CI.
 | [USER_GUIDE.md](docs/USER_GUIDE.md) | End-user workflows |
 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common failures |
 | [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Manual QA before shipping |
-| [REAL_GOOGLE_TEST_REPORT.md](docs/REAL_GOOGLE_TEST_REPORT.md) | Real Google smoke A–H gate |
+| [MULTI_PROVIDER_ACCEPTANCE.md](docs/MULTI_PROVIDER_ACCEPTANCE.md) | Provider matrix (mock vs live) |
+| [BROWSER_COMPATIBILITY_AUDIT.md](docs/BROWSER_COMPATIBILITY_AUDIT.md) | No stealth dependency |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design |
 | [SECURITY.md](docs/SECURITY.md) | Secrets, IPC, Electron hardening |
@@ -50,7 +67,7 @@ All user data lives under:
 | Path | Contents |
 |------|----------|
 | `data/` | SQLite database + settings (`app_meta`) |
-| `browser-profiles/` | Per-account Chromium profiles |
+| `browser-profiles/` | Per-account Chromium profiles (Google + AI browser accounts) |
 | `backups/` | DB / archive backups |
 | `exports/` | Novel + diagnostics exports |
 | `logs/` | App logs |
@@ -95,4 +112,4 @@ Electron · TypeScript · React · Vite · Electron Forge (Squirrel) · Playwrig
 
 ## License
 
-UNLICENSED — commercial project.
+**UNLICENSED** — no commercial licensing enforcement in the application yet. See [ARCHITECTURE.md](docs/ARCHITECTURE.md#4d-commercial-licensing).

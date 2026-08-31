@@ -174,7 +174,7 @@ Prompt builder assembles:
 
 ```
 ## Instructions
-- Translate Chinese to Vietnamese
+- Translate from {SOURCE_LANGUAGE} to {TARGET_LANGUAGE}
 - Output format: [exact protocol spec]
 - Do not skip paragraph IDs
 - Use locked terms exactly as provided

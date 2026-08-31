@@ -89,7 +89,7 @@ export const useTranslationWorkspaceStore = create<TranslationWorkspaceState>()(
         })),
     }),
     {
-      name: 'noveltrans-translation-workspace',
+      name: 'khepree-novel-ai-translation-workspace',
       version: 3,
       migrate: (persisted, version) => {
         const slice = persisted as {

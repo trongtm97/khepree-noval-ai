@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { isJobActive } from '@shared/utils/job-progress';
-import { EmptyState, ErrorPanel, Skeleton } from '../components/ui';
+import { EmptyState, ErrorPanel, Skeleton, Card, Button } from '../components/ui';
 import { useT } from '../i18n';
 import { useUiShellStore } from '../stores/ui-shell-store';
 import { DashboardHeader } from '../features/dashboard/DashboardHeader';
@@ -102,6 +102,24 @@ export function DashboardPage() {
       ) : null}
 
       {showOnboarding ? <DashboardOnboarding steps={onboardingSteps} /> : null}
+
+      {!readiness.aiReady && activeProjects.length > 0 ? (
+        <div className="dashboard-connect-ai" role="status">
+        <Card className="dashboard-connect-ai-card">
+          <p>{t('dashboard.connectAiTitle')}</p>
+          <p className="muted">{t('dashboard.connectAiHint')}</p>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => {
+              navigate('/accounts');
+            }}
+          >
+            {t('dashboard.connectAiAction')}
+          </Button>
+        </Card>
+        </div>
+      ) : null}
 
       <DashboardSummaryStrip projects={projects} actions={actions} />
 

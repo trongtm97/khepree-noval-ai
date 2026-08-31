@@ -21,7 +21,7 @@ export const aiProviderArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Nhà cung cấp AI' },
       {
         type: 'paragraph',
-        text: 'NovelTrans dịch qua lớp AI Provider Manager. Translation Engine không biết backend là Playwright hay Web API.',
+        text: 'Khepree Novel AI dịch qua lớp AI Provider Manager. Translation Engine không biết backend là Playwright hay Web API.',
       },
       { type: 'heading', level: 2, text: 'Gemini Browser' },
       {

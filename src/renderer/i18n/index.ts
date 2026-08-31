@@ -1,3 +1,4 @@
+import { LOCALE_STORAGE_KEY } from '@shared/constants/app';
 import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -41,7 +42,7 @@ export const useLocaleStore = create<LocaleState>()(
       },
     }),
     {
-      name: 'noveltrans-locale',
+      name: LOCALE_STORAGE_KEY,
       version: 1,
       migrate: (persisted: unknown) => {
         if (!persisted || typeof persisted !== 'object') {

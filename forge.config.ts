@@ -66,11 +66,12 @@ const config: ForgeConfig = {
     },
     // Override Vite plugin ignore so externals exist in packaged app.
     ignore: (file: string) => !shouldPackagePath(file),
-    name: 'NovelTrans Studio',
-    executableName: 'NovelTransStudio',
-    appBundleId: 'com.noveltrans.studio',
-    appCopyright: `Copyright © ${new Date().getFullYear()} NovelTrans Studio`,
-    // User data lives in %APPDATA%/NovelTrans — never under install dir.
+    name: 'Khepree Novel AI',
+    executableName: 'KhepreeNovelAI',
+    appBundleId: 'com.khepree.novelai',
+    appCopyright: `Copyright © ${new Date().getFullYear()} Khepree`,
+    icon: path.join(__dirname, 'resources', 'icon'),
+    // User data lives in %APPDATA%/KhepreeNovelAI — never under install dir.
     // Squirrel upgrades must not wipe AppData (DB, profiles, settings).
     // resources/workers: NovelTransGeminiWorker.exe only (no .venv / secrets / py source).
     extraResource: ['./resources/guides', './resources/workers'],
@@ -85,12 +86,13 @@ const config: ForgeConfig = {
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({
-      name: 'NovelTransStudio',
-      title: 'NovelTrans Studio',
-      authors: 'NovelTrans Studio',
+      name: 'KhepreeNovelAI',
+      title: 'Khepree Novel AI',
+      authors: 'Khepree',
       description:
-        'Chinese to Vietnamese novel translation via browser-automated Gemini',
-      setupExe: 'NovelTransStudioSetup.exe',
+        'AI-assisted multilingual novel translation for Windows',
+      setupExe: 'KhepreeNovelAISetup.exe',
+      setupIcon: path.join(__dirname, 'resources', 'icon.ico'),
       noMsi: true,
       ...(windowsSign?.certificateFile
         ? {

@@ -66,6 +66,8 @@ function mockProvider(
   };
 }
 
+const FALLBACK_OPTS = { googleAccountId: 'ga-1' } as const;
+
 function mockDb(providers: { id: string; fallback_allowed: number }[]) {
   return {
     aiProviders: {
@@ -107,10 +109,19 @@ function mockDb(providers: { id: string; fallback_allowed: number }[]) {
       set: vi.fn(),
     },
     aiAccounts: {
-      listReadyByProvider: () => [{ id: 'ai-ready' }],
+      listReadyByProvider: () => [{ id: 'ai-ready', status: 'READY' as const, google_account_id: 'ga-1', profile_dir_name: 'profile-1' }],
+      listByProvider: () => [],
+      findReadyForGoogleAccount: () => ({ id: 'ai-ready', status: 'READY' as const, google_account_id: 'ga-1' }),
+      pickLeastRecentlyUsedReady: () => ({ id: 'ai-ready', status: 'READY' as const, profile_dir_name: 'profile-1' }),
+    },
+    googleAccounts: {
+      list: () => [{ id: 'ga-1', status: 'READY' as const }],
     },
     notebooks: {
       listByProjectAndWorker: () => [] as { status: string; notebook_role?: string }[],
+    },
+    projects: {
+      getStyleConfig: () => null,
     },
   } as unknown as ConstructorParameters<typeof AiProviderManager>[0];
 }
@@ -145,7 +156,7 @@ describe('AiProviderManager selection + fallback', () => {
     manager.register(web);
     manager.register(browser);
 
-    const result = await manager.sendWithFallback(minimalPack());
+    const result = await manager.sendWithFallback(minimalPack(), FALLBACK_OPTS);
     expect(result.text).toBe('from-web');
     expect(Reflect.get(web, "sendPrompt")).toHaveBeenCalledOnce();
     expect(Reflect.get(browser, "sendPrompt")).not.toHaveBeenCalled();
@@ -177,7 +188,7 @@ describe('AiProviderManager selection + fallback', () => {
     manager.register(web);
     manager.register(browser);
 
-    const result = await manager.sendWithFallback(minimalPack());
+    const result = await manager.sendWithFallback(minimalPack(), FALLBACK_OPTS);
     expect(result.text).toBe('from-browser');
     expect(Reflect.get(web, "sendPrompt")).toHaveBeenCalledOnce();
     expect(Reflect.get(browser, "sendPrompt")).toHaveBeenCalledOnce();
@@ -208,7 +219,7 @@ describe('AiProviderManager selection + fallback', () => {
     manager.register(web);
     manager.register(browser);
 
-    const result = await manager.sendWithFallback(minimalPack());
+    const result = await manager.sendWithFallback(minimalPack(), FALLBACK_OPTS);
     expect(result.status).toBe('RATE_LIMIT');
     expect(Reflect.get(browser, "sendPrompt")).not.toHaveBeenCalled();
   });
@@ -236,13 +247,21 @@ describe('AiProviderManager selection + fallback', () => {
     db.aiAccounts.listReadyByProvider = (providerId: string) =>
       providerId === AI_PROVIDER_IDS.GEMINI_WEB_API
         ? []
-        : ([{ id: 'ai-ready' }] as import('../../../src/main/db/repositories/ai-account-repository').AiAccountRow[]);
+        : ([{ id: 'ai-ready', status: 'READY', profile_dir_name: 'profile-1' }] as import('../../../src/main/db/repositories/ai-account-repository').AiAccountRow[]);
+    db.aiAccounts.findReadyForGoogleAccount = (_providerId: string, _googleAccountId: string) =>
+      _providerId === AI_PROVIDER_IDS.GEMINI_WEB_API
+        ? null
+        : ({
+            id: 'ai-ready',
+            status: 'READY',
+            google_account_id: 'ga-1',
+          } as import('../../../src/main/db/repositories/ai-account-repository').AiAccountRow);
 
     const manager = new AiProviderManager(db);
     manager.register(web);
     manager.register(browser);
 
-    const result = await manager.sendWithFallback(minimalPack());
+    const result = await manager.sendWithFallback(minimalPack(), FALLBACK_OPTS);
     expect(result.text).toBe('from-browser');
     expect(Reflect.get(web, "sendPrompt")).not.toHaveBeenCalled();
     expect(Reflect.get(browser, "sendPrompt")).toHaveBeenCalledOnce();
@@ -273,7 +292,7 @@ describe('AiProviderManager selection + fallback', () => {
     manager.register(web);
     manager.register(browser);
 
-    const result = await manager.sendWithFallback(minimalPack());
+    const result = await manager.sendWithFallback(minimalPack(), FALLBACK_OPTS);
     expect(result.text).toBe('from-browser');
     expect(Reflect.get(browser, "sendPrompt")).toHaveBeenCalledOnce();
   });
@@ -316,7 +335,7 @@ describe('AiProviderManager selection + fallback', () => {
     manager.register(web);
     manager.register(browser);
 
-    const result = await manager.sendWithFallback(minimalPack());
+    const result = await manager.sendWithFallback(minimalPack(), FALLBACK_OPTS);
     expect(result.text).toBe('from-browser');
     expect(Reflect.get(browser, "sendPrompt")).toHaveBeenCalledOnce();
   });
@@ -353,8 +372,8 @@ describe('AiProviderManager selection + fallback', () => {
       googleAccountId: newId(),
     });
     expect(ordered.map((p) => p.providerType)).toEqual([
-      'PLAYWRIGHT_GEMINI',
       'GEMINI_WEB_API',
+      'PLAYWRIGHT_GEMINI',
     ]);
   });
 

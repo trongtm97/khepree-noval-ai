@@ -35,7 +35,7 @@ describe('Setup wizard + updates (release)', () => {
     expect(service.getStatus().completed).toBe(false);
     expect(service.getStatus().explored).toBe(false);
     expect(service.getStatus().step).toBe('welcome');
-    expect(service.getStatus().storageRoot).toContain('NovelTrans');
+    expect(service.getStatus().storageRoot).toContain('KhepreeNovelAI');
 
     service.setStep('googleAccount');
     service.setStep('testGemini');
@@ -78,7 +78,7 @@ describe('Setup wizard + updates (release)', () => {
       expect(fs.existsSync(paths[key])).toBe(true);
     }
     // Must not be under a temp install-like path that upgrades would wipe
-    expect(paths.root.endsWith(`${path.sep}NovelTrans`) || paths.root.includes('NovelTrans')).toBe(
+    expect(paths.root.endsWith(`${path.sep}KhepreeNovelAI`) || paths.root.includes('KhepreeNovelAI')).toBe(
       true,
     );
     void newId;

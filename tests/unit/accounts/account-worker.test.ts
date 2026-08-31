@@ -66,7 +66,7 @@ describe('AccountWorkerService', () => {
   let locks: ProfileLeaseLockManager;
 
   beforeEach(() => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-acct-'));
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'Khepree Novel AI-acct-'));
     pathsService.initializeAt(tempRoot);
     const paths = resolveAppPaths(tempRoot);
     dataDir = paths.data;
@@ -259,7 +259,7 @@ describe('AccountWorkerService', () => {
 
 describe('ProfileLeaseLockManager (account-worker suite)', () => {
   it('prevents double acquire on same userDataDir', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-lock-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'Khepree Novel AI-lock-'));
     const locks = new ProfileLeaseLockManager();
     try {
       locks.acquireLease({
@@ -291,8 +291,8 @@ describe('ProfileLeaseLockManager (account-worker suite)', () => {
   });
 
   it('recovers dead-PID lock file on acquire (simulated crash)', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-orphan-'));
-    const lockPath = path.join(root, '.noveltrans.lock');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'Khepree Novel AI-orphan-'));
+    const lockPath = path.join(root, '.Khepree Novel AI.lock');
     try {
       fs.writeFileSync(
         lockPath,

@@ -8,7 +8,7 @@ describe('FileWriter rotation', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'noveltrans-log-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'khepree-novel-ai-log-'));
   });
 
   afterEach(() => {

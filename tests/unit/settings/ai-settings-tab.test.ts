@@ -16,7 +16,9 @@ describe('AI settings tab (Phase 4)', () => {
     expect(settingsPage).not.toContain('AiProvidersSettingsPanel');
     expect(aiPanel).toContain('autoSetupRun');
     expect(aiPanel).toContain('aiAutoSetup');
-    expect(aiPanel).toContain('PrimaryTranslationProviderPanel');
+    expect(aiPanel).toContain('AiPreferencePanel');
+    expect(aiPanel).not.toContain('ProjectPrimaryProviderPanel');
+    expect(aiPanel).not.toContain('PreferNotebookPackToggle');
     expect(aiPanel).not.toContain('__Secure-1PSID');
     expect(aiPanel).not.toContain('aiPriority');
     expect(aiPanel).not.toContain('aiDiagBrowser');
@@ -37,6 +39,7 @@ describe('AI settings tab (Phase 4)', () => {
     );
 
     expect(advanced).toContain('AiProvidersSettingsPanel');
+    expect(advanced).toContain('PreferNotebookPackToggle');
     expect(advanced).toContain('AiWebApiManualConnectPanel');
     expect(advanced).toContain('AiDiagnosticsSettingsPanel');
     expect(providers).not.toContain('aiAddAccount');

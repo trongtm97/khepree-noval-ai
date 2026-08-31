@@ -9,7 +9,7 @@ import { TRANSLATION_SPREADSHEET_SHEET, TRANSLATION_SPREADSHEET_WARNINGS } from 
 import type { TabularPreviewResponse } from '@shared/schemas/tabular';
 import { getDatabase } from '../db/connection';
 import { tabularSchemaRegistry } from './tabular-schema-registry';
-import { assertNovelTransMeta, parseTabularFile } from './tabular-file-parser';
+import { assertKhepreeTabularMeta, parseTabularFile } from './tabular-file-parser';
 import { findExistingTerm } from './handlers/term-tabular-utils';
 import type { CharacterWorkbookSheet } from '@shared/constants/character-tabular';
 import {
@@ -67,7 +67,7 @@ export class ImportPreviewService {
   }): Promise<TabularPreviewResponse> {
     pruneSessions();
     const parsed = await parseTabularFile(input.filePath);
-    assertNovelTransMeta(parsed.meta);
+    assertKhepreeTabularMeta(parsed.meta);
 
     const dataTypeHint = input.dataTypeHint ?? (parsed.meta?.data_type as TabularDataType | undefined);
     const characterWorkbook =

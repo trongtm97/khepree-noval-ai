@@ -21,6 +21,8 @@ export const AI_ROUTING_META_KEYS = {
   pinnedProviderId: 'ai.routing.pinned_provider_id',
   /** Global default primary translation provider. */
   primaryProviderId: 'ai.routing.primary_provider_id',
+  /** User-facing AI preference (AUTO | GEMINI | CHATGPT | META_AI). */
+  preference: 'ai.routing.preference',
 } as const;
 
 export function isProviderPreflightUsable(result: ProviderPreflightResult): boolean {

@@ -7,6 +7,7 @@ import {
 } from '@shared/constants/translation-ai-providers';
 
 export type StartupAiIssue =
+  | 'no_ai_account'
   | 'no_google_account'
   | 'google_needs_login'
   | 'web_api_not_ready'
@@ -100,38 +101,65 @@ function isPrimaryChannelReady(input: StartupAiReadinessInput): boolean {
   return false;
 }
 
+function geminiPathBlocked(input: StartupAiReadinessInput): boolean {
+  const enabled = enabledTranslationIds(input);
+  const geminiIds = [
+    AI_PROVIDER_IDS.GEMINI_WEB_API,
+    AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+  ];
+  const geminiEnabled = enabled.some((id) => (geminiIds as readonly string[]).includes(id));
+  if (!geminiEnabled) return false;
+
+  const webOk = isWebApiReady(input);
+  const browserGeminiOk = input.providerRows?.some(
+    (row) => row.id === AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI && isReady(row.status),
+  );
+  return !webOk && !browserGeminiOk;
+}
+
 /**
- * Lightweight startup gate: Google session + at least one usable AI channel signal.
- * Uses canonical account availability — not raw account.status.
+ * Startup gate: at least one configured translation AI channel must be usable.
+ * Google account required only when Gemini path is needed and blocked.
  */
 export function evaluateStartupAiReadiness(
   input: StartupAiReadinessInput,
 ): StartupAiReadinessResult {
-  const issues: StartupAiIssue[] = [];
-  const enabledGoogle = input.googleAccounts.filter(
-    (a) => a.availability.availability !== 'PAUSED',
-  );
-
-  if (enabledGoogle.length === 0) {
-    issues.push('no_google_account');
-  } else if (!enabledGoogle.some((a) => a.availability.usableForNewJob)) {
-    if (
-      enabledGoogle.some((a) => a.availability.availability === 'LOGIN_REQUIRED')
-    ) {
-      issues.push('google_needs_login');
-    } else {
-      issues.push('no_google_account');
-    }
+  if (isPrimaryChannelReady(input)) {
+    return { ok: true, issues: [] };
   }
+
+  const issues: StartupAiIssue[] = [];
 
   if (!input.hasEnabledProvider) {
     issues.push('no_ai_provider');
-  } else if (!isPrimaryChannelReady(input)) {
+  } else {
     issues.push('web_api_not_ready');
   }
 
-  if (issues.length === 0) {
-    return { ok: true, issues: [] };
+  if (!input.browserAiReady && !isWebApiReady(input)) {
+    const hasAnyGoogle = input.googleAccounts.some(
+      (a) => a.availability.availability !== 'PAUSED',
+    );
+    if (!hasAnyGoogle && !input.browserAiReady) {
+      issues.push('no_ai_account');
+    }
+  }
+
+  if (geminiPathBlocked(input)) {
+    const enabledGoogle = input.googleAccounts.filter(
+      (a) => a.availability.availability !== 'PAUSED',
+    );
+    if (enabledGoogle.length === 0) {
+      issues.push('no_google_account');
+    } else if (!enabledGoogle.some((a) => a.availability.usableForNewJob)) {
+      if (
+        enabledGoogle.some((a) => a.availability.availability === 'LOGIN_REQUIRED')
+      ) {
+        issues.push('google_needs_login');
+      } else {
+        issues.push('no_google_account');
+      }
+    }
   }
 
   const detail =

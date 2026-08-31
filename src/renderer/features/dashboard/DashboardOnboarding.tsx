@@ -13,7 +13,7 @@ export interface DashboardOnboardingProps {
 }
 
 const STEP_LABEL: Record<OnboardingStep['id'], string> = {
-  ai: 'dashboard.check.aiReady',
+  ai: 'dashboard.check.hasAccount',
   project: 'dashboard.check.hasProject',
   source: 'dashboard.check.hasSource',
   translation: 'dashboard.check.firstTranslation',

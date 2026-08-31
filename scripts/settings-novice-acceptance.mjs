@@ -180,7 +180,7 @@ async function clickCountScenario(page, clicks) {
 
 async function readPersisted(page) {
   return page.evaluate(async () => {
-    const localeRaw = localStorage.getItem('noveltrans-locale');
+    const localeRaw = localStorage.getItem('khepree-novel-ai-locale');
     const locale = localeRaw ? JSON.parse(localeRaw) : null;
     const translation = await window.novelTrans.translationSettings.get();
     const scheduler = await window.novelTrans.jobs.getSchedulerSettings();

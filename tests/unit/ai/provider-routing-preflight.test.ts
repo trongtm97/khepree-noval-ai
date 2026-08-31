@@ -3,6 +3,10 @@ import { AiProviderManager } from '@main/ai/ai-provider-manager';
 import type { IAIProvider } from '@main/ai/iai-provider';
 import type { AIResponse } from '@main/ai/types';
 import type { TranslationPackDto } from '@shared/schemas/translation-pack';
+import {
+  buildExecutionWorkerId,
+  type AiExecutionTarget,
+} from '@main/ai/execution-target';
 import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
 import { newId } from '@main/db/utils/uuid';
 import {
@@ -124,9 +128,19 @@ function mockDb(providers: { id: string; fallback_allowed: number }[]) {
     },
     aiAccounts: {
       listReadyByProvider: () => [{ id: 'ai-ready' }],
+      findReadyForGoogleAccount: () => ({ id: 'ai-ready', status: 'READY' }),
+      getById: (id: string) =>
+        id === 'ai-ready' ? { id: 'ai-ready', status: 'READY' } : null,
+      listByProvider: () => [{ id: 'ai-ready', status: 'READY' }],
+    },
+    googleAccounts: {
+      list: () => [{ id: 'ga-1', status: 'READY' as const }],
     },
     notebooks: {
       listByProjectAndWorker: () => [] as { status: string; notebook_role?: string }[],
+    },
+    projects: {
+      getStyleConfig: () => null,
     },
   } as unknown as ConstructorParameters<typeof AiProviderManager>[0];
 }
@@ -220,7 +234,20 @@ describe('AiProviderManager account-aware routing', () => {
     const accountId = newId();
     const result = await manager.sendWithFallback(minimalPack(), {
       projectId,
-      googleAccountId: accountId,
+      executionTarget: {
+        workerId: buildExecutionWorkerId(AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, accountId),
+        providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+        providerType: 'PLAYWRIGHT_GEMINI',
+        accountKind: 'GOOGLE_ACCOUNT',
+        accountId,
+        concurrencyKey: accountId,
+        status: 'READY',
+        capabilities: {
+          browserProfile: true,
+          notebookRequired: false,
+          webApiWorker: false,
+        },
+      },
     });
 
     expect(result.text).toBe('from-web');
@@ -269,9 +296,23 @@ describe('AiProviderManager account-aware routing', () => {
     manager.register(web);
     manager.register(browser);
 
+    const accountId = newId();
     const result = await manager.sendWithFallback(minimalPack(), {
       projectId: newId(),
-      googleAccountId: newId(),
+      executionTarget: {
+        workerId: buildExecutionWorkerId(AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, accountId),
+        providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+        providerType: 'PLAYWRIGHT_GEMINI',
+        accountKind: 'GOOGLE_ACCOUNT',
+        accountId,
+        concurrencyKey: accountId,
+        status: 'READY',
+        capabilities: {
+          browserProfile: true,
+          notebookRequired: false,
+          webApiWorker: false,
+        },
+      },
       pinnedProviderId: AI_PROVIDER_IDS.GEMINI_WEB_API,
     });
 
@@ -314,9 +355,25 @@ describe('AiProviderManager account-aware routing', () => {
     manager.register(browser);
     manager.register(web);
 
+    const googleAccountId = newId();
+    const executionTarget: AiExecutionTarget = {
+      workerId: buildExecutionWorkerId(AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, googleAccountId),
+      providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+      providerType: 'PLAYWRIGHT_GEMINI',
+      accountKind: 'GOOGLE_ACCOUNT',
+      accountId: googleAccountId,
+      concurrencyKey: googleAccountId,
+      status: 'READY',
+      capabilities: {
+        browserProfile: true,
+        notebookRequired: false,
+        webApiWorker: false,
+      },
+    };
+
     const { providers } = await manager.selectProvidersForJob({
       projectId: newId(),
-      googleAccountId: newId(),
+      executionTarget,
     });
     expect(providers.map((p) => p.providerType)).toEqual(['GEMINI_WEB_API']);
   });

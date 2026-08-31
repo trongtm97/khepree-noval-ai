@@ -16,6 +16,7 @@ import {
   priorityBand,
   type PriorityBand,
 } from './jobs-utils';
+import { formatAttemptProviderChain, jobProviderLabel } from './job-provider-ui';
 
 export interface JobDetailDrawerProps {
   open: boolean;
@@ -58,6 +59,8 @@ export function JobDetailDrawer({
   const measure = measureJobProgress(job);
   const accountId = job.progress?.accountId ?? job.pinnedAccountId;
   const account = accountId ? accountById.get(accountId) : undefined;
+  const provider = jobProviderLabel(job);
+  const attemptChain = formatAttemptProviderChain(attempts, t);
   const errInfo = job.error ? friendlyError(job.error) : null;
   const partial = jobSupportsPartialResume(job);
   const started = job.startedAt
@@ -112,6 +115,38 @@ export function JobDetailDrawer({
               <dt>{t('jobs.errorAction')}</dt>
               <dd>
                 <p className="jobs-card-message">{friendlyJobSummary(job, t)}</p>
+              </dd>
+            </div>
+          ) : null}
+          {provider ? (
+            <div>
+              <dt>{t('jobs.aiAccount')}</dt>
+              <dd>
+                {account
+                  ? t('jobs.aiLine', {
+                      provider,
+                      account: accountDisplayName(
+                        account,
+                        accountOrder.get(account.id) ?? 0,
+                        t('jobs.accountFallback'),
+                      ),
+                    })
+                  : t('jobs.aiProviderOnly', { provider })}
+              </dd>
+            </div>
+          ) : null}
+          {attemptChain.length > 0 ? (
+            <div>
+              <dt>{t('jobs.attemptChainTitle')}</dt>
+              <dd>
+                <ul className="jobs-attempt-chain">
+                  {attemptChain.map((row, index) => (
+                    <li key={`${row.provider}-${index}`}>
+                      {index > 0 ? <span aria-hidden>↓ </span> : null}
+                      {row.provider} · {row.state}
+                    </li>
+                  ))}
+                </ul>
               </dd>
             </div>
           ) : null}

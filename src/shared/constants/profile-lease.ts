@@ -1,6 +1,6 @@
 /** Process-aware browser profile lease lock. */
 
-export const PROFILE_LEASE_FILENAME = '.noveltrans.lock';
+export const PROFILE_LEASE_FILENAME = '.khepree-novel-ai.lock';
 
 /** Lease time-to-live; must be renewed via heartbeat while work runs. */
 export const PROFILE_LEASE_TTL_MS = 60_000;

@@ -5,6 +5,7 @@ import { measureJobProgress } from '@shared/utils/job-progress';
 import { Button, Card, ProgressBar, SectionHeader } from '../../components/ui';
 import { useT } from '../../i18n';
 import { useUiShellStore } from '../../stores/ui-shell-store';
+import { jobProviderLabel } from '../../features/jobs/job-provider-ui';
 
 export interface RunningJobsSectionProps {
   jobs: JobDto[];
@@ -44,6 +45,7 @@ export function RunningJobsSection({ jobs, projects, totalRunning }: RunningJobs
                 : '—';
           const paragraphPart = measure.labelParts.find((p) => p.includes('/'));
           const progressLabel = paragraphPart ?? t('dashboard.translatingProgress');
+          const provider = jobProviderLabel(job);
 
           return (
             <li key={job.id}>
@@ -56,6 +58,11 @@ export function RunningJobsSection({ jobs, projects, totalRunning }: RunningJobs
                 </div>
                 {paragraphPart ? (
                   <p className="dashboard-job-card__detail">{paragraphPart}</p>
+                ) : null}
+                {provider ? (
+                  <p className="muted dashboard-job-card__detail">
+                    {t('dashboard.runningJobProvider', { provider })}
+                  </p>
                 ) : null}
                 <ProgressBar
                   value={measure.percent}

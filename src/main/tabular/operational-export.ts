@@ -1,3 +1,4 @@
+import { APP_NAME } from '@shared/constants/app';
 import ExcelJS from 'exceljs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,7 +25,7 @@ export async function writeOperationalWorkbookXlsx(input: {
   data: OperationalWorkbookData;
 }): Promise<void> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'NovelTrans Studio';
+  workbook.creator = APP_NAME;
   workbook.created = new Date();
 
   const metaSheet = workbook.addWorksheet(TABULAR_META_SHEET);

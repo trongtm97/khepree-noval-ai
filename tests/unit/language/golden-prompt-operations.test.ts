@@ -49,7 +49,7 @@ function termViolationBatch(): typeof genericBatch {
 const parser = new ResponseParser();
 
 describe('Golden prompt operations — all prompt types preserve pair', () => {
-  for (const [source, target, label] of REPRESENTATIVE_PAIRS) {
+  for (const [source, target, _label] of REPRESENTATIVE_PAIRS) {
     const pairTag = `${source}-${target}`;
 
     it(`TRANSLATE ${pairTag}`, () => {

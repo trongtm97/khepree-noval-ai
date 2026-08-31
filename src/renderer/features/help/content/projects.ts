@@ -13,7 +13,7 @@ export const projectArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Tạo dự án mới' },
       {
         type: 'paragraph',
-        text: 'Trên trang Dự án, nhấn Tạo dự án, chọn thư mục chứa các file TXT (mỗi chương một file), quét và xác nhận nhập. Nếu có _BOOK_INFO.txt hoặc file metadata khác, NovelTrans hiển thị preview thông tin truyện trước khi nhập.',
+        text: 'Trên trang Dự án, nhấn Tạo dự án, chọn thư mục chứa các file TXT (mỗi chương một file), quét và xác nhận nhập. Nếu có _BOOK_INFO.txt hoặc file metadata khác, Khepree Novel AI hiển thị preview thông tin truyện trước khi nhập.',
       },
       { type: 'heading', level: 2, text: 'Wizard tạo dự án (thư mục)' },
       {
@@ -62,7 +62,7 @@ export const projectArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Nhập truyện' },
       {
         type: 'paragraph',
-        text: 'NovelTrans khuyến nghị mỗi chương là một file TXT trong cùng thư mục (ví dụ 000001.txt …). Có thể thêm _BOOK_INFO.txt, _SUMMARY.txt, 序章.txt — phần mềm tự phân loại metadata, tài liệu phụ và chương mở đầu. Trên trang Dự án: Tạo dự án → chọn thư mục → Quét → xem preview → Nhập.',
+        text: 'Khepree Novel AI khuyến nghị mỗi chương là một file TXT trong cùng thư mục (ví dụ 000001.txt …). Có thể thêm _BOOK_INFO.txt, _SUMMARY.txt, 序章.txt — phần mềm tự phân loại metadata, tài liệu phụ và chương mở đầu. Trên trang Dự án: Tạo dự án → chọn thư mục → Quét → xem preview → Nhập.',
       },
       {
         type: 'steps',
@@ -98,7 +98,7 @@ export const projectArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Kiểm tra và chia chương' },
       {
         type: 'paragraph',
-        text: 'NovelTrans cố nhận dạng tiêu đề chương kiểu 第一章, 第100章, 第一卷, v.v. Mức tin cậy hiển thị trong bước xem trước.',
+        text: 'Khepree Novel AI cố nhận dạng tiêu đề chương kiểu 第一章, 第100章, 第一卷, v.v. Mức tin cậy hiển thị trong bước xem trước.',
       },
       {
         type: 'paragraph',
@@ -124,7 +124,7 @@ export const projectArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Khi truyện có chương mới' },
       {
         type: 'paragraph',
-        text: 'Không cần tạo dự án mới. Chỉ cần đặt file chương mới (ví dụ 000501.txt) vào thư mục nguồn của truyện. NovelTrans phát hiện khi đang chạy hoặc khi mở lại (tùy cài đặt).',
+        text: 'Không cần tạo dự án mới. Chỉ cần đặt file chương mới (ví dụ 000501.txt) vào thư mục nguồn của truyện. Khepree Novel AI phát hiện khi đang chạy hoặc khi mở lại (tùy cài đặt).',
       },
       {
         type: 'list',
@@ -149,7 +149,7 @@ export const projectArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Nếu bạn sửa file chương cũ' },
       {
         type: 'paragraph',
-        text: 'NovelTrans phát hiện file đã thay đổi. Bản dịch cũ không bị xóa tự động. Bạn có thể giữ bản dịch, xem thay đổi, hoặc đánh dấu dịch lại.',
+        text: 'Khepree Novel AI phát hiện file đã thay đổi. Bản dịch cũ không bị xóa tự động. Bạn có thể giữ bản dịch, xem thay đổi, hoặc đánh dấu dịch lại.',
       },
     ],
   },
@@ -165,7 +165,7 @@ export const projectArticles: HelpArticle[] = [
       { type: 'heading', level: 1, text: 'Nếu file chương bị xóa' },
       {
         type: 'paragraph',
-        text: 'NovelTrans không tự xóa bản dịch. Chương được đánh dấu "Không tìm thấy file nguồn." Đặt file lại vào folder để khôi phục.',
+        text: 'Khepree Novel AI không tự xóa bản dịch. Chương được đánh dấu "Không tìm thấy file nguồn." Đặt file lại vào folder để khôi phục.',
       },
     ],
   },

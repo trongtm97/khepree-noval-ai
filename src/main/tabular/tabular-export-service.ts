@@ -11,6 +11,7 @@ import {
 } from '@shared/constants/tabular';
 import type { TermTabularExportScope } from '@shared/constants/term-tabular';
 import type { TabularExportResponse, TabularMeta } from '@shared/schemas/tabular';
+import { APP_NAME } from '@shared/constants/app';
 import { getDatabase } from '../db/connection';
 import { tabularSchemaRegistry } from './tabular-schema-registry';
 import { buildMetaSheetRows, cellToString } from './tabular-file-parser';
@@ -60,7 +61,7 @@ export class TabularExportService {
     }
 
     const meta: TabularMeta = {
-      noveltrans_format: NTS_TABULAR_FORMAT,
+      khepree_format: NTS_TABULAR_FORMAT,
       schema_version: TABULAR_SCHEMA_VERSION,
       exported_at: new Date().toISOString(),
       data_type: input.dataType,
@@ -193,7 +194,7 @@ export class TabularExportService {
     meta: TabularMeta,
   ): Promise<void> {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'NovelTrans Studio';
+    workbook.creator = APP_NAME;
     workbook.created = new Date();
 
     const metaSheet = workbook.addWorksheet(TABULAR_META_SHEET);

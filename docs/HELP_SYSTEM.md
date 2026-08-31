@@ -12,7 +12,7 @@ src/renderer/features/help/
   content/
     index.ts             # Registry, search, route/error maps
     intro.ts             # Intro + quick start
-    accounts.ts          # Google accounts, browser profiles
+    accounts.ts          # AI accounts (Google, ChatGPT, Meta), browser profiles
     projects.ts          # Projects + import
     book-metadata.ts     # Metadata, _BOOK_INFO, prologue
     translation.ts       # Translation, notebook, editor, QA
@@ -62,8 +62,8 @@ Client-only scoring on title, keywords, description, block text. No AI / network
 
 `useHelpChecklist()` reads real state via IPC:
 
-- accounts.list → Google added / READY
-- Google account READY status (browser profile usable)
+- accounts.list → at least one AI account (Google and/or ChatGPT/Meta) added / READY
+- AI account READY status (browser profile usable for chosen provider)
 - projects.list → project exists
 - setup.getStatus().notebookReadyCount
 - jobs.list → any COMPLETED job

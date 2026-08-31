@@ -1,4 +1,10 @@
-export const APP_NAME = 'NovelTrans Studio' as const;
-export const APP_ID = 'com.noveltrans.studio' as const;
-export const DB_FILENAME = 'noveltrans.db' as const;
+export const APP_NAME = 'Khepree Novel AI' as const;
+export const APP_NAME_LINE1 = 'Khepree' as const;
+export const APP_NAME_LINE2 = 'NovelAI' as const;
+export const APP_ID = 'com.khepree.novelai' as const;
+export const EXECUTABLE_NAME = 'KhepreeNovelAI' as const;
+export const APP_DATA_DIR_NAME = 'KhepreeNovelAI' as const;
+export const DB_FILENAME = 'khepree-novel-ai.db' as const;
+export const LOG_FILENAME = 'khepree-novel-ai.log' as const;
+export const LOCALE_STORAGE_KEY = 'khepree-novel-ai-locale' as const;
 export const BROWSER_PROFILES_DIR = 'browser-profiles' as const;

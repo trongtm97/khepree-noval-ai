@@ -22,7 +22,7 @@ const STEP_TO_ITEM: Record<
   { labelKey: string; actionKey: string; route: (projectId: string | null) => string }
 > = {
   ai: {
-    labelKey: 'dashboard.check.aiReady',
+    labelKey: 'dashboard.check.hasAccount',
     actionKey: 'dashboard.check.actionAccount',
     route: () => '/accounts',
   },
@@ -63,10 +63,11 @@ export function useOnboardingChecklist(): {
     setLoading(true);
     setError(null);
     try {
-      const [accountsRes, projectsRes, jobsRes] = await Promise.all([
+      const [accountsRes, projectsRes, jobsRes, aiStatusRes] = await Promise.all([
         window.novelTrans.accounts.list(),
         window.novelTrans.projects.list(),
         window.novelTrans.jobs.list(undefined),
+        window.novelTrans.aiProviders.autoSetupStatus(),
       ]);
 
       const projects = projectsRes.projects;
@@ -76,9 +77,10 @@ export function useOnboardingChecklist(): {
       const priorityProject = projects.find((p) => p.status !== 'archived') ?? null;
       const steps = resolveOnboardingSteps({
         projects,
-        accounts: accountsRes.accounts,
+        accounts: accountsRes.accounts.map((a) => ({ availability: a.availability })),
         hasCompletedJob,
         priorityProject,
+        anyAiChannelReady: aiStatusRes.ready,
       });
 
       setItems(

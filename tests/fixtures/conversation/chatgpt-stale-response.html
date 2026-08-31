@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ChatGPT harness — stale response</title>
+</head>
+<body>
+  <textarea id="prompt-textarea" data-testid="prompt-textarea" rows="4"></textarea>
+  <button type="button" data-testid="send-button" disabled>Send</button>
+  <div id="thread">
+    <div data-message-author-role="assistant" class="markdown">OLD STALE ASSISTANT TEXT MUST NOT RETURN</div>
+  </div>
+  <script>
+    // Send disabled — simulates failed send with pre-existing assistant bubble.
+  </script>
+</body>
+</html>

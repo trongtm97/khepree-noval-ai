@@ -1,5 +1,9 @@
 import type { JobAttemptDto } from '@shared/schemas/job';
-import { isGeminiSoftErrorText, geminiSoftErrorSnippet } from '@shared/utils/gemini-soft-error';
+import {
+  classifyAiResponseText,
+  geminiSoftErrorSnippet,
+  isAiSoftErrorText,
+} from '@shared/utils/provider-response-classifier';
 import { formatTranslateChannel } from '@shared/utils/translate-channel';
 import { t } from '../i18n';
 import { friendlyError } from '../i18n/errors';
@@ -34,10 +38,13 @@ export function formatJobAttemptDetail(attempt: JobAttemptDto): string {
   const result = parseResult(attempt.result);
   const output = attempt.output?.trim() ?? '';
 
+  const providerType = result?.providerType ?? attempt.providerType ?? null;
+
   if (result?.phase === 'repair_send') {
-    if (isGeminiSoftErrorText(output)) {
+    if (isAiSoftErrorText(output, providerType)) {
+      const classified = classifyAiResponseText(output, providerType);
       return t('logs.attemptRepairSendSoftError', {
-        snippet: geminiSoftErrorSnippet(output),
+        snippet: classified?.snippet ?? output.slice(0, 120),
       });
     }
     return t('logs.attemptRepairSendOk', { mode: result.mode ?? 'repair' });
@@ -51,9 +58,10 @@ export function formatJobAttemptDetail(attempt: JobAttemptDto): string {
 
   if (result?.phase === 'provider_error') {
     const detail = result.message ?? attempt.error ?? output;
-    if (isGeminiSoftErrorText(detail)) {
+    if (isAiSoftErrorText(detail, providerType)) {
+      const classified = classifyAiResponseText(detail, providerType);
       return t('logs.attemptProviderError', {
-        snippet: geminiSoftErrorSnippet(detail),
+        snippet: classified?.snippet ?? detail.slice(0, 120),
       });
     }
     if (detail) {
@@ -65,18 +73,20 @@ export function formatJobAttemptDetail(attempt: JobAttemptDto): string {
     return t('logs.attemptProviderError', { snippet: '' });
   }
 
-  if (isGeminiSoftErrorText(output)) {
+  if (isAiSoftErrorText(output, providerType)) {
+    const classified = classifyAiResponseText(output, providerType);
     return t('logs.attemptProviderError', {
-      snippet: geminiSoftErrorSnippet(output),
+      snippet: classified?.snippet ?? output.slice(0, 120),
     });
   }
 
   if (result?.parseStatus === 'needs_repair' || result?.verdict === 'REPAIR_REQUIRED') {
     const missing = result.missing?.length ?? 0;
     const empty = result.empty?.length ?? 0;
-    if (isGeminiSoftErrorText(output)) {
+    if (isAiSoftErrorText(output, providerType)) {
+      const classified = classifyAiResponseText(output, providerType);
       return t('logs.attemptParseSoftError', {
-        snippet: geminiSoftErrorSnippet(output),
+        snippet: classified?.snippet ?? output.slice(0, 120),
         missing: String(missing),
       });
     }

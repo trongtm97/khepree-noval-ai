@@ -47,7 +47,7 @@ describe('ProjectWorkerResolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountB,
-      notebook_name: '[NovelTrans] Worker Novel',
+      notebook_name: '[Khepree] Worker Novel',
       notebook_role: 'TRANSLATION',
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/b',
@@ -69,7 +69,7 @@ describe('ProjectWorkerResolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountB,
-      notebook_name: '[NovelTrans] Worker Novel',
+      notebook_name: '[Khepree] Worker Novel',
       notebook_role: 'TRANSLATION',
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/b',
@@ -114,7 +114,7 @@ describe('ProjectWorkerResolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountA,
-      notebook_name: '[NovelTrans] A',
+      notebook_name: '[Khepree] A',
       notebook_role: 'TRANSLATION',
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/a',
@@ -122,7 +122,7 @@ describe('ProjectWorkerResolver', () => {
     db.notebooks.upsert({
       project_id: projectId,
       google_account_id: accountB,
-      notebook_name: '[NovelTrans] B',
+      notebook_name: '[Khepree] B',
       notebook_role: 'TRANSLATION',
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/b',

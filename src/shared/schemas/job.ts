@@ -104,6 +104,7 @@ export const JobDtoSchema = z.object({
             at: z.string(),
             event: z.string(),
             message: z.string().optional(),
+            detail: z.string().optional(),
           }),
         )
         .optional(),
