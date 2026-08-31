@@ -3,10 +3,15 @@ import {
   KHEPREE_DEFAULT_HEARTBEAT_MS,
   KHEPREE_FEATURES,
   KHEPREE_OAUTH_REDIRECT_URI,
-  type KhepreeGatePhase,
+  type KhepreeAccessStatus,
   type KhepreeHeartbeatStatus,
   type KhepreeLoginPhase,
 } from '@shared/constants/khepree';
+import {
+  canUseKhepreeWorkspace,
+  isKhepreeActive,
+  resolveStatusFromEntitlement,
+} from './access-state-machine';
 import type {
   KhepreeAccessState,
   KhepreeSignedLease,
@@ -41,6 +46,7 @@ import {
   KhepreeAccessError,
   KhepreeCredentialCorruptError,
   KhepreeDeviceLimitError,
+  KhepreeLeaseInvalidError,
   KhepreeNetworkError,
   KhepreeProductAccessDeniedError,
   KhepreeSafeStorageRequiredError,
@@ -65,13 +71,11 @@ export class KhepreeAccessService {
   private features: Record<string, boolean> = {};
   private devicesUsed: number | null = null;
   private devicesMax: number | null = null;
-  private gate: KhepreeGatePhase = 'login';
+  private status: KhepreeAccessStatus = 'BOOTING';
   private heartbeatStatus: KhepreeHeartbeatStatus | null = null;
   private lastError: { code: string; message: string } | null = null;
   private loginInProgress = false;
   private loginPhase: KhepreeLoginPhase | null = 'idle';
-  private coldStartComplete = false;
-  private protectedActionsBlocked = false;
   private hasRefreshCredential = false;
 
   constructor(
@@ -106,7 +110,7 @@ export class KhepreeAccessService {
     }
 
     return {
-      gate: this.gate,
+      status: this.status,
       loginPhase: this.loginPhase,
       signedIn: this.user != null && this.hasRefreshCredential,
       user: this.user,
@@ -127,18 +131,13 @@ export class KhepreeAccessService {
   }
 
   private canUseWorkspace(): boolean {
-    return (
-      this.gate === 'workspace' &&
-      this.coldStartComplete &&
-      !this.protectedActionsBlocked &&
-      isLeaseCurrentlyValid(this.currentLease)
-    );
+    return canUseKhepreeWorkspace(this.status, isLeaseCurrentlyValid(this.currentLease));
   }
 
   private canStartTranslation(): boolean {
     return (
       this.canUseWorkspace() &&
-      this.features[KHEPREE_FEATURES.translation] &&
+      this.features[KHEPREE_FEATURES.translation] === true &&
       this.entitlement === 'active'
     );
   }
@@ -148,16 +147,19 @@ export class KhepreeAccessService {
   }
 
   async initializeOnColdStart(): Promise<KhepreeAccessState> {
+    this.status = 'BOOTING';
+    this.emit();
+
     const hasRefresh = this.sessionStore.hasRefreshToken();
     this.hasRefreshCredential = hasRefresh;
     if (!hasRefresh) {
-      this.gate = 'login';
+      this.status = 'AUTH_REQUIRED';
       this.loginPhase = 'idle';
       this.emit();
       return this.getPublicState();
     }
 
-    this.gate = 'validating';
+    this.status = 'VALIDATING_SESSION';
     this.loginPhase = null;
     this.emit();
 
@@ -173,7 +175,8 @@ export class KhepreeAccessService {
   private async performColdStartValidation(): Promise<void> {
     const refreshToken = await this.sessionStore.loadRefreshToken();
     if (!refreshToken) {
-      this.gate = 'login';
+      this.status = 'AUTH_REQUIRED';
+      this.loginPhase = 'idle';
       return;
     }
 
@@ -198,7 +201,8 @@ export class KhepreeAccessService {
         if (isInvalidRefreshError(error)) {
           await this.sessionStore.clearRefreshToken();
           this.hasRefreshCredential = false;
-          this.gate = 'login';
+          this.currentLease = null;
+          this.status = 'AUTH_REQUIRED';
           this.loginPhase = 'idle';
           return;
         }
@@ -206,10 +210,19 @@ export class KhepreeAccessService {
       }
     }
 
-    const deviceId = identity.deviceId;
-    if (!deviceId || !accessToken) {
-      this.gate = 'login';
+    if (!accessToken) {
+      this.status = 'AUTH_REQUIRED';
+      this.loginPhase = 'idle';
       return;
+    }
+
+    let deviceId = identity.deviceId;
+    if (!deviceId) {
+      this.status = 'DEVICE_ACTIVATING';
+      this.emit();
+      const activation = await this.activateCurrentDevice(accessToken, identity);
+      this.deviceIdentity.setDeviceId(activation.deviceId);
+      deviceId = activation.deviceId;
     }
 
     const result = await this.api.coldStartValidate({
@@ -218,10 +231,31 @@ export class KhepreeAccessService {
       deviceId,
     });
 
-    this.applyColdStartResult(result, identity);
-    this.gate = 'workspace';
-    this.coldStartComplete = true;
-    this.lastError = null;
+    this.applyColdStartResult(result, { ...identity, deviceId });
+    this.finalizeAfterColdStartValidation();
+  }
+
+  private async activateCurrentDevice(
+    accessToken: string,
+    identity: { installationId: string },
+  ): Promise<{ deviceId: string; devicesUsed: number; devicesMax: number }> {
+    try {
+      return await this.api.activateDevice({
+        accessToken,
+        installationId: identity.installationId,
+        devicePublicKey: (await this.deviceIdentity.getIdentity()).publicKeySpki,
+        deviceName: this.deviceIdentity.getDeviceName(),
+      });
+    } catch (error) {
+      if (error instanceof KhepreeDeviceLimitError) {
+        this.devicesUsed = error.devicesUsed;
+        this.devicesMax = error.devicesMax;
+        this.status = 'DEVICE_LIMIT_REACHED';
+        this.lastError = { code: error.code, message: error.message };
+        throw error;
+      }
+      throw error;
+    }
   }
 
   private applyColdStartResult(
@@ -254,7 +288,25 @@ export class KhepreeAccessService {
     this.currentLease = result.lease;
     this.devicesUsed = result.devicesUsed;
     this.devicesMax = result.devicesMax;
-    this.protectedActionsBlocked = false;
+  }
+
+  private finalizeAfterColdStartValidation(): void {
+    if (this.entitlement !== 'active') {
+      this.currentLease = null;
+      this.status = resolveStatusFromEntitlement(this.entitlement);
+      return;
+    }
+    if (!isLeaseCurrentlyValid(this.currentLease)) {
+      this.currentLease = null;
+      this.status = 'ERROR';
+      this.lastError = {
+        code: 'LEASE_INVALID',
+        message: 'License lease is invalid or expired.',
+      };
+      return;
+    }
+    this.status = 'ACTIVE';
+    this.lastError = null;
   }
 
   private handleColdStartFailure(error: unknown): void {
@@ -262,35 +314,73 @@ export class KhepreeAccessService {
       error instanceof KhepreeCredentialCorruptError ||
       error instanceof KhepreeSafeStorageRequiredError
     ) {
-      this.gate = 'login';
+      this.currentLease = null;
+      this.status = 'AUTH_REQUIRED';
+      this.loginPhase = 'idle';
       this.lastError = { code: error.code, message: error.message };
-      this.coldStartComplete = false;
       return;
     }
     if (error instanceof KhepreeNetworkError) {
-      this.gate = 'offline';
+      this.currentLease = null;
+      this.status = 'OFFLINE_COLD_START';
       this.lastError = { code: error.code, message: error.message };
-      this.coldStartComplete = false;
       return;
     }
     if (error instanceof KhepreeDeviceLimitError) {
-      this.gate = 'device_limit';
+      this.currentLease = null;
+      this.status = 'DEVICE_LIMIT_REACHED';
       this.devicesUsed = error.devicesUsed;
       this.devicesMax = error.devicesMax;
       this.lastError = { code: error.code, message: error.message };
       return;
     }
+    if (error instanceof KhepreeLeaseInvalidError) {
+      this.currentLease = null;
+      this.status = 'ERROR';
+      this.lastError = { code: error.code, message: error.message };
+      return;
+    }
+    if (error instanceof KhepreeAccessError) {
+      if (error.code === 'ENTITLEMENT_NONE' || error.code === 'ENTITLEMENT_MISSING') {
+        this.currentLease = null;
+        this.entitlement = 'none';
+        this.status = 'ENTITLEMENT_MISSING';
+        this.lastError = { code: error.code, message: error.message };
+        return;
+      }
+      if (error.code === 'ENTITLEMENT_EXPIRED') {
+        this.currentLease = null;
+        this.entitlement = 'expired';
+        this.status = 'ENTITLEMENT_EXPIRED';
+        this.lastError = { code: error.code, message: error.message };
+        return;
+      }
+      if (error.code === 'ENTITLEMENT_SUSPENDED') {
+        this.currentLease = null;
+        this.entitlement = 'suspended';
+        this.status = 'ENTITLEMENT_SUSPENDED';
+        this.lastError = { code: error.code, message: error.message };
+        return;
+      }
+      if (error.code === 'DEVICE_BLOCKED') {
+        this.currentLease = null;
+        this.status = 'DEVICE_BLOCKED';
+        this.lastError = { code: error.code, message: error.message };
+        return;
+      }
+      if (error.code === 'DEVICE_REMOVED') {
+        this.currentLease = null;
+        this.status = 'DEVICE_REMOVED';
+        this.lastError = { code: error.code, message: error.message };
+        return;
+      }
+    }
     logger.warn('Khepree cold start failed', {
       code: error instanceof KhepreeAccessError ? error.code : 'UNKNOWN',
       message: error instanceof Error ? error.message : String(error),
     });
-    if (error instanceof KhepreeAccessError && error.code === 'ENTITLEMENT_NONE') {
-      this.gate = 'entitlement';
-      this.entitlement = 'none';
-      this.lastError = { code: error.code, message: error.message };
-      return;
-    }
-    this.gate = 'login';
+    this.currentLease = null;
+    this.status = 'ERROR';
     this.lastError = {
       code: error instanceof KhepreeAccessError ? error.code : 'COLD_START_FAILED',
       message: error instanceof Error ? error.message : 'Cold start validation failed',
@@ -304,7 +394,7 @@ export class KhepreeAccessService {
     this.loginInProgress = true;
     this.lastError = null;
     this.loginPhase = 'opening_browser';
-    this.gate = 'login';
+    this.status = 'AUTHENTICATING';
     this.emit();
 
     let oauthState: string | null = null;
@@ -365,6 +455,9 @@ export class KhepreeAccessService {
       this.sessionStore.setAccessToken(tokens.accessToken, tokens.expiresIn, tokens.user.id);
       this.user = tokens.user;
 
+      this.status = 'DEVICE_ACTIVATING';
+      this.emit();
+
       try {
         const activation = await this.api.activateDevice({
           accessToken: tokens.accessToken,
@@ -377,7 +470,8 @@ export class KhepreeAccessService {
         this.devicesMax = activation.devicesMax;
       } catch (error) {
         if (error instanceof KhepreeDeviceLimitError) {
-          this.gate = 'device_limit';
+          this.currentLease = null;
+          this.status = 'DEVICE_LIMIT_REACHED';
           this.devicesUsed = error.devicesUsed;
           this.devicesMax = error.devicesMax;
           this.lastError = { code: error.code, message: error.message };
@@ -390,19 +484,13 @@ export class KhepreeAccessService {
 
       await this.performColdStartValidation();
       this.loginPhase = 'success';
-      if (this.entitlement === 'none' || this.entitlement === 'expired') {
-        this.gate = 'entitlement';
-      } else {
-        this.gate = 'workspace';
-        this.coldStartComplete = true;
-      }
     } catch (error) {
       this.oauthTransaction.clearTransaction();
       this.applyLoginFailure(error);
     } finally {
       this.loginInProgress = false;
-      if (this.loginPhase !== 'success') {
-        this.loginPhase = this.gate === 'login' ? 'idle' : this.loginPhase;
+      if (this.loginPhase !== 'success' && this.status !== 'DEVICE_LIMIT_REACHED') {
+        this.loginPhase = 'idle';
       }
       this.emit();
     }
@@ -419,33 +507,34 @@ export class KhepreeAccessService {
 
   private applyLoginFailure(error: unknown): void {
     if (error instanceof KhepreeNetworkError) {
+      this.currentLease = null;
       this.lastError = { code: error.code, message: error.message };
-      this.gate = 'offline';
+      this.status = 'AUTH_REQUIRED';
       return;
     }
     if (error instanceof KhepreeAccessError && error.code === 'OAUTH_CANCELLED') {
       this.lastError = { code: error.code, message: error.message };
-      this.gate = 'login';
+      this.status = 'AUTH_REQUIRED';
       return;
     }
     if (error instanceof KhepreeAccessError && error.code === 'OAUTH_EXPIRED') {
       this.lastError = { code: error.code, message: error.message };
-      this.gate = 'login';
+      this.status = 'AUTH_REQUIRED';
       return;
     }
     this.lastError = {
       code: error instanceof KhepreeAccessError ? error.code : 'LOGIN_FAILED',
       message: error instanceof Error ? error.message : 'Login failed',
     };
-    this.gate = 'login';
+    this.status = 'AUTH_REQUIRED';
   }
 
   async retryColdStart(): Promise<KhepreeAccessState> {
     this.lastError = null;
+    this.status = 'VALIDATING_SESSION';
+    this.emit();
     try {
       await this.performColdStartValidation();
-      this.gate = 'workspace';
-      this.coldStartComplete = true;
     } catch (error) {
       this.handleColdStartFailure(error);
     }
@@ -456,11 +545,13 @@ export class KhepreeAccessService {
   async retryActivation(): Promise<KhepreeAccessState> {
     const accessToken = await this.ensureAccessToken();
     if (!accessToken) {
-      this.gate = 'login';
+      this.status = 'AUTH_REQUIRED';
       this.emit();
       return this.getPublicState();
     }
     const identity = await this.deviceIdentity.getIdentity();
+    this.status = 'DEVICE_ACTIVATING';
+    this.emit();
     try {
       const activation = await this.api.activateDevice({
         accessToken,
@@ -472,14 +563,15 @@ export class KhepreeAccessService {
       this.devicesUsed = activation.devicesUsed;
       this.devicesMax = activation.devicesMax;
       await this.performColdStartValidation();
-      this.gate = 'workspace';
-      this.coldStartComplete = true;
       this.lastError = null;
     } catch (error) {
       if (error instanceof KhepreeDeviceLimitError) {
-        this.gate = 'device_limit';
+        this.currentLease = null;
+        this.status = 'DEVICE_LIMIT_REACHED';
         this.devicesUsed = error.devicesUsed;
         this.devicesMax = error.devicesMax;
+      } else {
+        this.handleColdStartFailure(error);
       }
       this.lastError = {
         code: error instanceof KhepreeAccessError ? error.code : 'ACTIVATION_FAILED',
@@ -491,15 +583,10 @@ export class KhepreeAccessService {
   }
 
   async refreshEntitlement(): Promise<KhepreeAccessState> {
+    this.status = 'VALIDATING_SESSION';
+    this.emit();
     try {
       await this.performColdStartValidation();
-      if (this.entitlement === 'active') {
-        this.gate = 'workspace';
-        this.coldStartComplete = true;
-        this.lastError = null;
-      } else {
-        this.gate = 'entitlement';
-      }
     } catch (error) {
       this.handleColdStartFailure(error);
     }
@@ -510,7 +597,7 @@ export class KhepreeAccessService {
   async startCheckout(): Promise<KhepreeAccessState> {
     const accessToken = await this.ensureAccessToken();
     if (!accessToken) {
-      this.gate = 'login';
+      this.status = 'AUTH_REQUIRED';
       this.emit();
       return this.getPublicState();
     }
@@ -536,9 +623,7 @@ export class KhepreeAccessService {
     this.currentLease = null;
     this.devicesUsed = null;
     this.devicesMax = null;
-    this.coldStartComplete = false;
-    this.protectedActionsBlocked = false;
-    this.gate = 'login';
+    this.status = 'AUTH_REQUIRED';
     this.loginPhase = 'idle';
     this.lastError = null;
     this.emit();
@@ -546,6 +631,8 @@ export class KhepreeAccessService {
   }
 
   async handleHeartbeat(): Promise<void> {
+    if (!isKhepreeActive(this.status)) return;
+
     const accessToken = await this.ensureAccessToken();
     const identity = await this.deviceIdentity.getIdentity();
     const deviceId = identity.deviceId;
@@ -575,16 +662,19 @@ export class KhepreeAccessService {
   private async applyHeartbeatStatus(status: KhepreeHeartbeatStatus): Promise<void> {
     switch (status) {
       case 'ACTIVE':
-        this.protectedActionsBlocked = false;
         break;
       case 'ENTITLEMENT_SUSPENDED':
-        this.protectedActionsBlocked = true;
+        this.currentLease = null;
         this.entitlement = 'suspended';
+        this.status = 'ENTITLEMENT_SUSPENDED';
         break;
       case 'DEVICE_REMOVED':
+        this.currentLease = null;
+        this.status = 'DEVICE_REMOVED';
+        break;
       case 'DEVICE_BLOCKED':
-        this.protectedActionsBlocked = true;
-        this.gate = 'revoked';
+        this.currentLease = null;
+        this.status = 'DEVICE_BLOCKED';
         break;
       case 'SESSION_REVOKED':
         await this.signOut();
@@ -597,10 +687,7 @@ export class KhepreeAccessService {
   }
 
   assertProductAccess(feature: string = KHEPREE_FEATURES.translation): void {
-    if (!this.canStartTranslation()) {
-      throw new KhepreeProductAccessDeniedError(feature);
-    }
-    if (this.protectedActionsBlocked) {
+    if (!isKhepreeActive(this.status)) {
       throw new KhepreeProductAccessDeniedError(feature);
     }
     if (!isLeaseCurrentlyValid(this.currentLease)) {

@@ -99,37 +99,57 @@ function LoginGate({
   );
 }
 
-function ValidatingGate() {
+function ValidatingGate({ bodyKey }: { bodyKey?: string }) {
   const t = useT();
   return (
     <GateLayout title={t('khepree.validating.title')} subtitle={t('khepree.validating.subtitle')}>
-      <p className="setup-wizard__hint">{t('khepree.validating.body')}</p>
+      <p className="setup-wizard__hint">{t(bodyKey ?? 'khepree.validating.body')}</p>
     </GateLayout>
   );
 }
 
-function OfflineGate({ error, onRetry }: { error: string | null; onRetry: () => Promise<void> }) {
+function OfflineColdStartGate({
+  error,
+  onRetry,
+  onSignOut,
+}: {
+  error: string | null;
+  onRetry: () => Promise<void>;
+  onSignOut: () => Promise<void>;
+}) {
   const t = useT();
   return (
-    <GateLayout title={t('khepree.offline.title')} subtitle={t('khepree.offline.subtitle')}>
+    <GateLayout
+      title={t('khepree.offlineColdStart.title')}
+      subtitle={t('khepree.offlineColdStart.subtitle')}
+    >
       {error ? <p className="form-error">{error}</p> : null}
-      <Button type="button" variant="primary" onClick={() => void onRetry()}>
-        {t('khepree.offline.retry')}
-      </Button>
+      <div className="khepree-gate__actions">
+        <Button type="button" variant="primary" onClick={() => void onRetry()}>
+          {t('khepree.offlineColdStart.retry')}
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => void onSignOut()}>
+          {t('khepree.offlineColdStart.signOut')}
+        </Button>
+      </div>
     </GateLayout>
   );
 }
 
 function EntitlementGate({
+  titleKey,
+  subtitleKey,
   onUpgrade,
   onRefresh,
 }: {
+  titleKey: string;
+  subtitleKey: string;
   onUpgrade: () => Promise<void>;
   onRefresh: () => Promise<void>;
 }) {
   const t = useT();
   return (
-    <GateLayout title={t('khepree.entitlement.title')} subtitle={t('khepree.entitlement.subtitle')}>
+    <GateLayout title={t(titleKey)} subtitle={t(subtitleKey)}>
       <div className="khepree-gate__actions">
         <Button type="button" variant="primary" onClick={() => void onUpgrade()}>
           {t('khepree.entitlement.upgrade')}
@@ -147,11 +167,13 @@ function DeviceLimitGate({
   max,
   onManage,
   onRetry,
+  onSignOut,
 }: {
   used: number | null;
   max: number | null;
   onManage: () => Promise<void>;
   onRetry: () => Promise<void>;
+  onSignOut: () => Promise<void>;
 }) {
   const t = useT();
   return (
@@ -169,18 +191,61 @@ function DeviceLimitGate({
         <Button type="button" variant="secondary" onClick={() => void onRetry()}>
           {t('khepree.deviceLimit.retry')}
         </Button>
+        <Button type="button" variant="ghost" onClick={() => void onSignOut()}>
+          {t('khepree.deviceLimit.signOut')}
+        </Button>
       </div>
     </GateLayout>
   );
 }
 
-function RevokedGate({ onSignIn }: { onSignIn: () => Promise<void> }) {
+function DeviceAccessGate({
+  titleKey,
+  subtitleKey,
+  onSignIn,
+  onSignOut,
+}: {
+  titleKey: string;
+  subtitleKey: string;
+  onSignIn: () => Promise<void>;
+  onSignOut: () => Promise<void>;
+}) {
   const t = useT();
   return (
-    <GateLayout title={t('khepree.revoked.title')} subtitle={t('khepree.revoked.subtitle')}>
-      <Button type="button" variant="primary" onClick={() => void onSignIn()}>
-        {t('khepree.revoked.signIn')}
-      </Button>
+    <GateLayout title={t(titleKey)} subtitle={t(subtitleKey)}>
+      <div className="khepree-gate__actions">
+        <Button type="button" variant="primary" onClick={() => void onSignIn()}>
+          {t('khepree.revoked.signIn')}
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => void onSignOut()}>
+          {t('khepree.deviceLimit.signOut')}
+        </Button>
+      </div>
+    </GateLayout>
+  );
+}
+
+function ErrorGate({
+  error,
+  onRetry,
+  onSignOut,
+}: {
+  error: string | null;
+  onRetry: () => Promise<void>;
+  onSignOut: () => Promise<void>;
+}) {
+  const t = useT();
+  return (
+    <GateLayout title={t('khepree.error.title')} subtitle={t('khepree.error.subtitle')}>
+      {error ? <p className="form-error">{error}</p> : null}
+      <div className="khepree-gate__actions">
+        <Button type="button" variant="primary" onClick={() => void onRetry()}>
+          {t('khepree.error.retry')}
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => void onSignOut()}>
+          {t('khepree.error.signOut')}
+        </Button>
+      </div>
     </GateLayout>
   );
 }
@@ -194,7 +259,7 @@ export function KhepreeAccessGate({
 }) {
   const [busy, setBusy] = useState(false);
 
-  if (state.gate === 'workspace' && state.canUseWorkspace) {
+  if (state.status === 'ACTIVE' && state.canUseWorkspace) {
     return <>{children}</>;
   }
 
@@ -207,10 +272,13 @@ export function KhepreeAccessGate({
     }
   };
 
-  switch (state.gate) {
-    case 'validating':
+  switch (state.status) {
+    case 'BOOTING':
+    case 'VALIDATING_SESSION':
       return <ValidatingGate />;
-    case 'login':
+    case 'DEVICE_ACTIVATING':
+      return <ValidatingGate bodyKey="khepree.deviceActivating.body" />;
+    case 'AUTH_REQUIRED':
       return (
         <LoginGate
           busy={busy}
@@ -220,38 +288,94 @@ export function KhepreeAccessGate({
           onLogin={() => run(() => window.novelTrans.khepree.startLogin())}
         />
       );
-    case 'offline':
+    case 'AUTHENTICATING':
       return (
-        <OfflineGate
+        <LoginGate
+          busy={busy}
+          loginPhase={state.loginPhase}
+          errorCode={state.error?.code}
           error={state.error?.message ?? null}
-          onRetry={() => run(() => window.novelTrans.khepree.retryColdStart())}
+          onLogin={() => run(() => window.novelTrans.khepree.startLogin())}
         />
       );
-    case 'entitlement':
+    case 'OFFLINE_COLD_START':
+      return (
+        <OfflineColdStartGate
+          error={state.error?.message ?? null}
+          onRetry={() => run(() => window.novelTrans.khepree.retryColdStart())}
+          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+        />
+      );
+    case 'ENTITLEMENT_MISSING':
       return (
         <EntitlementGate
+          titleKey="khepree.entitlement.title"
+          subtitleKey="khepree.entitlement.subtitle"
           onUpgrade={() => run(() => window.novelTrans.khepree.startCheckout())}
           onRefresh={() => run(() => window.novelTrans.khepree.refreshEntitlement())}
         />
       );
-    case 'device_limit':
+    case 'ENTITLEMENT_EXPIRED':
+      return (
+        <EntitlementGate
+          titleKey="khepree.entitlementExpired.title"
+          subtitleKey="khepree.entitlementExpired.subtitle"
+          onUpgrade={() => run(() => window.novelTrans.khepree.startCheckout())}
+          onRefresh={() => run(() => window.novelTrans.khepree.refreshEntitlement())}
+        />
+      );
+    case 'ENTITLEMENT_SUSPENDED':
+      return (
+        <EntitlementGate
+          titleKey="khepree.entitlementSuspended.title"
+          subtitleKey="khepree.entitlementSuspended.subtitle"
+          onUpgrade={() => run(() => window.novelTrans.khepree.startCheckout())}
+          onRefresh={() => run(() => window.novelTrans.khepree.refreshEntitlement())}
+        />
+      );
+    case 'DEVICE_LIMIT_REACHED':
       return (
         <DeviceLimitGate
           used={state.devicesUsed}
           max={state.devicesMax}
           onManage={() => run(() => window.novelTrans.khepree.openExternal({ target: 'devices' }))}
           onRetry={() => run(() => window.novelTrans.khepree.retryActivation())}
+          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
         />
       );
-    case 'revoked':
+    case 'DEVICE_REMOVED':
       return (
-        <RevokedGate onSignIn={() => run(() => window.novelTrans.khepree.startLogin())} />
+        <DeviceAccessGate
+          titleKey="khepree.deviceRemoved.title"
+          subtitleKey="khepree.deviceRemoved.subtitle"
+          onSignIn={() => run(() => window.novelTrans.khepree.startLogin())}
+          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+        />
       );
-    default:
+    case 'DEVICE_BLOCKED':
       return (
-        <OfflineGate
+        <DeviceAccessGate
+          titleKey="khepree.deviceBlocked.title"
+          subtitleKey="khepree.deviceBlocked.subtitle"
+          onSignIn={() => run(() => window.novelTrans.khepree.startLogin())}
+          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+        />
+      );
+    case 'ERROR':
+      return (
+        <ErrorGate
           error={state.error?.message ?? null}
           onRetry={() => run(() => window.novelTrans.khepree.retryColdStart())}
+          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+        />
+      );
+    case 'LANGUAGE_REQUIRED':
+    default:
+      return (
+        <ErrorGate
+          error={state.error?.message ?? null}
+          onRetry={() => run(() => window.novelTrans.khepree.retryColdStart())}
+          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
         />
       );
   }

@@ -24,18 +24,17 @@ export const KHEPREE_EXTERNAL_URLS = {
 
 export type KhepreeExternalLinkTarget = keyof typeof KHEPREE_EXTERNAL_URLS;
 
-/** Gate the renderer must pass before functional workspace. */
-export const KHEPREE_GATE_PHASES = [
-  'login',
-  'validating',
-  'offline',
-  'entitlement',
-  'device_limit',
-  'revoked',
-  'workspace',
-] as const;
-
-export type KhepreeGatePhase = (typeof KHEPREE_GATE_PHASES)[number];
+/** Authoritative access state machine — see khepree-access-states.ts */
+export {
+  KHEPREE_ACCESS_STATES,
+  type KhepreeAccessStatus,
+  KHEPREE_GATE_PHASES,
+  type KhepreeGatePhase,
+  isKhepreeActive,
+  resolveStatusFromEntitlement,
+  canUseKhepreeWorkspace,
+  isBlockingWorkspaceStatus,
+} from './khepree-access-states';
 
 /** Heartbeat status from Khepree API. */
 export const KHEPREE_HEARTBEAT_STATUSES = [

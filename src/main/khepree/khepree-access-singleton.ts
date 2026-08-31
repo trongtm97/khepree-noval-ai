@@ -17,9 +17,9 @@ export function initializeKhepreeAccessService(): KhepreeAccessService {
   });
   accessService.subscribe((state) => {
     broadcastKhepreeAccessState(state);
-    if (state.gate === 'workspace' && state.canUseWorkspace) {
+    if (state.status === 'ACTIVE' && state.canUseWorkspace) {
       heartbeatService?.start();
-    } else if (state.gate !== 'workspace') {
+    } else if (state.status !== 'ACTIVE') {
       heartbeatService?.stop();
     }
   });
@@ -37,8 +37,8 @@ export function getKhepreeAccessService(): KhepreeAccessService {
 export async function startupKhepreeAccess(): Promise<void> {
   const service = initializeKhepreeAccessService();
   const state = await service.initializeOnColdStart();
-  logger.info('Khepree access cold start', { gate: state.gate, signedIn: state.signedIn });
-  if (state.gate === 'workspace') {
+  logger.info('Khepree access cold start', { status: state.status, signedIn: state.signedIn });
+  if (state.status === 'ACTIVE') {
     heartbeatService?.start();
   }
 }

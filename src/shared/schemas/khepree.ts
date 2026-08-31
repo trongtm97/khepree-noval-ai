@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
   KHEPREE_EXTERNAL_URLS,
-  KHEPREE_GATE_PHASES,
+  KHEPREE_ACCESS_STATES,
   KHEPREE_HEARTBEAT_STATUSES,
   KHEPREE_LOGIN_PHASES,
 } from '../constants/khepree';
@@ -58,7 +58,7 @@ export type KhepreeAccessError = z.infer<typeof KhepreeAccessErrorSchema>;
 
 /** Sanitized state exposed to renderer — no tokens or private keys. */
 export const KhepreeAccessStateSchema = z.object({
-  gate: z.enum(KHEPREE_GATE_PHASES),
+  status: z.enum(KHEPREE_ACCESS_STATES),
   loginPhase: z.enum(KHEPREE_LOGIN_PHASES).nullable(),
   signedIn: z.boolean(),
   user: KhepreeUserDisplaySchema.nullable(),
@@ -124,7 +124,9 @@ export const KhepreeSignedLeasePayloadSchema = z.object({
   installationId: z.string().uuid(),
   deviceId: z.string(),
   productId: z.string(),
+  entitlementId: z.string(),
   features: z.record(z.string(), z.boolean()),
+  iat: z.string(),
   expiresAt: z.string(),
   graceUntil: z.string().nullable(),
   heartbeatIntervalMs: z.number().int().positive().optional(),

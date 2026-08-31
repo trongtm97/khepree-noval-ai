@@ -2527,10 +2527,42 @@ export const vi = {
       refresh: 'Tôi đã đăng ký — làm mới',
     },
     deviceLimit: {
-      title: 'Đã hết slot thiết bị',
-      subtitle: 'Thiết bị đang dùng: {used} / {max}. Gỡ thiết bị cũ trên tài khoản Khepree để tiếp tục.',
+      title: 'Đã đạt giới hạn thiết bị',
+      subtitle: 'Thiết bị đang dùng: {used} / {max}',
       manage: 'Quản lý thiết bị',
       retry: 'Thử kích hoạt lại',
+      signOut: 'Đăng xuất',
+    },
+    deviceActivating: {
+      body: 'Đang kích hoạt thiết bị với Khepree…',
+    },
+    offlineColdStart: {
+      title: 'Cần kết nối mạng',
+      subtitle: 'Khepree Novel AI phải xác minh giấy phép trực tuyến trước khi khởi động. Không dùng giấy phép cache khi offline.',
+      retry: 'Thử lại',
+      signOut: 'Đăng xuất',
+    },
+    entitlementExpired: {
+      title: 'Gói đã hết hạn',
+      subtitle: 'Gói Novel AI đã hết hạn. Gia hạn để tiếp tục.',
+    },
+    entitlementSuspended: {
+      title: 'Gói bị tạm ngưng',
+      subtitle: 'Quyền Novel AI bị tạm ngưng. Kiểm tra thanh toán hoặc liên hệ hỗ trợ.',
+    },
+    deviceRemoved: {
+      title: 'Thiết bị đã bị gỡ',
+      subtitle: 'Thiết bị này đã bị gỡ khỏi tài khoản Khepree. Đăng nhập lại sau khi giải phóng slot.',
+    },
+    deviceBlocked: {
+      title: 'Thiết bị bị chặn',
+      subtitle: 'Thiết bị này bị chặn. Liên hệ hỗ trợ Khepree.',
+    },
+    error: {
+      title: 'Xác minh giấy phép thất bại',
+      subtitle: 'Khepree không xác minh được giấy phép. Thử lại hoặc đăng xuất.',
+      retry: 'Thử lại',
+      signOut: 'Đăng xuất',
     },
     revoked: {
       title: 'Quyền truy cập bị thu hồi',

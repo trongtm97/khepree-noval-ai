@@ -79,7 +79,7 @@ describe('KhepreeAccessService OAuth login', () => {
   it('fresh install shows login without session', async () => {
     const { service } = createService(tempRoot);
     const state = await service.initializeOnColdStart();
-    expect(state.gate).toBe('login');
+    expect(state.status).toBe('AUTH_REQUIRED');
     expect(state.signedIn).toBe(false);
     await service.shutdown();
   });
@@ -89,7 +89,7 @@ describe('KhepreeAccessService OAuth login', () => {
     const loginPromise = service.startLogin();
     await vi.runAllTimersAsync();
     const state = await loginPromise;
-    expect(state.gate).toBe('workspace');
+    expect(state.status).toBe('ACTIVE');
     expect(state.signedIn).toBe(true);
 
     const row = db.secrets.getByKey('khepree.session.refresh_token');
@@ -108,11 +108,11 @@ describe('KhepreeAccessService OAuth login', () => {
     const second = createService(tempRoot);
     let sawValidating = false;
     second.service.subscribe((state) => {
-      if (state.gate === 'validating') sawValidating = true;
+      if (state.status === 'VALIDATING_SESSION') sawValidating = true;
     });
     const cold = await second.service.initializeOnColdStart();
     expect(sawValidating).toBe(true);
-    expect(cold.gate).toBe('workspace');
+    expect(cold.status).toBe('ACTIVE');
     await second.service.shutdown();
   });
 
@@ -136,7 +136,7 @@ describe('KhepreeAccessService OAuth login', () => {
     });
 
     const cold = await service.initializeOnColdStart();
-    expect(cold.gate).toBe('login');
+    expect(cold.status).toBe('AUTH_REQUIRED');
     expect(cold.signedIn).toBe(false);
     await service.shutdown();
   });

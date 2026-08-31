@@ -364,6 +364,7 @@ import {
 import { getDiagnosticsService } from '../services/diagnostics-service-singleton';
 import { getSetupService } from '../services/setup-service-singleton';
 import { getKhepreeAccessService } from '../khepree/khepree-access-singleton';
+import { KHEPREE_FEATURES } from '@shared/constants/khepree';
 import { assertKhepreeProductAccess } from '../khepree/product-access-boundary';
 import { getUiLanguageService } from '../services/ui-language-service-singleton';
 import {
@@ -2027,7 +2028,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.JOB_ENQUEUE,
     createIpcHandler(JobEnqueueRequestSchema, (request) => {
-      assertKhepreeProductAccess();
+      assertKhepreeProductAccess(KHEPREE_FEATURES.translation);
       const result = getJobService().enqueueTranslate(request);
       return JobEnqueueResponseSchema.parse({
         job: result.job,
@@ -2039,7 +2040,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.JOB_ENQUEUE_NOVEL,
     createIpcHandler(JobEnqueueNovelRequestSchema, (request) => {
-      assertKhepreeProductAccess();
+      assertKhepreeProductAccess(KHEPREE_FEATURES.translation);
       const result = getJobService().enqueueTranslateNovel(request);
       return JobEnqueueNovelResponseSchema.parse(result);
     }),
@@ -2249,6 +2250,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.PORTABILITY_EXPORT_NOVEL,
     createIpcHandler(NovelExportRequestSchema, async (request) => {
+      assertKhepreeProductAccess(KHEPREE_FEATURES.export);
       const result = await getPortabilityService().exportNovel(request);
       return NovelExportResponseSchema.parse(result);
     }),
@@ -2481,6 +2483,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.PORTABILITY_EXPORT_CHAPTER,
     createIpcHandler(ExportChapterRequestSchema, async (request) => {
+      assertKhepreeProductAccess(KHEPREE_FEATURES.export);
       const result = await getPortabilityService().exportChapterToDirectory(request);
       return ExportChapterResponseSchema.parse(result);
     }),
@@ -2489,6 +2492,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.PORTABILITY_EXPORT_CHAPTER_RANGE,
     createIpcHandler(ExportChapterRangeRequestSchema, async (request) => {
+      assertKhepreeProductAccess(KHEPREE_FEATURES.export);
       const result = await getPortabilityService().exportChapterRangeToDirectory(request);
       return ExportChapterResponseSchema.parse(result);
     }),
@@ -3100,7 +3104,7 @@ function registerAiProviderHandlers(): void {
     createIpcHandlerNoArg(async () => {
       const state = await getKhepreeAccessService().retryActivation();
       return KhepreeRetryActivationResponseSchema.parse({
-        ok: state.gate === 'workspace',
+        ok: state.status === 'ACTIVE',
         state,
       });
     }),
@@ -3111,7 +3115,7 @@ function registerAiProviderHandlers(): void {
     createIpcHandlerNoArg(async () => {
       const state = await getKhepreeAccessService().refreshEntitlement();
       return KhepreeRefreshEntitlementResponseSchema.parse({
-        ok: state.gate === 'workspace',
+        ok: state.status === 'ACTIVE',
         state,
       });
     }),

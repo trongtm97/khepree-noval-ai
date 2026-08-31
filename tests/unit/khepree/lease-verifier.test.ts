@@ -16,6 +16,7 @@ function signPayload(payload: KhepreeSignedLeasePayload) {
   });
   const ordered = {
     deviceId: payload.deviceId,
+    entitlementId: payload.entitlementId,
     expiresAt: payload.expiresAt,
     features: Object.keys(payload.features)
       .sort()
@@ -26,6 +27,7 @@ function signPayload(payload: KhepreeSignedLeasePayload) {
     graceUntil: payload.graceUntil,
     heartbeatIntervalMs: payload.heartbeatIntervalMs,
     installationId: payload.installationId,
+    iat: payload.iat,
     productId: payload.productId,
   };
   const message = Buffer.from(JSON.stringify(ordered), 'utf8');
@@ -43,7 +45,9 @@ describe('lease-verifier', () => {
       installationId: '11111111-1111-4111-8111-111111111111',
       deviceId: 'dev-device',
       productId: 'novel-ai',
+      entitlementId: 'ent-test',
       features: { translation: true },
+      iat: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
       graceUntil: null,
     };
@@ -58,7 +62,9 @@ describe('lease-verifier', () => {
       installationId: '11111111-1111-4111-8111-111111111111',
       deviceId: 'dev-device',
       productId: 'novel-ai',
+      entitlementId: 'ent-test',
       features: { translation: true },
+      iat: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
       graceUntil: null,
     };
@@ -72,7 +78,9 @@ describe('lease-verifier', () => {
       installationId: '11111111-1111-4111-8111-111111111111',
       deviceId: 'dev-device',
       productId: 'novel-ai',
+      entitlementId: 'ent-test',
       features: { translation: true },
+      iat: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
       graceUntil: null,
     };

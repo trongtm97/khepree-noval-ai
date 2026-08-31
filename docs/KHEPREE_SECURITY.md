@@ -31,12 +31,30 @@ Dev-only overrides: `KHEPREE_API_BASE`, `KHEPREE_PRODUCT_ID`, `KHEPREE_DEV_MOCK`
 
 ## Lease verification
 
-Every lease loaded from API or cache must pass:
+Every lease loaded from API must pass:
 
-1. Zod schema (`parseSignedLease`)
+1. Zod schema (`parseSignedLease`) — includes `entitlementId`, `iat`, `expiresAt`, features
 2. Ed25519 signature (pinned or dev key)
-3. Expiry / grace window
+3. `iat` not in future (5 min skew); expiry / grace window
 4. Binding to local `installationId`, `deviceId`, `productId`
+
+Invalid lease → fail closed (lease cleared, status `ERROR` or entitlement gate).
+
+## Access state machine (Phase N04)
+
+Authoritative states in `KHEPREE_ACCESS_STATES` — renderer receives `status` only (no ad-hoc booleans).
+
+Cold start (saved session):
+
+1. `VALIDATING_SESSION` → refresh token → device activation if needed → `/session/cold-start`
+2. Verify signed lease (signature, key, product, device, entitlement, `iat`, `exp`, features)
+3. Only `ACTIVE` unlocks workspace and protected IPC
+
+Network failure during cold start → `OFFLINE_COLD_START` (lease cleared — no cached bypass).
+
+Protected IPC calls `assertProductAccess()` via `product-access-boundary` (fail-closed when packaged).
+
+Device limit UI: manage devices URL, retry activation (no re-login), sign out.
 
 ## OAuth browser login (Phase N03)
 

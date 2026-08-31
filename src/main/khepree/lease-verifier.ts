@@ -21,6 +21,7 @@ export interface VerifySignedLeaseOptions {
 function canonicalPayload(payload: KhepreeSignedLeasePayload): Buffer {
   const ordered = {
     deviceId: payload.deviceId,
+    entitlementId: payload.entitlementId,
     expiresAt: payload.expiresAt,
     features: Object.keys(payload.features)
       .sort()
@@ -31,6 +32,7 @@ function canonicalPayload(payload: KhepreeSignedLeasePayload): Buffer {
     graceUntil: payload.graceUntil,
     heartbeatIntervalMs: payload.heartbeatIntervalMs,
     installationId: payload.installationId,
+    iat: payload.iat,
     productId: payload.productId,
   };
   return Buffer.from(JSON.stringify(ordered), 'utf8');
@@ -91,6 +93,15 @@ export function verifySignedLease(
   const expiresAt = Date.parse(lease.payload.expiresAt);
   if (Number.isNaN(expiresAt)) {
     throw new KhepreeLeaseInvalidError('Lease expiresAt is invalid.');
+  }
+
+  const issuedAt = Date.parse(lease.payload.iat);
+  if (Number.isNaN(issuedAt)) {
+    throw new KhepreeLeaseInvalidError('Lease iat is invalid.');
+  }
+  const clockSkewMs = 5 * 60 * 1000;
+  if (issuedAt > now + clockSkewMs) {
+    throw new KhepreeLeaseInvalidError('Lease iat is in the future.');
   }
 
   const graceUntil = lease.payload.graceUntil ? Date.parse(lease.payload.graceUntil) : null;

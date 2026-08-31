@@ -93,6 +93,7 @@ export interface KhepreeApiClient {
 function canonicalPayload(payload: KhepreeSignedLeasePayload): Buffer {
   const ordered = {
     deviceId: payload.deviceId,
+    entitlementId: payload.entitlementId,
     expiresAt: payload.expiresAt,
     features: Object.keys(payload.features)
       .sort()
@@ -103,6 +104,7 @@ function canonicalPayload(payload: KhepreeSignedLeasePayload): Buffer {
     graceUntil: payload.graceUntil,
     heartbeatIntervalMs: payload.heartbeatIntervalMs,
     installationId: payload.installationId,
+    iat: payload.iat,
     productId: payload.productId,
   };
   return Buffer.from(JSON.stringify(ordered), 'utf8');
@@ -209,7 +211,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
         devicesMax: 3,
       });
     }
-    if (this.devices.size >= 3 && process.env.KHEPREE_MOCK_DEVICE_LIMIT === '1') {
+    if (process.env.KHEPREE_MOCK_DEVICE_LIMIT === '1') {
       throw new KhepreeDeviceLimitError(3, 3);
     }
     const deviceId = randomUUID();
@@ -222,30 +224,60 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     deviceId: string,
     user: KhepreeAuthTokenResult['user'],
   ): KhepreeColdStartResult {
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    const graceUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-    const features = {
-      translation: true,
-      export: true,
-      multi_provider: true,
-      learning: true,
-    };
+    if (process.env.KHEPREE_MOCK_NETWORK_FAIL === '1') {
+      throw new KhepreeNetworkError();
+    }
+    if (process.env.KHEPREE_MOCK_DEVICE_BLOCKED === '1') {
+      throw new KhepreeAccessError('DEVICE_BLOCKED', 'This device is blocked.');
+    }
+    if (process.env.KHEPREE_MOCK_DEVICE_REMOVED === '1') {
+      throw new KhepreeAccessError('DEVICE_REMOVED', 'This device was removed.');
+    }
+    const now = Date.now();
+    const expiresAt = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+    const graceUntil = new Date(now + 48 * 60 * 60 * 1000).toISOString();
+    const entitlement =
+      process.env.KHEPREE_MOCK_NO_ENTITLEMENT === '1'
+        ? ('none' as const)
+        : process.env.KHEPREE_MOCK_ENTITLEMENT_EXPIRED === '1'
+          ? ('expired' as const)
+          : process.env.KHEPREE_MOCK_ENTITLEMENT_SUSPENDED === '1'
+            ? ('suspended' as const)
+            : ('active' as const);
+    const features: Record<string, boolean> =
+      entitlement === 'active'
+        ? {
+            translation: true,
+            export: true,
+            multi_provider: true,
+            learning: true,
+          }
+        : {};
     const payload: KhepreeSignedLeasePayload = {
       installationId,
       deviceId,
-      productId: 'novel-ai',
+      productId: process.env.KHEPREE_MOCK_WRONG_PRODUCT === '1' ? 'wrong-product' : 'novel-ai',
+      entitlementId: `ent-${user.id}`,
       features,
-      expiresAt,
-      graceUntil,
+      iat: new Date(now).toISOString(),
+      expiresAt:
+        process.env.KHEPREE_MOCK_EXPIRED_LEASE === '1'
+          ? new Date(now - 60_000).toISOString()
+          : expiresAt,
+      graceUntil: process.env.KHEPREE_MOCK_EXPIRED_LEASE === '1' ? null : graceUntil,
       heartbeatIntervalMs: 15 * 60 * 1000,
     };
+    let lease = signLeasePayload(payload);
+    if (process.env.KHEPREE_MOCK_BAD_LEASE_SIGNATURE === '1') {
+      lease = { ...lease, signature: 'bad-signature' };
+    }
     return {
       user,
       plan: { planId: 'pro', planName: 'Pro (Dev Mock)', status: 'active' },
-      entitlement: 'active',
-      billing: 'active',
+      entitlement,
+      billing: entitlement === 'active' ? 'active' : 'none',
       features,
-      lease: signLeasePayload(payload),
+      lease,
       devicesUsed: this.devices.size,
       devicesMax: 3,
       deviceId,

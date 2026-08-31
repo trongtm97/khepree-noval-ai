@@ -2522,9 +2522,41 @@ export const en: LocaleMessages = {
     },
     deviceLimit: {
       title: 'Device limit reached',
-      subtitle: 'Devices in use: {used} / {max}. Remove a device from your Khepree account to continue.',
+      subtitle: 'Devices used: {used} / {max}',
       manage: 'Manage devices',
       retry: 'Retry activation',
+      signOut: 'Sign out',
+    },
+    deviceActivating: {
+      body: 'Activating this device with Khepree…',
+    },
+    offlineColdStart: {
+      title: 'Connection required',
+      subtitle: 'Khepree Novel AI must verify your license online before starting. Cached licenses cannot be used offline.',
+      retry: 'Retry',
+      signOut: 'Sign out',
+    },
+    entitlementExpired: {
+      title: 'Subscription expired',
+      subtitle: 'Your Novel AI subscription has expired. Renew to continue.',
+    },
+    entitlementSuspended: {
+      title: 'Subscription suspended',
+      subtitle: 'Your Novel AI access is suspended. Check billing or contact support.',
+    },
+    deviceRemoved: {
+      title: 'Device removed',
+      subtitle: 'This device was removed from your Khepree account. Sign in again after freeing a slot.',
+    },
+    deviceBlocked: {
+      title: 'Device blocked',
+      subtitle: 'This device is blocked. Contact Khepree support.',
+    },
+    error: {
+      title: 'License verification failed',
+      subtitle: 'Khepree could not verify your license. Retry or sign out.',
+      retry: 'Retry',
+      signOut: 'Sign out',
     },
     revoked: {
       title: 'Access revoked',
