@@ -16,6 +16,7 @@ export const KHEPREE_SECRET_KEYS = {
 /** Production allowlist — renderer cannot open arbitrary URLs. */
 export const KHEPREE_EXTERNAL_URLS = {
   website: 'https://khepree.com',
+  products: 'https://khepree.com/products',
   account: 'https://account.khepree.com',
   devices: 'https://account.khepree.com/devices',
   plans: 'https://account.khepree.com/plans',

@@ -91,6 +91,8 @@ export interface KhepreeApiClient {
   }): Promise<{ status: KhepreeHeartbeatStatus }>;
 
   getCheckoutUrl(input: { accessToken: string; productId: string }): Promise<{ checkoutUrl: string }>;
+
+  revokeSession(input: { accessToken: string }): Promise<{ ok: true }>;
 }
 
 function canonicalPayload(payload: KhepreeSignedLeasePayload): Buffer {
@@ -339,6 +341,10 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
   getCheckoutUrl(): Promise<{ checkoutUrl: string }> {
     return Promise.resolve({ checkoutUrl: 'https://account.khepree.com/checkout?mock=1' });
   }
+
+  revokeSession(): Promise<{ ok: true }> {
+    return Promise.resolve({ ok: true });
+  }
 }
 
 /** HTTP client for production Khepree API. */
@@ -516,6 +522,15 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
       },
       KhepreeCheckoutUrlResponseSchema,
       'billing/checkout-url',
+    );
+  }
+
+  revokeSession(input: { accessToken: string }): Promise<{ ok: true }> {
+    return this.request(
+      '/auth/logout',
+      { method: 'POST', accessToken: input.accessToken, body: JSON.stringify({}) },
+      KhepreeOkResponseSchema,
+      'auth/logout',
     );
   }
 }

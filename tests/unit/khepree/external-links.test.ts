@@ -17,6 +17,7 @@ describe('khepree external links', () => {
 
   it('resolves known targets', () => {
     expect(resolveKhepreeExternalUrl('website')).toBe('https://khepree.com');
+    expect(resolveKhepreeExternalUrl('products')).toBe('https://khepree.com/products');
     expect(resolveKhepreeExternalUrl('devices')).toBe('https://account.khepree.com/devices');
   });
 });

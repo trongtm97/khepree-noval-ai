@@ -24,7 +24,11 @@ import { LogsPage } from './pages/LogsPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
 import { SetupWizardPage } from './pages/SetupWizardPage';
 import { LanguageFirstRunPage } from './pages/LanguageFirstRunPage';
-import { KhepreePage } from './pages/KhepreePage';
+import { KhepreeLayout } from './features/khepree/KhepreeLayout';
+import { KhepreeAboutPage } from './features/khepree/pages/KhepreeAboutPage';
+import { KhepreeAccountPage } from './features/khepree/pages/KhepreeAccountPage';
+import { KhepreePlanPage } from './features/khepree/pages/KhepreePlanPage';
+import { KhepreeDevicesPage } from './features/khepree/pages/KhepreeDevicesPage';
 import { KhepreeAccessGate } from './features/khepree/KhepreeAccessGate';
 import { useKhepreeAccessState } from './features/khepree/useKhepreeAccessState';
 import { HelpPage } from './features/help/HelpPage';
@@ -177,7 +181,13 @@ export function App() {
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/jobs" element={<JobsPage />} />
             <Route path="/learning" element={<LearningPage />} />
-            <Route path="/khepree" element={<KhepreePage appInfo={appInfo} />} />
+            <Route path="/khepree" element={<KhepreeLayout />}>
+              <Route index element={<Navigate to="account" replace />} />
+              <Route path="account" element={<KhepreeAccountPage />} />
+              <Route path="plan" element={<KhepreePlanPage />} />
+              <Route path="devices" element={<KhepreeDevicesPage />} />
+              <Route path="about" element={<KhepreeAboutPage appInfo={appInfo} />} />
+            </Route>
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/diagnostics" element={<DiagnosticsPage />} />
             <Route path="/logs" element={<LogsPage />} />

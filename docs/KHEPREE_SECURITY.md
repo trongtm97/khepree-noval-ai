@@ -67,6 +67,13 @@ Device limit UI: manage devices URL, retry activation (no re-login), sign out.
 - **Running jobs:** `lockProtectedJobsOnKhepreeRevocation` pauses scheduler + queued jobs (`PAUSED`, reason `khepree:*`); in-flight batches finish at safe boundary.
 - **Windows resume:** `powerMonitor` resume/unlock triggers immediate heartbeat (debounced).
 
+## Account & About UX (Phase N06)
+
+- Sidebar **Khepree** → hub with Account, Plan, Devices, About sub-pages.
+- Renderer opens named targets only (`openExternal({ target })`) — main resolves pinned URLs.
+- Sign out: best-effort server `/auth/logout`, then clear encrypted refresh token (device activation unchanged).
+- Device removal: always via account.khepree.com (no unsafe remote remove from desktop).
+
 ## OAuth browser login (Phase N03)
 
 - **Protocol:** `khepree-novel-ai://auth/callback` (registered as "Khepree Novel AI" in Windows installer)

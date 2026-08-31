@@ -623,6 +623,14 @@ export class KhepreeAccessService {
   }
 
   async signOut(): Promise<KhepreeAccessState> {
+    const accessToken = this.sessionStore.getAccessToken() ?? (await this.ensureAccessToken());
+    if (accessToken) {
+      try {
+        await this.api.revokeSession({ accessToken });
+      } catch {
+        // Best-effort server revoke — local credentials still cleared.
+      }
+    }
     await this.sessionStore.clearRefreshToken();
     this.oauthTransaction.clearTransaction();
     this.hasRefreshCredential = false;

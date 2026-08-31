@@ -2767,3 +2767,41 @@ textarea:-webkit-autofill:focus {
   margin: 0;
 }
 
+.khepree-panel h2 {
+  margin-top: 0;
+}
+
+.khepree-about__brand {
+  font-size: var(--font-h2);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0 0 var(--space-2);
+}
+
+.khepree-about__tagline {
+  font-size: var(--font-h3);
+  margin: 0 0 var(--space-3);
+}
+
+.khepree-dl {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.khepree-dl dt {
+  font-size: var(--font-small);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.khepree-dl dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.khepree-devices__count {
+  font-size: var(--font-h3);
+  font-weight: 600;
+}
+
