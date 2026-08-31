@@ -54,6 +54,28 @@ export class KhepreeSafeStorageRequiredError extends KhepreeAccessError {
   }
 }
 
+/** Encrypted credential exists but cannot be decrypted or parsed — do not silently re-generate. */
+export class KhepreeCredentialCorruptError extends KhepreeAccessError {
+  readonly credential: 'device_private_key' | 'refresh_token';
+
+  constructor(credential: 'device_private_key' | 'refresh_token') {
+    const message =
+      credential === 'device_private_key'
+        ? 'Device credentials are corrupted. Sign out, remove this device from your Khepree account, then sign in again.'
+        : 'Session credentials are corrupted. Sign out and sign in again.';
+    super('CREDENTIAL_CORRUPT', message);
+    this.name = 'KhepreeCredentialCorruptError';
+    this.credential = credential;
+  }
+}
+
+export class KhepreeApiResponseInvalidError extends KhepreeAccessError {
+  constructor(context: string) {
+    super('API_RESPONSE_INVALID', `Khepree API returned invalid data: ${context}`);
+    this.name = 'KhepreeApiResponseInvalidError';
+  }
+}
+
 export class KhepreeProductAccessDeniedError extends KhepreeAccessError {
   constructor(feature: string) {
     super('PRODUCT_ACCESS_DENIED', `Access denied for feature: ${feature}`);

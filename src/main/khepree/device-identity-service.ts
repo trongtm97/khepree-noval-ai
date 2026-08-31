@@ -2,7 +2,15 @@ import { randomUUID, generateKeyPairSync, createPrivateKey, createPublicKey, sig
 import { KHEPREE_META_KEYS, KHEPREE_SECRET_KEYS } from '@shared/constants/khepree';
 import type { DatabaseManager } from '../db/database-manager';
 import type { SecretStorageService } from '../security/secret-storage-service';
+import {
+  SafeStorageUnavailableError,
+  SecretStorageError,
+} from '../security/errors';
 import { logger } from '../logging/logger';
+import {
+  KhepreeCredentialCorruptError,
+  KhepreeSafeStorageRequiredError,
+} from './errors';
 
 export interface DeviceIdentity {
   installationId: string;
@@ -45,10 +53,58 @@ export class DeviceIdentityService {
     return name;
   }
 
+  hasStoredPrivateKey(): boolean {
+    return this.secretStorage.getMeta(KHEPREE_SECRET_KEYS.devicePrivateKey) != null;
+  }
+
   async getOrCreateKeypair(): Promise<{ publicKeySpki: string; sign: (data: Buffer) => Buffer }> {
-    const existing = await this.secretStorage.getPlainText(KHEPREE_SECRET_KEYS.devicePrivateKey);
-    if (existing) {
-      const privateKeyDer = Buffer.from(existing, 'base64');
+    if (this.hasStoredPrivateKey()) {
+      return this.loadKeypairFromStorage();
+    }
+
+    await this.assertSafeStorageForNewKey();
+    return this.generateAndPersistKeypair();
+  }
+
+  async getIdentity(): Promise<DeviceIdentity> {
+    const keypair = await this.getOrCreateKeypair();
+    return {
+      installationId: this.getInstallationId(),
+      deviceId: this.getDeviceId(),
+      publicKeySpki: keypair.publicKeySpki,
+    };
+  }
+
+  private async loadKeypairFromStorage(): Promise<{
+    publicKeySpki: string;
+    sign: (data: Buffer) => Buffer;
+  }> {
+    try {
+      const existing = await this.secretStorage.getPlainText(KHEPREE_SECRET_KEYS.devicePrivateKey);
+      if (!existing) {
+        throw new KhepreeCredentialCorruptError('device_private_key');
+      }
+      return this.keypairFromPkcs8Base64(existing);
+    } catch (error) {
+      if (error instanceof KhepreeCredentialCorruptError) {
+        throw error;
+      }
+      if (error instanceof SafeStorageUnavailableError) {
+        throw new KhepreeSafeStorageRequiredError();
+      }
+      if (error instanceof SecretStorageError) {
+        throw new KhepreeCredentialCorruptError('device_private_key');
+      }
+      throw error;
+    }
+  }
+
+  private keypairFromPkcs8Base64(pkcs8Base64: string): {
+    publicKeySpki: string;
+    sign: (data: Buffer) => Buffer;
+  } {
+    try {
+      const privateKeyDer = Buffer.from(pkcs8Base64, 'base64');
       const keyObject = createPrivateKey({ key: privateKeyDer, format: 'der', type: 'pkcs8' });
       const publicKeySpki = createPublicKey(keyObject)
         .export({ format: 'der', type: 'spki' })
@@ -57,8 +113,15 @@ export class DeviceIdentityService {
         publicKeySpki,
         sign: (data: Buffer) => sign(null, data, keyObject),
       };
+    } catch {
+      throw new KhepreeCredentialCorruptError('device_private_key');
     }
+  }
 
+  private async generateAndPersistKeypair(): Promise<{
+    publicKeySpki: string;
+    sign: (data: Buffer) => Buffer;
+  }> {
     const { publicKey, privateKey } = generateKeyPairSync('ed25519');
     const publicKeySpki = publicKey.export({ format: 'der', type: 'spki' }).toString('base64');
     const privateKeyPkcs8 = privateKey.export({ format: 'der', type: 'pkcs8' });
@@ -77,12 +140,10 @@ export class DeviceIdentityService {
     };
   }
 
-  async getIdentity(): Promise<DeviceIdentity> {
-    const keypair = await this.getOrCreateKeypair();
-    return {
-      installationId: this.getInstallationId(),
-      deviceId: this.getDeviceId(),
-      publicKeySpki: keypair.publicKeySpki,
-    };
+  private async assertSafeStorageForNewKey(): Promise<void> {
+    const health = await this.secretStorage.healthCheck();
+    if (!health.available) {
+      throw new KhepreeSafeStorageRequiredError();
+    }
   }
 }

@@ -1,6 +1,13 @@
 import { KHEPREE_SECRET_KEYS } from '@shared/constants/khepree';
 import type { SecretStorageService } from '../security/secret-storage-service';
-import { KhepreeSafeStorageRequiredError } from './errors';
+import {
+  SafeStorageUnavailableError,
+  SecretStorageError,
+} from '../security/errors';
+import {
+  KhepreeCredentialCorruptError,
+  KhepreeSafeStorageRequiredError,
+} from './errors';
 
 /** In-memory access token only — never persisted plaintext. */
 export interface KhepreeSessionSnapshot {
@@ -60,10 +67,27 @@ export class KhepreeSessionStore {
   }
 
   async loadRefreshToken(): Promise<string | null> {
-    try {
-      return await this.secretStorage.getPlainText(KHEPREE_SECRET_KEYS.refreshToken);
-    } catch {
+    if (!this.hasRefreshToken()) {
       return null;
+    }
+
+    try {
+      const token = await this.secretStorage.getPlainText(KHEPREE_SECRET_KEYS.refreshToken);
+      if (!token) {
+        throw new KhepreeCredentialCorruptError('refresh_token');
+      }
+      return token;
+    } catch (error) {
+      if (error instanceof KhepreeCredentialCorruptError) {
+        throw error;
+      }
+      if (error instanceof SafeStorageUnavailableError) {
+        throw new KhepreeSafeStorageRequiredError();
+      }
+      if (error instanceof SecretStorageError) {
+        throw new KhepreeCredentialCorruptError('refresh_token');
+      }
+      throw error;
     }
   }
 

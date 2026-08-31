@@ -1,35 +1,30 @@
 import { createPrivateKey, sign } from 'node:crypto';
 import { randomUUID } from 'node:crypto';
-import type {
-  KhepreeSignedLease,
-  KhepreeSignedLeasePayload,
-} from '@shared/schemas/khepree';
-import type {
-  KhepreeBillingState,
-  KhepreeEntitlementState,
-  KhepreePlanDisplay,
-  KhepreeUserDisplay,
-} from '@shared/schemas/khepree';
+import type { ZodType } from 'zod';
+import { KhepreeSignedLeaseSchema, type KhepreeSignedLease, type KhepreeSignedLeasePayload } from '@shared/schemas/khepree';
 import type { KhepreeHeartbeatStatus } from '@shared/constants/khepree';
+import {
+  KhepreeActivateDeviceResponseSchema,
+  KhepreeAuthTokenResultSchema,
+  KhepreeCheckoutUrlResponseSchema,
+  KhepreeColdStartResultSchema,
+  KhepreeDeviceAuthStartResponseSchema,
+  KhepreeHeartbeatResponseSchema,
+  type KhepreeActivateDeviceResponse,
+  type KhepreeAuthTokenResult,
+  type KhepreeColdStartResult,
+} from '@shared/schemas/khepree-api';
 import { getDevSigningKeys } from './dev-signing-keys';
+import { KhepreeApiResponseInvalidError, KhepreeDeviceLimitError, KhepreeNetworkError, KhepreeAccessError } from './errors';
 
-export interface ColdStartResult {
-  user: KhepreeUserDisplay;
-  plan: KhepreePlanDisplay;
-  entitlement: KhepreeEntitlementState;
-  billing: KhepreeBillingState;
-  features: Record<string, boolean>;
-  lease: KhepreeSignedLease;
-  devicesUsed: number;
-  devicesMax: number;
-  deviceId: string;
-}
+export type { KhepreeAuthTokenResult, KhepreeColdStartResult };
 
-export interface AuthTokenResult {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-  user: KhepreeUserDisplay;
+function parseApiResponse<T>(schema: ZodType<T>, body: unknown, context: string): T {
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    throw new KhepreeApiResponseInvalidError(context);
+  }
+  return parsed.data;
 }
 
 export interface KhepreeApiClient {
@@ -44,25 +39,25 @@ export interface KhepreeApiClient {
     state: string;
     code: string;
     installationId: string;
-  }): Promise<AuthTokenResult>;
+  }): Promise<KhepreeAuthTokenResult>;
 
   refreshSession(input: {
     refreshToken: string;
     installationId: string;
-  }): Promise<AuthTokenResult>;
+  }): Promise<KhepreeAuthTokenResult>;
 
   activateDevice(input: {
     accessToken: string;
     installationId: string;
     devicePublicKey: string;
     deviceName: string;
-  }): Promise<{ deviceId: string; devicesUsed: number; devicesMax: number }>;
+  }): Promise<KhepreeActivateDeviceResponse>;
 
   coldStartValidate(input: {
     accessToken: string;
     installationId: string;
     deviceId: string;
-  }): Promise<ColdStartResult>;
+  }): Promise<KhepreeColdStartResult>;
 
   refreshLease(input: {
     accessToken: string;
@@ -113,7 +108,7 @@ function signLeasePayload(payload: KhepreeSignedLeasePayload): KhepreeSignedLeas
 
 /** In-process mock for dev — simulates Khepree API without network. */
 export class MockKhepreeApiClient implements KhepreeApiClient {
-  private sessions = new Map<string, { user: KhepreeUserDisplay; refreshToken: string }>();
+  private sessions = new Map<string, { user: KhepreeAuthTokenResult['user']; refreshToken: string }>();
   private devices = new Map<string, { installationId: string; deviceId: string }>();
   private authStates = new Map<string, { installationId: string }>();
 
@@ -135,13 +130,13 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     state: string;
     code: string;
     installationId: string;
-  }): Promise<AuthTokenResult> {
+  }): Promise<KhepreeAuthTokenResult> {
     const pending = this.authStates.get(input.state);
     if (pending?.installationId !== input.installationId) {
       throw new Error('Invalid auth state');
     }
     this.authStates.delete(input.state);
-    const user: KhepreeUserDisplay = {
+    const user: KhepreeAuthTokenResult['user'] = {
       id: randomUUID(),
       email: 'dev@khepree.local',
       displayName: 'Dev User',
@@ -159,7 +154,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
   refreshSession(input: {
     refreshToken: string;
     installationId: string;
-  }): Promise<AuthTokenResult> {
+  }): Promise<KhepreeAuthTokenResult> {
     const session = this.sessions.get(input.refreshToken);
     if (!session) {
       throw new Error('Invalid refresh token');
@@ -177,7 +172,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     installationId: string;
     devicePublicKey: string;
     deviceName: string;
-  }): Promise<{ deviceId: string; devicesUsed: number; devicesMax: number }> {
+  }): Promise<KhepreeActivateDeviceResponse> {
     const existing = [...this.devices.values()].find(
       (d) => d.installationId === input.installationId,
     );
@@ -189,10 +184,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
       });
     }
     if (this.devices.size >= 3 && process.env.KHEPREE_MOCK_DEVICE_LIMIT === '1') {
-      const err = new Error('DEVICE_LIMIT') as Error & { devicesUsed: number; devicesMax: number };
-      err.devicesUsed = 3;
-      err.devicesMax = 3;
-      throw err;
+      throw new KhepreeDeviceLimitError(3, 3);
     }
     const deviceId = randomUUID();
     this.devices.set(deviceId, { installationId: input.installationId, deviceId });
@@ -202,8 +194,8 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
   private buildColdStart(
     installationId: string,
     deviceId: string,
-    user: KhepreeUserDisplay,
-  ): ColdStartResult {
+    user: KhepreeAuthTokenResult['user'],
+  ): KhepreeColdStartResult {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const graceUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
     const features = {
@@ -238,7 +230,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     accessToken: string;
     installationId: string;
     deviceId: string;
-  }): Promise<ColdStartResult> {
+  }): Promise<KhepreeColdStartResult> {
     const userId = input.accessToken.replace('mock-access-', '');
     const session = [...this.sessions.values()].find((s) => s.user.id === userId);
     if (!session) {
@@ -275,6 +267,8 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
   private async request<T>(
     path: string,
     init: RequestInit & { accessToken?: string },
+    schema: ZodType<T>,
+    context: string,
   ): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -291,25 +285,23 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
         headers,
       });
     } catch {
-      const { KhepreeNetworkError } = await import('./errors');
       throw new KhepreeNetworkError();
     }
-    const body = (await response.json().catch(() => ({}))) as T & {
-      error?: { code?: string; message?: string; devicesUsed?: number; devicesMax?: number };
-    };
+    const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const code = body.error?.code ?? `HTTP_${response.status}`;
+      const errorBody = body as {
+        error?: { code?: string; message?: string; devicesUsed?: number; devicesMax?: number };
+      };
+      const code = errorBody.error?.code ?? `HTTP_${response.status}`;
       if (code === 'DEVICE_LIMIT') {
-        const { KhepreeDeviceLimitError } = await import('./errors');
         throw new KhepreeDeviceLimitError(
-          body.error?.devicesUsed ?? 0,
-          body.error?.devicesMax ?? 0,
+          errorBody.error?.devicesUsed ?? 0,
+          errorBody.error?.devicesMax ?? 0,
         );
       }
-      const { KhepreeAccessError } = await import('./errors');
-      throw new KhepreeAccessError(code, body.error?.message ?? response.statusText);
+      throw new KhepreeAccessError(code, errorBody.error?.message ?? response.statusText);
     }
-    return body;
+    return parseApiResponse(schema, body, context);
   }
 
   startDeviceAuth(input: {
@@ -318,31 +310,37 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     productId: string;
     redirectUri: string;
   }): Promise<{ authUrl: string; state: string }> {
-    return this.request('/auth/device/start', {
-      method: 'POST',
-      body: JSON.stringify(input),
-    });
+    return this.request(
+      '/auth/device/start',
+      { method: 'POST', body: JSON.stringify(input) },
+      KhepreeDeviceAuthStartResponseSchema,
+      'auth/device/start',
+    );
   }
 
   completeDeviceAuth(input: {
     state: string;
     code: string;
     installationId: string;
-  }): Promise<AuthTokenResult> {
-    return this.request('/auth/device/complete', {
-      method: 'POST',
-      body: JSON.stringify(input),
-    });
+  }): Promise<KhepreeAuthTokenResult> {
+    return this.request(
+      '/auth/device/complete',
+      { method: 'POST', body: JSON.stringify(input) },
+      KhepreeAuthTokenResultSchema,
+      'auth/device/complete',
+    );
   }
 
   refreshSession(input: {
     refreshToken: string;
     installationId: string;
-  }): Promise<AuthTokenResult> {
-    return this.request('/auth/refresh', {
-      method: 'POST',
-      body: JSON.stringify(input),
-    });
+  }): Promise<KhepreeAuthTokenResult> {
+    return this.request(
+      '/auth/refresh',
+      { method: 'POST', body: JSON.stringify(input) },
+      KhepreeAuthTokenResultSchema,
+      'auth/refresh',
+    );
   }
 
   activateDevice(input: {
@@ -350,31 +348,41 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     installationId: string;
     devicePublicKey: string;
     deviceName: string;
-  }): Promise<{ deviceId: string; devicesUsed: number; devicesMax: number }> {
-    return this.request('/devices/activate', {
-      method: 'POST',
-      accessToken: input.accessToken,
-      body: JSON.stringify({
-        installationId: input.installationId,
-        devicePublicKey: input.devicePublicKey,
-        deviceName: input.deviceName,
-      }),
-    });
+  }): Promise<KhepreeActivateDeviceResponse> {
+    return this.request(
+      '/devices/activate',
+      {
+        method: 'POST',
+        accessToken: input.accessToken,
+        body: JSON.stringify({
+          installationId: input.installationId,
+          devicePublicKey: input.devicePublicKey,
+          deviceName: input.deviceName,
+        }),
+      },
+      KhepreeActivateDeviceResponseSchema,
+      'devices/activate',
+    );
   }
 
   coldStartValidate(input: {
     accessToken: string;
     installationId: string;
     deviceId: string;
-  }): Promise<ColdStartResult> {
-    return this.request('/session/cold-start', {
-      method: 'POST',
-      accessToken: input.accessToken,
-      body: JSON.stringify({
-        installationId: input.installationId,
-        deviceId: input.deviceId,
-      }),
-    });
+  }): Promise<KhepreeColdStartResult> {
+    return this.request(
+      '/session/cold-start',
+      {
+        method: 'POST',
+        accessToken: input.accessToken,
+        body: JSON.stringify({
+          installationId: input.installationId,
+          deviceId: input.deviceId,
+        }),
+      },
+      KhepreeColdStartResultSchema,
+      'session/cold-start',
+    );
   }
 
   refreshLease(input: {
@@ -382,14 +390,19 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     installationId: string;
     deviceId: string;
   }): Promise<KhepreeSignedLease> {
-    return this.request('/lease/refresh', {
-      method: 'POST',
-      accessToken: input.accessToken,
-      body: JSON.stringify({
-        installationId: input.installationId,
-        deviceId: input.deviceId,
-      }),
-    });
+    return this.request(
+      '/lease/refresh',
+      {
+        method: 'POST',
+        accessToken: input.accessToken,
+        body: JSON.stringify({
+          installationId: input.installationId,
+          deviceId: input.deviceId,
+        }),
+      },
+      KhepreeSignedLeaseSchema,
+      'lease/refresh',
+    );
   }
 
   heartbeat(input: {
@@ -397,25 +410,35 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     installationId: string;
     deviceId: string;
   }): Promise<{ status: KhepreeHeartbeatStatus }> {
-    return this.request('/heartbeat', {
-      method: 'POST',
-      accessToken: input.accessToken,
-      body: JSON.stringify({
-        installationId: input.installationId,
-        deviceId: input.deviceId,
-      }),
-    });
+    return this.request(
+      '/heartbeat',
+      {
+        method: 'POST',
+        accessToken: input.accessToken,
+        body: JSON.stringify({
+          installationId: input.installationId,
+          deviceId: input.deviceId,
+        }),
+      },
+      KhepreeHeartbeatResponseSchema,
+      'heartbeat',
+    );
   }
 
   getCheckoutUrl(input: {
     accessToken: string;
     productId: string;
   }): Promise<{ checkoutUrl: string }> {
-    return this.request('/billing/checkout-url', {
-      method: 'POST',
-      accessToken: input.accessToken,
-      body: JSON.stringify({ productId: input.productId }),
-    });
+    return this.request(
+      '/billing/checkout-url',
+      {
+        method: 'POST',
+        accessToken: input.accessToken,
+        body: JSON.stringify({ productId: input.productId }),
+      },
+      KhepreeCheckoutUrlResponseSchema,
+      'billing/checkout-url',
+    );
   }
 }
 

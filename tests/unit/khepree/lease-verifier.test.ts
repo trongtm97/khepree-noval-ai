@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { createPrivateKey, sign } from 'node:crypto';
 import { getDevSigningKeys } from '@main/khepree/dev-signing-keys';
-import { verifySignedLease, isLeaseCurrentlyValid } from '@main/khepree/lease-verifier';
+import { verifySignedLease, isLeaseCurrentlyValid, parseSignedLease } from '@main/khepree/lease-verifier';
 import type { KhepreeSignedLeasePayload } from '@shared/schemas/khepree';
 
 process.env.KHEPREE_DEV_MOCK = '1';
@@ -65,5 +65,30 @@ describe('lease-verifier', () => {
     const lease = signPayload(payload);
     lease.signature = 'AAAA';
     expect(() => verifySignedLease(lease)).toThrow();
+  });
+
+  it('rejects lease bound to another installation', () => {
+    const payload: KhepreeSignedLeasePayload = {
+      installationId: '11111111-1111-4111-8111-111111111111',
+      deviceId: 'dev-device',
+      productId: 'novel-ai',
+      features: { translation: true },
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      graceUntil: null,
+    };
+    const lease = signPayload(payload);
+    expect(() =>
+      verifySignedLease(lease, {
+        binding: {
+          installationId: '22222222-2222-4222-8222-222222222222',
+          deviceId: 'dev-device',
+          productId: 'novel-ai',
+        },
+      }),
+    ).toThrow();
+  });
+
+  it('parseSignedLease rejects malformed payload', () => {
+    expect(() => parseSignedLease({ payload: {}, keyId: 'k1', signature: 'x' })).toThrow();
   });
 });

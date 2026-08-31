@@ -31,9 +31,11 @@ import {
 import { verifySignedLease, isLeaseCurrentlyValid } from './lease-verifier';
 import {
   KhepreeAccessError,
+  KhepreeCredentialCorruptError,
   KhepreeDeviceLimitError,
   KhepreeNetworkError,
   KhepreeProductAccessDeniedError,
+  KhepreeSafeStorageRequiredError,
 } from './errors';
 import { openValidatedKhepreeUrl } from './external-links';
 
@@ -187,23 +189,34 @@ export class KhepreeAccessService {
       deviceId,
     });
 
-    this.applyColdStartResult(result);
+    this.applyColdStartResult(result, identity);
     this.gate = 'workspace';
     this.coldStartComplete = true;
     this.lastError = null;
   }
 
-  private applyColdStartResult(result: {
-    user: KhepreeUserDisplay;
-    plan: KhepreePlanDisplay;
-    entitlement: KhepreeEntitlementState;
-    billing: KhepreeBillingState;
-    features: Record<string, boolean>;
-    lease: KhepreeSignedLease;
-    devicesUsed: number;
-    devicesMax: number;
-  }): void {
-    verifySignedLease(result.lease);
+  private applyColdStartResult(
+    result: {
+      user: KhepreeUserDisplay;
+      plan: KhepreePlanDisplay;
+      entitlement: KhepreeEntitlementState;
+      billing: KhepreeBillingState;
+      features: Record<string, boolean>;
+      lease: KhepreeSignedLease;
+      devicesUsed: number;
+      devicesMax: number;
+      deviceId: string;
+    },
+    identity: { installationId: string; deviceId: string | null },
+  ): void {
+    const deviceId = identity.deviceId ?? result.deviceId;
+    verifySignedLease(result.lease, {
+      binding: {
+        installationId: identity.installationId,
+        deviceId,
+        productId: getKhepreeProductId(),
+      },
+    });
     this.user = result.user;
     this.plan = result.plan;
     this.entitlement = result.entitlement;
@@ -216,6 +229,15 @@ export class KhepreeAccessService {
   }
 
   private handleColdStartFailure(error: unknown): void {
+    if (
+      error instanceof KhepreeCredentialCorruptError ||
+      error instanceof KhepreeSafeStorageRequiredError
+    ) {
+      this.gate = 'login';
+      this.lastError = { code: error.code, message: error.message };
+      this.coldStartComplete = false;
+      return;
+    }
     if (error instanceof KhepreeNetworkError) {
       this.gate = 'offline';
       this.lastError = { code: error.code, message: error.message };

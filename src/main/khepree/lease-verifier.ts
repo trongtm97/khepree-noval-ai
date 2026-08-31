@@ -7,6 +7,17 @@ import {
 import { resolveTrustedSigningKey } from './config';
 import { KhepreeLeaseInvalidError } from './errors';
 
+export interface LeaseBindingContext {
+  installationId: string;
+  deviceId: string;
+  productId: string;
+}
+
+export interface VerifySignedLeaseOptions {
+  now?: number;
+  binding?: LeaseBindingContext;
+}
+
 function canonicalPayload(payload: KhepreeSignedLeasePayload): Buffer {
   const ordered = {
     deviceId: payload.deviceId,
@@ -33,7 +44,26 @@ export function parseSignedLease(raw: unknown): KhepreeSignedLease {
   return parsed.data;
 }
 
-export function verifySignedLease(lease: KhepreeSignedLease, now = Date.now()): KhepreeSignedLeasePayload {
+function assertLeaseBinding(
+  payload: KhepreeSignedLeasePayload,
+  binding: LeaseBindingContext,
+): void {
+  if (payload.installationId !== binding.installationId) {
+    throw new KhepreeLeaseInvalidError('Lease installationId does not match this installation.');
+  }
+  if (payload.deviceId !== binding.deviceId) {
+    throw new KhepreeLeaseInvalidError('Lease deviceId does not match this device.');
+  }
+  if (payload.productId !== binding.productId) {
+    throw new KhepreeLeaseInvalidError('Lease productId does not match this product.');
+  }
+}
+
+export function verifySignedLease(
+  lease: KhepreeSignedLease,
+  options: VerifySignedLeaseOptions = {},
+): KhepreeSignedLeasePayload {
+  const now = options.now ?? Date.now();
   const publicKeySpki = resolveTrustedSigningKey(lease.keyId);
   if (!publicKeySpki) {
     throw new KhepreeLeaseInvalidError(`Unknown signing keyId: ${lease.keyId}`);
@@ -70,6 +100,10 @@ export function verifySignedLease(lease: KhepreeSignedLease, now = Date.now()): 
     throw new KhepreeLeaseInvalidError('Lease has expired.');
   }
 
+  if (options.binding) {
+    assertLeaseBinding(lease.payload, options.binding);
+  }
+
   return lease.payload;
 }
 
@@ -79,7 +113,7 @@ export function isLeaseCurrentlyValid(
 ): lease is KhepreeSignedLease {
   if (!lease) return false;
   try {
-    verifySignedLease(lease, now);
+    verifySignedLease(lease, { now });
     return true;
   } catch {
     return false;

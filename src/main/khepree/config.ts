@@ -1,6 +1,13 @@
 import { app } from 'electron';
-import { KHEPREE_PRODUCT_ID } from '@shared/constants/khepree';
+import { KHEPREE_EXTERNAL_URLS, KHEPREE_PRODUCT_ID } from '@shared/constants/khepree';
 import { getDevSigningKeys } from './dev-signing-keys';
+
+/** Pinned production endpoints — renderer cannot override these. */
+export const KHEPREE_ENDPOINTS = {
+  api: 'https://api.khepree.com/v1',
+  website: KHEPREE_EXTERNAL_URLS.website,
+  account: KHEPREE_EXTERNAL_URLS.account,
+} as const;
 
 /** Trusted Khepree Ed25519 public keys pinned at build time (keyId → SPKI base64). */
 export const KHEPREE_TRUSTED_SIGNING_KEYS: Readonly<Record<string, string>> = {
@@ -9,7 +16,11 @@ export const KHEPREE_TRUSTED_SIGNING_KEYS: Readonly<Record<string, string>> = {
 };
 
 export function getKhepreeApiBaseUrl(): string {
-  return process.env.KHEPREE_API_BASE?.trim() ?? 'https://api.khepree.com/v1';
+  if (app?.isPackaged) {
+    return KHEPREE_ENDPOINTS.api;
+  }
+  const override = process.env.KHEPREE_API_BASE?.trim();
+  return override && override.length > 0 ? override : KHEPREE_ENDPOINTS.api;
 }
 
 export function isKhepreeDevMockEnabled(): boolean {
@@ -20,7 +31,11 @@ export function isKhepreeDevMockEnabled(): boolean {
 }
 
 export function getKhepreeProductId(): string {
-  return process.env.KHEPREE_PRODUCT_ID?.trim() ?? KHEPREE_PRODUCT_ID;
+  if (app?.isPackaged) {
+    return KHEPREE_PRODUCT_ID;
+  }
+  const override = process.env.KHEPREE_PRODUCT_ID?.trim();
+  return override && override.length > 0 ? override : KHEPREE_PRODUCT_ID;
 }
 
 export function resolveTrustedSigningKey(keyId: string): string | null {
