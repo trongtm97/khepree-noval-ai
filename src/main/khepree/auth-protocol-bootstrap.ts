@@ -3,6 +3,7 @@ import path from 'node:path';
 import { KHEPREE_AUTH_PROTOCOL_SCHEME } from '@shared/constants/khepree';
 import { extractAuthCallbackUrlFromArgv } from './oauth-auth-transaction';
 import { getKhepreeAccessService } from './khepree-access-singleton';
+import { focusKhepreeMainWindow } from './access-state-bridge';
 import { logger } from '../logging/logger';
 
 let queuedAuthCallbackUrl: string | null = null;
@@ -11,6 +12,7 @@ function routeAuthCallback(rawUrl: string): void {
   try {
     getKhepreeAccessService().handleAuthCallbackUrl(rawUrl);
     queuedAuthCallbackUrl = null;
+    focusKhepreeMainWindow();
   } catch (error) {
     queuedAuthCallbackUrl = rawUrl;
     logger.info('Khepree OAuth callback queued until access service ready', {

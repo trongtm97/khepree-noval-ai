@@ -195,15 +195,16 @@ describe('Khepree cross-system acceptance (N09)', { timeout: 30_000 }, () => {
     });
   });
 
-  describe('Test 3 — No entitlement → purchase screen', () => {
-    it('N09-3: login succeeds but workspace blocked without entitlement', async () => {
+  describe('Test 3 — No entitlement → free workspace', () => {
+    it('N09-3: login succeeds with FREE workspace; paid IPC blocked', async () => {
       process.env.KHEPREE_MOCK_NO_ENTITLEMENT = '1';
       const { service } = createService(tempRoot);
       await loginActive(service);
       const state = service.getPublicState();
       expect(state.signedIn).toBe(true);
-      expect(state.status).toBe('ENTITLEMENT_MISSING');
-      expect(state.canUseWorkspace).toBe(false);
+      expect(state.status).toBe('FREE');
+      expect(state.canUseWorkspace).toBe(true);
+      expect(state.entitlement).toBe('none');
       expect(() => service.assertProductAccess(KHEPREE_FEATURES.translation)).toThrow(
         KhepreeProductAccessDeniedError,
       );
@@ -421,7 +422,7 @@ describe('Khepree cross-system acceptance (N09)', { timeout: 30_000 }, () => {
 
       const { service } = createService(tempRoot);
       await loginActive(service);
-      expect(service.getPublicState().status).toBe('ENTITLEMENT_MISSING');
+      expect(service.getPublicState().status).toBe('FREE');
 
       await service.startCheckout('pro-90d');
       await vi.advanceTimersByTimeAsync(10_000);
@@ -447,9 +448,9 @@ describe('Khepree cross-system acceptance (N09)', { timeout: 30_000 }, () => {
       await service.checkCheckoutNow();
 
       const state = service.getPublicState();
-      expect(state.status).toBe('ENTITLEMENT_MISSING');
+      expect(state.status).toBe('FREE');
       expect(state.checkoutPhase).toBe('waiting');
-      expect(state.canUseWorkspace).toBe(false);
+      expect(state.canUseWorkspace).toBe(true);
       await service.shutdown();
     });
   });

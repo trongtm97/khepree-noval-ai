@@ -2520,6 +2520,11 @@ export const en: LocaleMessages = {
       upgrade: 'View plans & upgrade',
       refresh: 'I already subscribed — refresh',
     },
+    freeTier: {
+      banner: 'You are on the Free plan — upgrade to translate and export.',
+      upgrade: 'View plans',
+      upgradeRequired: 'This feature requires a paid plan. Upgrade under Khepree → Plan.',
+    },
     deviceLimit: {
       title: 'Device limit reached',
       subtitle: 'Devices used: {used} / {max}',
@@ -2640,7 +2645,7 @@ export const en: LocaleMessages = {
       none: 'None',
     },
     entitlementState: {
-      none: 'No subscription',
+      none: 'Free',
       active: 'Active',
       suspended: 'Suspended',
       expired: 'Expired',
@@ -2659,6 +2664,7 @@ export const en: LocaleMessages = {
       DEVICE_REMOVED: 'Device removed',
       DEVICE_BLOCKED: 'Device blocked',
       OFFLINE_COLD_START: 'Offline — verification required',
+      FREE: 'Free',
       ACTIVE: 'Active',
       ERROR: 'Error',
     },

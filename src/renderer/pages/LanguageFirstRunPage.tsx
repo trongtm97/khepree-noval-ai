@@ -53,9 +53,11 @@ export function LanguageFirstRunPage({ onComplete }: { onComplete: () => void })
           </Button>
         </div>
         {error ? <p className="form-error">{error}</p> : null}
-        <Button type="button" variant="primary" disabled={!selected || busy} onClick={() => void continueWith()}>
-          {busy ? '…' : 'Continue / Tiếp tục'}
-        </Button>
+        <div className="khepree-gate__actions">
+          <Button type="button" variant="primary" disabled={!selected || busy} onClick={() => void continueWith()}>
+            {busy ? '…' : 'Continue / Tiếp tục'}
+          </Button>
+        </div>
       </div>
     </div>
   );

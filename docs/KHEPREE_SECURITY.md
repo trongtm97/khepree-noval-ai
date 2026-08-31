@@ -18,9 +18,20 @@ Shared API schemas: `src/shared/schemas/khepree-api.ts`
 
 ## Config
 
-Production endpoints are pinned in `KHEPREE_ENDPOINTS`. When `app.isPackaged`, env cannot override API base URL or product ID.
+Production endpoints are pinned in `KHEPREE_PRODUCTION` / `KHEPREE_ENDPOINTS`:
 
-Dev-only overrides: `KHEPREE_API_BASE`, `KHEPREE_PRODUCT_ID`, `KHEPREE_DEV_MOCK`.
+| Surface | URL |
+|---------|-----|
+| API base | `https://api.khepree.com/api/v1` |
+| Account | `https://account.khepree.com` |
+| Website | `https://khepree.com` |
+| OAuth authorize | `https://account.khepree.com/desktop/authorize` |
+| Manage billing | `https://account.khepree.com/billing` |
+| Manage devices | `https://account.khepree.com/devices` |
+
+When `app.isPackaged`, env cannot override API base URL, account URL, or product ID.
+
+Dev-only overrides (unpackaged): `KHEPREE_API_BASE`, `KHEPREE_ACCOUNT_BASE`, `KHEPREE_PRODUCT_ID`, `KHEPREE_DEV_MOCK`, `KHEPREE_LICENSE_SIGNING_PUBLIC_KEY`.
 
 ## Credentials
 
@@ -46,7 +57,7 @@ Authoritative states in `KHEPREE_ACCESS_STATES` — renderer receives `status` o
 
 Cold start (saved session):
 
-1. `VALIDATING_SESSION` → refresh token → device activation if needed → `/session/cold-start`
+1. `VALIDATING_SESSION` → `POST /api/v1/desktop/auth/refresh` → device activation if needed → `GET /api/v1/desktop/me`
 2. Verify signed lease (signature, key, product, device, entitlement, `iat`, `exp`, features)
 3. Only `ACTIVE` unlocks workspace and protected IPC
 
@@ -71,15 +82,15 @@ Device limit UI: manage devices URL, retry activation (no re-login), sign out.
 
 - Sidebar **Khepree** → hub with Account, Plan, Devices, About sub-pages.
 - Renderer opens named targets only (`openExternal({ target })`) — main resolves pinned URLs.
-- Sign out: best-effort server `/auth/logout`, then clear encrypted refresh token (device activation unchanged).
+- Sign out: best-effort `POST /api/v1/desktop/auth/logout`, then clear encrypted refresh token (device activation unchanged).
 - Device removal: always via account.khepree.com (no unsafe remote remove from desktop).
 
 ## Plan upgrade & checkout (Phase N07)
 
-- Plan catalog from `POST /billing/plans` — price, currency, access term, features from API (no fake monthly labels).
-- Checkout: `POST /billing/checkout-url` with `planId` → validate URL allowlist → `shell.openExternal` in main only.
+- Plan catalog from `GET /api/v1/desktop/me` (current plan + billing flags).
+- Checkout: `POST /api/v1/desktop/checkout` with `planPublicId` / `pricePublicId` → validate handoff URL allowlist → `shell.openExternal` in main only (typically `https://account.khepree.com/desktop/checkout/...`).
 - Renderer never receives checkout URL, session id, or payment credentials.
-- Main-process `KhepreeCheckoutPoller` polls `POST /billing/checkout-status` with backoff (3s→60s cap, 30 min timeout).
+- Main-process `KhepreeCheckoutPoller` polls `GET /api/v1/desktop/checkout/{id}/status` with backoff (3s→60s cap, 30 min timeout).
 - Stop polling on `ACCESS_ACTIVE`, `FAILED`, `CANCELLED`, timeout, or user cancel.
 - Success: cold-start refresh (session, entitlement, features, signed lease) — no restart, no re-login.
 - Entitlement-missing gate shows product info, plan cards, Visit Khepree, sign out.
@@ -131,7 +142,9 @@ Public source makes Electron patching easier. Evaluate private repo / binary-onl
 - **Protocol:** `khepree-novel-ai://auth/callback` (registered as "Khepree Novel AI" in Windows installer)
 - **PKCE:** S256 challenge/verifier generated in main process only
 - **Callback:** validated in `OAuthAuthTransactionManager` — scheme, path, state, expiry, replay protection
-- **Exchange:** `POST /auth/device/exchange` with code, verifier, clientId, redirectUri, device binding
+- **Exchange:** `POST /api/v1/desktop/auth/exchange` with code, verifier, clientId, redirectUri, device binding
+- **Activate:** `POST /api/v1/desktop/activate` after first login
+- **Authorize URL:** `https://account.khepree.com/desktop/authorize` (PKCE S256)
 - **Persistence:** refresh token encrypted in secrets DB; access token memory-only
 - **Reopen:** saved session → `validating` gate → cold-start (no login screen first)
 - **Single instance:** `requestSingleInstanceLock` + `second-instance` forwards deep links

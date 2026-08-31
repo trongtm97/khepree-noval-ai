@@ -3,10 +3,15 @@ import {
   KHEPREE_EXTERNAL_URLS,
   type KhepreeExternalLinkTarget,
 } from '@shared/constants/khepree';
+import { isKhepreeDevMockEnabled } from './config';
 import { logger } from '../logging/logger';
 import { sanitizeUrlForLog } from '../security/log-sanitize';
 
-const ALLOWED_HOSTS = new Set(['khepree.com', 'account.khepree.com']);
+const PRODUCTION_ALLOWED_HOSTS = new Set(['khepree.com', 'account.khepree.com']);
+
+function isDevLocalhostHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
 
 export function resolveKhepreeExternalUrl(target: KhepreeExternalLinkTarget): string {
   return KHEPREE_EXTERNAL_URLS[target];
@@ -15,8 +20,12 @@ export function resolveKhepreeExternalUrl(target: KhepreeExternalLinkTarget): st
 export function isAllowedKhepreeUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    if (parsed.protocol !== 'https:') return false;
-    return ALLOWED_HOSTS.has(parsed.hostname);
+    if (!isKhepreeDevMockEnabled() && parsed.protocol !== 'https:') return false;
+    if (isKhepreeDevMockEnabled() && parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return false;
+    }
+    if (PRODUCTION_ALLOWED_HOSTS.has(parsed.hostname)) return true;
+    return isKhepreeDevMockEnabled() && isDevLocalhostHost(parsed.hostname);
   } catch {
     return false;
   }

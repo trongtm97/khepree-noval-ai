@@ -2526,6 +2526,11 @@ export const vi = {
       upgrade: 'Xem gói & nâng cấp',
       refresh: 'Tôi đã đăng ký — làm mới',
     },
+    freeTier: {
+      banner: 'Bạn đang dùng gói Free — nâng cấp để dịch và xuất file.',
+      upgrade: 'Xem gói',
+      upgradeRequired: 'Tính năng này cần gói trả phí. Nâng cấp tại Khepree → Gói.',
+    },
     deviceLimit: {
       title: 'Đã đạt giới hạn thiết bị',
       subtitle: 'Thiết bị đang dùng: {used} / {max}',
@@ -2646,7 +2651,7 @@ export const vi = {
       none: 'Không có',
     },
     entitlementState: {
-      none: 'Chưa có gói',
+      none: 'Free',
       active: 'Đang hoạt động',
       suspended: 'Tạm ngưng',
       expired: 'Hết hạn',
@@ -2665,6 +2670,7 @@ export const vi = {
       DEVICE_REMOVED: 'Thiết bị đã bị gỡ',
       DEVICE_BLOCKED: 'Thiết bị bị chặn',
       OFFLINE_COLD_START: 'Offline — cần xác minh',
+      FREE: 'Free',
       ACTIVE: 'Đang hoạt động',
       ERROR: 'Lỗi',
     },

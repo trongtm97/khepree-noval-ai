@@ -6,7 +6,6 @@ import {
   KHEPREE_HEARTBEAT_STATUSES,
   KHEPREE_LOGIN_PHASES,
 } from '../constants/khepree';
-import { KhepreePlanCatalogItemSchema } from './khepree-api';
 
 export const KhepreeUserDisplaySchema = z.object({
   id: z.string(),
@@ -128,6 +127,20 @@ export const KhepreeStartCheckoutResponseSchema = z.object({
   ok: z.boolean(),
   state: KhepreeAccessStateSchema,
 });
+
+export const KhepreePlanCatalogItemSchema = z.object({
+  planId: z.string().min(1),
+  planName: z.string().min(1),
+  price: z.number().nonnegative(),
+  currency: z.string().min(1),
+  /** Provider-defined term, e.g. "90 days" — never invent "monthly". */
+  accessTerm: z.string().min(1),
+  featureSummary: z.array(z.string()),
+  isCurrent: z.boolean(),
+  isUpgradeAvailable: z.boolean(),
+});
+
+export type KhepreePlanCatalogItem = z.infer<typeof KhepreePlanCatalogItemSchema>;
 
 export const KhepreeGetPlanCatalogResponseSchema = z.object({
   ok: z.boolean(),

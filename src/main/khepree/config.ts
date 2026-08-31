@@ -1,21 +1,26 @@
 import { app } from 'electron';
-import { KHEPREE_EXTERNAL_URLS, KHEPREE_PRODUCT_ID } from '@shared/constants/khepree';
+import {
+  KHEPREE_ACCOUNT_AUTHORIZE_PATH,
+  KHEPREE_EXTERNAL_URLS,
+  KHEPREE_PRODUCT_ID,
+  KHEPREE_PRODUCTION,
+} from '@shared/constants/khepree';
+import { computeSigningKeyId } from './platform-lease';
 import { getDevSigningKeys } from './dev-signing-keys';
 
-/** Pinned production endpoints — renderer cannot override these. */
+/** Pinned production endpoints — renderer cannot override these when packaged. */
 export const KHEPREE_ENDPOINTS = {
-  api: 'https://api.khepree.com/v1',
+  api: KHEPREE_PRODUCTION.apiBase,
   website: KHEPREE_EXTERNAL_URLS.website,
-  account: KHEPREE_EXTERNAL_URLS.account,
+  account: KHEPREE_PRODUCTION.account,
 } as const;
 
-/** Desktop OAuth client — override in dev via KHEPREE_OAUTH_CLIENT_ID. */
+/** Desktop OAuth client registered on Khepree platform. */
 export const KHEPREE_OAUTH_CLIENT_ID_DEFAULT = 'khepree-novel-ai-desktop' as const;
 
 /** Trusted Khepree Ed25519 public keys pinned at build time (keyId → SPKI base64). */
 export const KHEPREE_TRUSTED_SIGNING_KEYS: Readonly<Record<string, string>> = {
-  // Replace with production Khepree signing public key before release.
-  k1: '',
+  // Set LICENSE_SIGNING_PUBLIC_KEY from production Khepree VPS at release build time.
 };
 
 export function getKhepreeApiBaseUrl(): string {
@@ -24,6 +29,14 @@ export function getKhepreeApiBaseUrl(): string {
   }
   const override = process.env.KHEPREE_API_BASE?.trim();
   return override && override.length > 0 ? override : KHEPREE_ENDPOINTS.api;
+}
+
+export function getKhepreeAccountBaseUrl(): string {
+  if (app?.isPackaged) {
+    return KHEPREE_ENDPOINTS.account;
+  }
+  const override = process.env.KHEPREE_ACCOUNT_BASE?.trim();
+  return override && override.length > 0 ? override : KHEPREE_ENDPOINTS.account;
 }
 
 export function isKhepreeDevMockEnabled(): boolean {
@@ -57,15 +70,14 @@ export function buildKhepreeAuthorizeUrl(input: {
   installationId: string;
   productId: string;
 }): string {
-  const url = new URL('/oauth/authorize', KHEPREE_ENDPOINTS.account);
-  url.searchParams.set('response_type', 'code');
+  void input.installationId;
+  void input.productId;
+  const url = new URL(KHEPREE_ACCOUNT_AUTHORIZE_PATH, getKhepreeAccountBaseUrl());
   url.searchParams.set('client_id', input.clientId);
   url.searchParams.set('redirect_uri', input.redirectUri);
   url.searchParams.set('state', input.state);
   url.searchParams.set('code_challenge', input.codeChallenge);
   url.searchParams.set('code_challenge_method', 'S256');
-  url.searchParams.set('installation_id', input.installationId);
-  url.searchParams.set('product_id', input.productId);
   return url.toString();
 }
 
@@ -74,6 +86,15 @@ export function resolveTrustedSigningKey(keyId: string): string | null {
   if (pinned && pinned.length > 0) {
     return pinned;
   }
+
+  const envPublicKey = process.env.KHEPREE_LICENSE_SIGNING_PUBLIC_KEY?.trim();
+  if (envPublicKey && envPublicKey.length > 0) {
+    const envKeyId = computeSigningKeyId(envPublicKey);
+    if (envKeyId === keyId) {
+      return envPublicKey;
+    }
+  }
+
   if (!isKhepreeDevMockEnabled()) {
     return null;
   }

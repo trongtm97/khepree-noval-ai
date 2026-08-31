@@ -13,17 +13,18 @@ import { KhepreeCheckoutWaiting } from './KhepreeCheckoutWaiting';
 interface GateLayoutProps {
   title: string;
   subtitle?: string;
+  wide?: boolean;
   children: ReactNode;
 }
 
-function GateLayout({ title, subtitle, children }: GateLayoutProps) {
+function GateLayout({ title, subtitle, wide, children }: GateLayoutProps) {
   return (
-    <div className="setup-wizard khepree-gate">
+    <div className={['setup-wizard', 'khepree-gate', wide ? 'khepree-gate--wide' : ''].filter(Boolean).join(' ')}>
       <div className="setup-wizard__panel">
         <AppBrand />
         <h1>{title}</h1>
         {subtitle ? <p className="setup-wizard__lead">{subtitle}</p> : null}
-        {children}
+        <div className="khepree-gate__body">{children}</div>
       </div>
     </div>
   );
@@ -89,14 +90,16 @@ function LoginGate({
     <GateLayout title={t('khepree.login.title')} subtitle={t('khepree.login.subtitle')}>
       {phaseLabel ? <p className="setup-wizard__hint">{phaseLabel}</p> : null}
       {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
-      <Button
-        type="button"
-        variant="primary"
-        disabled={busy || inProgress}
-        onClick={() => void onLogin()}
-      >
-        {inProgress ? phaseLabel ?? t('khepree.login.opening') : t('khepree.login.action')}
-      </Button>
+      <div className="khepree-gate__actions">
+        <Button
+          type="button"
+          variant="primary"
+          disabled={busy || inProgress}
+          onClick={() => void onLogin()}
+        >
+          {inProgress ? phaseLabel ?? t('khepree.login.opening') : t('khepree.login.action')}
+        </Button>
+      </div>
       {!inProgress ? (
         <p className="setup-wizard__hint">{t('khepree.login.hint')}</p>
       ) : null}
@@ -171,7 +174,7 @@ function EntitlementGate({
 
   if (checkoutActive) {
     return (
-      <GateLayout title={t(titleKey)} subtitle={t(subtitleKey)}>
+      <GateLayout title={t(titleKey)} subtitle={t(subtitleKey)} wide>
         <KhepreeCheckoutWaiting
           state={state}
           busy={busy}
@@ -194,7 +197,7 @@ function EntitlementGate({
   }
 
   return (
-    <GateLayout title={t(titleKey)} subtitle={t(subtitleKey)}>
+    <GateLayout title={t(titleKey)} subtitle={t(subtitleKey)} wide>
       <p className="setup-wizard__hint">{t('khepree.plans.productInfo', { id: KHEPREE_PRODUCT_ID })}</p>
       {loading ? <p className="setup-wizard__hint">{t('khepree.plans.loading')}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
@@ -313,7 +316,7 @@ export function KhepreeAccessGate({
 }) {
   const [busy, setBusy] = useState(false);
 
-  if (state.status === 'ACTIVE' && state.canUseWorkspace) {
+  if (state.canUseWorkspace && (state.status === 'ACTIVE' || state.status === 'FREE')) {
     return <>{children}</>;
   }
 

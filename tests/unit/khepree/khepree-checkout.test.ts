@@ -156,7 +156,7 @@ describe('Khepree checkout flow (N07)', () => {
 
     const { service } = createService(tempRoot);
     await loginActive(service);
-    expect(service.getPublicState().status).toBe('ENTITLEMENT_MISSING');
+    expect(service.getPublicState().status).toBe('FREE');
 
     await service.startCheckout('pro-90d');
     await vi.advanceTimersByTimeAsync(10_000);
@@ -181,7 +181,7 @@ describe('Khepree checkout flow (N07)', () => {
     await service.checkCheckoutNow();
 
     expect(service.getPublicState().checkoutPhase).toBe('confirming');
-    expect(service.getPublicState().status).toBe('ENTITLEMENT_MISSING');
+    expect(service.getPublicState().status).toBe('FREE');
 
     mockKhepreeCheckoutState.entitlementPendingAfterPayment = false;
     mockKhepreeCheckoutState.statusSequence = ['ACCESS_ACTIVE'];

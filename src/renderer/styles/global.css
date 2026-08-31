@@ -1294,8 +1294,20 @@ body {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--font-body);
   cursor: pointer;
   text-align: left;
+}
+
+.accounts-provider-picker-item strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.accounts-provider-picker-item .muted {
+  color: var(--text-secondary);
 }
 
 .accounts-provider-picker-item:hover:not(:disabled) {
@@ -2828,6 +2840,151 @@ body {
   max-width: 40rem;
   margin: 2rem auto;
   padding: 1.5rem;
+  color: var(--text-primary);
+}
+
+.setup-wizard .page-header h2 {
+  color: var(--text-primary);
+}
+
+.setup-wizard-card h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-section);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.setup-wizard-card > p {
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.setup-wizard-card > p.muted {
+  color: var(--text-muted);
+}
+
+/* Full-screen entry gates: language picker, Khepree auth, entitlement */
+.setup-wizard.khepree-gate,
+.setup-wizard.language-first-run {
+  min-height: 100vh;
+  max-width: none;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.setup-wizard__panel {
+  width: 100%;
+  max-width: 26rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-5);
+  padding: var(--space-8);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.khepree-gate--wide .setup-wizard__panel {
+  max-width: 42rem;
+}
+
+.setup-wizard__panel > .app-brand {
+  align-self: center;
+  flex-direction: column;
+  text-align: center;
+  gap: var(--space-3);
+}
+
+.setup-wizard__panel > .app-brand .app-brand-logo {
+  width: 48px;
+  height: 48px;
+}
+
+.setup-wizard__panel > .app-brand .app-brand-name-line {
+  font-size: 0.9375rem;
+  line-height: 1.2;
+}
+
+.setup-wizard__panel > h1 {
+  margin: 0;
+  font-size: var(--font-page-title);
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.setup-wizard__lead {
+  margin: 0;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.55;
+  font-size: var(--font-body);
+}
+
+.setup-wizard__hint {
+  margin: 0;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: var(--font-small);
+  line-height: 1.55;
+}
+
+.setup-wizard__panel > .form-error {
+  margin: 0;
+  text-align: center;
+}
+
+.setup-wizard__panel > .nt-btn:not(.khepree-gate__actions .nt-btn) {
+  width: 100%;
+  justify-content: center;
+}
+
+.khepree-gate__body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+}
+
+.khepree-gate__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.khepree-gate__actions .nt-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.khepree-free-tier-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 var(--space-4) var(--space-3);
+}
+
+.khepree-free-tier-banner p {
+  margin: 0;
+  flex: 1 1 12rem;
+}
+
+.language-first-run__options {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.language-first-run__options .nt-btn {
+  flex: 1 1 calc(50% - var(--space-2));
+  min-width: 9rem;
 }
 
 .setup-wizard-card {
@@ -2849,7 +3006,8 @@ body {
   gap: 0.75rem;
   padding: 0.4rem 0.55rem;
   border-radius: var(--radius-md);
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .onboarding-checklist {

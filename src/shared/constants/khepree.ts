@@ -2,10 +2,40 @@
 
 export const KHEPREE_PRODUCT_ID = 'novel-ai' as const;
 
+/** Pinned production origins — match KHEPREE deploy (.env.production). */
+export const KHEPREE_PRODUCTION = {
+  website: 'https://khepree.com',
+  account: 'https://account.khepree.com',
+  apiOrigin: 'https://api.khepree.com',
+  /** Desktop API base — routes live under /api/v1/desktop/* */
+  apiBase: 'https://api.khepree.com/api/v1',
+} as const;
+
+/** Desktop OAuth authorize path on account.khepree.com */
+export const KHEPREE_ACCOUNT_AUTHORIZE_PATH = '/desktop/authorize' as const;
+
+/** Khepree platform desktop API paths (append to KHEPREE_PRODUCTION.apiBase). */
+export const KHEPREE_DESKTOP_API_PATHS = {
+  authExchange: '/desktop/auth/exchange',
+  authRefresh: '/desktop/auth/refresh',
+  authLogout: '/desktop/auth/logout',
+  activate: '/desktop/activate',
+  me: '/desktop/me',
+  heartbeat: '/desktop/heartbeat',
+  checkout: '/desktop/checkout',
+} as const;
+
+/** Full device-proof paths (include /api/v1 prefix). */
+export const KHEPREE_DESKTOP_PROOF_PATHS = {
+  authRefresh: '/api/v1/desktop/auth/refresh',
+  heartbeat: '/api/v1/desktop/heartbeat',
+} as const;
+
 export const KHEPREE_META_KEYS = {
   installationId: 'khepree.device.installation_id',
   deviceId: 'khepree.device.device_id',
   deviceName: 'khepree.device.name',
+  sessionPublicId: 'khepree.session.public_id',
 } as const;
 
 export const KHEPREE_SECRET_KEYS = {
@@ -15,12 +45,12 @@ export const KHEPREE_SECRET_KEYS = {
 
 /** Production allowlist — renderer cannot open arbitrary URLs. */
 export const KHEPREE_EXTERNAL_URLS = {
-  website: 'https://khepree.com',
-  products: 'https://khepree.com/products',
-  account: 'https://account.khepree.com',
-  devices: 'https://account.khepree.com/devices',
-  plans: 'https://account.khepree.com/plans',
-  checkout: 'https://account.khepree.com/checkout',
+  website: KHEPREE_PRODUCTION.website,
+  products: `${KHEPREE_PRODUCTION.website}/products`,
+  account: KHEPREE_PRODUCTION.account,
+  devices: `${KHEPREE_PRODUCTION.account}/devices`,
+  plans: `${KHEPREE_PRODUCTION.account}/billing`,
+  checkout: `${KHEPREE_PRODUCTION.account}/checkout`,
 } as const;
 
 export type KhepreeExternalLinkTarget = keyof typeof KHEPREE_EXTERNAL_URLS;

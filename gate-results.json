@@ -1,0 +1,9 @@
+{
+    "make":  0,
+    "integration":  0,
+    "perf":  0,
+    "lint":  0,
+    "typecheck":  0,
+    "package":  0,
+    "unit":  0
+}

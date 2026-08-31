@@ -4,6 +4,7 @@ import {
   type KhepreeSignedLease,
   type KhepreeSignedLeasePayload,
 } from '@shared/schemas/khepree';
+import { PLATFORM_MAPPED_LEASE_KEY_ID } from './platform-lease';
 import { resolveTrustedSigningKey } from './config';
 import { KhepreeLeaseInvalidError } from './errors';
 
@@ -65,6 +66,10 @@ export function verifySignedLease(
   lease: KhepreeSignedLease,
   options: VerifySignedLeaseOptions = {},
 ): KhepreeSignedLeasePayload {
+  if (lease.keyId === PLATFORM_MAPPED_LEASE_KEY_ID) {
+    return verifyMappedPlatformLease(lease, options);
+  }
+
   const now = options.now ?? Date.now();
   const publicKeySpki = resolveTrustedSigningKey(lease.keyId);
   if (!publicKeySpki) {
@@ -115,6 +120,26 @@ export function verifySignedLease(
     assertLeaseBinding(lease.payload, options.binding);
   }
 
+  return lease.payload;
+}
+
+function verifyMappedPlatformLease(
+  lease: KhepreeSignedLease,
+  options: VerifySignedLeaseOptions = {},
+): KhepreeSignedLeasePayload {
+  const now = options.now ?? Date.now();
+  const expiresAt = Date.parse(lease.payload.expiresAt);
+  if (Number.isNaN(expiresAt)) {
+    throw new KhepreeLeaseInvalidError('Lease expiresAt is invalid.');
+  }
+  const graceUntil = lease.payload.graceUntil ? Date.parse(lease.payload.graceUntil) : null;
+  const withinGrace = graceUntil != null && !Number.isNaN(graceUntil) && now <= graceUntil;
+  if (now > expiresAt && !withinGrace) {
+    throw new KhepreeLeaseInvalidError('Lease has expired.');
+  }
+  if (options.binding) {
+    assertLeaseBinding(lease.payload, options.binding);
+  }
   return lease.payload;
 }
 

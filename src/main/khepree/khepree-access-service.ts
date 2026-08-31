@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import {
   KHEPREE_DEFAULT_HEARTBEAT_MS,
+  KHEPREE_DESKTOP_PROOF_PATHS,
   KHEPREE_FEATURES,
   KHEPREE_OAUTH_REDIRECT_URI,
   type KhepreeAccessStatus,
@@ -45,7 +46,7 @@ import {
   isKhepreeDevMockEnabled,
 } from './config';
 import { verifySignedLease, isLeaseCurrentlyValid } from './lease-verifier';
-import { buildHeartbeatProofPayload } from './heartbeat-proof';
+import { buildKhepreeDeviceProof } from './khepree-device-proof';
 import {
   KhepreeAccessError,
   KhepreeCredentialCorruptError,
@@ -54,6 +55,7 @@ import {
   KhepreeNetworkError,
   KhepreeProductAccessDeniedError,
   KhepreeSafeStorageRequiredError,
+  isEntitlementAbsentError,
   isInvalidRefreshError,
 } from './errors';
 import { openValidatedKhepreeUrl, isAllowedKhepreeUrl } from './external-links';
@@ -99,7 +101,31 @@ export class KhepreeAccessService {
   ) {
     this.api = createKhepreeApiClient(getKhepreeApiBaseUrl(), isKhepreeDevMockEnabled());
     this.deviceIdentity = new DeviceIdentityService(getDb, secretStorage);
-    this.sessionStore = new KhepreeSessionStore(secretStorage);
+    this.sessionStore = new KhepreeSessionStore(secretStorage, getDb);
+  }
+
+  private async buildDesktopDeviceProof(
+    sessionPublicId: string,
+    method: string,
+    path: string,
+    body: string,
+  ) {
+    const keypair = await this.deviceIdentity.getOrCreateKeypair();
+    return buildKhepreeDeviceProof({
+      sessionPublicId,
+      method,
+      path,
+      body,
+      sign: keypair.sign,
+    });
+  }
+
+  private requireSessionPublicId(): string {
+    const sessionPublicId = this.sessionStore.getSessionPublicId();
+    if (!sessionPublicId) {
+      throw new KhepreeAccessError('AUTH_REQUIRED', 'Missing Khepree session.');
+    }
+    return sessionPublicId;
   }
 
   subscribe(listener: AccessListener): () => void {
@@ -193,7 +219,7 @@ export class KhepreeAccessService {
     try {
       await this.performColdStartValidation();
     } catch (error) {
-      this.handleColdStartFailure(error);
+      await this.handleColdStartFailure(error);
     }
     this.emit();
     return this.getPublicState();
@@ -212,11 +238,25 @@ export class KhepreeAccessService {
 
     if (!accessToken) {
       try {
+        const sessionPublicId = this.requireSessionPublicId();
+        const refreshBody = JSON.stringify({
+          sessionPublicId,
+          refreshToken,
+        });
+        const deviceProof = await this.buildDesktopDeviceProof(
+          sessionPublicId,
+          'POST',
+          KHEPREE_DESKTOP_PROOF_PATHS.authRefresh,
+          refreshBody,
+        );
         const refreshed = await this.api.refreshSession({
           refreshToken,
           installationId: identity.installationId,
+          sessionPublicId,
+          deviceProof,
         });
         await this.sessionStore.saveRefreshToken(refreshed.refreshToken, refreshed.user.id);
+        this.sessionStore.setSessionPublicId(refreshed.sessionPublicId);
         this.sessionStore.setAccessToken(
           refreshed.accessToken,
           refreshed.expiresIn,
@@ -247,19 +287,71 @@ export class KhepreeAccessService {
     if (!deviceId) {
       this.status = 'DEVICE_ACTIVATING';
       this.emit();
-      const activation = await this.activateCurrentDevice(accessToken, identity);
-      this.deviceIdentity.setDeviceId(activation.deviceId);
-      deviceId = activation.deviceId;
+      try {
+        const activation = await this.activateCurrentDevice(accessToken, identity);
+        this.deviceIdentity.setDeviceId(activation.deviceId);
+        deviceId = activation.deviceId;
+      } catch (error) {
+        if (isEntitlementAbsentError(error)) {
+          await this.enterFreeTier(accessToken);
+          return;
+        }
+        throw error;
+      }
     }
 
-    const result = await this.api.coldStartValidate({
-      accessToken,
-      installationId: identity.installationId,
-      deviceId,
+    const sessionPublicId = this.requireSessionPublicId();
+    const refreshBody = JSON.stringify({
+      sessionPublicId,
+      refreshToken,
     });
+    const deviceProof = await this.buildDesktopDeviceProof(
+      sessionPublicId,
+      'POST',
+      KHEPREE_DESKTOP_PROOF_PATHS.authRefresh,
+      refreshBody,
+    );
+    try {
+      const result = await this.api.coldStartValidate({
+        accessToken,
+        installationId: identity.installationId,
+        deviceId,
+        sessionPublicId,
+        refreshToken,
+        deviceProof,
+        devicePublicKey: identity.publicKeySpki,
+        deviceName: this.deviceIdentity.getDeviceName(),
+        platform: process.platform,
+        appVersion: app.getVersion(),
+      });
 
-    this.applyColdStartResult(result, { ...identity, deviceId });
-    this.finalizeAfterColdStartValidation();
+      this.applyColdStartResult(result, { ...identity, deviceId });
+      this.finalizeAfterColdStartValidation();
+    } catch (error) {
+      if (isEntitlementAbsentError(error)) {
+        await this.enterFreeTier(accessToken);
+        return;
+      }
+      throw error;
+    }
+  }
+
+  private async enterFreeTier(accessToken: string): Promise<void> {
+    const profile = await this.api.fetchDesktopProfile({ accessToken });
+    this.user = profile.user;
+    this.plan = profile.plan;
+    this.entitlement = profile.entitlement;
+    this.billing = profile.billing;
+    this.features = {};
+    this.currentLease = null;
+    this.devicesUsed = profile.devicesUsed;
+    this.devicesMax = profile.devicesMax;
+    if (profile.deviceId) {
+      this.deviceIdentity.setDeviceId(profile.deviceId);
+    }
+    this.lastError = null;
+    this.status =
+      profile.entitlement === 'none' ? 'FREE' : resolveStatusFromEntitlement(profile.entitlement);
   }
 
   private async activateCurrentDevice(
@@ -272,6 +364,8 @@ export class KhepreeAccessService {
         installationId: identity.installationId,
         devicePublicKey: (await this.deviceIdentity.getIdentity()).publicKeySpki,
         deviceName: this.deviceIdentity.getDeviceName(),
+        platform: process.platform,
+        appVersion: app.getVersion(),
       });
     } catch (error) {
       if (error instanceof KhepreeDeviceLimitError) {
@@ -321,6 +415,9 @@ export class KhepreeAccessService {
     if (this.entitlement !== 'active') {
       this.currentLease = null;
       this.status = resolveStatusFromEntitlement(this.entitlement);
+      if (this.status === 'FREE') {
+        this.lastError = null;
+      }
       return;
     }
     if (!isLeaseCurrentlyValid(this.currentLease)) {
@@ -336,7 +433,7 @@ export class KhepreeAccessService {
     this.lastError = null;
   }
 
-  private handleColdStartFailure(error: unknown): void {
+  private async handleColdStartFailure(error: unknown): Promise<void> {
     if (
       error instanceof KhepreeCredentialCorruptError ||
       error instanceof KhepreeSafeStorageRequiredError
@@ -367,14 +464,23 @@ export class KhepreeAccessService {
       this.lastError = { code: error.code, message: error.message };
       return;
     }
-    if (error instanceof KhepreeAccessError) {
-      if (error.code === 'ENTITLEMENT_NONE' || error.code === 'ENTITLEMENT_MISSING') {
-        this.currentLease = null;
-        this.entitlement = 'none';
-        this.status = 'ENTITLEMENT_MISSING';
-        this.lastError = { code: error.code, message: error.message };
-        return;
+    if (isEntitlementAbsentError(error)) {
+      const accessToken = await this.ensureAccessToken();
+      if (accessToken) {
+        try {
+          await this.enterFreeTier(accessToken);
+          return;
+        } catch {
+          // fall through to generic failure
+        }
       }
+      this.currentLease = null;
+      this.entitlement = 'none';
+      this.status = 'FREE';
+      this.lastError = null;
+      return;
+    }
+    if (error instanceof KhepreeAccessError) {
       if (error.code === 'ENTITLEMENT_EXPIRED') {
         this.currentLease = null;
         this.entitlement = 'expired';
@@ -432,16 +538,6 @@ export class KhepreeAccessService {
       oauthState = buildPendingOAuthState();
       this.oauthTransaction.beginTransaction(oauthState, pkce.codeVerifier);
 
-      await this.api.startDeviceAuth({
-        state: oauthState,
-        codeChallenge: pkce.codeChallenge,
-        codeChallengeMethod: pkce.codeChallengeMethod,
-        redirectUri: KHEPREE_OAUTH_REDIRECT_URI,
-        installationId: identity.installationId,
-        devicePublicKey: identity.publicKeySpki,
-        productId: getKhepreeProductId(),
-      });
-
       const authUrl = buildKhepreeAuthorizeUrl({
         state: oauthState,
         codeChallenge: pkce.codeChallenge,
@@ -479,9 +575,16 @@ export class KhepreeAccessService {
         platform: process.platform,
         appVersion: app.getVersion(),
       });
+      const sessionPublicId =
+        'sessionPublicId' in tokens && typeof tokens.sessionPublicId === 'string'
+          ? tokens.sessionPublicId
+          : null;
 
       await this.sessionStore.saveRefreshToken(tokens.refreshToken, tokens.user.id);
       this.hasRefreshCredential = true;
+      if (sessionPublicId) {
+        this.sessionStore.setSessionPublicId(sessionPublicId);
+      }
       this.sessionStore.setAccessToken(tokens.accessToken, tokens.expiresIn, tokens.user.id);
       this.user = tokens.user;
 
@@ -494,6 +597,8 @@ export class KhepreeAccessService {
           installationId: identity.installationId,
           devicePublicKey: identity.publicKeySpki,
           deviceName: this.deviceIdentity.getDeviceName(),
+          platform: process.platform,
+          appVersion: app.getVersion(),
         });
         this.deviceIdentity.setDeviceId(activation.deviceId);
         this.devicesUsed = activation.devicesUsed;
@@ -509,6 +614,11 @@ export class KhepreeAccessService {
           this.emit();
           return this.getPublicState();
         }
+        if (isEntitlementAbsentError(error)) {
+          await this.enterFreeTier(tokens.accessToken);
+          this.loginPhase = 'success';
+          return this.getPublicState();
+        }
         throw error;
       }
 
@@ -516,7 +626,22 @@ export class KhepreeAccessService {
       this.loginPhase = 'success';
     } catch (error) {
       this.oauthTransaction.clearTransaction();
-      this.applyLoginFailure(error);
+      if (this.hasRefreshCredential && isEntitlementAbsentError(error)) {
+        const accessToken = await this.ensureAccessToken();
+        if (accessToken) {
+          try {
+            await this.enterFreeTier(accessToken);
+            this.loginPhase = 'success';
+            return this.getPublicState();
+          } catch (freeError) {
+            this.applyLoginFailure(freeError);
+          }
+        } else {
+          this.applyLoginFailure(error);
+        }
+      } else {
+        this.applyLoginFailure(error);
+      }
     } finally {
       this.loginInProgress = false;
       if (this.loginPhase !== 'success' && this.status !== 'DEVICE_LIMIT_REACHED') {
@@ -566,7 +691,7 @@ export class KhepreeAccessService {
     try {
       await this.performColdStartValidation();
     } catch (error) {
-      this.handleColdStartFailure(error);
+      await this.handleColdStartFailure(error);
     }
     this.emit();
     return this.getPublicState();
@@ -601,7 +726,7 @@ export class KhepreeAccessService {
         this.devicesUsed = error.devicesUsed;
         this.devicesMax = error.devicesMax;
       } else {
-        this.handleColdStartFailure(error);
+        await this.handleColdStartFailure(error);
       }
       this.lastError = {
         code: error instanceof KhepreeAccessError ? error.code : 'ACTIVATION_FAILED',
@@ -618,7 +743,7 @@ export class KhepreeAccessService {
     try {
       await this.performColdStartValidation();
     } catch (error) {
-      this.handleColdStartFailure(error);
+      await this.handleColdStartFailure(error);
     }
     this.emit();
     return this.getPublicState();
@@ -850,7 +975,7 @@ export class KhepreeAccessService {
     try {
       await this.performColdStartValidation();
     } catch (error) {
-      this.handleColdStartFailure(error);
+      await this.handleColdStartFailure(error);
     }
 
     if (this.status === 'ACTIVE' && this.entitlement === 'active') {
@@ -910,21 +1035,25 @@ export class KhepreeAccessService {
     if (!isKhepreeActive(this.status)) return;
 
     const accessToken = await this.ensureAccessToken();
-    const identity = await this.deviceIdentity.getIdentity();
-    const deviceId = identity.deviceId;
-    if (!accessToken || !deviceId) return;
+    const sessionPublicId = this.sessionStore.getSessionPublicId();
+    if (!accessToken || !sessionPublicId) return;
 
-    const proof = buildHeartbeatProofPayload(identity.installationId, deviceId);
-    const signature = await this.deviceIdentity.signHeartbeatProof(proof);
+    const body = JSON.stringify({
+      sessionPublicId,
+      accessToken,
+    });
+    const deviceProof = await this.buildDesktopDeviceProof(
+      sessionPublicId,
+      'POST',
+      KHEPREE_DESKTOP_PROOF_PATHS.heartbeat,
+      body,
+    );
 
     try {
       const { status } = await this.api.heartbeat({
         accessToken,
-        installationId: proof.installationId,
-        deviceId: proof.deviceId,
-        timestamp: proof.timestamp,
-        nonce: proof.nonce,
-        signature,
+        sessionPublicId,
+        deviceProof,
       });
       this.heartbeatStatus = status;
       await this.applyHeartbeatStatus(status);
@@ -990,6 +1119,9 @@ export class KhepreeAccessService {
     if (!isKhepreeActive(this.status)) {
       throw new KhepreeProductAccessDeniedError(feature);
     }
+    if (this.entitlement !== 'active') {
+      throw new KhepreeProductAccessDeniedError(feature);
+    }
     if (!isLeaseCurrentlyValid(this.currentLease)) {
       throw new KhepreeProductAccessDeniedError(feature);
     }
@@ -1010,11 +1142,25 @@ export class KhepreeAccessService {
     if (!refreshToken) return null;
     const identity = await this.deviceIdentity.getIdentity();
     try {
+      const sessionPublicId = this.requireSessionPublicId();
+      const refreshBody = JSON.stringify({
+        sessionPublicId,
+        refreshToken,
+      });
+      const deviceProof = await this.buildDesktopDeviceProof(
+        sessionPublicId,
+        'POST',
+        KHEPREE_DESKTOP_PROOF_PATHS.authRefresh,
+        refreshBody,
+      );
       const refreshed = await this.api.refreshSession({
         refreshToken,
         installationId: identity.installationId,
+        sessionPublicId,
+        deviceProof,
       });
       await this.sessionStore.saveRefreshToken(refreshed.refreshToken, refreshed.user.id);
+      this.sessionStore.setSessionPublicId(refreshed.sessionPublicId);
       this.sessionStore.setAccessToken(
         refreshed.accessToken,
         refreshed.expiresIn,

@@ -30,6 +30,7 @@ import { KhepreeAccountPage } from './features/khepree/pages/KhepreeAccountPage'
 import { KhepreePlanPage } from './features/khepree/pages/KhepreePlanPage';
 import { KhepreeDevicesPage } from './features/khepree/pages/KhepreeDevicesPage';
 import { KhepreeAccessGate } from './features/khepree/KhepreeAccessGate';
+import { KhepreeFreeTierBanner } from './features/khepree/KhepreeFreeTierBanner';
 import { useKhepreeAccessState } from './features/khepree/useKhepreeAccessState';
 import { HelpPage } from './features/help/HelpPage';
 import { OverlayPlaygroundPage } from './pages/dev/OverlayPlaygroundPage';
@@ -153,6 +154,7 @@ export function App() {
     return (
       <BrowserRouter>
         <AppShell appInfo={appInfo}>
+          {khepreeState.status === 'FREE' ? <KhepreeFreeTierBanner /> : null}
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/projects" element={<ProjectsPage />} />

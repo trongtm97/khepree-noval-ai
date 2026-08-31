@@ -1,0 +1,1377 @@
+﻿> npm rebuild better-sqlite3
+rebuilt dependencies successfully
+> vitest run
+ RUN  v2.1.9 D:/PROGRAM-TRONG/NovelTrans Studio
+ Γ£ô tests/unit/jobs/response-parser.test.ts (30 tests) 49ms
+ Γ¥» tests/unit/automation/browser-runtime-manager.test.ts (8 tests | 8 failed) 162ms
+   ├ù BrowserRuntimeManager > 50 fake batches on same account launch browser only once 38ms
+     ΓåÆ Cannot read properties of undefined (reading 'catch')
+   ├ù BrowserRuntimeManager > isolates account A and B (separate launches) 10ms
+     ΓåÆ Cannot read properties of undefined (reading 'catch')
+   ├ù BrowserRuntimeManager > project switch navigates; same project only verifies 8ms
+     ΓåÆ Cannot read properties of undefined (reading 'catch')
+   ├ù BrowserRuntimeManager > recovers when page crashes by opening a new page 6ms
+     ΓåÆ Cannot read properties of undefined (reading 'catch')
+   ├ù BrowserRuntimeManager > serializes concurrent ops on same account 53ms
+     ΓåÆ Cannot read properties of undefined (reading 'catch')
+   ├ù BrowserRuntimeManager > marks NEEDS_ATTENTION on session expired 11ms
+     ΓåÆ Cannot read properties of undefined (reading 'catch')
+   ├ù BrowserRuntimeManager > shutdown closes all runtimes cleanly 16ms
+     ΓåÆ Cannot read properties of undefined (reading 'catch')
+   ├ù BrowserRuntimeManager > refuses second launch on same profile while runtime open 19ms
+     ΓåÆ Cannot read properties of undefined (reading 'catch')
+stdout | tests/unit/ai/ai-provider-manager.test.ts > AiProviderManager selection + fallback > uses first successful provider without calling next
+{"level":"info","message":"─Éang sß╗¡ dß╗Ñng AI provider","context":{"provider":"GEMINI_WEB_API","providerId":"prov-gemini-web-api","event":"REQUEST_STARTED","packModeHint":"sqlite-local"},"timestamp":"2026-08-27T10:40:58.575Z"}
+{"level":"info","message":"─É├ú nhß║¡n phß║ún hß╗ôi tß╗½ AI","context":{"provider":"GEMINI_WEB_API","event":"REQUEST_COMPLETED","requestId":"1"},"timestamp":"2026-08-27T10:40:58.577Z"}
+stdout | tests/unit/ai/ai-provider-manager.test.ts > AiProviderManager selection + fallback > falls back on RATE_LIMIT when enabled
+{"level":"info","message":"─Éang sß╗¡ dß╗Ñng AI provider","context":{"provider":"GEMINI_WEB_API","providerId":"prov-gemini-web-api","event":"REQUEST_STARTED","packModeHint":"sqlite-local"},"timestamp":"2026-08-27T10:40:58.587Z"}
+{"level":"info","message":"Fallback sang provider kß║┐ tiß║┐p","context":{"from":"GEMINI_WEB_API","status":"RATE_LIMIT"},"timestamp":"2026-08-27T10:40:58.587Z"}
+{"level":"info","message":"─Éang sß╗¡ dß╗Ñng AI provider","context":{"provider":"PLAYWRIGHT_GEMINI","providerId":"prov-playwright-gemini","event":"REQUEST_STARTED","packModeHint":"notebook"},"timestamp":"2026-08-27T10:40:58.587Z"}
+{"level":"info","message":"─É├ú nhß║¡n phß║ún hß╗ôi tß╗½ AI","context":{"provider":"PLAYWRIGHT_GEMINI","event":"REQUEST_COMPLETED","requestId":"2"},"timestamp":"2026-08-27T10:40:58.589Z"}
+stdout | tests/unit/ai/ai-provider-manager.test.ts > AiProviderManager selection + fallback > does not fallback when provider locks fallback_allowed=0
+{"level":"info","message":"─Éang sß╗¡ dß╗Ñng AI provider","context":{"provider":"GEMINI_WEB_API","providerId":"prov-gemini-web-api","event":"REQUEST_STARTED","packModeHint":"sqlite-local"},"timestamp":"2026-08-27T10:40:58.592Z"}
+stdout | tests/unit/ai/ai-provider-manager.test.ts > AiProviderManager selection + fallback > skips Web API when no READY account and uses the next provider
+{"level":"info","message":"Bß╗Å qua Gemini Web API ΓÇö ch╞░a c├│ t├ái khoß║ún READY","context":{"providerId":"prov-gemini-web-api"},"timestamp":"2026-08-27T10:40:58.594Z"}
+{"level":"info","message":"─Éang sß╗¡ dß╗Ñng AI provider","context":{"provider":"PLAYWRIGHT_GEMINI","providerId":"prov-playwright-gemini","event":"REQUEST_STARTED","packModeHint":"notebook"},"timestamp":"2026-08-27T10:40:58.594Z"}
+{"level":"info","message":"─É├ú nhß║¡n phß║ún hß╗ôi tß╗½ AI","context":{"provider":"PLAYWRIGHT_GEMINI","event":"REQUEST_COMPLETED","requestId":"2"},"timestamp":"2026-08-27T10:40:58.594Z"}
+stdout | tests/unit/ai/ai-provider-manager.test.ts > AiProviderManager selection + fallback > falls back when SUCCESS text is a Gemini soft error
+{"level":"info","message":"─Éang sß╗¡ dß╗Ñng AI provider","context":{"provider":"GEMINI_WEB_API","providerId":"prov-gemini-web-api","event":"REQUEST_STARTED","packModeHint":"sqlite-local"},"timestamp":"2026-08-27T10:40:58.597Z"}
+{"level":"info","message":"Fallback sang provider kß║┐ tiß║┐p (soft error)","context":{"from":"GEMINI_WEB_API"},"timestamp":"2026-08-27T10:40:58.597Z"}
+{"level":"info","message":"─Éang sß╗¡ dß╗Ñng AI provider","context":{"provider":"PLAYWRIGHT_GEMINI","providerId":"prov-playwright-gemini","event":"REQUEST_STARTED","packModeHint":"notebook"},"timestamp":"2026-08-27T10:40:58.598Z"}
+{"level":"info","message":"─É├ú nhß║¡n phß║ún hß╗ôi tß╗½ AI","context":{"provider":"PLAYWRIGHT_GEMINI","event":"REQUEST_COMPLETED","requestId":"2"},"timestamp":"2026-08-27T10:40:58.598Z"}
+stdout | tests/unit/ai/ai-provider-manager.test.ts > AiProviderManager selection + fallback > falls back on SESSION_EXPIRED even when app_meta omits auth statuses
+{"level":"info","message":"─Éang sß╗¡ dß╗Ñng AI provider","context":{"provider":"GEMINI_WEB_API","providerId":"prov-gemini-web-api","event":"REQUEST_STARTED","packModeHint":"sqlite-local"},"timestamp":"2026-08-27T10:40:58.600Z"}
+{"level":"info","message":"Fallback sang provider kß║┐ tiß║┐p","context":{"from":"GEMINI_WEB_API","status":"SESSION_EXPIRED"},"timestamp":"2026-08-27T10:40:58.601Z"}
+{"level":"info","message":"─Éang sß╗¡ dß╗Ñng AI provider","context":{"provider":"PLAYWRIGHT_GEMINI","providerId":"prov-playwright-gemini","event":"REQUEST_STARTED","packModeHint":"notebook"},"timestamp":"2026-08-27T10:40:58.601Z"}
+{"level":"info","message":"─É├ú nhß║¡n phß║ún hß╗ôi tß╗½ AI","context":{"provider":"PLAYWRIGHT_GEMINI","event":"REQUEST_COMPLETED","requestId":"2"},"timestamp":"2026-08-27T10:40:58.601Z"}
+ Γ£ô tests/unit/ai/ai-provider-manager.test.ts (9 tests) 49ms
+stdout | tests/unit/ai/provider-routing-preflight.test.ts > AiProviderManager account-aware routing > does not call Playwright send when preflight is NOTEBOOK_ERROR
+{"level":"info","message":"Provider preflight","context":{"providerId":"prov-gemini-web-api","result":"READY","message":"ok"},"timestamp":"2026-08-27T10:40:58.662Z"}
+{"level":"info","message":"Provider preflight","context":{"providerId":"prov-playwright-gemini","result":"NOTEBOOK_ERROR","message":"no notebook"},"timestamp":"2026-08-27T10:40:58.665Z"}
+{"level":"info","message":"─Éang sß╗¡ dß╗Ñng AI provider","context":{"provider":"GEMINI_WEB_API","providerId":"prov-gemini-web-api","event":"REQUEST_STARTED","packModeHint":"sqlite-local"},"timestamp":"2026-08-27T10:40:58.667Z"}
+{"level":"info","message":"─É├ú nhß║¡n phß║ún hß╗ôi tß╗½ AI","context":{"provider":"GEMINI_WEB_API","event":"REQUEST_COMPLETED","requestId":"1"},"timestamp":"2026-08-27T10:40:58.669Z"}
+stdout | tests/unit/ai/provider-routing-preflight.test.ts > AiProviderManager account-aware routing > PIN mode does not fallback to next provider
+{"level":"info","message":"Provider preflight","context":{"providerId":"prov-gemini-web-api","result":"READY","message":"ok"},"timestamp":"2026-08-27T10:40:58.674Z"}
+{"level":"info","message":"─Éang sß╗¡ dß╗Ñng AI provider","context":{"provider":"GEMINI_WEB_API","providerId":"prov-gemini-web-api","event":"REQUEST_STARTED","packModeHint":"sqlite-local"},"timestamp":"2026-08-27T10:40:58.674Z"}
+stdout | tests/unit/ai/provider-routing-preflight.test.ts > AiProviderManager account-aware routing > selectProvidersForJob skips Playwright object that fails preflight
+{"level":"info","message":"Provider preflight","context":{"providerId":"prov-gemini-web-api","result":"READY","message":"x"},"timestamp":"2026-08-27T10:40:58.677Z"}
+{"level":"info","message":"Provider preflight","context":{"providerId":"prov-playwright-gemini","result":"UNAVAILABLE","message":"x"},"timestamp":"2026-08-27T10:40:58.677Z"}
+ Γ£ô tests/unit/ai/provider-routing-preflight.test.ts (6 tests) 36ms
+stdout | tests/unit/accounts/account-worker.test.ts > AccountWorkerService > creates account with isolated profile path and persists
+{"level":"info","message":"Audit event","context":{"eventType":"account_added","resourceType":"google_account","resourceId":"f4114482-f57b-4016-b64c-33788e11e4c8","summary":"Google account added: Work"},"timestamp":"2026-08-27T10:40:58.328Z"}
+{"level":"info","message":"Audit event","context":{"eventType":"account_added","resourceType":"google_account","resourceId":"85ac0141-981d-416c-b231-bfc328039ace","summary":"Google account added: Personal"},"timestamp":"2026-08-27T10:40:58.336Z"}
+stdout | tests/unit/accounts/account-worker.test.ts > AccountWorkerService > disables worker and requires confirm for delete
+{"level":"info","message":"Audit event","context":{"eventType":"account_added","resourceType":"google_account","resourceId":"3c0bbad8-7d97-48c3-9ce1-51faa915f3bf","summary":"Google account added: Temp"},"timestamp":"2026-08-27T10:40:59.207Z"}
+{"level":"info","message":"Audit event","context":{"eventType":"account_removed","resourceType":"google_account","resourceId":"3c0bbad8-7d97-48c3-9ce1-51faa915f3bf","summary":"Google account removed: Temp"},"timestamp":"2026-08-27T10:40:59.227Z"}
+ Γ¥» tests/integration/notebook-grounding-e2e.test.ts (2 tests | 2 failed) 1487ms
+   ├ù FULL-novel Notebook grounding E2E > FULL flow: Research ΓåÆ SQLite ΓåÆ version verify ΓåÆ SLIM without mapping ΓåÆ Notebook term 709ms
+     ΓåÆ Cannot read properties of undefined (reading 'toUpperCase')
+   ├ù FULL-novel Notebook grounding E2E > UPDATE: term rename bumps version; new Notebook mapping used; pack still clean 775ms
+     ΓåÆ Cannot read properties of undefined (reading 'toUpperCase')
+stdout | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15) > runs two POOL workers in parallel up to maxConcurrent
+{"level":"info","message":"LEARNING_EMPTY_DELTAS after PASS","context":{"jobId":"b6e2d184-45ff-46fe-b17b-2d4ed21c14da","projectId":"33e421bb-5a13-4487-808b-e776ab4455e7","termDeltaCount":0,"memoryDeltaCount":0},"timestamp":"2026-08-27T10:41:00.242Z"}
+{"level":"info","message":"LEARNING_EMPTY_DELTAS after PASS","context":{"jobId":"2f6811a1-fc01-455d-8515-b3609c5c5fd9","projectId":"33e421bb-5a13-4487-808b-e776ab4455e7","termDeltaCount":0,"memoryDeltaCount":0},"timestamp":"2026-08-27T10:41:00.245Z"}
+stdout | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15) > PINNED mode only uses pinned worker
+{"level":"info","message":"LEARNING_EMPTY_DELTAS after PASS","context":{"jobId":"f819b86b-a25d-4547-9e38-4abfa52c6f77","projectId":"daffdf36-1f8c-44c6-b4de-54f8b4f03e2b","termDeltaCount":0,"memoryDeltaCount":0},"timestamp":"2026-08-27T10:41:01.179Z"}
+stdout | tests/unit/learning/notebook-sync-lifecycle.test.ts > Learning Notebook sync lifecycle > after threshold: NotebookSyncService.syncDrive exactly once
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"53642568-be59-4d01-8243-6f61bd99a53a","event":"TERM_CHANGED","types":["project_terms"]},"timestamp":"2026-08-27T10:40:59.638Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"53642568-be59-4d01-8243-6f61bd99a53a","event":"RECENT_CONTEXT_CHANGED","types":["recent_context"]},"timestamp":"2026-08-27T10:40:59.642Z"}
+stdout | tests/unit/learning/notebook-sync-lifecycle.test.ts > Learning Notebook sync lifecycle > Drive failure keeps knowledge dirty; no ready
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"73ca793a-7607-42eb-a41e-30d2d9a8274b","event":"CHARACTER_CHANGED","types":["characters"]},"timestamp":"2026-08-27T10:41:00.279Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"73ca793a-7607-42eb-a41e-30d2d9a8274b","event":"STORY_STATE_CHANGED","types":["story_state","recent_context"]},"timestamp":"2026-08-27T10:41:00.283Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"73ca793a-7607-42eb-a41e-30d2d9a8274b","event":"RECENT_CONTEXT_CHANGED","types":["recent_context"]},"timestamp":"2026-08-27T10:41:00.285Z"}
+stdout | tests/unit/learning/notebook-sync-lifecycle.test.ts > Learning Notebook sync lifecycle > candidate discover alone does not force immediate sync under threshold
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"4f328b46-ff0f-49a8-89ae-fd5dc13f6cfd","event":"TERM_CHANGED","types":["project_terms"]},"timestamp":"2026-08-27T10:41:01.962Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"4f328b46-ff0f-49a8-89ae-fd5dc13f6cfd","event":"RECENT_CONTEXT_CHANGED","types":["recent_context"]},"timestamp":"2026-08-27T10:41:01.964Z"}
+ Γ£ô tests/unit/learning/notebook-sync-lifecycle.test.ts (9 tests) 4039ms
+   Γ£ô Learning Notebook sync lifecycle > batch 3 chapters: counter += 3 845ms
+   Γ£ô Learning Notebook sync lifecycle > after threshold: NotebookSyncService.syncDrive exactly once 884ms
+   Γ£ô Learning Notebook sync lifecycle > Drive failure keeps knowledge dirty; no ready 643ms
+   Γ£ô Learning Notebook sync lifecycle > success ΓåÆ mapping sync_pending (not ready before verify) 905ms
+   Γ£ô Learning Notebook sync lifecycle > candidate discover alone does not force immediate sync under threshold 751ms
+ Γ£ô tests/unit/prompt/pack-mode-transitions.test.ts (11 tests) 6182ms
+   Γ£ô resolveTranslationPackMode transitions > WebAPI ΓåÆ always FAT 788ms
+   Γ£ô resolveTranslationPackMode transitions > mapping missing ΓåÆ FAT 607ms
+   Γ£ô resolveTranslationPackMode transitions > grounding failed (needs_migration) ΓåÆ FAT 692ms
+   Γ£ô resolveTranslationPackMode transitions > sync_pending ΓåÆ HYBRID (not SLIM) 839ms
+   Γ£ô resolveTranslationPackMode transitions > stale ΓåÆ HYBRID 752ms
+   Γ£ô resolveTranslationPackMode transitions > ready + version mismatch ΓåÆ HYBRID 1044ms
+   Γ£ô resolveTranslationPackMode transitions > ready + verified + grounded ΓåÆ SLIM 703ms
+   Γ£ô resolveTranslationPackMode transitions > actual character update appears in HYBRID pack (not status string) 748ms
+stdout | tests/unit/notebook/hot-memory.test.ts > Notebook Hot Memory (structured SQLite deltas) > buildActiveHotMemoryText uses actual term mapping, not status messages
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"4dba72bb-db54-44d9-8ceb-6dcebd4da280","event":"TERM_CHANGED","types":["project_terms"]},"timestamp":"2026-08-27T10:41:01.303Z"}
+stdout | tests/unit/notebook/hot-memory.test.ts > Notebook Hot Memory (structured SQLite deltas) > excludes future-sensitive facts before valid chapter
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"2926c264-f82b-460f-b4a0-1b7b54629ce6","event":"CHARACTER_CHANGED","types":["characters"]},"timestamp":"2026-08-27T10:41:02.023Z"}
+stdout | tests/unit/notebook/hot-memory.test.ts > Notebook Hot Memory (structured SQLite deltas) > pack contains actual term after stale; clear only after Notebook verified
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"31b44107-688c-43ca-9e3e-8b6e08caf254","event":"TERM_CHANGED","types":["project_terms"]},"timestamp":"2026-08-27T10:41:02.738Z"}
+stdout | tests/unit/notebook/hot-memory.test.ts > Notebook Hot Memory (structured SQLite deltas) > rejects status-message hotPayload inserts
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"58b1f220-045a-4ec1-bf6c-5743fa851f7b","event":"CHARACTER_CHANGED","types":["characters"]},"timestamp":"2026-08-27T10:41:03.435Z"}
+ Γ£ô tests/unit/notebook/hot-memory.test.ts (4 tests) 3016ms
+   Γ£ô Notebook Hot Memory (structured SQLite deltas) > buildActiveHotMemoryText uses actual term mapping, not status messages 901ms
+   Γ£ô Notebook Hot Memory (structured SQLite deltas) > excludes future-sensitive facts before valid chapter 718ms
+   Γ£ô Notebook Hot Memory (structured SQLite deltas) > pack contains actual term after stale; clear only after Notebook verified 725ms
+   Γ£ô Notebook Hot Memory (structured SQLite deltas) > rejects status-message hotPayload inserts 670ms
+stdout | tests/unit/notebook/knowledge-architecture.test.ts > NotebookSyncService hot memory > marks dirty and builds hot memory text from SQLite
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"34e2d94f-f652-48eb-b128-c706f2750bb1","event":"STORY_STATE_CHANGED","types":["story_state","recent_context"]},"timestamp":"2026-08-27T10:41:02.197Z"}
+stdout | tests/unit/notebook/knowledge-architecture.test.ts > NotebookSyncService hot memory > clears hot deltas on version probe verify
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"44a5df7b-93cd-4bc3-90d4-430ab07439f2","event":"TERM_CHANGED","types":["project_terms"]},"timestamp":"2026-08-27T10:41:02.914Z"}
+stdout | tests/unit/notebook/knowledge-architecture.test.ts > NotebookBootstrapService > seeds story state from metadata and early chapters
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"90e93032-af1e-4f64-8a3b-32bbda85dfa6","event":"STORY_STATE_CHANGED","types":["story_state","recent_context"]},"timestamp":"2026-08-27T10:41:04.262Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"90e93032-af1e-4f64-8a3b-32bbda85dfa6","event":"WORLD_KNOWLEDGE_CHANGED","types":["world_knowledge"]},"timestamp":"2026-08-27T10:41:04.264Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"90e93032-af1e-4f64-8a3b-32bbda85dfa6","event":"ALL","types":["book_profile","translation_rules","project_terms","characters","relationships","story_state","world_knowledge","recent_context","sync_state"]},"timestamp":"2026-08-27T10:41:04.328Z"}
+{"level":"info","message":"Notebook bootstrap complete","context":{"projectId":"90e93032-af1e-4f64-8a3b-32bbda85dfa6","seeded":true,"chapterCount":1},"timestamp":"2026-08-27T10:41:04.329Z"}
+ Γ£ô tests/unit/notebook/knowledge-architecture.test.ts (10 tests) 6232ms
+   Γ£ô NotebookKnowledgeBuilder > builds all 9 knowledge files deterministically 784ms
+   Γ£ô NotebookKnowledgeBuilder > tracks content hash and dirty on rebuild 901ms
+   Γ£ô NotebookKnowledgeBuilder > keeps knowledge under char budget with metadata (many terms) 1712ms
+   Γ£ô NotebookSyncService hot memory > marks dirty and builds hot memory text from SQLite 735ms
+   Γ£ô NotebookSyncService hot memory > clears hot deltas on version probe verify 711ms
+   Γ£ô NotebookSyncService hot memory > reports instructionsReady false when hash missing 534ms
+   Γ£ô NotebookBootstrapService > seeds story state from metadata and early chapters 848ms
+stdout | tests/unit/learning/learning-pipeline.test.ts > Learning pipeline (Phase 16) > MEMORY_DELTA applies non-conflicting; conflict when locked differs
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"8205f74e-78a1-4cc0-ad85-e812553078c4","event":"STORY_STATE_CHANGED","types":["story_state","recent_context"]},"timestamp":"2026-08-27T10:41:00.705Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"8205f74e-78a1-4cc0-ad85-e812553078c4","event":"WORLD_KNOWLEDGE_CHANGED","types":["world_knowledge"]},"timestamp":"2026-08-27T10:41:00.708Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"8205f74e-78a1-4cc0-ad85-e812553078c4","event":"RECENT_CONTEXT_CHANGED","types":["recent_context"]},"timestamp":"2026-08-27T10:41:00.712Z"}
+stdout | tests/unit/learning/learning-pipeline.test.ts > Learning pipeline (Phase 16) > every N chapters consolidates + triggers NotebookSyncService.syncDrive hook
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"e13515b6-0bcb-43ef-b676-6a30d16bfb65","event":"TERM_CHANGED","types":["project_terms"]},"timestamp":"2026-08-27T10:41:01.755Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"e13515b6-0bcb-43ef-b676-6a30d16bfb65","event":"RECENT_CONTEXT_CHANGED","types":["recent_context"]},"timestamp":"2026-08-27T10:41:01.758Z"}
+stdout | tests/unit/learning/learning-pipeline.test.ts > Learning pipeline (Phase 16) > Learning dashboard aggregates candidates, conflicts, memories
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"0f17ad74-f223-4014-9c96-d20987dfa707","event":"STORY_STATE_CHANGED","types":["story_state","recent_context"]},"timestamp":"2026-08-27T10:41:03.768Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"0f17ad74-f223-4014-9c96-d20987dfa707","event":"RECENT_CONTEXT_CHANGED","types":["recent_context"]},"timestamp":"2026-08-27T10:41:03.770Z"}
+stdout | tests/unit/learning/learning-pipeline.test.ts > Learning pipeline (Phase 16) > marks CHARACTER / RELATIONSHIP / RECENT_CONTEXT dirty after memory deltas
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"1d240f47-5974-4ee4-9784-a8f0132df96a","event":"CHARACTER_CHANGED","types":["characters"]},"timestamp":"2026-08-27T10:41:04.659Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"1d240f47-5974-4ee4-9784-a8f0132df96a","event":"RELATIONSHIP_CHANGED","types":["relationships"]},"timestamp":"2026-08-27T10:41:04.661Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"1d240f47-5974-4ee4-9784-a8f0132df96a","event":"STORY_STATE_CHANGED","types":["story_state","recent_context"]},"timestamp":"2026-08-27T10:41:04.665Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"1d240f47-5974-4ee4-9784-a8f0132df96a","event":"TERM_CHANGED","types":["project_terms"]},"timestamp":"2026-08-27T10:41:04.667Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"1d240f47-5974-4ee4-9784-a8f0132df96a","event":"RECENT_CONTEXT_CHANGED","types":["recent_context"]},"timestamp":"2026-08-27T10:41:04.669Z"}
+ Γ£ô tests/unit/learning/learning-pipeline.test.ts (9 tests) 6981ms
+   Γ£ô Learning pipeline (Phase 16) > TERM_DELTA discover ΓåÆ candidate only (never GLOBAL_VERIFIED) 623ms
+   Γ£ô Learning pipeline (Phase 16) > duplicate discover merges candidate frequency 774ms
+   Γ£ô Learning pipeline (Phase 16) > confirm ΓåÆ PROJECT_VERIFIED only, bumps occurrence + human_confirm 780ms
+   Γ£ô Learning pipeline (Phase 16) > MEMORY_DELTA applies non-conflicting; conflict when locked differs 890ms
+   Γ£ô Learning pipeline (Phase 16) > every N chapters consolidates + triggers NotebookSyncService.syncDrive hook 978ms
+   Γ£ô Learning pipeline (Phase 16) > archives old memory so current state stays compact 618ms
+   Γ£ô Learning pipeline (Phase 16) > confidence adjusts from occurrence / project / human ΓÇö no auto GLOBAL 676ms
+   Γ£ô Learning pipeline (Phase 16) > Learning dashboard aggregates candidates, conflicts, memories 695ms
+   Γ£ô Learning pipeline (Phase 16) > marks CHARACTER / RELATIONSHIP / RECENT_CONTEXT dirty after memory deltas 944ms
+stdout | tests/unit/jobs/repair-loop.test.ts > repair loop + crash recovery > completes when initial response passes QA
+{"level":"info","message":"LEARNING_EMPTY_DELTAS after PASS","context":{"jobId":"a47aab01-126e-4c30-99de-32a3b1054419","projectId":"9855d217-18f8-4637-b540-7653492806ab","termDeltaCount":0,"memoryDeltaCount":0},"timestamp":"2026-08-27T10:41:01.397Z"}
+stdout | tests/unit/jobs/repair-loop.test.ts > repair loop + crash recovery > repairs MISSING_PARAGRAPH then completes (max 2)
+{"level":"info","message":"LEARNING_EMPTY_DELTAS after PASS","context":{"jobId":"2a78166c-53c3-40e1-a428-490eb775608c","projectId":"b53712ca-7913-472b-b06b-4cfcb17b955d","termDeltaCount":0,"memoryDeltaCount":0},"timestamp":"2026-08-27T10:41:02.090Z"}
+stdout | tests/unit/jobs/repair-loop.test.ts > repair loop + crash recovery > invalid MEMORY_DELTA completes without repair when translations OK
+{"level":"info","message":"LEARNING_EMPTY_DELTAS after PASS","context":{"jobId":"2360fd14-dc1a-462f-9f3d-12cc4de2bc04","projectId":"12ddcd1f-3ea4-416c-98f4-3da0a49c9594","termDeltaCount":0,"memoryDeltaCount":0},"timestamp":"2026-08-27T10:41:03.650Z"}
+stdout | tests/unit/jobs/repair-loop.test.ts > repair loop + crash recovery > runRepairLoop recovers crashed attempts before continuing
+{"level":"info","message":"LEARNING_EMPTY_DELTAS after PASS","context":{"jobId":"08c586a8-6681-4377-aa6b-56d8a3a94611","projectId":"8937eaf0-3e18-44e8-acd6-b8c423061afb","termDeltaCount":0,"memoryDeltaCount":0},"timestamp":"2026-08-27T10:41:05.898Z"}
+ Γ£ô tests/unit/jobs/repair-loop.test.ts (7 tests) 5502ms
+   Γ£ô repair loop + crash recovery > completes when initial response passes QA 983ms
+   Γ£ô repair loop + crash recovery > repairs MISSING_PARAGRAPH then completes (max 2) 704ms
+   Γ£ô repair loop + crash recovery > stops at NEEDS_ATTENTION after max repair attempts (no infinite loop) 781ms
+   Γ£ô repair loop + crash recovery > invalid MEMORY_DELTA completes without repair when translations OK 784ms
+   Γ£ô repair loop + crash recovery > attention Skip / Accept With Warning / Manual Fix 839ms
+   Γ£ô repair loop + crash recovery > crash recovery marks RUNNING attempts as CRASHED 717ms
+   Γ£ô repair loop + crash recovery > runRepairLoop recovers crashed attempts before continuing 692ms
+ Γ£ô tests/unit/jobs/qa-checker.test.ts (16 tests) 48ms
+ Γ£ô tests/unit/terms/term-matcher-priority.test.ts (12 tests) 27ms
+ Γ£ô tests/unit/jobs/scheduler.test.ts (8 tests) 7049ms
+   Γ£ô AutomationScheduler (Phase 15) > runs two POOL workers in parallel up to maxConcurrent 1007ms
+   Γ£ô AutomationScheduler (Phase 15) > PINNED mode only uses pinned worker 938ms
+   Γ£ô AutomationScheduler (Phase 15) > PINNED waits when pinned worker LIMITED (no spam retry) 1012ms
+   Γ£ô AutomationScheduler (Phase 15) > QUOTA_LIMIT marks worker LIMITED and requeues job 688ms
+   Γ£ô AutomationScheduler (Phase 15) > crash simulation: expired lease recovers to QUEUED 677ms
+   Γ£ô AutomationScheduler (Phase 15) > pause all / resume all / cancel / retry / move 917ms
+   Γ£ô AutomationScheduler (Phase 15) > graceful shutdown requeues in-flight jobs 1109ms
+   Γ£ô AutomationScheduler (Phase 15) > queue survives process restart (durable SQLite) 696ms
+ Γ£ô tests/unit/jobs/enqueue-translate-novel.test.ts (6 tests) 21ms
+stdout | tests/unit/accounts/account-worker.test.ts > AccountWorkerService > enforces profile path isolation lock
+{"level":"info","message":"Audit event","context":{"eventType":"account_added","resourceType":"google_account","resourceId":"6eda884a-9dce-403a-8bee-234d406a079e","summary":"Google account added: Lock"},"timestamp":"2026-08-27T10:41:06.556Z"}
+stdout | tests/unit/accounts/account-worker.test.ts > AccountWorkerService > completes login with detected email and sets READY
+{"level":"info","message":"Audit event","context":{"eventType":"account_added","resourceType":"google_account","resourceId":"4c24df27-2dc4-47e3-8550-3eb494645d97","summary":"Google account added: Login"},"timestamp":"2026-08-27T10:41:07.220Z"}
+stdout | tests/unit/jobs/repair-channel-context.test.ts > repair loop inherits channel ΓåÆ same notebook > MISSING_PARAGRAPH repair receives same notebook/channel as initial SLIM
+{"level":"info","message":"LEARNING_EMPTY_DELTAS after PASS","context":{"jobId":"a603e07d-61c6-44f0-afe2-8052f9017d54","projectId":"1f1a3402-8458-4087-a562-979c7be70f43","termDeltaCount":0,"memoryDeltaCount":0},"timestamp":"2026-08-27T10:41:06.742Z"}
+stdout | tests/unit/jobs/repair-channel-context.test.ts > repair loop inherits channel ΓåÆ same notebook > WebAPI failover channel stored as FAT without notebook
+{"level":"info","message":"LEARNING_EMPTY_DELTAS after PASS","context":{"jobId":"8cae9213-2e61-4139-a47b-799f4a8282d4","projectId":"e76f51c4-86e4-4497-b3e5-5423b37a5dfa","termDeltaCount":0,"memoryDeltaCount":0},"timestamp":"2026-08-27T10:41:07.546Z"}
+ Γ£ô tests/unit/jobs/repair-channel-context.test.ts (6 tests) 1635ms
+   Γ£ô repair loop inherits channel ΓåÆ same notebook > MISSING_PARAGRAPH repair receives same notebook/channel as initial SLIM 824ms
+   Γ£ô repair loop inherits channel ΓåÆ same notebook > WebAPI failover channel stored as FAT without notebook 800ms
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:09.842Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:09.861Z"}
+ Γ£ô tests/unit/automation/profile-lease-lock.test.ts (8 tests) 142ms
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:09.976Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:09.991Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:09.992Z"}
+ Γ£ô tests/unit/db/database.test.ts (8 tests) 6139ms
+   Γ£ô DatabaseManager > creates database file and applies all migrations 890ms
+   Γ£ô DatabaseManager > supports insert, update, delete via repositories 740ms
+   Γ£ô DatabaseManager > rolls back failed transaction 693ms
+   Γ£ô DatabaseManager > supports FTS search on terms, characters, and chapters 570ms
+   Γ£ô DatabaseManager > persists data after close and reopen 866ms
+   Γ£ô DatabaseManager > creates backup before applying pending migration on existing database 1803ms
+   Γ£ô DatabaseManager > restores from backup when migration fails 570ms
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:10.946Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:11.116Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:11.166Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_translation_pack","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:11.167Z"}
+ Γ¥» tests/unit/bootstrap/full-novel-preprocess-resume.test.ts (27 tests | 2 failed) 4405ms
+   Γ£ô full-novel preprocess repo resume > persists stages and returns active run 911ms
+   Γ£ô full-novel preprocess repo resume > skips re-upload when part hash matches READY 1212ms
+   ├ù full-novel preprocess repo resume > resumes from RESPONSE_CAPTURED via raw only (no re-analysis) 1175ms
+     ΓåÆ expected 'failed' to be 'completed' // Object.is equality
+   ├ù full-novel preprocess repo resume > can re-parse after parse failure without losing raw 1086ms
+     ΓåÆ expected 'failed' to be 'completed' // Object.is equality
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:11.303Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:11.349Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:11.351Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:11.565Z"}
+ Γ£ô tests/unit/prompt/pack-operation-webapi-preserve.test.ts (5 tests) 15ms
+stdout | tests/unit/accounts/account-worker.test.ts > AccountWorkerService > trusts fallback email when probe says not usable
+{"level":"info","message":"Audit event","context":{"eventType":"account_added","resourceType":"google_account","resourceId":"843e7556-115b-4dd4-a12e-39ca7ad98feb","summary":"Google account added: Manual"},"timestamp":"2026-08-27T10:41:08.810Z"}
+stdout | tests/unit/accounts/account-worker.test.ts > AccountWorkerService > throws when probe fails and no fallback email
+{"level":"info","message":"Audit event","context":{"eventType":"account_added","resourceType":"google_account","resourceId":"c71b6d76-8e38-4cd5-9eb7-0347171ccb18","summary":"Google account added: Fail"},"timestamp":"2026-08-27T10:41:09.951Z"}
+stdout | tests/unit/accounts/account-worker.test.ts > AccountWorkerService > assigns projects visible on account detail
+{"level":"info","message":"Audit event","context":{"eventType":"account_added","resourceType":"google_account","resourceId":"092d4c10-c4fb-4842-bce1-df45d4e800a2","summary":"Google account added: Worker"},"timestamp":"2026-08-27T10:41:10.891Z"}
+stdout | tests/unit/accounts/account-worker.test.ts > AccountWorkerService > returns BUSY instead of throwing when profile already locked
+{"level":"info","message":"Audit event","context":{"eventType":"account_added","resourceType":"google_account","resourceId":"6beea1a6-7af9-43a9-a240-15f6342d14d5","summary":"Google account added: Busy"},"timestamp":"2026-08-27T10:41:11.718Z"}
+ Γ¥» tests/unit/accounts/account-worker.test.ts (10 tests | 1 failed) 14014ms
+   Γ£ô AccountWorkerService > creates account with isolated profile path and persists 713ms
+   ├ù AccountWorkerService > disables worker and requires confirm for delete 7550ms
+     ΓåÆ Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   Γ£ô AccountWorkerService > enforces profile path isolation lock 557ms
+   Γ£ô AccountWorkerService > completes login with detected email and sets READY 1469ms
+   Γ£ô AccountWorkerService > trusts fallback email when probe says not usable 947ms
+   Γ£ô AccountWorkerService > throws when probe fails and no fallback email 997ms
+   Γ£ô AccountWorkerService > assigns projects visible on account detail 917ms
+   Γ£ô AccountWorkerService > returns BUSY instead of throwing when profile already locked 842ms
+ Γ£ô tests/unit/jobs/continuation.test.ts (11 tests) 37ms
+stdout | tests/unit/security/secret-storage.test.ts > AuditLog > records required audit events and redacts sensitive metadata
+{"level":"info","message":"Audit event","context":{"eventType":"account_added","resourceType":"google_account","resourceId":"acc-1","summary":"Google account added: Work"},"timestamp":"2026-08-27T10:41:12.629Z"}
+{"level":"info","message":"Audit event","context":{"eventType":"account_removed","resourceType":"google_account","resourceId":"acc-1","summary":"Google account removed: Work"},"timestamp":"2026-08-27T10:41:12.631Z"}
+{"level":"info","message":"Audit event","context":{"eventType":"project_deleted","resourceType":"project","resourceId":"proj-1","summary":"Project deleted: Novel"},"timestamp":"2026-08-27T10:41:12.632Z"}
+{"level":"info","message":"Audit event","context":{"eventType":"credentials_changed","resourceType":"secret","resourceId":"oauth:acc-1:refresh","summary":"Credentials changed (oauth_refresh)"},"timestamp":"2026-08-27T10:41:12.633Z"}
+{"level":"info","message":"Audit event","context":{"eventType":"translation_started","resourceType":"job","resourceId":"job-1","summary":"Translation job started"},"timestamp":"2026-08-27T10:41:12.638Z"}
+{"level":"info","message":"Audit event","context":{"eventType":"export","resourceType":"project","resourceId":"proj-1","summary":"Export performed (epub)"},"timestamp":"2026-08-27T10:41:12.641Z"}
+ Γ£ô tests/unit/security/secret-storage.test.ts (6 tests) 4409ms
+   Γ£ô SecretStorageService > encrypts and decrypts round-trip 1031ms
+   Γ£ô SecretStorageService > replace stores only encrypted blob and decrypts via getPlainText 885ms
+   Γ£ô SecretStorageService > refuses plaintext when safeStorage unavailable 997ms
+   Γ£ô SecretStorageService > rejects bad input 845ms
+   Γ£ô AuditLog > records required audit events and redacts sensitive metadata 640ms
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > A: old response exists + send fails ΓåÆ never returns old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"ec32bafb-066e-49e7-b2c2-ca976c5aa566"},"timestamp":"2026-08-27T10:41:12.726Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > A: old response exists + send fails ΓåÆ never returns old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"ec32bafb-066e-49e7-b2c2-ca976c5aa566"},"timestamp":"2026-08-27T10:41:12.827Z"}
+ Γ£ô tests/unit/jobs/repair-strategies.test.ts (8 tests) 37ms
+ Γ£ô tests/unit/bootstrap/future-leakage.test.ts (1 test) 13ms
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > A: old response exists + send fails ΓåÆ never returns old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"ec32bafb-066e-49e7-b2c2-ca976c5aa566"},"timestamp":"2026-08-27T10:41:13.149Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > A: old response exists + send fails ΓåÆ never returns old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"ec32bafb-066e-49e7-b2c2-ca976c5aa566"},"timestamp":"2026-08-27T10:41:13.194Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"ec32bafb-066e-49e7-b2c2-ca976c5aa566"},"timestamp":"2026-08-27T10:41:13.195Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:13.191Z"}
+ Γ£ô tests/unit/jobs/translate-batch-chunk.test.ts (12 tests) 32ms
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:13.644Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:13.645Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:13.646Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send success confirms before generation wait
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:13.718Z"}
+ Γ£ô tests/unit/notebook/attach-knowledge-sources.test.ts (9 tests) 39ms
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > submitPlainPrompt uses the same send handshake
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-000000000077"},"timestamp":"2026-08-27T10:41:14.774Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > submitPlainPrompt uses the same send handshake
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-000000000077"},"timestamp":"2026-08-27T10:41:14.793Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > submitPlainPrompt uses the same send handshake
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-000000000077"},"timestamp":"2026-08-27T10:41:14.907Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > submitPlainPrompt uses the same send handshake
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-000000000077"},"timestamp":"2026-08-27T10:41:14.921Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-000000000077"},"timestamp":"2026-08-27T10:41:14.922Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > A: old response exists + send fails ΓåÆ never returns old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"ec32bafb-066e-49e7-b2c2-ca976c5aa566"},"timestamp":"2026-08-27T10:41:15.224Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > A: old response exists + send fails ΓåÆ never returns old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"ec32bafb-066e-49e7-b2c2-ca976c5aa566"},"timestamp":"2026-08-27T10:41:15.893Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > submitPlainPrompt uses the same send handshake
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-000000000077"},"timestamp":"2026-08-27T10:41:15.943Z"}
+ Γ£ô tests/unit/prompt/translation-pack.test.ts (7 tests) 30ms
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > submitPlainPrompt uses the same send handshake
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-000000000077"},"timestamp":"2026-08-27T10:41:16.109Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > submitPlainPrompt uses the same send handshake
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-000000000077"},"timestamp":"2026-08-27T10:41:16.140Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_plain_prompt","correlationId":"00000000-0000-4000-8000-000000000077"},"timestamp":"2026-08-27T10:41:16.141Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send disabled throws without waiting for generation
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"5816aaef-436b-4f00-947f-5036e089ec1c"},"timestamp":"2026-08-27T10:41:16.939Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send disabled throws without waiting for generation
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"5816aaef-436b-4f00-947f-5036e089ec1c"},"timestamp":"2026-08-27T10:41:16.948Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send disabled throws without waiting for generation
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"5816aaef-436b-4f00-947f-5036e089ec1c"},"timestamp":"2026-08-27T10:41:17.017Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send disabled throws without waiting for generation
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"5816aaef-436b-4f00-947f-5036e089ec1c"},"timestamp":"2026-08-27T10:41:17.027Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"5816aaef-436b-4f00-947f-5036e089ec1c"},"timestamp":"2026-08-27T10:41:17.028Z"}
+stdout | tests/unit/notebook/knowledge-version-probe.test.ts > CONTENT_CURRENT vs SOURCE_PRESENT > old Notebook version ΓåÆ HYBRID, not slim; hot not cleared
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"da2fbf50-1925-4667-bb16-e91d5df534dc","event":"TERM_CHANGED","types":["project_terms"]},"timestamp":"2026-08-27T10:41:14.481Z"}
+stdout | tests/unit/notebook/knowledge-version-probe.test.ts > CONTENT_CURRENT vs SOURCE_PRESENT > matching version+nonce ΓåÆ verified, clears hot, slim eligible
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"11aab1d3-85bc-4a08-8537-ba972ff27d8d","event":"TERM_CHANGED","types":["project_terms"]},"timestamp":"2026-08-27T10:41:15.501Z"}
+stdout | tests/unit/notebook/knowledge-version-probe.test.ts > CONTENT_CURRENT vs SOURCE_PRESENT > markNotebookVerified without probe does not clear hot
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"4a9ad336-0d6d-4ec6-8306-f55267b0bdfe","event":"TERM_CHANGED","types":["project_terms"]},"timestamp":"2026-08-27T10:41:17.015Z"}
+ Γ£ô tests/unit/notebook/knowledge-version-probe.test.ts (6 tests) 3379ms
+   Γ£ô CONTENT_CURRENT vs SOURCE_PRESENT > old Notebook version ΓåÆ HYBRID, not slim; hot not cleared 871ms
+   Γ£ô CONTENT_CURRENT vs SOURCE_PRESENT > matching version+nonce ΓåÆ verified, clears hot, slim eligible 1010ms
+   Γ£ô CONTENT_CURRENT vs SOURCE_PRESENT > fake source same name but old content ΓåÆ verification fail 699ms
+   Γ£ô CONTENT_CURRENT vs SOURCE_PRESENT > markNotebookVerified without probe does not clear hot 787ms
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > A: old response exists + send fails ΓåÆ never returns old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"ec32bafb-066e-49e7-b2c2-ca976c5aa566"},"timestamp":"2026-08-27T10:41:17.538Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send disabled throws without waiting for generation
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"5816aaef-436b-4f00-947f-5036e089ec1c"},"timestamp":"2026-08-27T10:41:17.941Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > A: old response exists + send fails ΓåÆ never returns old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_NOT_CONFIRMED","correlationId":"ec32bafb-066e-49e7-b2c2-ca976c5aa566"},"timestamp":"2026-08-27T10:41:19.017Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > A: old response exists + send fails ΓåÆ never returns old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"AUTOMATION_FAIL","correlationId":"ec32bafb-066e-49e7-b2c2-ca976c5aa566"},"timestamp":"2026-08-27T10:41:19.205Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > A: old response exists + send fails ΓåÆ never returns old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"AUTOMATION_FAIL","correlationId":"ec32bafb-066e-49e7-b2c2-ca976c5aa566"},"timestamp":"2026-08-27T10:41:19.410Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send disabled throws without waiting for generation
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"5816aaef-436b-4f00-947f-5036e089ec1c"},"timestamp":"2026-08-27T10:41:19.801Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send disabled throws without waiting for generation
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"5816aaef-436b-4f00-947f-5036e089ec1c"},"timestamp":"2026-08-27T10:41:19.815Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > send disabled throws without waiting for generation
+{"level":"info","message":"Browser event","context":{"eventType":"AUTOMATION_FAIL","correlationId":"5816aaef-436b-4f00-947f-5036e089ec1c"},"timestamp":"2026-08-27T10:41:19.977Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:20.763Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:20.795Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > detectLogin returns true on chat fixture
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED"},"timestamp":"2026-08-27T10:41:20.835Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > detectLogin returns true on chat fixture
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:20.865Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:20.974Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:20.995Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:20.996Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED"},"timestamp":"2026-08-27T10:41:21.449Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:21.473Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:21.484Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:21.511Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:21.747Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"reuse_translation_thread"},"timestamp":"2026-08-27T10:41:21.761Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > detectQuotaLimit on quota fixture
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:22.314Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:22.342Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"410e0d35-a1c6-456d-ad14-989395cf434c"},"timestamp":"2026-08-27T10:41:22.366Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"410e0d35-a1c6-456d-ad14-989395cf434c"},"timestamp":"2026-08-27T10:41:22.378Z"}
+ Γ£ô tests/unit/notebook/notebook-role.test.ts (7 tests) 4096ms
+   Γ£ô notebook role resolver > SINGLE row serves both research and translation 800ms
+   Γ£ô notebook role resolver > DUAL layout resolves research and translation separately 838ms
+   Γ£ô notebook role resolver > translation jobs must not pick research notebook in DUAL mode 725ms
+   Γ£ô notebook role resolver > knowledge sync targets translation/SINGLE only 711ms
+   Γ£ô notebook role resolver > worker can hold both roles as separate rows 1014ms
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"410e0d35-a1c6-456d-ad14-989395cf434c"},"timestamp":"2026-08-27T10:41:22.431Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"410e0d35-a1c6-456d-ad14-989395cf434c"},"timestamp":"2026-08-27T10:41:22.442Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"410e0d35-a1c6-456d-ad14-989395cf434c"},"timestamp":"2026-08-27T10:41:22.442Z"}
+stdout | tests/unit/portability/portability.test.ts > Portability (Phase 18) > auto backup runs and respects retention config
+{"level":"info","message":"Auto backup created","context":{"target":"C:\\Users\\trong\\AppData\\Local\\Temp\\nts-port-rDI0ck\\NovelTrans\\backups\\noveltrans-auto-2026-08-27T10-41-21-054Z.db"},"timestamp":"2026-08-27T10:41:21.059Z"}
+{"level":"info","message":"Auto backup created","context":{"target":"C:\\Users\\trong\\AppData\\Local\\Temp\\nts-port-rDI0ck\\NovelTrans\\backups\\noveltrans-auto-2026-08-27T10-41-21-062Z.db"},"timestamp":"2026-08-27T10:41:21.141Z"}
+ Γ£ô tests/unit/portability/portability.test.ts (6 tests) 5488ms
+   Γ£ô Portability (Phase 18) > exports novel TXT without paragraph IDs by default 559ms
+   Γ£ô Portability (Phase 18) > full backup ΓåÆ delete DB ΓåÆ restore ΓåÆ verify equality 1597ms
+   Γ£ô Portability (Phase 18) > restore rejects silent overwrite 879ms
+   Γ£ô Portability (Phase 18) > auto backup runs and respects retention config 753ms
+   Γ£ô Portability (Phase 18) > term import preview detects duplicates 1052ms
+   Γ£ô Portability (Phase 18) > term commit import skip duplicates 645ms
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:22.913Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:23.020Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_translation_pack","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:23.021Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:23.369Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"410e0d35-a1c6-456d-ad14-989395cf434c"},"timestamp":"2026-08-27T10:41:23.394Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:23.463Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:23.465Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"410e0d35-a1c6-456d-ad14-989395cf434c"},"timestamp":"2026-08-27T10:41:23.516Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"410e0d35-a1c6-456d-ad14-989395cf434c"},"timestamp":"2026-08-27T10:41:23.572Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_plain_prompt","correlationId":"410e0d35-a1c6-456d-ad14-989395cf434c"},"timestamp":"2026-08-27T10:41:23.574Z"}
+stdout | tests/unit/notebook/drive-live-knowledge.test.ts > Translation knowledge Drive LIVE bindings > promotes legacy markdown Drive file to Google Doc once
+{"level":"info","message":"Promoting knowledge markdown to Google Doc","context":{"projectId":"5690b16e-5e47-4acb-9de4-a4b956ae2f0c","knowledgeType":"characters","previousFileId":"file-13"},"timestamp":"2026-08-27T10:41:23.560Z"}
+ Γ£ô tests/unit/notebook/drive-live-knowledge.test.ts (4 tests) 4039ms
+   Γ£ô Translation knowledge Drive LIVE bindings > provisions 9 Google Docs + DRIVE_LIVE bindings 1094ms
+   Γ£ô Translation knowledge Drive LIVE bindings > updates CHARACTERS content in place ΓÇö same Drive file id 1365ms
+   Γ£ô Translation knowledge Drive LIVE bindings > does not create duplicate bindings on second sync 844ms
+   Γ£ô Translation knowledge Drive LIVE bindings > promotes legacy markdown Drive file to Google Doc once 733ms
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:23.914Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > click with no effect throws SEND_NOT_CONFIRMED
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"a6ee02c1-d6fd-48be-9dd5-623e1096b246"},"timestamp":"2026-08-27T10:41:24.393Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > click with no effect throws SEND_NOT_CONFIRMED
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"a6ee02c1-d6fd-48be-9dd5-623e1096b246"},"timestamp":"2026-08-27T10:41:24.406Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > click with no effect throws SEND_NOT_CONFIRMED
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"a6ee02c1-d6fd-48be-9dd5-623e1096b246"},"timestamp":"2026-08-27T10:41:24.519Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > click with no effect throws SEND_NOT_CONFIRMED
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"a6ee02c1-d6fd-48be-9dd5-623e1096b246"},"timestamp":"2026-08-27T10:41:24.559Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"a6ee02c1-d6fd-48be-9dd5-623e1096b246"},"timestamp":"2026-08-27T10:41:24.560Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED"},"timestamp":"2026-08-27T10:41:24.750Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:24.948Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:25.043Z"}
+ Γ£ô tests/unit/services/translate-readiness.test.ts (4 tests) 26ms
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:25.257Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > click with no effect throws SEND_NOT_CONFIRMED
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"a6ee02c1-d6fd-48be-9dd5-623e1096b246"},"timestamp":"2026-08-27T10:41:25.516Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:25.526Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"reuse_translation_thread"},"timestamp":"2026-08-27T10:41:25.536Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:25.569Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:25.572Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:25.574Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:25.574Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > B: old + new response ΓåÆ returns only the new anchored response
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"00000000-0000-4000-8000-0000000000aa"},"timestamp":"2026-08-27T10:41:25.640Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > click with no effect throws SEND_NOT_CONFIRMED
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"a6ee02c1-d6fd-48be-9dd5-623e1096b246"},"timestamp":"2026-08-27T10:41:25.662Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:26.358Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:26.443Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:26.914Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:26.966Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:26.967Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:27.120Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:27.165Z"}
+ Γ£ô tests/unit/memory/memory-engine.test.ts (5 tests) 3433ms
+   Γ£ô memory engine > filters relationships by chapter timeline 797ms
+   Γ£ô memory engine > does not overwrite locked memory events 964ms
+   Γ£ô memory engine > creates conflict on contradictory unlocked delta 912ms
+   Γ£ô memory engine > keeps only entities present in current batch text 753ms
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:27.499Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:27.500Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:27.523Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:27.530Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:27.530Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > click with no effect throws SEND_NOT_CONFIRMED
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"a6ee02c1-d6fd-48be-9dd5-623e1096b246"},"timestamp":"2026-08-27T10:41:27.558Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:27.660Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:27.690Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:27.691Z"}
+ Γ¥» tests/unit/diagnostics/diagnostics.test.ts (7 tests | 1 failed) 13261ms
+   Γ£ô Automation Diagnostics (Phase 19) > validates selector override JSON and rejects unsafe css 784ms
+   Γ£ô Automation Diagnostics (Phase 19) > merges override strategies before builtin (fallback) 789ms
+   Γ£ô Automation Diagnostics (Phase 19) > tracks provider version + last successful run 636ms
+   Γ£ô Automation Diagnostics (Phase 19) > redacts secrets in HTML snapshots and diagnostic text 740ms
+   Γ£ô Automation Diagnostics (Phase 19) > captures SELECTOR_NOT_FOUND diagnostics with title + candidates 3383ms
+   Γ£ô Automation Diagnostics (Phase 19) > exports diagnostics ZIP without forbidden secret paths 1174ms
+   ├ù Automation Diagnostics (Phase 19) > rejects password field suggestions in interactive repair 5750ms
+     ΓåÆ Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:28.479Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:28.722Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:28.750Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:28.799Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_translation_pack","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:28.800Z"}
+ Γ£ô tests/unit/automation/browser-engine-resolver.test.ts (13 tests) 33708ms
+   Γ£ô launchNovelTransPersistentContext + profile lock > writes engine-info diagnostics and rejects second lock on same profile 17861ms
+   Γ£ô launchNovelTransPersistentContext + profile lock > can resolve live Edge / Chrome when installed (skip if absent) 15814ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:28.884Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:28.936Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_translation_pack","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:28.937Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:28.971Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:29.067Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:29.078Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:29.099Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:29.100Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:29.119Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:29.121Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > click with no effect throws SEND_NOT_CONFIRMED
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_NOT_CONFIRMED","correlationId":"a6ee02c1-d6fd-48be-9dd5-623e1096b246"},"timestamp":"2026-08-27T10:41:29.172Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > click with no effect throws SEND_NOT_CONFIRMED
+{"level":"info","message":"Browser event","context":{"eventType":"AUTOMATION_FAIL","correlationId":"a6ee02c1-d6fd-48be-9dd5-623e1096b246"},"timestamp":"2026-08-27T10:41:29.317Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:29.444Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:29.884Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:29.998Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > composer truncate raises PROMPT_TOO_LARGE
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"d7447c74-7a6d-4388-8c60-58b13afef31f"},"timestamp":"2026-08-27T10:41:30.346Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > composer truncate raises PROMPT_TOO_LARGE
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"d7447c74-7a6d-4388-8c60-58b13afef31f"},"timestamp":"2026-08-27T10:41:30.362Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:30.401Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_plain_prompt","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:30.402Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > composer truncate raises PROMPT_TOO_LARGE
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"d7447c74-7a6d-4388-8c60-58b13afef31f"},"timestamp":"2026-08-27T10:41:30.450Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > composer truncate raises PROMPT_TOO_LARGE
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"d7447c74-7a6d-4388-8c60-58b13afef31f"},"timestamp":"2026-08-27T10:41:30.466Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"d7447c74-7a6d-4388-8c60-58b13afef31f"},"timestamp":"2026-08-27T10:41:30.467Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > composer truncate raises PROMPT_TOO_LARGE
+{"level":"info","message":"Browser event","context":{"eventType":"AUTOMATION_FAIL","correlationId":"d7447c74-7a6d-4388-8c60-58b13afef31f"},"timestamp":"2026-08-27T10:41:30.861Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:30.872Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:30.968Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:31.152Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:31.154Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:31.341Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:31.342Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:31.343Z"}
+ Γ£ô tests/unit/jobs/translation-context-diagnostics.test.ts (8 tests) 1777ms
+   Γ£ô buildTranslationContextDiagnostics > SLIM ready_verified ΓåÆ grounding true + notebook name 960ms
+   Γ£ô buildTranslationContextDiagnostics > FAT ΓåÆ LOCAL_ONLY and no grounding 798ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:31.431Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > slow user message still confirms send
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"6b489dab-2ff3-4b2c-ae0e-4d5d13dd6f2e"},"timestamp":"2026-08-27T10:41:31.764Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > slow user message still confirms send
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"6b489dab-2ff3-4b2c-ae0e-4d5d13dd6f2e"},"timestamp":"2026-08-27T10:41:31.779Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > slow user message still confirms send
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"6b489dab-2ff3-4b2c-ae0e-4d5d13dd6f2e"},"timestamp":"2026-08-27T10:41:31.859Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > slow user message still confirms send
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"6b489dab-2ff3-4b2c-ae0e-4d5d13dd6f2e"},"timestamp":"2026-08-27T10:41:31.878Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"6b489dab-2ff3-4b2c-ae0e-4d5d13dd6f2e"},"timestamp":"2026-08-27T10:41:31.879Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:31.936Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:32.328Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:32.331Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:32.331Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:32.332Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:32.365Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:32.384Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:32.476Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"00000000-0000-4000-8000-000000000099"},"timestamp":"2026-08-27T10:41:32.481Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:32.491Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:32.492Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:32.746Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:32.749Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:32.750Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:32.751Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > slow user message still confirms send
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"6b489dab-2ff3-4b2c-ae0e-4d5d13dd6f2e"},"timestamp":"2026-08-27T10:41:32.874Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"00000000-0000-4000-8000-0000000000b1"},"timestamp":"2026-08-27T10:41:32.982Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > slow user message still confirms send
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"6b489dab-2ff3-4b2c-ae0e-4d5d13dd6f2e"},"timestamp":"2026-08-27T10:41:33.055Z"}
+ Γ£ô tests/unit/import/chapter-detector.test.ts (11 tests) 91ms
+ Γ£ô tests/unit/services/active-generation-registry.test.ts (6 tests) 390ms
+   Γ£ô PlaywrightGeminiAdapter activeIds map > cancelRequest uses mapped correlation before send completes 362ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:33.499Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:33.696Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:33.738Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_translation_pack","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:33.739Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:33.802Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:33.835Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:33.893Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:33.949Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:33.950Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:34.002Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:34.054Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:34.055Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:34.144Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED"},"timestamp":"2026-08-27T10:41:34.258Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:34.282Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:34.316Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:34.360Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN"},"timestamp":"2026-08-27T10:41:34.602Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"reuse_translation_thread"},"timestamp":"2026-08-27T10:41:34.607Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > slow user message still confirms send
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"6b489dab-2ff3-4b2c-ae0e-4d5d13dd6f2e"},"timestamp":"2026-08-27T10:41:34.729Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_plain_prompt","correlationId":"6b489dab-2ff3-4b2c-ae0e-4d5d13dd6f2e"},"timestamp":"2026-08-27T10:41:34.730Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:35.168Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:35.203Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:35.214Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:35.378Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:35.392Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:35.392Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:35.412Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:35.456Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_plain_prompt","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:35.457Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > double-submit while in-flight is refused
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"20212039-cf6c-44a8-9045-6db473d9195c"},"timestamp":"2026-08-27T10:41:35.574Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > double-submit while in-flight is refused
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"20212039-cf6c-44a8-9045-6db473d9195c"},"timestamp":"2026-08-27T10:41:35.592Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:35.602Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:35.697Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:35.698Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > double-submit while in-flight is refused
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"20212039-cf6c-44a8-9045-6db473d9195c"},"timestamp":"2026-08-27T10:41:35.733Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > double-submit while in-flight is refused
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"20212039-cf6c-44a8-9045-6db473d9195c"},"timestamp":"2026-08-27T10:41:35.781Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"20212039-cf6c-44a8-9045-6db473d9195c"},"timestamp":"2026-08-27T10:41:35.782Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > double-submit while in-flight is refused
+{"level":"info","message":"Browser event","context":{"eventType":"AUTOMATION_FAIL","correlationId":"20212039-cf6c-44a8-9045-6db473d9195c"},"timestamp":"2026-08-27T10:41:35.795Z"}
+ Γ£ô tests/unit/gemini/generation-lifecycle.test.ts (10 tests) 4191ms
+   Γ£ô runTargetGenerationLifecycle > waits through pause then completes on stable non-empty text 2488ms
+   Γ£ô runTargetGenerationLifecycle > returns OUTPUT_INCOMPLETE for cutoff protocol 1244ms
+   Γ£ô runTargetGenerationLifecycle > uses longer quiet window when indicator is null 440ms
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:36.003Z"}
+ Γ£ô tests/unit/drive/drive-sync.test.ts (6 tests) 4345ms
+   Γ£ô DriveSyncService > provisions NovelTrans/project folder tree and owned files 892ms
+   Γ£ô DriveSyncService > skips Drive update when local content hash unchanged 771ms
+   Γ£ô DriveSyncService > updates Drive Google Doc when content hash changes 734ms
+   Γ£ô DriveSyncService > schedules sync every N chapters or on critical change 688ms
+   Γ£ô DriveSyncService > batch chapterCount=3 advances counter by 3 (not +1 per job) 624ms
+   Γ£ô DriveSyncService > hashes content deterministically 633ms
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:36.392Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > double-submit while in-flight is refused
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"20212039-cf6c-44a8-9045-6db473d9195c"},"timestamp":"2026-08-27T10:41:36.690Z"}
+stdout | tests/unit/gemini/gemini-request-lifecycle-db.test.ts > gemini_requests lifecycle persistence + startup recovery > startup: pre-send abandoned; post-send UNKNOWN_AFTER_CRASH; attempts CRASHED
+{"level":"info","message":"Startup recovery (jobs / gemini_requests / profiles)","context":{"crashedAttempts":1,"geminiUnknownAfterCrash":1,"geminiAbandonedBeforeSend":1,"profileLeasesCleared":0,"expiredJobLeases":0},"timestamp":"2026-08-27T10:41:36.750Z"}
+ Γ£ô tests/unit/gemini/gemini-request-lifecycle-db.test.ts (3 tests) 2039ms
+   Γ£ô gemini_requests lifecycle persistence + startup recovery > persists correlation, marker, notebook, job, lifecycle timestamps 690ms
+   Γ£ô gemini_requests lifecycle persistence + startup recovery > idempotent findOpenByJobAndPack does not create duplicates 625ms
+   Γ£ô gemini_requests lifecycle persistence + startup recovery > startup: pre-send abandoned; post-send UNKNOWN_AFTER_CRASH; attempts CRASHED 721ms
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > double-submit while in-flight is refused
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"20212039-cf6c-44a8-9045-6db473d9195c"},"timestamp":"2026-08-27T10:41:36.844Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:37.614Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:37.658Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_translation_pack","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:37.659Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:37.774Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:37.814Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:37.815Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:37.991Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:38.324Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > double-submit while in-flight is refused
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"20212039-cf6c-44a8-9045-6db473d9195c"},"timestamp":"2026-08-27T10:41:38.535Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_plain_prompt","correlationId":"20212039-cf6c-44a8-9045-6db473d9195c"},"timestamp":"2026-08-27T10:41:38.536Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:38.763Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:38.764Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:38.765Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:38.784Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:38.786Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:38.787Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:38.788Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:38.828Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"00000000-0000-4000-8000-0000000000b2"},"timestamp":"2026-08-27T10:41:38.976Z"}
+ Γ£ô tests/unit/translation/translate-preflight.test.ts (12 tests) 20ms
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:39.561Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > does not use Enter as silent send fallback when button missing
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"3b95917c-53d0-448e-a59d-83ad578169e8"},"timestamp":"2026-08-27T10:41:39.673Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > does not use Enter as silent send fallback when button missing
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"3b95917c-53d0-448e-a59d-83ad578169e8"},"timestamp":"2026-08-27T10:41:39.686Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > does not use Enter as silent send fallback when button missing
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"3b95917c-53d0-448e-a59d-83ad578169e8"},"timestamp":"2026-08-27T10:41:39.768Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > does not use Enter as silent send fallback when button missing
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"3b95917c-53d0-448e-a59d-83ad578169e8"},"timestamp":"2026-08-27T10:41:39.789Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"3b95917c-53d0-448e-a59d-83ad578169e8"},"timestamp":"2026-08-27T10:41:39.790Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:39.800Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:39.844Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:39.927Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:39.929Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:39.930Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:39.932Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:39.941Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:39.942Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse)
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"e7766f05-8ce2-4cd6-8174-fcb1f7e1eb95"},"timestamp":"2026-08-27T10:41:39.993Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:40.281Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:40.292Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:40.368Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:40.385Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:40.386Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > does not use Enter as silent send fallback when button missing
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"3b95917c-53d0-448e-a59d-83ad578169e8"},"timestamp":"2026-08-27T10:41:40.742Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:40.929Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:41.117Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:41.163Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_translation_pack","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:41.164Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:41.273Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:41.284Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:41.290Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:41.317Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:41.333Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:41.335Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:41.350Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:41.360Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:41.361Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:41.441Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:41.476Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_plain_prompt","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:41.477Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:41.547Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:41.557Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:41.600Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:41.601Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:41.750Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > does not use Enter as silent send fallback when button missing
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"3b95917c-53d0-448e-a59d-83ad578169e8"},"timestamp":"2026-08-27T10:41:41.800Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:42.291Z"}
+stdout | tests/unit/learning/consecutive-freshness.test.ts > consecutive chapter freshness hardening > markDirty stales ready and sync_pending for every worker mapping
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"0d46eaeb-4c16-4695-9121-672761e129b5","event":"TERM_CHANGED","types":["project_terms"]},"timestamp":"2026-08-27T10:41:40.572Z"}
+ Γ£ô tests/unit/learning/consecutive-freshness.test.ts (3 tests) 2884ms
+   Γ£ô consecutive chapter freshness hardening > markDirty stales ready and sync_pending for every worker mapping 1215ms
+   Γ£ô consecutive chapter freshness hardening > claimNext prefers lower chapter_from at equal priority 984ms
+   Γ£ô consecutive chapter freshness hardening > high-confidence pending candidates enter pack activeTerms 682ms
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:42.411Z"}
+ Γ£ô tests/unit/source-folder/book-metadata.test.ts (12 tests) 233ms
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:42.444Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_translation_pack","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:42.445Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:42.537Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:42.545Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"generation_cancelled","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:42.601Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:42.642Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:42.642Z"}
+stdout | tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake > does not use Enter as silent send fallback when button missing
+{"level":"info","message":"Browser event","context":{"eventType":"AUTOMATION_FAIL","correlationId":"3b95917c-53d0-448e-a59d-83ad578169e8"},"timestamp":"2026-08-27T10:41:42.677Z"}
+stdout | tests/unit/gemini/gemini-browser-provider.test.ts > GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early
+{"level":"info","message":"Browser event","context":{"eventType":"AUTOMATION_FAIL","correlationId":"00000000-0000-4000-8000-000000000088"},"timestamp":"2026-08-27T10:41:42.750Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:43.215Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:43.249Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:43.559Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:43.560Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:43.560Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > D: DOM rerender recovers anchor via user marker
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"00000000-0000-4000-8000-0000000000cc"},"timestamp":"2026-08-27T10:41:43.614Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:43.678Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:43.679Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:43.680Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"00000000-0000-4000-8000-0000000000b3"},"timestamp":"2026-08-27T10:41:43.744Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:44.417Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:44.427Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:44.494Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:44.505Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:44.506Z"}
+ Γ£ô tests/unit/gemini/surface-selectors.test.ts (6 tests) 9802ms
+   Γ£ô Surface-aware selector architecture > detects GEMINI_CHAT fixture surface 1638ms
+   Γ£ô Surface-aware selector architecture > detects GEMINI_NOTEBOOK fixture surface 1107ms
+   Γ£ô Surface-aware selector architecture > detects NOTEBOOKLM fixture + scopes composer away from Discover Sources 628ms
+   Γ£ô Surface-aware selector architecture > dedupes assistant bubbles (nested text does not inflate count) 582ms
+   Γ£ô Surface-aware selector architecture > catalogs prefer accessible strategies before CSS 498ms
+   Γ£ô Surface-aware selector architecture > fast probe finishes well under sequential 2.5s├ùN budget 551ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:44.716Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:44.734Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:44.851Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:44.865Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:44.866Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:45.409Z"}
+ Γ£ô tests/unit/editor/translation-persistence.test.ts (4 tests) 2593ms
+   Γ£ô Translation editor persistence (Phase 17) > persists AI_INITIAL on PASS parse 625ms
+   Γ£ô Translation editor persistence (Phase 17) > skips AI overwrite when human_locked 671ms
+   Γ£ô Translation editor persistence (Phase 17) > saveHumanEdit creates HUMAN_EDIT version with lock 674ms
+   Γ£ô Translation editor persistence (Phase 17) > listVersions tracks append history 620ms
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:45.503Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:45.534Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_plain_prompt","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:45.536Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:45.616Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:45.652Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:45.653Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:45.791Z"}
+ Γ£ô tests/unit/gemini/gemini-browser-provider.test.ts (8 tests) 29276ms
+   Γ£ô GeminiBrowserProvider (streaming fixture DOM) > detectLogin returns true on chat fixture 2670ms
+   Γ£ô GeminiBrowserProvider (streaming fixture DOM) > detectLogin returns false on login fixture 992ms
+   Γ£ô GeminiBrowserProvider (streaming fixture DOM) > detectQuotaLimit on quota fixture 465ms
+   Γ£ô GeminiBrowserProvider (streaming fixture DOM) > detectUserActionRequired returns CAPTCHA 496ms
+   Γ£ô GeminiBrowserProvider (streaming fixture DOM) > waits for streaming to finish and extracts correlated response only 9672ms
+   Γ£ô GeminiBrowserProvider (streaming fixture DOM) > sendPack end-to-end returns raw text (no TERM_DELTA parse) 7554ms
+   Γ£ô GeminiBrowserProvider (streaming fixture DOM) > cancelGeneration stops streaming early 2729ms
+   Γ£ô GeminiBrowserProvider (streaming fixture DOM) > throws SELECTOR_NOT_FOUND with diagnostics on broken page 896ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:45.876Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:46.074Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:46.124Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_translation_pack","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:46.125Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:46.240Z"}
+ Γ£ô tests/unit/i18n-ui.test.ts (7 tests) 44ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:46.295Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:46.296Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:46.511Z"}
+ Γ£ô tests/unit/gemini/gemini-request-recovery.test.ts (20 tests) 21ms
+ Γ£ô tests/unit/import/import-service.test.ts (3 tests) 2164ms
+   Γ£ô ImportService > previews chapters then commits with stable IDs and source hashes 714ms
+   Γ£ô ImportService > detects duplicate titles in preview 772ms
+   Γ£ô ImportService > parses minimal EPUB buffer via file 675ms
+ Γ£ô tests/unit/ai/playwright-gemini-health.test.ts (3 tests) 18ms
+ Γ£ô tests/unit/editor/multi-chapter-actions.test.ts (3 tests) 20ms
+ Γ£ô tests/unit/services/project-worker-resolver.test.ts (5 tests) 3682ms
+   Γ£ô ProjectWorkerResolver > A READY + B READY + project mapped B ΓåÆ resolve returns B (not first READY) 772ms
+   Γ£ô ProjectWorkerResolver > does not READY-fallback when binding exists but preferred differs 755ms
+   Γ£ô ProjectWorkerResolver > uses project assigned worker when no notebook 678ms
+   Γ£ô ProjectWorkerResolver > READY fallback only when project has no binding 734ms
+   Γ£ô ProjectWorkerResolver > after Drive rebind prefers notebook on assigned account 738ms
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:47.696Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:47.697Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:47.698Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:47.699Z"}
+stdout | tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring > E: virtualized old conversation still does not pick wrong bubble
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"00000000-0000-4000-8000-0000000000dd"},"timestamp":"2026-08-27T10:41:47.875Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:48.267Z"}
+ Γ£ô tests/unit/source-folder/chapter-file-detector.test.ts (3 tests) 241ms
+ Γ£ô tests/unit/notebook/knowledge-budget-builder.test.ts (7 tests) 40080ms
+   Γ£ô NotebookKnowledgeBuilder semantic budget > deterministic: same DB state ΓåÆ identical output 1457ms
+   Γ£ô NotebookKnowledgeBuilder semantic budget > includes locked term last in DB but first in output (10k terms) 35586ms
+   Γ£ô NotebookKnowledgeBuilder semantic budget > respects character budget with 500 characters without mid-record cut 1340ms
+   Γ£ô NotebookKnowledgeBuilder semantic budget > recent context uses rolling window ΓÇö size stable as chapters grow 815ms
+   Γ£ô NotebookKnowledgeBuilder semantic budget > term ranking order: LOCKED before PROJECT_VERIFIED before candidates 753ms
+ Γ¥» tests/unit/learning/rebuild-knowledge-every-pass.test.ts (2 tests | 1 failed) 34ms
+   ├ù learning pipeline rebuildKnowledge every PASS > rebuilds then calls syncDrive when policy says sync 18ms
+     ΓåÆ Cannot read properties of undefined (reading 'getById')
+ Γ£ô tests/unit/jobs/gemini-soft-error.test.ts (7 tests) 18ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:48.668Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABLE","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:48.669Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_COMPLETE","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:48.670Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target
+{"level":"info","message":"Browser event","context":{"eventType":"CAPTURED","correlationId":"00000000-0000-4000-8000-0000000000b4"},"timestamp":"2026-08-27T10:41:48.740Z"}
+ Γ£ô tests/unit/bootstrap/full-novel-preprocess.test.ts (8 tests) 263ms
+ Γ£ô tests/unit/automation/protocol-retry.test.ts (6 tests) 67ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:49.647Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:49.659Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:49.774Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:49.785Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:49.785Z"}
+ Γ£ô tests/unit/automation/browser-dependency-health.test.ts (5 tests) 16ms
+ Γ£ô tests/unit/ai/gemini-webapi-http.test.ts (2 tests) 278ms
+ Γ£ô tests/unit/jobs/batch-sizer.test.ts (4 tests) 73ms
+stdout | tests/unit/notebook/notebook-provider.test.ts > NotebookProvider (fixture DOM) > addFileSources uploads local markdown in one shot
+{"level":"info","message":"wait_source_processing_start","context":{"before":0,"expectedIncrease":2,"targetCount":2,"timeoutMs":180000},"timestamp":"2026-08-27T10:41:50.419Z"}
+ Γ£ô tests/unit/help-center.test.ts (10 tests) 21ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:50.781Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:50.984Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:51.040Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_translation_pack","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:51.041Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:51.201Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:51.273Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:51.274Z"}
+ Γ£ô tests/unit/translation/startup-ai-readiness.test.ts (8 tests) 16ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STREAMING","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:51.500Z"}
+stdout | tests/unit/notebook/prepare-for-translate.test.ts > prepareForTranslate > bootstraps when knowledge empty
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"91aebee8-367c-4fc0-b1ed-91f8dd22b158","event":"STORY_STATE_CHANGED","types":["story_state","recent_context"]},"timestamp":"2026-08-27T10:41:50.835Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"91aebee8-367c-4fc0-b1ed-91f8dd22b158","event":"WORLD_KNOWLEDGE_CHANGED","types":["world_knowledge"]},"timestamp":"2026-08-27T10:41:50.846Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"91aebee8-367c-4fc0-b1ed-91f8dd22b158","event":"ALL","types":["book_profile","translation_rules","project_terms","characters","relationships","story_state","world_knowledge","recent_context","sync_state"]},"timestamp":"2026-08-27T10:41:50.952Z"}
+{"level":"info","message":"Notebook bootstrap complete","context":{"projectId":"91aebee8-367c-4fc0-b1ed-91f8dd22b158","seeded":true,"chapterCount":1},"timestamp":"2026-08-27T10:41:50.955Z"}
+stdout | tests/unit/notebook/prepare-for-translate.test.ts > prepareForTranslate > attempts provision when worker READY and mapping missing
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"ec10a4aa-00fa-4568-aa02-e554ef62c090","event":"STORY_STATE_CHANGED","types":["story_state","recent_context"]},"timestamp":"2026-08-27T10:41:51.698Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"ec10a4aa-00fa-4568-aa02-e554ef62c090","event":"WORLD_KNOWLEDGE_CHANGED","types":["world_knowledge"]},"timestamp":"2026-08-27T10:41:51.701Z"}
+{"level":"info","message":"Knowledge marked dirty","context":{"projectId":"ec10a4aa-00fa-4568-aa02-e554ef62c090","event":"ALL","types":["book_profile","translation_rules","project_terms","characters","relationships","story_state","world_knowledge","recent_context","sync_state"]},"timestamp":"2026-08-27T10:41:51.736Z"}
+{"level":"info","message":"Notebook bootstrap complete","context":{"projectId":"ec10a4aa-00fa-4568-aa02-e554ef62c090","seeded":true,"chapterCount":1},"timestamp":"2026-08-27T10:41:51.738Z"}
+ Γ£ô tests/unit/notebook/prepare-for-translate.test.ts (2 tests) 1782ms
+   Γ£ô prepareForTranslate > bootstraps when knowledge empty 1019ms
+   Γ£ô prepareForTranslate > attempts provision when worker READY and mapping missing 760ms
+ Γ£ô tests/integration/smoke.test.ts (1 test) 862ms
+   Γ£ô Integration smoke (release) > setup complete + project insert + manual DB backup preserves file 859ms
+ Γ£ô tests/unit/editor/editor-utils.test.ts (6 tests) 38ms
+ Γ£ô tests/unit/automation/runner-utility-process.test.ts (7 tests) 120ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_STABILIZING","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:52.387Z"}
+ Γ¥» tests/unit/gemini/gemini-send-handshake.test.ts (12 tests) 46030ms
+   Γ£ô GeminiBrowserProvider send handshake > send success confirms before generation wait 5145ms
+   Γ£ô GeminiBrowserProvider send handshake > submitPlainPrompt uses the same send handshake 2413ms
+   Γ£ô GeminiBrowserProvider send handshake > send disabled throws without waiting for generation 3844ms
+   Γ£ô GeminiBrowserProvider send handshake > Enter alone only inserts newline ΓÇö does not confirm send 3596ms
+   Γ£ô GeminiBrowserProvider send handshake > click with no effect throws SEND_NOT_CONFIRMED 5765ms
+   Γ£ô GeminiBrowserProvider send handshake > composer truncate raises PROMPT_TOO_LARGE 1513ms
+   Γ£ô GeminiBrowserProvider send handshake > slow user message still confirms send 3878ms
+   Γ£ô GeminiBrowserProvider send handshake > double-submit while in-flight is refused 3802ms
+   Γ£ô GeminiBrowserProvider send handshake > does not use Enter as silent send fallback when button missing 4147ms
+stdout | tests/unit/notebook/notebook-provider.test.ts > NotebookProvider (fixture DOM) > addFileSources uploads local markdown in one shot
+{"level":"info","message":"wait_source_processing_done","context":{"sourceCount":2,"checks":0,"elapsedMs":3134},"timestamp":"2026-08-27T10:41:53.552Z"}
+ Γ£ô tests/unit/portability/export-layout.test.ts (3 tests) 14ms
+ Γ£ô tests/unit/ai/worker-process-manager-packaging.test.ts (3 tests) 19ms
+ Γ£ô tests/unit/automation/gemini-selectors-live.test.ts (6 tests) 16ms
+ Γ£ô tests/unit/ipc-schemas.test.ts (8 tests) 29ms
+ Γ£ô tests/unit/regression/no-first-ready-worker.test.ts (8 tests) 27ms
+ Γ£ô tests/unit/paths-service.test.ts (4 tests) 10ms
+ Γ£ô tests/unit/release/setup-updates.test.ts (3 tests) 2117ms
+   Γ£ô Setup wizard + updates (release) > tracks setup steps and completes without wiping storage path 709ms
+   Γ£ô Setup wizard + updates (release) > manual update provider reports unavailable (no fake server) 766ms
+   Γ£ô Setup wizard + updates (release) > AppData layout has data + browserProfiles + backups dirs 638ms
+ Γ£ô tests/unit/jobs/heal-workers.test.ts (4 tests) 11ms
+ Γ£ô tests/unit/automation/automation-timeline.test.ts (5 tests) 17ms
+ Γ£ô tests/unit/security/ipc-validation.test.ts (4 tests) 29ms
+ Γ£ô tests/unit/notebook-grounding-smoke-knowledge.test.ts (6 tests) 14ms
+ Γ£ô tests/unit/jobs/repair-partial-merge.test.ts (4 tests) 9ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE
+{"level":"info","message":"Browser event","context":{"eventType":"AUTOMATION_FAIL","correlationId":"00000000-0000-4000-8000-0000000000b5"},"timestamp":"2026-08-27T10:41:56.675Z"}
+ Γ£ô tests/unit/editor/clear-ai-by-chapter.test.ts (1 test) 748ms
+   Γ£ô clearAiByChapter > deletes unlocked AI rows and keeps human_locked 745ms
+ Γ£ô tests/unit/automation/wait-source-processing.test.ts (2 tests) 8ms
+ Γ£ô tests/unit/automation/profile-lock-nest.test.ts (2 tests) 26ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > response error bubble ΓåÆ GENERATION_ERROR
+{"level":"info","message":"Browser event","context":{"eventType":"SURFACE_DETECTED","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:57.730Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > response error bubble ΓåÆ GENERATION_ERROR
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:57.744Z"}
+ Γ£ô tests/unit/renderer/notebook-panel.test.ts (3 tests) 10ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > response error bubble ΓåÆ GENERATION_ERROR
+{"level":"info","message":"Browser event","context":{"eventType":"SELECTOR_STRATEGY_WIN","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:57.833Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > response error bubble ΓåÆ GENERATION_ERROR
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_FOUND","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:57.850Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"COMPOSER_READY","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:57.851Z"}
+ Γ£ô tests/unit/memory/story-state-chapter.test.ts (3 tests) 20ms
+ Γ¥» tests/unit/gemini/gemini-response-anchor.test.ts (6 tests) 49122ms
+   Γ£ô Response anchoring > A: old response exists + send fails ΓåÆ never returns old bubble 8083ms
+   Γ£ô Response anchoring > B: old + new response ΓåÆ returns only the new anchored response 6194ms
+   Γ£ô Response anchoring > C: multiple responses ΓåÆ extract matches marker / correlation 13446ms
+   Γ£ô Response anchoring > D: DOM rerender recovers anchor via user marker 4529ms
+   Γ£ô Response anchoring > E: virtualized old conversation still does not pick wrong bubble 4286ms
+   Γ£ô Response anchoring > resolveAssistantForAnchor rejects baseline-only old bubble 507ms
+ Γ£ô tests/unit/terms/candidate-extractor.test.ts (4 tests) 14ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > response error bubble ΓåÆ GENERATION_ERROR
+{"level":"info","message":"Browser event","context":{"eventType":"PROMPT_FILLED","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:58.832Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > response error bubble ΓåÆ GENERATION_ERROR
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CLICKED","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:59.009Z"}
+ Γ£ô tests/unit/jobs/corrupt-translation.test.ts (7 tests) 14ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > response error bubble ΓåÆ GENERATION_ERROR
+{"level":"info","message":"Browser event","context":{"eventType":"SEND_CONFIRMED","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:59.056Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"submit_translation_pack","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:59.057Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > response error bubble ΓåÆ GENERATION_ERROR
+{"level":"info","message":"Browser event","context":{"eventType":"GENERATION_STARTED","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:59.177Z"}
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > response error bubble ΓåÆ GENERATION_ERROR
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:59.244Z"}
+{"level":"info","message":"Browser event","context":{"eventType":"RESPONSE_CREATED","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:59.245Z"}
+ Γ£ô tests/unit/jobs/normalize-parsed-translations.test.ts (1 test) 17ms
+ Γ£ô tests/unit/ai/error-map.test.ts (6 tests) 22ms
+ Γ£ô tests/unit/google-smoke-config.test.ts (4 tests) 22ms
+stdout | tests/unit/gemini/gemini-generation-lifecycle.test.ts > Target generation lifecycle (fixture) > response error bubble ΓåÆ GENERATION_ERROR
+{"level":"info","message":"Browser event","context":{"eventType":"AUTOMATION_FAIL","correlationId":"00000000-0000-4000-8000-0000000000b6"},"timestamp":"2026-08-27T10:41:59.703Z"}
+ Γ£ô tests/unit/file-writer.test.ts (2 tests) 20ms
+ Γ£ô tests/unit/ai/worker-port-reclaim.test.ts (3 tests) 11ms
+ Γ£ô tests/unit/utils/translate-channel.test.ts (4 tests) 12ms
+stdout | tests/unit/automation/browser-event-logger.test.ts > BrowserEventLogger > keeps logging to file when DB insert hits FOREIGN KEY
+{"level":"info","message":"Browser event","context":{"eventType":"submit","correlationId":"corr-1"},"timestamp":"2026-08-27T10:42:01.019Z"}
+ Γ£ô tests/unit/automation/browser-event-logger.test.ts (1 test) 24ms
+stdout | tests/integration/source-folder-workflow.test.ts > source folder workflow integration > creates project from folder, detects new chapter on rescan
+{"level":"info","message":"source-folder CHAPTER_IMPORTED","context":{"projectId":"7ae9585a-20d9-436f-a2b5-c460fdb671f5","chapterNumber":1,"module":"source-folder"},"timestamp":"2026-08-27T10:42:01.045Z"}
+{"level":"info","message":"source-folder CHAPTER_IMPORTED","context":{"projectId":"7ae9585a-20d9-436f-a2b5-c460fdb671f5","chapterNumber":2,"module":"source-folder"},"timestamp":"2026-08-27T10:42:01.057Z"}
+{"level":"info","message":"source-folder CHAPTER_IMPORTED","context":{"projectId":"7ae9585a-20d9-436f-a2b5-c460fdb671f5","chapterNumber":3,"module":"source-folder"},"timestamp":"2026-08-27T10:42:01.061Z"}
+stdout | tests/integration/source-folder-workflow.test.ts > source folder workflow integration > creates project from folder, detects new chapter on rescan
+{"level":"info","message":"source-folder SCAN_STARTED","context":{"projectId":"7ae9585a-20d9-436f-a2b5-c460fdb671f5","module":"source-folder"},"timestamp":"2026-08-27T10:42:01.076Z"}
+ Γ£ô tests/unit/jobs/job-notify.test.ts (4 tests) 9ms
+stdout | tests/integration/source-folder-workflow.test.ts > source folder workflow integration > creates project from folder, detects new chapter on rescan
+{"level":"info","message":"source-folder SCAN_COMPLETED","context":{"projectId":"7ae9585a-20d9-436f-a2b5-c460fdb671f5","module":"source-folder","new":1},"timestamp":"2026-08-27T10:42:01.086Z"}
+ Γ£ô tests/integration/source-folder-workflow.test.ts (1 test) 1020ms
+   Γ£ô source folder workflow integration > creates project from folder, detects new chapter on rescan 1017ms
+ Γ£ô tests/unit/ai/python-detect.test.ts (3 tests) 12ms
+ Γ£ô tests/unit/bootstrap/auto-preprocess-mode.test.ts (4 tests) 9ms
+ Γ£ô tests/unit/automation/pick-gemini-cookies.test.ts (2 tests) 10ms
+ Γ£ô tests/unit/learning/learning-drive-boundary.test.ts (1 test) 8ms
+ Γ£ô tests/unit/gemini/gemini-generation-lifecycle.test.ts (6 tests) 38370ms
+   Γ£ô Target generation lifecycle (fixture) > token growth ΓåÆ complete with protocol text 5028ms
+   Γ£ô Target generation lifecycle (fixture) > pause 2s mid-stream then continue ΓåÆ still completes 7399ms
+   Γ£ô Target generation lifecycle (fixture) > spinner disappears early while tokens grow ΓåÆ does not use old bubble 4899ms
+   Γ£ô Target generation lifecycle (fixture) > DOM rerender mid-stream ΓåÆ still anchors target 4996ms
+   Γ£ô Target generation lifecycle (fixture) > output cutoff ΓåÆ OUTPUT_INCOMPLETE 7922ms
+   Γ£ô Target generation lifecycle (fixture) > response error bubble ΓåÆ GENERATION_ERROR 3030ms
+ Γ£ô tests/unit/automation/gemini-prompt-input-editable.test.ts (1 test) 7378ms
+   Γ£ô GeminiSelectorRegistry promptInput vs Discover Sources > picks Hß╗Öp truy vß║Ñn, not disabled Discover Sources textarea 846ms
+ Γ¥» tests/unit/automation/browser-session.test.ts (6 tests | 4 failed) 46036ms
+   ├ù Browser automation core (mock HTML) > runs OPEN / NAVIGATE / GET_STATUS / SCREENSHOT / CLOSE commands 6361ms
+     ΓåÆ Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+     ΓåÆ EBUSY: resource busy or locked, unlink 'C:\Users\trong\AppData\Local\Temp\nts-auto-IC58JE\profiles\9e987e29-088e-4915-af4e-639260ae6f1e\first_party_sets.db'
+   ├ù Browser automation core (mock HTML) > persists profile data across reopen 5057ms
+     ΓåÆ Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+     ΓåÆ EBUSY: resource busy or locked, unlink 'C:\Users\trong\AppData\Local\Temp\nts-auto-9GKicG\profiles\c09ea477-57f4-44d1-a5aa-73cc3bf74b66\Default\Cache\No_Vary_Search\journal.baj'
+   Γ£ô Browser automation core (mock HTML) > returns LOGIN_REQUIRED without infinite retry 7501ms
+   ├ù Browser automation core (mock HTML) > captures screenshot on navigation timeout failure 14414ms
+     ΓåÆ Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+   ├ù Browser automation core (mock HTML) > RESTART reopens dedicated profile without Chrome default profile 5110ms
+     ΓåÆ Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+     ΓåÆ EBUSY: resource busy or locked, unlink 'C:\Users\trong\AppData\Local\Temp\nts-auto-giCmPp\profiles\9efdb186-8bc3-45cd-b2cd-b3da63abf78b\first_party_sets.db'
+   Γ£ô Browser automation core (mock HTML) > never allows two workers on same userDataDir 7484ms
+ Γ£ô tests/unit/drive/drive-oauth-parse.test.ts (3 tests) 9ms
+ Γ£ô tests/unit/notebook/notebook-provider.test.ts (13 tests) 84187ms
+   Γ£ô NotebookProvider (fixture DOM) > detectAvailability returns true on fixture shell 614ms
+   Γ£ô NotebookProvider (fixture DOM) > detectAvailability fails on broken DOM with SELECTOR_NOT_FOUND path 909ms
+   Γ£ô NotebookProvider (fixture DOM) > creates notebook idempotently (no duplicate) 1989ms
+   Γ£ô NotebookProvider (fixture DOM) > creates notebook via live navigate+rename path 10639ms
+   Γ£ô NotebookProvider (fixture DOM) > ensureNotebook renames existing untitled instead of creating 6519ms
+   Γ£ô NotebookProvider (fixture DOM) > opens notebook, adds drive sources without duplicates, sets instructions 13692ms
+   Γ£ô NotebookProvider (fixture DOM) > addTextSources pastes knowledge docs via Copied text 17029ms
+   Γ£ô NotebookProvider (fixture DOM) > addFileSources uploads local markdown in one shot 3898ms
+   Γ£ô NotebookProvider (fixture DOM) > addFileSources skips when fuzzy titles already cover filenames 4231ms
+   Γ£ô NotebookProvider (fixture DOM) > addTextSources dismisses CDK backdrop before Add click 18894ms
+   Γ£ô NotebookProvider (fixture DOM) > renameNotebook updates title display 3654ms
+ Test Files  9 failed | 99 passed (108)
+      Tests  19 failed | 669 passed (688)
+   Start at  17:40:52
+   Duration  87.87s (transform 47.89s, setup 0ms, collect 102.74s, tests 522.24s, environment 72ms, prepare 49.79s)
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+stderr | tests/unit/ai/ai-provider-manager.test.ts > AiProviderManager selection + fallback > uses first successful provider without calling next
+{"level":"warn","message":"Failed to rebuild fat pack for Web API ΓÇö using original","context":{"message":"Database not initialized. Call initializeDatabase() first."},"timestamp":"2026-08-27T10:40:58.572Z"}
+stderr | tests/unit/ai/ai-provider-manager.test.ts > AiProviderManager selection + fallback > falls back on RATE_LIMIT when enabled
+{"level":"warn","message":"Failed to rebuild fat pack for Web API ΓÇö using original","context":{"message":"Database not initialized. Call initializeDatabase() first."},"timestamp":"2026-08-27T10:40:58.586Z"}
+{"level":"warn","message":"AI provider request failed","context":{"provider":"GEMINI_WEB_API","event":"REQUEST_FAILED","status":"RATE_LIMIT"},"timestamp":"2026-08-27T10:40:58.587Z"}
+stderr | tests/unit/ai/ai-provider-manager.test.ts > AiProviderManager selection + fallback > does not fallback when provider locks fallback_allowed=0
+{"level":"warn","message":"Failed to rebuild fat pack for Web API ΓÇö using original","context":{"message":"Database not initialized. Call initializeDatabase() first."},"timestamp":"2026-08-27T10:40:58.591Z"}
+{"level":"warn","message":"AI provider request failed","context":{"provider":"GEMINI_WEB_API","event":"REQUEST_FAILED","status":"RATE_LIMIT"},"timestamp":"2026-08-27T10:40:58.592Z"}
+stderr | tests/unit/ai/ai-provider-manager.test.ts > AiProviderManager selection + fallback > falls back when SUCCESS text is a Gemini soft error
+{"level":"warn","message":"Failed to rebuild fat pack for Web API ΓÇö using original","context":{"message":"Database not initialized. Call initializeDatabase() first."},"timestamp":"2026-08-27T10:40:58.597Z"}
+{"level":"warn","message":"AI provider returned soft-error text as SUCCESS","context":{"provider":"GEMINI_WEB_API","snippet":"Sorry, something went wrong. Please try your request again."},"timestamp":"2026-08-27T10:40:58.597Z"}
+stderr | tests/unit/ai/ai-provider-manager.test.ts > AiProviderManager selection + fallback > falls back on SESSION_EXPIRED even when app_meta omits auth statuses
+{"level":"warn","message":"Failed to rebuild fat pack for Web API ΓÇö using original","context":{"message":"Database not initialized. Call initializeDatabase() first."},"timestamp":"2026-08-27T10:40:58.600Z"}
+{"level":"warn","message":"AI provider request failed","context":{"provider":"GEMINI_WEB_API","event":"REQUEST_FAILED","status":"SESSION_EXPIRED"},"timestamp":"2026-08-27T10:40:58.601Z"}
+stderr | tests/unit/ai/provider-routing-preflight.test.ts > AiProviderManager account-aware routing > does not call Playwright send when preflight is NOTEBOOK_ERROR
+{"level":"warn","message":"Failed to rebuild fat pack for Web API ΓÇö using original","context":{"message":"Database not initialized. Call initializeDatabase() first."},"timestamp":"2026-08-27T10:40:58.666Z"}
+stderr | tests/unit/ai/provider-routing-preflight.test.ts > AiProviderManager account-aware routing > PIN mode does not fallback to next provider
+{"level":"warn","message":"Failed to rebuild fat pack for Web API ΓÇö using original","context":{"message":"Database not initialized. Call initializeDatabase() first."},"timestamp":"2026-08-27T10:40:58.674Z"}
+{"level":"warn","message":"AI provider request failed","context":{"provider":"GEMINI_WEB_API","event":"REQUEST_FAILED","status":"RATE_LIMIT"},"timestamp":"2026-08-27T10:40:58.675Z"}
+stderr | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15) > runs two POOL workers in parallel up to maxConcurrent
+{"level":"warn","message":"persistParsedTranslations: no lines matched paragraphs","context":{"projectId":"33e421bb-5a13-4487-808b-e776ab4455e7","lineCount":2},"timestamp":"2026-08-27T10:41:00.061Z"}
+{"level":"warn","message":"persistParsedTranslations: no lines matched paragraphs","context":{"projectId":"33e421bb-5a13-4487-808b-e776ab4455e7","lineCount":2},"timestamp":"2026-08-27T10:41:00.071Z"}
+stderr | tests/unit/jobs/repair-loop.test.ts > repair loop + crash recovery > completes when initial response passes QA
+{"level":"warn","message":"persistParsedTranslations: no lines matched paragraphs","context":{"projectId":"9855d217-18f8-4637-b540-7653492806ab","lineCount":2},"timestamp":"2026-08-27T10:41:01.243Z"}
+(node:18052) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+stderr | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15) > PINNED mode only uses pinned worker
+{"level":"warn","message":"persistParsedTranslations: no lines matched paragraphs","context":{"projectId":"daffdf36-1f8c-44c6-b4de-54f8b4f03e2b","lineCount":2},"timestamp":"2026-08-27T10:41:01.149Z"}
+stderr | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15) > PINNED waits when pinned worker LIMITED (no spam retry)
+{"level":"warn","message":"AccountWorker unavailable while preparing translate","context":{"error":"AccountWorkerService not initialized"},"timestamp":"2026-08-27T10:41:02.002Z"}
+{"level":"warn","message":"AccountWorker unavailable while preparing translate","context":{"error":"AccountWorkerService not initialized"},"timestamp":"2026-08-27T10:41:02.003Z"}
+{"level":"warn","message":"AccountWorker unavailable while preparing translate","context":{"error":"AccountWorkerService not initialized"},"timestamp":"2026-08-27T10:41:02.003Z"}
+{"level":"warn","message":"AccountWorker unavailable while preparing translate","context":{"error":"AccountWorkerService not initialized"},"timestamp":"2026-08-27T10:41:02.004Z"}
+stderr | tests/unit/learning/notebook-sync-lifecycle.test.ts > Learning Notebook sync lifecycle > Drive failure keeps knowledge dirty; no ready
+{"level":"warn","message":"Notebook Drive sync failed after learning","context":{"projectId":"73ca793a-7607-42eb-a41e-30d2d9a8274b","message":"Drive down"},"timestamp":"2026-08-27T10:41:00.323Z"}
+stderr | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15) > QUOTA_LIMIT marks worker LIMITED and requeues job
+{"level":"warn","message":"AccountWorker unavailable while preparing translate","context":{"error":"AccountWorkerService not initialized"},"timestamp":"2026-08-27T10:41:02.866Z"}
+stderr | tests/unit/notebook/hot-memory.test.ts > Notebook Hot Memory (structured SQLite deltas) > pack contains actual term after stale; clear only after Notebook verified
+{"level":"warn","message":"markNotebookVerified ignored ΓÇö requires NOTEBOOK_VERSION_VERIFIED (version+nonce probe)","context":{"projectId":"31b44107-688c-43ca-9e3e-8b6e08caf254","accountId":"d6cba4ce-b5b2-48ac-8c34-7f5901c22118"},"timestamp":"2026-08-27T10:41:02.750Z"}
+stderr | tests/unit/notebook/knowledge-architecture.test.ts > NotebookSyncService hot memory > clears hot deltas on version probe verify
+{"level":"warn","message":"markNotebookVerified ignored ΓÇö requires NOTEBOOK_VERSION_VERIFIED (version+nonce probe)","context":{"projectId":"44a5df7b-93cd-4bc3-90d4-430ab07439f2","accountId":"0b96d352-f33a-4398-9dc6-85c50f60125d"},"timestamp":"2026-08-27T10:41:02.918Z"}
+stderr | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15) > crash simulation: expired lease recovers to QUEUED
+{"level":"warn","message":"AccountWorker unavailable while preparing translate","context":{"error":"AccountWorkerService not initialized"},"timestamp":"2026-08-27T10:41:03.622Z"}
+stderr | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15) > pause all / resume all / cancel / retry / move
+{"level":"warn","message":"AccountWorker unavailable while preparing translate","context":{"error":"AccountWorkerService not initialized"},"timestamp":"2026-08-27T10:41:04.539Z"}
+{"level":"warn","message":"AccountWorker unavailable while preparing translate","context":{"error":"AccountWorkerService not initialized"},"timestamp":"2026-08-27T10:41:04.539Z"}
+stderr | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15) > graceful shutdown requeues in-flight jobs
+{"level":"warn","message":"AccountWorker unavailable while preparing translate","context":{"error":"AccountWorkerService not initialized"},"timestamp":"2026-08-27T10:41:05.447Z"}
+stderr | tests/unit/jobs/repair-loop.test.ts > repair loop + crash recovery > repairs MISSING_PARAGRAPH then completes (max 2)
+{"level":"warn","message":"persistParsedTranslations: no lines matched paragraphs","context":{"projectId":"b53712ca-7913-472b-b06b-4cfcb17b955d","lineCount":2},"timestamp":"2026-08-27T10:41:02.022Z"}
+stderr | tests/unit/jobs/repair-loop.test.ts > repair loop + crash recovery > invalid MEMORY_DELTA completes without repair when translations OK
+{"level":"warn","message":"persistParsedTranslations: no lines matched paragraphs","context":{"projectId":"12ddcd1f-3ea4-416c-98f4-3da0a49c9594","lineCount":2},"timestamp":"2026-08-27T10:41:03.615Z"}
+stderr | tests/unit/jobs/repair-loop.test.ts > repair loop + crash recovery > runRepairLoop recovers crashed attempts before continuing
+{"level":"warn","message":"persistParsedTranslations: no lines matched paragraphs","context":{"projectId":"8937eaf0-3e18-44e8-acd6-b8c423061afb","lineCount":2},"timestamp":"2026-08-27T10:41:05.866Z"}
+stderr | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15) > graceful shutdown requeues in-flight jobs
+{"level":"warn","message":"persistParsedTranslations: no lines matched paragraphs","context":{"projectId":"53afffe4-e160-4542-9581-3186c59d344c","lineCount":2},"timestamp":"2026-08-27T10:41:05.611Z"}
+{"level":"warn","message":"Learning pipeline failed after PASS","context":{"jobId":"348f00a4-efae-48e7-bf58-b4dcf13a66d9","message":"The database connection is not open"},"timestamp":"2026-08-27T10:41:05.648Z"}
+{"level":"warn","message":"BatchExecutor failed","context":{"jobId":"348f00a4-efae-48e7-bf58-b4dcf13a66d9","message":"The database connection is not open"},"timestamp":"2026-08-27T10:41:05.648Z"}
+{"level":"warn","message":"Failed to record executor attempt","context":{"jobId":"348f00a4-efae-48e7-bf58-b4dcf13a66d9","message":"The database connection is not open"},"timestamp":"2026-08-27T10:41:05.648Z"}
+stderr | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15)
+{"level":"warn","message":"Scheduler job run failed","context":{"jobId":"348f00a4-efae-48e7-bf58-b4dcf13a66d9","message":"The database connection is not open"},"timestamp":"2026-08-27T10:41:05.648Z"}
+stderr | tests/unit/jobs/scheduler.test.ts > AutomationScheduler (Phase 15) > queue survives process restart (durable SQLite)
+{"level":"warn","message":"AccountWorker unavailable while preparing translate","context":{"error":"AccountWorkerService not initialized"},"timestamp":"2026-08-27T10:41:06.345Z"}
+stderr | tests/unit/jobs/repair-channel-context.test.ts > repair loop inherits channel ΓåÆ same notebook > MISSING_PARAGRAPH repair receives same notebook/channel as initial SLIM
+{"level":"warn","message":"persistParsedTranslations: no lines matched paragraphs","context":{"projectId":"1f1a3402-8458-4087-a562-979c7be70f43","lineCount":2},"timestamp":"2026-08-27T10:41:06.566Z"}
+stderr | tests/unit/jobs/repair-channel-context.test.ts > repair loop inherits channel ΓåÆ same notebook > WebAPI failover channel stored as FAT without notebook
+{"level":"warn","message":"persistParsedTranslations: no lines matched paragraphs","context":{"projectId":"e76f51c4-86e4-4497-b3e5-5423b37a5dfa","lineCount":2},"timestamp":"2026-08-27T10:41:07.493Z"}
+(node:25272) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+stderr | tests/unit/accounts/account-worker.test.ts > AccountWorkerService > completes login with detected email and sets READY
+{"level":"warn","message":"Gemini Web API auto-provision failed","context":{"googleAccountId":"4c24df27-2dc4-47e3-8550-3eb494645d97","error":"Database not initialized. Call initializeDatabase() first."},"timestamp":"2026-08-27T10:41:08.027Z"}
+stderr | tests/unit/accounts/account-worker.test.ts > AccountWorkerService > trusts fallback email when probe says not usable
+{"level":"warn","message":"Gemini Web API auto-provision failed","context":{"googleAccountId":"843e7556-115b-4dd4-a12e-39ca7ad98feb","error":"Database not initialized. Call initializeDatabase() first."},"timestamp":"2026-08-27T10:41:08.816Z"}
+stderr | tests/unit/notebook/attach-knowledge-sources.test.ts > attachKnowledgeSources priority > Translation: falls back to STATIC_UPLOAD when Drive picker missing
+{"level":"warn","message":"Notebook Drive picker unavailable; falling back to file upload","context":{"message":"no drive"},"timestamp":"2026-08-27T10:41:14.662Z"}
+(node:27804) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+stderr | tests/unit/notebook/knowledge-version-probe.test.ts > CONTENT_CURRENT vs SOURCE_PRESENT > markNotebookVerified without probe does not clear hot
+{"level":"warn","message":"markNotebookVerified ignored ΓÇö requires NOTEBOOK_VERSION_VERIFIED (version+nonce probe)","context":{"projectId":"4a9ad336-0d6d-4ec6-8306-f55267b0bdfe","accountId":"67bf395e-bb56-4180-8a49-6f35c2eeac0c"},"timestamp":"2026-08-27T10:41:17.016Z"}
+(node:28820) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+stderr | tests/unit/automation/browser-event-logger.test.ts > BrowserEventLogger > keeps logging to file when DB insert hits FOREIGN KEY
+{"level":"warn","message":"Automation event DB insert skipped","context":{"eventType":"submit","message":"FOREIGN KEY constraint failed"},"timestamp":"2026-08-27T10:42:01.017Z"}
+(node:18356) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Suites 2 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  tests/unit/gemini/gemini-response-anchor.test.ts > Response anchoring
+ FAIL  tests/unit/gemini/gemini-send-handshake.test.ts > GeminiBrowserProvider send handshake
+Error: Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/24]ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 19 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  tests/integration/notebook-grounding-e2e.test.ts > FULL-novel Notebook grounding E2E > FULL flow: Research ΓåÆ SQLite ΓåÆ version verify ΓåÆ SLIM without mapping ΓåÆ Notebook term
+TypeError: Cannot read properties of undefined (reading 'toUpperCase')
+ Γ¥» parseTerms src/main/bootstrap/full-novel-preprocess-markdown.ts:57:22
+     55|       source: m[1].trim(),
+     56|       preferred_vi: preferred,
+     57|       category: m[3].toUpperCase(),
+       |                      ^
+     58|       first_seen_chapter: parseChapterNum(
+     59|         /ch\.?\s*(\d+)/i.exec(t)?.[1] ?? /ch╞░╞íng\s*(\d+)/i.exec(t)?.[1ΓÇª
+ Γ¥» Module.knowledgeMarkdownToBootstrapOutput src/main/bootstrap/full-novel-preprocess-markdown.ts:11:17
+ Γ¥» FullNovelPreprocessService.importResult src/main/bootstrap/full-novel-preprocess-service.ts:112:26
+ Γ¥» runFullImportAndVerify tests/integration/notebook-grounding-e2e.test.ts:145:33
+ Γ¥» tests/integration/notebook-grounding-e2e.test.ts:272:28
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/24]ΓÄ»
+ FAIL  tests/integration/notebook-grounding-e2e.test.ts > FULL-novel Notebook grounding E2E > UPDATE: term rename bumps version; new Notebook mapping used; pack still clean
+TypeError: Cannot read properties of undefined (reading 'toUpperCase')
+ Γ¥» parseTerms src/main/bootstrap/full-novel-preprocess-markdown.ts:57:22
+     55|       source: m[1].trim(),
+     56|       preferred_vi: preferred,
+     57|       category: m[3].toUpperCase(),
+       |                      ^
+     58|       first_seen_chapter: parseChapterNum(
+     59|         /ch\.?\s*(\d+)/i.exec(t)?.[1] ?? /ch╞░╞íng\s*(\d+)/i.exec(t)?.[1ΓÇª
+ Γ¥» Module.knowledgeMarkdownToBootstrapOutput src/main/bootstrap/full-novel-preprocess-markdown.ts:11:17
+ Γ¥» FullNovelPreprocessService.importResult src/main/bootstrap/full-novel-preprocess-service.ts:112:26
+ Γ¥» runFullImportAndVerify tests/integration/notebook-grounding-e2e.test.ts:145:33
+ Γ¥» tests/integration/notebook-grounding-e2e.test.ts:305:11
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[3/24]ΓÄ»
+ FAIL  tests/unit/accounts/account-worker.test.ts > AccountWorkerService > disables worker and requires confirm for delete
+ FAIL  tests/unit/automation/browser-session.test.ts > Browser automation core (mock HTML) > runs OPEN / NAVIGATE / GET_STATUS / SCREENSHOT / CLOSE commands
+ FAIL  tests/unit/automation/browser-session.test.ts > Browser automation core (mock HTML) > persists profile data across reopen
+ FAIL  tests/unit/automation/browser-session.test.ts > Browser automation core (mock HTML) > RESTART reopens dedicated profile without Chrome default profile
+ FAIL  tests/unit/diagnostics/diagnostics.test.ts > Automation Diagnostics (Phase 19) > rejects password field suggestions in interactive repair
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[4/24]ΓÄ»
+ FAIL  tests/unit/automation/browser-runtime-manager.test.ts > BrowserRuntimeManager > 50 fake batches on same account launch browser only once
+ FAIL  tests/unit/automation/browser-runtime-manager.test.ts > BrowserRuntimeManager > isolates account A and B (separate launches)
+ FAIL  tests/unit/automation/browser-runtime-manager.test.ts > BrowserRuntimeManager > project switch navigates; same project only verifies
+ FAIL  tests/unit/automation/browser-runtime-manager.test.ts > BrowserRuntimeManager > recovers when page crashes by opening a new page
+TypeError: Cannot read properties of undefined (reading 'catch')
+ Γ¥» PlaywrightWorkerRuntime.closeContextOnly src/main/automation/browser-runner/playwright-worker-runtime.ts:274:23
+    272|     this.page = null;
+    273|     if (ctx) {
+    274|       await ctx.close().catch(() => undefined);
+       |                       ^
+    275|     }
+    276|   }
+ Γ¥» PlaywrightWorkerRuntime.close src/main/automation/browser-runner/playwright-worker-runtime.ts:257:16
+ Γ¥» BrowserRuntimeManager.closeRuntime src/main/automation/browser-runner/browser-runtime-manager.ts:342:19
+ Γ¥» BrowserRuntimeManager.shutdownAll src/main/automation/browser-runner/browser-runtime-manager.ts:370:18
+ Γ¥» tests/unit/automation/browser-runtime-manager.test.ts:105:19
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[5/24]ΓÄ»
+ FAIL  tests/unit/automation/browser-runtime-manager.test.ts > BrowserRuntimeManager > serializes concurrent ops on same account
+ FAIL  tests/unit/automation/browser-runtime-manager.test.ts > BrowserRuntimeManager > marks NEEDS_ATTENTION on session expired
+ FAIL  tests/unit/automation/browser-runtime-manager.test.ts > BrowserRuntimeManager > refuses second launch on same profile while runtime open
+TypeError: Cannot read properties of undefined (reading 'catch')
+ Γ¥» PlaywrightWorkerRuntime.closeContextOnly src/main/automation/browser-runner/playwright-worker-runtime.ts:274:23
+    272|     this.page = null;
+    273|     if (ctx) {
+    274|       await ctx.close().catch(() => undefined);
+       |                       ^
+    275|     }
+    276|   }
+ Γ¥» PlaywrightWorkerRuntime.close src/main/automation/browser-runner/playwright-worker-runtime.ts:257:16
+ Γ¥» BrowserRuntimeManager.closeRuntime src/main/automation/browser-runner/browser-runtime-manager.ts:342:19
+ Γ¥» BrowserRuntimeManager.shutdownAll src/main/automation/browser-runner/browser-runtime-manager.ts:370:18
+ Γ¥» tests/unit/automation/browser-runtime-manager.test.ts:105:19
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[6/24]ΓÄ»
+ FAIL  tests/unit/automation/browser-runtime-manager.test.ts > BrowserRuntimeManager > shutdown closes all runtimes cleanly
+TypeError: Cannot read properties of undefined (reading 'catch')
+ Γ¥» PlaywrightWorkerRuntime.closeContextOnly src/main/automation/browser-runner/playwright-worker-runtime.ts:274:23
+    272|     this.page = null;
+    273|     if (ctx) {
+    274|       await ctx.close().catch(() => undefined);
+       |                       ^
+    275|     }
+    276|   }
+ Γ¥» PlaywrightWorkerRuntime.close src/main/automation/browser-runner/playwright-worker-runtime.ts:257:16
+ Γ¥» BrowserRuntimeManager.closeRuntime src/main/automation/browser-runner/browser-runtime-manager.ts:342:19
+ Γ¥» BrowserRuntimeManager.shutdownAll src/main/automation/browser-runner/browser-runtime-manager.ts:370:18
+ Γ¥» tests/unit/automation/browser-runtime-manager.test.ts:343:19
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[7/24]ΓÄ»
+ FAIL  tests/unit/automation/browser-session.test.ts > Browser automation core (mock HTML) > runs OPEN / NAVIGATE / GET_STATUS / SCREENSHOT / CLOSE commands
+Error: EBUSY: resource busy or locked, unlink 'C:\Users\trong\AppData\Local\Temp\nts-auto-IC58JE\profiles\9e987e29-088e-4915-af4e-639260ae6f1e\first_party_sets.db'
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[8/24]ΓÄ»
+ FAIL  tests/unit/automation/browser-session.test.ts > Browser automation core (mock HTML) > persists profile data across reopen
+Error: EBUSY: resource busy or locked, unlink 'C:\Users\trong\AppData\Local\Temp\nts-auto-9GKicG\profiles\c09ea477-57f4-44d1-a5aa-73cc3bf74b66\Default\Cache\No_Vary_Search\journal.baj'
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[9/24]ΓÄ»
+ FAIL  tests/unit/automation/browser-session.test.ts > Browser automation core (mock HTML) > captures screenshot on navigation timeout failure
+Error: Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[10/24]ΓÄ»
+ FAIL  tests/unit/automation/browser-session.test.ts > Browser automation core (mock HTML) > RESTART reopens dedicated profile without Chrome default profile
+Error: EBUSY: resource busy or locked, unlink 'C:\Users\trong\AppData\Local\Temp\nts-auto-giCmPp\profiles\9efdb186-8bc3-45cd-b2cd-b3da63abf78b\first_party_sets.db'
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[11/24]ΓÄ»
+ FAIL  tests/unit/bootstrap/full-novel-preprocess-resume.test.ts > full-novel preprocess repo resume > resumes from RESPONSE_CAPTURED via raw only (no re-analysis)
+AssertionError: expected 'failed' to be 'completed' // Object.is equality
+Expected: "completed"
+Received: "failed"
+ Γ¥» tests/unit/bootstrap/full-novel-preprocess-resume.test.ts:208:27
+    206|     const result = await new FullNovelPreprocessOrchestrator(db).run(pΓÇª
+    207|     expect(result.mode).toBe('full');
+    208|     expect(result.status).toBe('completed');
+       |                           ^
+    209|     expect(result.foundKeys.length).toBeGreaterThanOrEqual(6);
+    210| 
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[12/24]ΓÄ»
+ FAIL  tests/unit/bootstrap/full-novel-preprocess-resume.test.ts > full-novel preprocess repo resume > can re-parse after parse failure without losing raw
+AssertionError: expected 'failed' to be 'completed' // Object.is equality
+Expected: "completed"
+Received: "failed"
+ Γ¥» tests/unit/bootstrap/full-novel-preprocess-resume.test.ts:252:23
+    250|     fs.writeFileSync(rawPath, sampleRawResponse(), 'utf8');
+    251|     const ok = await new FullNovelPreprocessOrchestrator(db).run(projeΓÇª
+    252|     expect(ok.status).toBe('completed');
+       |                       ^
+    253|     expect(db.fullNovelPreprocess.getLatestRun(projectId)?.stage).toBeΓÇª
+    254|   });
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[13/24]ΓÄ»
+ FAIL  tests/unit/learning/rebuild-knowledge-every-pass.test.ts > learning pipeline rebuildKnowledge every PASS > rebuilds then calls syncDrive when policy says sync
+TypeError: Cannot read properties of undefined (reading 'getById')
+ Γ¥» NotebookKnowledgeBuilder.buildBookProfile src/main/notebook/knowledge-builder.ts:148:38
+    146| 
+    147|   buildBookProfile(projectId: string): string {
+    148|     const project = this.db.projects.getById(projectId);
+       |                                      ^
+    149|     if (!project) throw new Error(`Project not found: ${projectId}`);
+    150| 
+ Γ¥» NotebookKnowledgeBuilder.buildAll src/main/notebook/knowledge-builder.ts:510:51
+ Γ¥» Module.runLearningPipeline src/main/learning/learning-pipeline.ts:222:50
+ Γ¥» tests/unit/learning/rebuild-knowledge-every-pass.test.ts:117:5
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[14/24]ΓÄ»

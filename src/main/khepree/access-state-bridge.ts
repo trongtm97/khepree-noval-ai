@@ -13,3 +13,10 @@ export function broadcastKhepreeAccessState(state: KhepreeAccessState): void {
     mainWindow.webContents.send(IPC_CHANNELS.KHEPREE_ACCESS_STATE, state);
   }
 }
+
+export function focusKhepreeMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}

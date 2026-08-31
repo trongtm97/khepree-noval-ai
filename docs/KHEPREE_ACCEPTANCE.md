@@ -1,24 +1,24 @@
 # Khepree Cross-System Acceptance — Phase N09
 
 Acceptance matrix for **Khepree Novel AI ↔ Khepree** commercial integration.  
-Automated proofs run with `KHEPREE_DEV_MOCK=1` in CI. Staging/live rows require operator authorization.
+Automated proofs run with `KHEPREE_DEV_MOCK=1` in CI. Production cross-system rows require operator sign-off against live Khepree.
 
 ## Verdict labels
 
 | Label | Meaning |
 |-------|---------|
 | **MOCK PASS** | Automated integration/unit test passed (`tests/integration/khepree-cross-system-acceptance.test.ts`) |
-| **STAGING PASS** | Verified against Khepree staging API + account.khepree.com (manual) |
+| **PRODUCTION PASS** | Verified against `https://api.khepree.com` + `https://account.khepree.com` (manual) |
 | **NOT RUN** | Not executed — do not claim production-ready |
 | **N/A** | Out of scope (e.g. production payment without authorization) |
 
 ## E2E matrix
 
-| # | Scenario | Mock | Staging | Pass criteria |
-|---|----------|------|---------|---------------|
+| # | Scenario | Mock | Production | Pass criteria |
+|---|----------|------|------------|---------------|
 | 1 | Language VI/EN persist | **MOCK PASS** | NOT RUN | First-run chooser writes `app_meta`; reopen preserves preference |
 | 2 | First login OAuth | **MOCK PASS** | NOT RUN | System browser opens; callback creates session; no password in app state/logs |
-| 3 | No entitlement | **MOCK PASS** | NOT RUN | Signed in → `ENTITLEMENT_MISSING` → purchase UI |
+| 3 | No entitlement | **MOCK PASS** | NOT RUN | Signed in → `FREE` workspace; paid IPC blocked |
 | 4 | Entitled user | **MOCK PASS** | NOT RUN | Login → activation → lease verified → `ACTIVE` workspace |
 | 5 | Persistent login | **MOCK PASS** | NOT RUN | Reopen → `VALIDATING_SESSION` → `ACTIVE`; no login gate |
 | 6 | Cold start offline | **MOCK PASS** | NOT RUN | Network fail → `OFFLINE_COLD_START`; no cached lease bypass |
@@ -28,7 +28,7 @@ Automated proofs run with `KHEPREE_DEV_MOCK=1` in CI. Staging/live rows require 
 | 10 | Device block | **MOCK PASS** | NOT RUN | Block → refresh denied; retry blocked |
 | 11 | Entitlement suspension | **MOCK PASS** | NOT RUN | Heartbeat → suspended; new protected work blocked |
 | 12 | Token theft simulation | **MOCK PASS** | NOT RUN | Stolen blob / missing private key → no silent activation |
-| 13 | Replay | **MOCK PASS** (OAuth) | NOT RUN | OAuth callback replay rejected; device nonce replay verified server-side in staging |
+| 13 | Replay | **MOCK PASS** (OAuth) | NOT RUN | OAuth callback replay rejected; device nonce replay verified server-side in production |
 | 14 | Upgrade | **MOCK PASS** | NOT RUN | Checkout poll → `ACCESS_ACTIVE` → features without restart |
 | 15 | Payment redirect spoof | **MOCK PASS** | NOT RUN | Browser return alone does not upgrade; API must confirm |
 | 16 | Sign-out vs deactivate | **MOCK PASS** | NOT RUN | Sign out clears session; device id until server removal |
@@ -42,16 +42,31 @@ npm run test:integration -- tests/integration/khepree-cross-system-acceptance.te
 
 Supporting unit suites: `tests/unit/khepree/*`, `tests/unit/i18n/ui-language-service.test.ts`, `tests/unit/security/*`.
 
-## Staging opt-in (manual)
+## Production endpoints (pinned in app)
 
-Set dev overrides (never in packaged build):
+| Surface | URL |
+|---------|-----|
+| API | `https://api.khepree.com/api/v1` |
+| Account | `https://account.khepree.com` |
+| OAuth authorize | `https://account.khepree.com/desktop/authorize` |
+| Billing / plans | `https://account.khepree.com/billing` |
+| Devices | `https://account.khepree.com/devices` |
+| Desktop OAuth client | `khepree-novel-ai-desktop` |
+| Redirect URI | `khepree-novel-ai://auth/callback` |
+
+Packaged builds always use these URLs. Dev mock (`KHEPREE_DEV_MOCK=1`) bypasses HTTP for CI only.
+
+## Production manual verification
+
+Run through [USER_GUIDE.md](./USER_GUIDE.md#khepree-commercial-access) flows on a Windows test machine against live Khepree. Do **not** run live checkout unless billing is authorized.
+
+Optional dev override (unpackaged only, e.g. local KHEPREE stack):
 
 ```powershell
-$env:KHEPREE_API_BASE = "https://staging-api.khepree.com"
+$env:KHEPREE_API_BASE = "http://localhost:3004/api/v1"
+$env:KHEPREE_ACCOUNT_BASE = "http://localhost:3001"
 $env:KHEPREE_DEV_MOCK = "0"
 ```
-
-Run through USER_GUIDE flows on a Windows test machine. Do **not** run production checkout unless billing is authorized.
 
 ## Quality gate (N09)
 
@@ -94,8 +109,8 @@ See [USER_GUIDE.md](./USER_GUIDE.md#khepree-commercial-access).
 
 | Blocker | Status |
 |---------|--------|
-| Production lease signing key (`KHEPREE_TRUSTED_SIGNING_KEYS.k1`) | Empty — must ship pinned key before prod |
-| Staging cross-system manual matrix | NOT RUN |
+| Production lease signing key (`KHEPREE_TRUSTED_SIGNING_KEYS` or `KHEPREE_LICENSE_SIGNING_PUBLIC_KEY` at build) | Must ship pinned key before prod lease verify works |
+| Production cross-system manual matrix | NOT RUN |
 | Live Google/ChatGPT/Meta browser smoke | NOT RUN (separate from Khepree) |
 | Production payment / webhook entitlement | N/A without authorization |
 
@@ -103,7 +118,7 @@ See [USER_GUIDE.md](./USER_GUIDE.md#khepree-commercial-access).
 
 Khepree commercial integration is **implementation-complete** when:
 
-- All matrix rows are **MOCK PASS** or documented **STAGING PASS**
+- All matrix rows are **MOCK PASS** or documented **PRODUCTION PASS**
 - Quality gates PASS
 - Documentation updated (README, ARCHITECTURE, USER_GUIDE, TROUBLESHOOTING, RELEASE_CHECKLIST, PROJECT_STATE, CHANGELOG)
 - No secrets committed; final commit pushed

@@ -2,23 +2,30 @@ import { createPrivateKey, sign } from 'node:crypto';
 import { randomUUID } from 'node:crypto';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
-import { KhepreeSignedLeaseSchema, type KhepreeSignedLease, type KhepreeSignedLeasePayload } from '@shared/schemas/khepree';
+import type { KhepreeSignedLease, KhepreeSignedLeasePayload } from '@shared/schemas/khepree';
 import type { KhepreeHeartbeatStatus, KhepreeCheckoutStatus } from '@shared/constants/khepree';
-import {
-  KhepreeActivateDeviceResponseSchema,
-  KhepreeAuthTokenResultSchema,
-  KhepreeCheckoutStatusResponseSchema,
-  KhepreeCheckoutUrlResponseSchema,
-  KhepreeColdStartResultSchema,
-  KhepreeHeartbeatResponseSchema,
-  KhepreePlanCatalogResponseSchema,
-  type KhepreeActivateDeviceResponse,
-  type KhepreeAuthTokenResult,
-  type KhepreeColdStartResult,
-  type KhepreePlanCatalogResponse,
+import type {
+  KhepreeActivateDeviceResponse,
+  KhepreeAuthTokenResult,
+  KhepreeColdStartResult,
+  KhepreeDesktopProfile,
+  KhepreePlanCatalogResponse,
 } from '@shared/schemas/khepree-api';
 import { getDevSigningKeys } from './dev-signing-keys';
 import { deriveS256Challenge } from './pkce';
+import type { KhepreeDeviceProof } from './khepree-device-proof';
+import { getKhepreeOAuthClientId, getKhepreeProductId } from './config';
+import {
+  isPlatformSignedLease,
+  mapDesktopMeToColdStart,
+  mapDesktopMeToProfile,
+  mapPlatformFeatures,
+  verifyPlatformSignedLease,
+  type PlatformSignedLease,
+} from './platform-lease';
+import {
+  KHEPREE_DESKTOP_API_PATHS,
+} from '@shared/constants/khepree';
 import { KhepreeApiResponseInvalidError, KhepreeDeviceLimitError, KhepreeNetworkError, KhepreeAccessError } from './errors';
 
 export type { KhepreeAuthTokenResult, KhepreeColdStartResult };
@@ -43,6 +50,7 @@ export interface DeviceAuthExchangeInput {
   devicePublicKey: string;
   platform: string;
   appVersion: string;
+  deviceName?: string;
 }
 
 function parseApiResponse<T>(schema: ZodType<T>, body: unknown, context: string): T {
@@ -53,44 +61,58 @@ function parseApiResponse<T>(schema: ZodType<T>, body: unknown, context: string)
   return parsed.data;
 }
 
-const KhepreeOkResponseSchema = z.object({ ok: z.literal(true) });
 
 export interface KhepreeApiClient {
   startDeviceAuth(input: DeviceAuthStartInput): Promise<{ ok: true }>;
 
-  exchangeDeviceAuth(input: DeviceAuthExchangeInput): Promise<KhepreeAuthTokenResult>;
+  exchangeDeviceAuth(input: DeviceAuthExchangeInput): Promise<KhepreeAuthTokenResult & { sessionPublicId?: string }>;
 
   refreshSession(input: {
     refreshToken: string;
     installationId: string;
-  }): Promise<KhepreeAuthTokenResult>;
+    sessionPublicId: string;
+    deviceProof: KhepreeDeviceProof;
+  }): Promise<KhepreeAuthTokenResult & { sessionPublicId: string; lease?: PlatformSignedLease }>;
 
   activateDevice(input: {
     accessToken: string;
     installationId: string;
     devicePublicKey: string;
     deviceName: string;
-  }): Promise<KhepreeActivateDeviceResponse>;
+    platform?: string;
+    appVersion?: string;
+  }): Promise<KhepreeActivateDeviceResponse & { lease?: PlatformSignedLease }>;
 
   coldStartValidate(input: {
     accessToken: string;
     installationId: string;
     deviceId: string;
+    sessionPublicId: string;
+    refreshToken: string;
+    deviceProof: KhepreeDeviceProof;
+    devicePublicKey: string;
+    deviceName: string;
+    platform?: string;
+    appVersion?: string;
   }): Promise<KhepreeColdStartResult>;
 
   refreshLease(input: {
     accessToken: string;
     installationId: string;
     deviceId: string;
+    sessionPublicId: string;
+    refreshToken: string;
+    deviceProof: KhepreeDeviceProof;
+    devicePublicKey: string;
+    deviceName: string;
+    platform?: string;
+    appVersion?: string;
   }): Promise<KhepreeSignedLease>;
 
   heartbeat(input: {
     accessToken: string;
-    installationId: string;
-    deviceId: string;
-    timestamp: string;
-    nonce: string;
-    signature: string;
+    sessionPublicId: string;
+    deviceProof: KhepreeDeviceProof;
   }): Promise<{ status: KhepreeHeartbeatStatus }>;
 
   getCheckoutUrl(input: {
@@ -109,6 +131,8 @@ export interface KhepreeApiClient {
     accessToken: string;
     productId: string;
   }): Promise<KhepreePlanCatalogResponse>;
+
+  fetchDesktopProfile(input: { accessToken: string }): Promise<KhepreeDesktopProfile>;
 
   revokeSession(input: { accessToken: string }): Promise<{ ok: true }>;
 }
@@ -252,13 +276,18 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
       refreshToken,
       expiresIn: 3600,
       user,
+      sessionPublicId: `mock-session-${user.id}`,
     });
   }
 
   refreshSession(input: {
     refreshToken: string;
     installationId: string;
-  }): Promise<KhepreeAuthTokenResult> {
+    sessionPublicId?: string;
+    deviceProof?: KhepreeDeviceProof;
+  }): Promise<KhepreeAuthTokenResult & { sessionPublicId: string; lease?: PlatformSignedLease }> {
+    void input.sessionPublicId;
+    void input.deviceProof;
     const session = this.sessions.get(input.refreshToken);
     if (!session) {
       return Promise.reject(new KhepreeAccessError('INVALID_REFRESH', 'Refresh token invalid'));
@@ -268,6 +297,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
       refreshToken: input.refreshToken,
       expiresIn: 3600,
       user: session.user,
+      sessionPublicId: `mock-session-${session.user.id}`,
     });
   }
 
@@ -364,7 +394,21 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     accessToken: string;
     installationId: string;
     deviceId: string;
+    sessionPublicId?: string;
+    refreshToken?: string;
+    deviceProof?: KhepreeDeviceProof;
+    devicePublicKey?: string;
+    deviceName?: string;
+    platform?: string;
+    appVersion?: string;
   }): Promise<KhepreeColdStartResult> {
+    void input.sessionPublicId;
+    void input.refreshToken;
+    void input.deviceProof;
+    void input.devicePublicKey;
+    void input.deviceName;
+    void input.platform;
+    void input.appVersion;
     const userId = input.accessToken.replace('mock-access-', '');
     const session = [...this.sessions.values()].find((s) => s.user.id === userId);
     if (!session) {
@@ -381,22 +425,35 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     accessToken: string;
     installationId: string;
     deviceId: string;
+    sessionPublicId?: string;
+    refreshToken?: string;
+    deviceProof?: KhepreeDeviceProof;
+    devicePublicKey?: string;
+    deviceName?: string;
+    platform?: string;
+    appVersion?: string;
   }): Promise<KhepreeSignedLease> {
+    void input.sessionPublicId;
+    void input.refreshToken;
+    void input.deviceProof;
+    void input.devicePublicKey;
+    void input.deviceName;
+    void input.platform;
+    void input.appVersion;
     return this.coldStartValidate(input).then((result) => result.lease);
   }
 
   heartbeat(input: {
     accessToken: string;
-    installationId: string;
-    deviceId: string;
-    timestamp: string;
-    nonce: string;
-    signature: string;
+    sessionPublicId?: string;
+    deviceProof?: KhepreeDeviceProof;
   }): Promise<{ status: KhepreeHeartbeatStatus }> {
+    void input.sessionPublicId;
+    void input.deviceProof;
     if (mockKhepreeHeartbeatState.networkFail || process.env.KHEPREE_MOCK_HEARTBEAT_NETWORK === '1') {
       throw new KhepreeNetworkError();
     }
-    if (!input.timestamp || !input.nonce || !input.signature) {
+    if (!input.deviceProof?.nonce || !input.deviceProof.signature) {
       throw new KhepreeAccessError('HEARTBEAT_PROOF_REQUIRED', 'Device proof required.');
     }
     const envStatus = process.env.KHEPREE_MOCK_HEARTBEAT_STATUS as KhepreeHeartbeatStatus | undefined;
@@ -461,83 +518,208 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     return Promise.resolve(buildMockPlanCatalog());
   }
 
+  fetchDesktopProfile(input: { accessToken: string }): Promise<KhepreeDesktopProfile> {
+    const userId = input.accessToken.replace('mock-access-', '');
+    const session = [...this.sessions.values()].find((s) => s.user.id === userId);
+    if (!session) {
+      throw new KhepreeAccessError('AUTH_REQUIRED', 'Invalid session.');
+    }
+    const entitlement =
+      process.env.KHEPREE_MOCK_NO_ENTITLEMENT === '1'
+        ? 'none'
+        : process.env.KHEPREE_MOCK_ENTITLEMENT_EXPIRED === '1'
+          ? 'expired'
+          : process.env.KHEPREE_MOCK_ENTITLEMENT_SUSPENDED === '1'
+            ? 'suspended'
+            : 'active';
+    const device = [...this.devices.values()].find(
+      (d) => d.installationId === [...this.devices.values()][0]?.installationId,
+    );
+    return Promise.resolve(
+      mapDesktopMeToProfile({
+        me: {
+          user: {
+            publicId: session.user.id,
+            email: session.user.email,
+            name: session.user.displayName ?? session.user.email,
+          },
+          plan:
+            entitlement === 'active'
+              ? { name: 'Pro (Dev Mock)', planSlug: 'pro', planPublicId: 'pro' }
+              : null,
+          entitlement: entitlement === 'active' ? { status: 'active', entitlementPublicId: `ent-${session.user.id}` } : null,
+          billing: {
+            hasActiveSubscription: entitlement === 'active',
+            checkoutAvailable: true,
+            pendingPayment: false,
+          },
+          device: device ? { devicePublicId: device.deviceId } : null,
+          deviceUsage: { slotsUsed: this.devices.size, slotsMax: 3 },
+        },
+      }),
+    );
+  }
+
   revokeSession(): Promise<{ ok: true }> {
     return Promise.resolve({ ok: true });
   }
 }
 
-/** HTTP client for production Khepree API. */
+/** HTTP client for Khepree platform desktop API (/api/v1/desktop/*). */
 export class HttpKhepreeApiClient implements KhepreeApiClient {
   constructor(private readonly baseUrl: string) {}
 
-  private async request<T>(
+  private unwrapData(body: unknown): unknown {
+    if (body && typeof body === 'object' && 'data' in body) {
+      return (body as { data: unknown }).data;
+    }
+    return body;
+  }
+
+  private mapAccessError(code: string, message: string, details?: Record<string, unknown>): never {
+    if (code === 'DEVICE_LIMIT_REACHED' || code === 'DEVICE_LIMIT') {
+      throw new KhepreeDeviceLimitError(
+        Number(details?.devicesUsed ?? details?.slotsUsed ?? 0),
+        Number(details?.devicesMax ?? details?.slotsMax ?? 0),
+      );
+    }
+    throw new KhepreeAccessError(code, message);
+  }
+
+  private async requestRaw(
     path: string,
     init: RequestInit & { accessToken?: string },
-    schema: ZodType<T>,
-    context: string,
-  ): Promise<T> {
+  ): Promise<{ ok: boolean; status: number; body: unknown }> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       Accept: 'application/json',
       ...(init.headers as Record<string, string> | undefined),
     };
+    if (init.body != null) {
+      headers['Content-Type'] = 'application/json';
+    }
     if (init.accessToken) {
       headers.Authorization = `Bearer ${init.accessToken}`;
     }
     let response: Response;
     try {
-      response = await fetch(`${this.baseUrl}${path}`, {
-        ...init,
-        headers,
-      });
+      response = await fetch(`${this.baseUrl}${path}`, { ...init, headers });
     } catch {
       throw new KhepreeNetworkError();
     }
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const errorBody = body as {
-        error?: { code?: string; message?: string; devicesUsed?: number; devicesMax?: number };
-      };
-      const code = errorBody.error?.code ?? `HTTP_${response.status}`;
-      if (code === 'DEVICE_LIMIT') {
-        throw new KhepreeDeviceLimitError(
-          errorBody.error?.devicesUsed ?? 0,
-          errorBody.error?.devicesMax ?? 0,
-        );
-      }
-      throw new KhepreeAccessError(code, errorBody.error?.message ?? response.statusText);
-    }
-    return parseApiResponse(schema, body, context);
+    return { ok: response.ok, status: response.status, body };
   }
 
-  startDeviceAuth(input: DeviceAuthStartInput): Promise<{ ok: true }> {
-    return this.request(
-      '/auth/device/start',
-      { method: 'POST', body: JSON.stringify(input) },
-      KhepreeOkResponseSchema,
-      'auth/device/start',
-    );
+  private async requestData<T>(
+    path: string,
+    init: RequestInit & { accessToken?: string },
+    schema: ZodType<T>,
+    context: string,
+  ): Promise<T> {
+    const { ok, status, body } = await this.requestRaw(path, init);
+    if (!ok) {
+      const errorBody = body as {
+        error?: { code?: string; message?: string; details?: Record<string, unknown> };
+      };
+      const code = errorBody.error?.code ?? `HTTP_${status}`;
+      this.mapAccessError(
+        code,
+        errorBody.error?.message ?? `Request failed (${status})`,
+        errorBody.error?.details,
+      );
+    }
+    return parseApiResponse(schema, this.unwrapData(body), context);
+  }
+
+  startDeviceAuth(_input: DeviceAuthStartInput): Promise<{ ok: true }> {
+    return Promise.resolve({ ok: true });
   }
 
   exchangeDeviceAuth(input: DeviceAuthExchangeInput): Promise<KhepreeAuthTokenResult> {
-    return this.request(
-      '/auth/device/exchange',
-      { method: 'POST', body: JSON.stringify(input) },
-      KhepreeAuthTokenResultSchema,
-      'auth/device/exchange',
-    );
+    return this.requestData(
+      KHEPREE_DESKTOP_API_PATHS.authExchange,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          clientId: input.clientId,
+          code: input.code,
+          redirectUri: input.redirectUri,
+          codeVerifier: input.codeVerifier,
+          devicePublicKey: input.devicePublicKey,
+          installationId: input.installationId,
+          platform: input.platform,
+          deviceName: input.deviceName,
+          appVersion: input.appVersion,
+        }),
+      },
+      z.object({
+        sessionPublicId: z.string(),
+        accessToken: z.string(),
+        refreshToken: z.string(),
+        accessExpiresAt: z.string(),
+        user: z.object({
+          publicId: z.string(),
+          email: z.string().email(),
+          name: z.string(),
+        }),
+      }),
+      'desktop/auth/exchange',
+    ).then((data) => ({
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      expiresIn: Math.max(60, Math.floor((Date.parse(data.accessExpiresAt) - Date.now()) / 1000)),
+      user: {
+        id: data.user.publicId,
+        email: data.user.email,
+        displayName: data.user.name || null,
+      },
+      sessionPublicId: data.sessionPublicId,
+    } as KhepreeAuthTokenResult & { sessionPublicId: string }));
   }
 
   refreshSession(input: {
     refreshToken: string;
     installationId: string;
-  }): Promise<KhepreeAuthTokenResult> {
-    return this.request(
-      '/auth/refresh',
-      { method: 'POST', body: JSON.stringify(input) },
-      KhepreeAuthTokenResultSchema,
-      'auth/refresh',
-    );
+    sessionPublicId: string;
+    deviceProof: KhepreeDeviceProof;
+  }): Promise<KhepreeAuthTokenResult & { sessionPublicId: string; lease?: PlatformSignedLease }> {
+    void input.installationId;
+    const body = JSON.stringify({
+      sessionPublicId: input.sessionPublicId,
+      refreshToken: input.refreshToken,
+      deviceProof: input.deviceProof,
+    });
+    return this.requestData(
+      KHEPREE_DESKTOP_API_PATHS.authRefresh,
+      { method: 'POST', body },
+      z.object({
+        accessToken: z.string(),
+        refreshToken: z.string(),
+        accessExpiresAt: z.string(),
+        lease: z.unknown().optional(),
+        user: z
+          .object({
+            publicId: z.string(),
+            email: z.string().email(),
+            name: z.string(),
+          })
+          .optional(),
+      }),
+      'desktop/auth/refresh',
+    ).then((data) => ({
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      expiresIn: Math.max(60, Math.floor((Date.parse(data.accessExpiresAt) - Date.now()) / 1000)),
+      user: data.user
+        ? {
+            id: data.user.publicId,
+            email: data.user.email,
+            displayName: data.user.name || null,
+          }
+        : { id: input.sessionPublicId, email: 'unknown@khepree.local', displayName: null },
+      sessionPublicId: input.sessionPublicId,
+      lease: isPlatformSignedLease(data.lease) ? data.lease : undefined,
+    }));
   }
 
   activateDevice(input: {
@@ -545,87 +727,163 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     installationId: string;
     devicePublicKey: string;
     deviceName: string;
-  }): Promise<KhepreeActivateDeviceResponse> {
-    return this.request(
-      '/devices/activate',
+    platform?: string;
+    appVersion?: string;
+  }): Promise<KhepreeActivateDeviceResponse & { lease?: PlatformSignedLease }> {
+    return this.requestData(
+      KHEPREE_DESKTOP_API_PATHS.activate,
       {
         method: 'POST',
         accessToken: input.accessToken,
         body: JSON.stringify({
+          clientId: getKhepreeOAuthClientId(),
           installationId: input.installationId,
           devicePublicKey: input.devicePublicKey,
           deviceName: input.deviceName,
+          platform: input.platform,
+          appVersion: input.appVersion,
         }),
       },
-      KhepreeActivateDeviceResponseSchema,
-      'devices/activate',
+      z.object({
+        devicePublicId: z.string(),
+        lease: z.unknown(),
+        features: z.array(z.object({ key: z.string(), value: z.unknown() })).optional(),
+      }),
+      'desktop/activate',
+    ).then((data) => ({
+      deviceId: data.devicePublicId,
+      devicesUsed: 0,
+      devicesMax: 0,
+      lease: isPlatformSignedLease(data.lease) ? data.lease : undefined,
+    }));
+  }
+
+  private getDesktopMe(accessToken: string): Promise<{
+    user: { publicId: string; email: string; name: string };
+    plan: { name: string; planSlug: string | null; planPublicId: string | null } | null;
+    entitlement: { status: string; entitlementPublicId: string } | null;
+    billing: { hasActiveSubscription: boolean; checkoutAvailable: boolean; pendingPayment: boolean };
+    device: { devicePublicId: string } | null;
+    deviceUsage: { slotsUsed: number; slotsMax: number } | null;
+  }> {
+    return this.requestData(
+      KHEPREE_DESKTOP_API_PATHS.me,
+      { method: 'GET', accessToken },
+      z.object({
+        user: z.object({ publicId: z.string(), email: z.string(), name: z.string() }),
+        plan: z
+          .object({
+            name: z.string(),
+            planSlug: z.string().nullable(),
+            planPublicId: z.string().nullable(),
+          })
+          .nullable(),
+        entitlement: z
+          .object({ status: z.string(), entitlementPublicId: z.string() })
+          .nullable(),
+        billing: z.object({
+          hasActiveSubscription: z.boolean(),
+          checkoutAvailable: z.boolean(),
+          pendingPayment: z.boolean(),
+        }),
+        device: z.object({ devicePublicId: z.string() }).nullable(),
+        deviceUsage: z.object({ slotsUsed: z.number(), slotsMax: z.number() }).nullable(),
+      }),
+      'desktop/me',
     );
+  }
+
+  fetchDesktopProfile(input: { accessToken: string }): Promise<KhepreeDesktopProfile> {
+    return this.getDesktopMe(input.accessToken).then((me) => mapDesktopMeToProfile({ me }));
   }
 
   coldStartValidate(input: {
     accessToken: string;
     installationId: string;
     deviceId: string;
+    sessionPublicId: string;
+    refreshToken: string;
+    deviceProof: KhepreeDeviceProof;
+    devicePublicKey: string;
+    deviceName: string;
+    platform?: string;
+    appVersion?: string;
   }): Promise<KhepreeColdStartResult> {
-    return this.request(
-      '/session/cold-start',
-      {
-        method: 'POST',
-        accessToken: input.accessToken,
-        body: JSON.stringify({
+    return this.getDesktopMe(input.accessToken).then(async (me) => {
+      let lease: PlatformSignedLease | undefined;
+      try {
+        const refreshed = await this.refreshSession({
+          refreshToken: input.refreshToken,
           installationId: input.installationId,
-          deviceId: input.deviceId,
-        }),
-      },
-      KhepreeColdStartResultSchema,
-      'session/cold-start',
-    );
+          sessionPublicId: input.sessionPublicId,
+          deviceProof: input.deviceProof,
+        });
+        lease = refreshed.lease;
+      } catch {
+        lease = undefined;
+      }
+
+      if (!lease) {
+        const activation = await this.activateDevice({
+          accessToken: input.accessToken,
+          installationId: input.installationId,
+          devicePublicKey: input.devicePublicKey,
+          deviceName: input.deviceName,
+          platform: input.platform,
+          appVersion: input.appVersion,
+        });
+        lease = activation.lease;
+      }
+
+      if (!lease || !isPlatformSignedLease(lease)) {
+        throw new KhepreeAccessError('ENTITLEMENT_MISSING', 'Could not obtain a valid license lease.');
+      }
+
+      verifyPlatformSignedLease(lease, { productSlug: getKhepreeProductId() });
+      const features = mapPlatformFeatures(lease.payload.features);
+      return mapDesktopMeToColdStart({
+        me,
+        lease,
+        installationId: input.installationId,
+        productSlug: getKhepreeProductId(),
+        features,
+      });
+    });
   }
 
   refreshLease(input: {
     accessToken: string;
     installationId: string;
     deviceId: string;
+    sessionPublicId: string;
+    refreshToken: string;
+    deviceProof: KhepreeDeviceProof;
+    devicePublicKey: string;
+    deviceName: string;
+    platform?: string;
+    appVersion?: string;
   }): Promise<KhepreeSignedLease> {
-    return this.request(
-      '/lease/refresh',
-      {
-        method: 'POST',
-        accessToken: input.accessToken,
-        body: JSON.stringify({
-          installationId: input.installationId,
-          deviceId: input.deviceId,
-        }),
-      },
-      KhepreeSignedLeaseSchema,
-      'lease/refresh',
-    );
+    return this.coldStartValidate(input).then((result) => result.lease);
   }
 
   heartbeat(input: {
     accessToken: string;
-    installationId: string;
-    deviceId: string;
-    timestamp: string;
-    nonce: string;
-    signature: string;
+    sessionPublicId: string;
+    deviceProof: KhepreeDeviceProof;
   }): Promise<{ status: KhepreeHeartbeatStatus }> {
-    return this.request(
-      '/heartbeat',
-      {
-        method: 'POST',
-        accessToken: input.accessToken,
-        body: JSON.stringify({
-          installationId: input.installationId,
-          deviceId: input.deviceId,
-          timestamp: input.timestamp,
-          nonce: input.nonce,
-          signature: input.signature,
-        }),
-      },
-      KhepreeHeartbeatResponseSchema,
-      'heartbeat',
-    );
+    const body = JSON.stringify({
+      sessionPublicId: input.sessionPublicId,
+      accessToken: input.accessToken,
+      deviceProof: input.deviceProof,
+    });
+    return this.requestData(
+      KHEPREE_DESKTOP_API_PATHS.heartbeat,
+      { method: 'POST', accessToken: input.accessToken, body },
+      z.object({ state: z.string() }),
+      'desktop/heartbeat',
+    ).then((data) => ({
+      status: data.state as KhepreeHeartbeatStatus,
+    }));
   }
 
   getCheckoutUrl(input: {
@@ -633,16 +891,27 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     productId: string;
     planId: string;
   }): Promise<{ checkoutUrl: string; checkoutSessionId: string }> {
-    return this.request(
-      '/billing/checkout-url',
+    void input.productId;
+    const [planPublicId, pricePublicId] = input.planId.includes(':')
+      ? input.planId.split(':', 2)
+      : [input.planId, input.planId];
+    return this.requestData(
+      KHEPREE_DESKTOP_API_PATHS.checkout,
       {
         method: 'POST',
         accessToken: input.accessToken,
-        body: JSON.stringify({ productId: input.productId, planId: input.planId }),
+        body: JSON.stringify({
+          clientId: getKhepreeOAuthClientId(),
+          planPublicId,
+          pricePublicId,
+        }),
       },
-      KhepreeCheckoutUrlResponseSchema,
-      'billing/checkout-url',
-    );
+      z.object({ checkoutPublicId: z.string(), handoffUrl: z.string().url() }),
+      'desktop/checkout',
+    ).then((data) => ({
+      checkoutUrl: data.handoffUrl,
+      checkoutSessionId: data.checkoutPublicId,
+    }));
   }
 
   getCheckoutStatus(input: {
@@ -650,44 +919,53 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     productId: string;
     checkoutSessionId: string;
   }): Promise<{ status: KhepreeCheckoutStatus }> {
-    return this.request(
-      '/billing/checkout-status',
-      {
-        method: 'POST',
-        accessToken: input.accessToken,
-        body: JSON.stringify({
-          productId: input.productId,
-          checkoutSessionId: input.checkoutSessionId,
-        }),
-      },
-      KhepreeCheckoutStatusResponseSchema,
-      'billing/checkout-status',
-    );
+    void input.productId;
+    const clientId = encodeURIComponent(getKhepreeOAuthClientId());
+    return this.requestData(
+      `${KHEPREE_DESKTOP_API_PATHS.checkout}/${encodeURIComponent(input.checkoutSessionId)}/status?clientId=${clientId}`,
+      { method: 'GET', accessToken: input.accessToken },
+      z.object({ status: z.string() }),
+      'desktop/checkout/status',
+    ).then((data) => {
+      const mapped =
+        data.status === 'PAID_PROCESSING_ACCESS'
+          ? 'PAID_ENTITLEMENT_PENDING'
+          : (data.status as KhepreeCheckoutStatus);
+      return { status: mapped };
+    });
   }
 
   getPlanCatalog(input: {
     accessToken: string;
     productId: string;
   }): Promise<KhepreePlanCatalogResponse> {
-    return this.request(
-      '/billing/plans',
-      {
-        method: 'POST',
-        accessToken: input.accessToken,
-        body: JSON.stringify({ productId: input.productId }),
-      },
-      KhepreePlanCatalogResponseSchema,
-      'billing/plans',
-    );
+    void input.productId;
+    return this.getDesktopMe(input.accessToken).then((me) => ({
+      currentPlanId: me.plan?.planPublicId ?? me.plan?.planSlug ?? null,
+      plans: me.plan
+        ? [
+            {
+              planId: me.plan.planPublicId ?? me.plan.planSlug ?? 'current',
+              planName: me.plan.name,
+              price: 0,
+              currency: 'VND',
+              accessTerm: 'See Khepree account',
+              featureSummary: [],
+              isCurrent: true,
+              isUpgradeAvailable: false,
+            },
+          ]
+        : [],
+    }));
   }
 
   revokeSession(input: { accessToken: string }): Promise<{ ok: true }> {
-    return this.request(
-      '/auth/logout',
+    return this.requestData(
+      KHEPREE_DESKTOP_API_PATHS.authLogout,
       { method: 'POST', accessToken: input.accessToken, body: JSON.stringify({}) },
-      KhepreeOkResponseSchema,
-      'auth/logout',
-    );
+      z.object({ ok: z.literal(true).optional() }).or(z.object({})),
+      'desktop/auth/logout',
+    ).then(() => ({ ok: true as const }));
   }
 }
 

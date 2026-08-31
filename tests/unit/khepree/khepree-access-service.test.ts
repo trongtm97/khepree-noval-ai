@@ -132,12 +132,13 @@ describe('KhepreeAccessService state machine (N04)', () => {
     await second.service.shutdown();
   });
 
-  it('no entitlement → ENTITLEMENT_MISSING', async () => {
+  it('no entitlement → FREE workspace', async () => {
     process.env.KHEPREE_MOCK_NO_ENTITLEMENT = '1';
     const { service } = createService(tempRoot);
     await loginActive(service);
-    expect(service.getPublicState().status).toBe('ENTITLEMENT_MISSING');
-    expect(service.getPublicState().canUseWorkspace).toBe(false);
+    expect(service.getPublicState().status).toBe('FREE');
+    expect(service.getPublicState().canUseWorkspace).toBe(true);
+    expect(() => service.assertProductAccess(KHEPREE_FEATURES.translation)).toThrow();
     await service.shutdown();
   });
 

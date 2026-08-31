@@ -1,0 +1,20 @@
+﻿> tsc --noEmit
+forge.config.ts(109,5): error TS2322: Type '(_config: ResolvedForgeConfig, buildPath: string) => void' is not assignable to type 'ForgeSimpleHookFn<"packageAfterCopy">'.
+  Type 'void' is not assignable to type 'Promise<void | Listr<any, "default", "simple">>'.
+forge.config.ts(130,5): error TS2322: Type '(_config: ResolvedForgeConfig, packageResult: { platform: string; arch: string; outputPaths: string[]; }) => void' is not assignable to type 'ForgeSimpleHookFn<"postPackage">'.
+  Type 'void' is not assignable to type 'Promise<void | Listr<any, "default", "simple">>'.
+tests/unit/automation/browser-runtime-manager.test.ts(185,11): error TS2322: Type '(_p: Page, url: string) => void' is not assignable to type '(page: Page, notebookUrl: string) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(188,11): error TS2322: Type '() => void' is not assignable to type '(page: Page) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(205,11): error TS2322: Type '(_p: Page, url: string) => void' is not assignable to type '(page: Page, notebookUrl: string) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(208,11): error TS2322: Type '() => void' is not assignable to type '(page: Page) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(225,11): error TS2322: Type '(_p: Page, url: string) => void' is not assignable to type '(page: Page, notebookUrl: string) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(228,11): error TS2322: Type '() => void' is not assignable to type '(page: Page) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(301,7): error TS2345: Argument of type '() => void' is not assignable to parameter of type '(handle: ExclusiveRuntimeHandle) => Promise<unknown>'.
+  Type 'void' is not assignable to type 'Promise<unknown>'.
+tests/unit/automation/browser-runtime-manager.test.ts(373,15): error TS2322: Type 'string' is not assignable to type 'Promise<unknown>'.

@@ -206,6 +206,20 @@ describe('Khepree heartbeat runtime (N05)', () => {
     heartbeat.stop();
     await service.shutdown();
   });
+
+  it('start() is idempotent — repeated start does not stack heartbeat ticks', async () => {
+    const { service, heartbeat } = createService(tempRoot);
+    const handleSpy = vi.spyOn(service, 'handleHeartbeat').mockResolvedValue(undefined);
+
+    heartbeat.start();
+    heartbeat.start();
+    heartbeat.start();
+    await Promise.resolve();
+
+    expect(handleSpy).toHaveBeenCalledTimes(1);
+    heartbeat.stop();
+    await service.shutdown();
+  });
 });
 
 describe('licensing job guard', () => {

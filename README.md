@@ -19,7 +19,7 @@ NovelTrans Studio is a Windows desktop application for AI-assisted multilingual 
 
 Phases 0–19 complete (scaffold → diagnostics). Multi-provider browser AI (ChatGPT, Meta AI) and UX passes through Phase 8 (browser compatibility) are **implemented in code** — see [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md).
 
-**Not production-ready** for browser AI providers — live smoke required. **Khepree commercial licensing is implemented** (Phases N01–N09) with mock acceptance PASS; staging/live Khepree verification still required before commercial ship. See [docs/KHEPREE_ACCEPTANCE.md](docs/KHEPREE_ACCEPTANCE.md) and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
+**Not production-ready** for browser AI providers — live smoke required. **Khepree commercial licensing** targets production (`https://api.khepree.com`, `https://account.khepree.com`); mock acceptance PASS in CI — live cross-system verification still required before commercial ship. See [docs/KHEPREE_ACCEPTANCE.md](docs/KHEPREE_ACCEPTANCE.md) and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
 
 ### Provider live-test gate
 

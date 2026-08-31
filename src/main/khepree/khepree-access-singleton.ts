@@ -9,6 +9,7 @@ import { logger } from '../logging/logger';
 
 let accessService: KhepreeAccessService | null = null;
 let heartbeatService: KhepreeHeartbeatService | null = null;
+let heartbeatRunning = false;
 
 export function initializeKhepreeAccessService(): KhepreeAccessService {
   if (accessService) return accessService;
@@ -21,10 +22,15 @@ export function initializeKhepreeAccessService(): KhepreeAccessService {
   });
   accessService.subscribe((state) => {
     broadcastKhepreeAccessState(state);
-    if (state.status === 'ACTIVE' && state.canUseWorkspace) {
-      heartbeatService?.start();
-    } else if (state.status !== 'ACTIVE') {
+    const wantHeartbeat = state.status === 'ACTIVE' && state.canUseWorkspace;
+    if (wantHeartbeat) {
+      if (!heartbeatRunning) {
+        heartbeatService?.start();
+        heartbeatRunning = true;
+      }
+    } else if (heartbeatRunning) {
       heartbeatService?.stop();
+      heartbeatRunning = false;
     }
   });
   heartbeatService = new KhepreeHeartbeatService(accessService);
@@ -42,13 +48,15 @@ export async function startupKhepreeAccess(): Promise<void> {
   const service = initializeKhepreeAccessService();
   const state = await service.initializeOnColdStart();
   logger.info('Khepree access cold start', { status: state.status, signedIn: state.signedIn });
-  if (state.status === 'ACTIVE') {
+  if (state.status === 'ACTIVE' && state.canUseWorkspace) {
     heartbeatService?.start();
+    heartbeatRunning = true;
   }
 }
 
 export function restartKhepreeHeartbeat(): void {
   heartbeatService?.restart();
+  heartbeatRunning = heartbeatService != null;
 }
 
 export function triggerKhepreeHeartbeatNow(): void {
@@ -57,11 +65,13 @@ export function triggerKhepreeHeartbeatNow(): void {
 
 export async function shutdownKhepreeAccess(): Promise<void> {
   heartbeatService?.stop();
+  heartbeatRunning = false;
   await accessService?.shutdown();
 }
 
 export function resetKhepreeAccessForTests(): void {
   heartbeatService?.stop();
+  heartbeatRunning = false;
   heartbeatService = null;
   accessService?.setRuntimeRevocationHandler(null);
   accessService = null;

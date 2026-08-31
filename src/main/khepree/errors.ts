@@ -102,9 +102,19 @@ export function isInvalidRefreshError(error: unknown): boolean {
   return (
     error.code === 'INVALID_REFRESH' ||
     error.code === 'INVALID_REFRESH_TOKEN' ||
+    error.code === 'REFRESH_TOKEN_INVALID' ||
     error.code === 'SESSION_REVOKED' ||
     error.code === 'HTTP_401'
   );
+}
+
+/** Server or client signal that the signed-in user has no paid entitlement for this product. */
+export function isEntitlementAbsentError(error: unknown): boolean {
+  if (!(error instanceof KhepreeAccessError)) return false;
+  if (error.code === 'ENTITLEMENT_NONE' || error.code === 'ENTITLEMENT_MISSING') {
+    return true;
+  }
+  return /no entitlement/i.test(error.message);
 }
 
 export class KhepreeProductAccessDeniedError extends KhepreeAccessError {

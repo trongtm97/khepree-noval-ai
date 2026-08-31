@@ -13,6 +13,7 @@ export const KHEPREE_ACCESS_STATES = [
   'DEVICE_REMOVED',
   'DEVICE_BLOCKED',
   'OFFLINE_COLD_START',
+  'FREE',
   'ACTIVE',
   'ERROR',
 ] as const;
@@ -37,6 +38,7 @@ export function isKhepreeActive(status: KhepreeAccessStatus): boolean {
 }
 
 export function canUseKhepreeWorkspace(status: KhepreeAccessStatus, leaseValid: boolean): boolean {
+  if (status === 'FREE') return true;
   return status === 'ACTIVE' && leaseValid;
 }
 
@@ -45,7 +47,7 @@ export function resolveStatusFromEntitlement(
 ): KhepreeAccessStatus {
   switch (entitlement) {
     case 'none':
-      return 'ENTITLEMENT_MISSING';
+      return 'FREE';
     case 'expired':
       return 'ENTITLEMENT_EXPIRED';
     case 'suspended':
@@ -53,10 +55,10 @@ export function resolveStatusFromEntitlement(
     case 'active':
       return 'ACTIVE';
     default:
-      return 'ENTITLEMENT_MISSING';
+      return 'FREE';
   }
 }
 
 export function isBlockingWorkspaceStatus(status: KhepreeAccessStatus): boolean {
-  return !isKhepreeActive(status);
+  return status !== 'ACTIVE' && status !== 'FREE';
 }

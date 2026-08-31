@@ -3,10 +3,15 @@ import { KHEPREE_CHECKOUT_STATUSES, KHEPREE_HEARTBEAT_STATUSES } from '../consta
 import {
   KhepreeBillingStateSchema,
   KhepreeEntitlementStateSchema,
+  KhepreePlanCatalogItemSchema,
   KhepreePlanDisplaySchema,
   KhepreeSignedLeaseSchema,
   KhepreeUserDisplaySchema,
+  type KhepreePlanCatalogItem,
 } from './khepree';
+
+export type { KhepreePlanCatalogItem };
+export { KhepreePlanCatalogItemSchema };
 
 export const KhepreeDeviceAuthStartRequestSchema = z.object({
   state: z.string().min(1),
@@ -68,6 +73,18 @@ export const KhepreeColdStartResultSchema = z.object({
 
 export type KhepreeColdStartResult = z.infer<typeof KhepreeColdStartResultSchema>;
 
+export const KhepreeDesktopProfileSchema = z.object({
+  user: KhepreeUserDisplaySchema,
+  plan: KhepreePlanDisplaySchema.nullable(),
+  entitlement: KhepreeEntitlementStateSchema,
+  billing: KhepreeBillingStateSchema,
+  devicesUsed: z.number().int().nonnegative().nullable(),
+  devicesMax: z.number().int().nonnegative().nullable(),
+  deviceId: z.string().nullable(),
+});
+
+export type KhepreeDesktopProfile = z.infer<typeof KhepreeDesktopProfileSchema>;
+
 export const KhepreeHeartbeatRequestSchema = z.object({
   installationId: z.string().uuid(),
   deviceId: z.string().min(1),
@@ -90,20 +107,6 @@ export const KhepreeCheckoutUrlResponseSchema = z.object({
 });
 
 export type KhepreeCheckoutUrlResponse = z.infer<typeof KhepreeCheckoutUrlResponseSchema>;
-
-export const KhepreePlanCatalogItemSchema = z.object({
-  planId: z.string().min(1),
-  planName: z.string().min(1),
-  price: z.number().nonnegative(),
-  currency: z.string().min(1),
-  /** Provider-defined term, e.g. "90 days" — never invent "monthly". */
-  accessTerm: z.string().min(1),
-  featureSummary: z.array(z.string()),
-  isCurrent: z.boolean(),
-  isUpgradeAvailable: z.boolean(),
-});
-
-export type KhepreePlanCatalogItem = z.infer<typeof KhepreePlanCatalogItemSchema>;
 
 export const KhepreePlanCatalogResponseSchema = z.object({
   plans: z.array(KhepreePlanCatalogItemSchema),

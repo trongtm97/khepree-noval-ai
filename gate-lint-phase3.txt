@@ -1,0 +1,345 @@
+﻿> eslint src tests *.config.ts
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\bootstrap\bootstrap-prompt-builder.ts
+  21:32   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  22:32   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  24:96   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  24:126  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  25:50   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  54:56   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\bootstrap\full-novel-preprocess-orchestrator.ts
+  299:3  error  Async method 'resumeFromRaw' has no 'await' expression  @typescript-eslint/require-await
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\bootstrap\full-novel-preprocess-prompts.ts
+  32:32   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  33:32   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  35:73   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  35:103  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  36:66   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  37:51   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  41:85   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  47:32   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  47:62   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  64:101  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  64:131  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  68:41   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  69:41   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  77:39   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  83:50   error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\db\database-manager.ts
+  141:10  error  `driveResources` is deprecated. Legacy Drive table ΓÇö no production reads  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\db\repositories\translation-repository.ts
+  322:6   error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  363:48  error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\ipc\register-handlers.ts
+   762:28  error  `detectLanguage` is deprecated. Prefer detectSourceLanguage ΓÇö kept for IPC backward compat  @typescript-eslint/no-deprecated
+  1012:69  error  `sourceLanguage` is deprecated. Hint only ΓÇö use sourceLanguageHint                          @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\jobs\repair-channel-context.ts
+  84:14  error  "local_context" | "notebook_assisted" is overridden by string in this union type  @typescript-eslint/no-redundant-type-constituents
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\knowledge\context-budget.ts
+  35:17  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\knowledge\knowledge-retriever.ts
+  98:36  error  Unnecessary conditional, the types have no overlap  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\knowledge\legacy-drive-notice.ts
+  10:13  error  `root_folder_id` is deprecated. Legacy Drive folder id ΓÇö do not read in production  @typescript-eslint/no-deprecated
+  12:10  error  `driveResources` is deprecated. Legacy Drive table ΓÇö no production reads            @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\knowledge\semantic-retriever.ts
+  28:3  error  Async method 'retrieve' has no 'await' expression  @typescript-eslint/require-await
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\learning\learning-pipeline.ts
+  123:9   error  'terms' is never reassigned. Use 'const' instead   prefer-const
+  123:16  error  'memory' is never reassigned. Use 'const' instead  prefer-const
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\memory\context-selector.ts
+  200:8   error  Use an `interface` instead of a `type`                                                              @typescript-eslint/consistent-type-definitions
+  257:8   error  Use an `interface` instead of a `type`                                                              @typescript-eslint/consistent-type-definitions
+  331:26  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\memory\edition-memory.ts
+  22:9  error  Prefer using an optional chain expression instead, as it's more concise and easier to read  @typescript-eslint/prefer-optional-chain
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\notebook-grounding-smoke\grounding-smoke-runner.ts
+  369:1  error  Async function 'testB' has no 'await' expression  @typescript-eslint/require-await
+  422:1  error  Async function 'testD' has no 'await' expression  @typescript-eslint/require-await
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\notebook\knowledge-builder.ts
+  226:70  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  227:69  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\notebook\notebook-bootstrap-service.ts
+  244:3  error  Async method 'prepareForTranslate' has no 'await' expression  @typescript-eslint/require-await
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\notebook\notebook-sync-service.ts
+  160:3  error  Async method 'syncLocalKnowledge' has no 'await' expression  @typescript-eslint/require-await
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\portability\auto-backup.ts
+   42:42  error  `retentionCount` is deprecated. Use retentionDaily ΓÇö kept for migration from flat count  @typescript-eslint/no-deprecated
+   43:5   error  `DEFAULT_AUTO_BACKUP_RETENTION` is deprecated. Use DEFAULT_RETENTION_DAILY               @typescript-eslint/no-deprecated
+   83:40  error  `retentionCount` is deprecated. Use retentionDaily ΓÇö kept for migration from flat count  @typescript-eslint/no-deprecated
+  231:15  error  Prefer the safe `: unknown` for a `catch` callback variable                              @typescript-eslint/use-unknown-in-catch-callback-variable
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\portability\backup-archive.ts
+  414:24  error  Unnecessary optional chain on a non-nullish value  @typescript-eslint/no-unnecessary-condition
+  417:28  error  Unnecessary optional chain on a non-nullish value  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\portability\novel-export-builder.ts
+  97:70  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  98:70  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\prompt\pack-operation.ts
+  118:29  error  Use the `RegExp#exec()` method instead  @typescript-eslint/prefer-regexp-exec
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\prompt\translation-pack-builder.ts
+  171:10  error  Template literal expression is unnecessary and can be simplified  @typescript-eslint/no-unnecessary-template-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\services\notebook-service.ts
+  139:53  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  140:53  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\services\project-dto.ts
+  70:25  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\services\translation-pack-service.ts
+  154:23  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  155:23  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\source-folder\source-folder-service.ts
+  210:14  error  `sourceLanguage` is deprecated. Use sourceLanguageHint ΓÇö ignored for truth  @typescript-eslint/no-deprecated
+  210:38  error  `sourceLanguage` is deprecated. Use sourceLanguageHint ΓÇö ignored for truth  @typescript-eslint/no-deprecated
+  211:17  error  `sourceLanguage` is deprecated. Use sourceLanguageHint ΓÇö ignored for truth  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\character-workbook-export.ts
+  143:20  error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\column-mapping.ts
+  12:19  error  Unnecessary optional chain on a non-nullish value   @typescript-eslint/no-unnecessary-condition
+  14:9   error  Unnecessary conditional, the types have no overlap  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\handlers\character-tabular-utils.ts
+   14:10  error  Unnecessary optional chain on a non-nullish value                                  @typescript-eslint/no-unnecessary-condition
+  103:23  error  Forbidden non-null assertion                                                       @typescript-eslint/no-non-null-assertion
+  103:23  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  132:23  error  Forbidden non-null assertion                                                       @typescript-eslint/no-non-null-assertion
+  132:23  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\handlers\character-workbook-handler.ts
+  124:62  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  214:62  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  216:62  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  232:62  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  263:21  error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+  270:43  error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+  333:39  error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+  373:21  error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+  390:46  error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+  436:39  error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\handlers\characters-handler.ts
+   67:21  error  Forbidden non-null assertion                                                                                    @typescript-eslint/no-non-null-assertion
+   68:21  error  Forbidden non-null assertion                                                                                    @typescript-eslint/no-non-null-assertion
+   73:3   error  Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read  @typescript-eslint/prefer-nullish-coalescing
+  173:19  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined              @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\handlers\project-data-handler.ts
+  33:19  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\handlers\project-data-tabular-utils.ts
+   34:10  error  Unnecessary optional chain on a non-nullish value                                                               @typescript-eslint/no-unnecessary-condition
+   64:20  error  Forbidden non-null assertion                                                                                    @typescript-eslint/no-non-null-assertion
+   64:20  error  This assertion is unnecessary since it does not change the type of the expression                               @typescript-eslint/no-unnecessary-type-assertion
+   64:20  error  Forbidden non-null assertion                                                                                    @typescript-eslint/no-non-null-assertion
+   75:20  error  Forbidden non-null assertion                                                                                    @typescript-eslint/no-non-null-assertion
+   75:20  error  This assertion is unnecessary since it does not change the type of the expression                               @typescript-eslint/no-unnecessary-type-assertion
+   75:20  error  Forbidden non-null assertion                                                                                    @typescript-eslint/no-non-null-assertion
+  117:3   error  Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read  @typescript-eslint/prefer-nullish-coalescing
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\handlers\project-data-workbook-handler.ts
+   78:44  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  173:21  error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+  216:21  error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+  229:9   error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+  229:9   error  This assertion is unnecessary since it does not change the type of the expression                          @typescript-eslint/no-unnecessary-type-assertion
+  249:21  error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+  269:9   error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+  269:9   error  This assertion is unnecessary since it does not change the type of the expression                          @typescript-eslint/no-unnecessary-type-assertion
+  290:21  error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\handlers\source-workbook-handler.ts
+   78:70  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+   79:57  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+   79:83  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  153:21  error  Forbidden non-null assertion                                                                               @typescript-eslint/no-non-null-assertion
+  160:20  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined         @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\handlers\source-workbook-utils.ts
+  13:10  error  Unnecessary optional chain on a non-nullish value                                                   @typescript-eslint/no-unnecessary-condition
+  75:57  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\handlers\term-tabular-utils.ts
+   8:10  error  Unnecessary optional chain on a non-nullish value                                                          @typescript-eslint/no-unnecessary-condition
+  36:57  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\handlers\terms-handler.ts
+   41:5   error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined         @typescript-eslint/no-unnecessary-condition
+   67:30  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined         @typescript-eslint/no-unnecessary-condition
+  152:43  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  159:70  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  162:70  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  229:68  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  232:68  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  333:45  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\handlers\translations-handler.ts
+   11:10   error  Unnecessary optional chain on a non-nullish value                                                          @typescript-eslint/no-unnecessary-condition
+   62:64   error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+   63:64   error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  116:75   error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  116:101  error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  122:74   error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  144:64   error  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\import-commit-service.ts
+  213:9   error  Prefer using an optional chain expression instead, as it's more concise and easier to read          @typescript-eslint/prefer-optional-chain
+  260:22  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  261:22  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  284:20  error  This assertion is unnecessary since it does not change the type of the expression                   @typescript-eslint/no-unnecessary-type-assertion
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\import-preview-service.ts
+   72:49  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  116:17  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  176:67  error  Forbidden non-null assertion                                                       @typescript-eslint/no-non-null-assertion
+  291:44  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  335:11  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  396:11  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\operational-export-builders.ts
+   37:28  error  Unnecessary optional chain on a non-nullish value  @typescript-eslint/no-unnecessary-condition
+   86:34  error  Use the `RegExp#exec()` method instead             @typescript-eslint/prefer-regexp-exec
+  100:20  error  Unnecessary optional chain on a non-nullish value  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\operational-sanitize.ts
+  31:14  error  Passing a string to String() does not change the type or value of the string                   @typescript-eslint/no-unnecessary-type-conversion
+  57:43  error  'value' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\project-data-workbook-export.ts
+  77:41  error  Passing a string to String() does not change the type or value of the string  @typescript-eslint/no-unnecessary-type-conversion
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\tabular-export-service.ts
+  168:3   error  Async method 'writeCsv' has no 'await' expression   @typescript-eslint/require-await
+  176:11  error  Unnecessary conditional, the types have no overlap  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\tabular-file-parser.ts
+   62:20  error  Use the `RegExp#exec()` method instead                                                              @typescript-eslint/prefer-regexp-exec
+  128:9   error  Unnecessary conditional, value is always falsy                                                      @typescript-eslint/no-unnecessary-condition
+  144:40  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+  156:17  error  'value' will use Object's default stringification format ('[object Object]') when stringified       @typescript-eslint/no-base-to-string
+  160:51  error  Unnecessary conditional, the types have no overlap                                                  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\tabular-import-service.ts
+  103:17  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\translation-spreadsheet-export.ts
+  122:7  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\main\tabular\types.ts
+  113:9  error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\components\CreateProjectWizard.tsx
+  147:7  error  Prefer using an optional chain expression instead, as it's more concise and easier to read  @typescript-eslint/prefer-optional-chain
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\components\EditionSwitcher.tsx
+  83:9  warning  The 'existingTargets' object construction makes the dependencies of useMemo Hook (at line 89) change on every render. To fix this, wrap the initialization of 'existingTargets' in its own useMemo() Hook  react-hooks/exhaustive-deps
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\components\LanguagePicker.tsx
+  31:6  error  Use an `interface` instead of a `type`  @typescript-eslint/consistent-type-definitions
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\components\SourceWorkbookDialog.tsx
+  192:34  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  203:34  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\components\TabularImportExportDialog.tsx
+  175:34  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  185:34  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\components\TermVaultTabularDialog.tsx
+  192:66  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  225:34  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  236:19  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  248:34  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  259:34  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  287:28  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined                  @typescript-eslint/no-unnecessary-condition
+  288:28  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined                  @typescript-eslint/no-unnecessary-condition
+  307:25  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  312:30  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  323:30  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\components\TranslationSpreadsheetDialog.tsx
+  192:34  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  204:19  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  213:34  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  250:66  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\components\data-portability\DataExportDialog.tsx
+  100:53  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  111:32  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\components\data-portability\DataImportWizard.tsx
+  174:25  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  220:60  error  Do not delete dynamically computed property keys                                                                    @typescript-eslint/no-dynamic-delete
+  240:36  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  286:21  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  299:21  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  310:21  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  321:34  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  341:32  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  352:72  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  362:72  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  367:72  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\components\data-portability\DataPortabilityCard.tsx
+  36:56  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  41:56  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  51:32  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  67:26  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  78:26  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\components\translation\AiStatusPanel.tsx
+  325:10  error  Unnecessary conditional, value is always falsy  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\features\translation\hooks\useTranslationEditorController.tsx
+  608:13  error  Unnecessary conditional, the types have no overlap  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\layouts\AppShell.tsx
+  148:6  warning  React Hook useMemo has an unnecessary dependency: 'translationFocus'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\pages\CharactersPage.tsx
+  303:38  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\pages\PortabilityPage.tsx
+  9:6  error  Use an `interface` instead of a `type`  @typescript-eslint/consistent-type-definitions
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\pages\ProjectDataPage.tsx
+  151:34  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  162:60  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  163:54  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+  174:54  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\pages\ProjectInfoPage.tsx
+  126:36  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\pages\ProjectSourcePage.tsx
+  284:46  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\pages\TermsPage.tsx
+  333:58  error  Returning a void expression from an arrow function shorthand is forbidden. Please add braces to the arrow function  @typescript-eslint/no-confusing-void-expression
+D:\PROGRAM-TRONG\NovelTrans Studio\src\renderer\routing\translation-route-resolver.ts
+  24:5  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\src\shared\constants\data-portability.ts
+  21:18  error  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+D:\PROGRAM-TRONG\NovelTrans Studio\src\shared\constants\language-catalog-search.ts
+  59:13  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\shared\constants\language-profile.ts
+   36:30  error  "Cyrl" | "Arab" | "Latn" | "Hebr" | "Deva" | "Beng" | "Ethi" | "Thai" | "Guru" | "Gujr" | "Orya" | "Taml" | "Telu" | "Knda" | "Mlym" | "Sinh" | "Khmr" | "Laoo" | "Mymr" | "Geor" | "Armn" | "Grek" | "Tibt" | "Jpan" | "Kore" | "Hans" | "Hant" is overridden by string in this union type  @typescript-eslint/no-redundant-type-constituents
+  138:24  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined                                                                                                                                                                                           @typescript-eslint/no-unnecessary-condition
+  138:54  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility                                                                                                                                                                                                          @typescript-eslint/no-deprecated
+  139:17  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined                                                                                                                                                                                           @typescript-eslint/no-unnecessary-condition
+  139:47  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility                                                                                                                                                                                                          @typescript-eslint/no-deprecated
+  140:24  error  Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined                                                                                                                                                                                           @typescript-eslint/no-unnecessary-condition
+  140:61  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility                                                                                                                                                                                                          @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\src\shared\constants\translation-style-model.ts
+  258:35  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\integration\multilingual-concurrency-matrix.test.ts
+  136:46  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  137:46  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  150:59  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  151:59  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+  411:72  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\integration\notebook-grounding-e2e.test.ts
+  196:24  error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+  338:24  error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\unit\knowledge\local-knowledge-engine.test.ts
+   28:7   error  Unnecessary optional chain on a non-nullish value  @typescript-eslint/no-unnecessary-condition
+  110:19  error  Forbidden non-null assertion                       @typescript-eslint/no-non-null-assertion
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\unit\language\language-profile.test.ts
+   85:21  error  `detectLanguage` is deprecated. Prefer detectSourceLanguage ΓÇö kept for IPC backward compat  @typescript-eslint/no-deprecated
+  122:53  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility         @typescript-eslint/no-deprecated
+  123:53  error  `displayNameNative` is deprecated. Use nativeName ΓÇö kept for backward compatibility         @typescript-eslint/no-deprecated
+  142:21  error  `detectLanguage` is deprecated. Prefer detectSourceLanguage ΓÇö kept for IPC backward compat  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\unit\language\source-language-detection.test.ts
+  53:88  error  Async arrow function has no 'await' expression  @typescript-eslint/require-await
+  75:37  error  Async arrow function has no 'await' expression  @typescript-eslint/require-await
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\unit\notebook\hot-memory.test.ts
+   28:6  error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+  223:8  error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\unit\notebook\knowledge-architecture.test.ts
+  177:8  error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+  218:8  error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+  261:8  error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\unit\notebook\knowledge-version-probe.test.ts
+   92:8   error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+  139:22  error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+  158:8   error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+  170:15  error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\unit\services\project-worker-resolver.test.ts
+   89:8  error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+  130:8  error  `driveSyncState` is deprecated. Use knowledgeSyncState  @typescript-eslint/no-deprecated
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\unit\settings\default-target-language.test.ts
+  111:23  error  Unnecessary conditional, value is always truthy  @typescript-eslint/no-unnecessary-condition
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\unit\tabular\character-workbook.test.ts
+  74:17  error  Forbidden non-null assertion                                                                                 @typescript-eslint/no-non-null-assertion
+  75:19  error  'row.getCell(1).value' may use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  76:19  error  'row.getCell(2).value' may use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\unit\tabular\source-workbook.test.ts
+   80:12  error  Forbidden non-null assertion                                                                                     @typescript-eslint/no-non-null-assertion
+   81:21  error  Forbidden non-null assertion                                                                                     @typescript-eslint/no-non-null-assertion
+   82:19  error  'paraRow.getCell(2).value' may use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+   83:19  error  'paraRow.getCell(4).value' may use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  146:45  error  Forbidden non-null assertion                                                                                     @typescript-eslint/no-non-null-assertion
+D:\PROGRAM-TRONG\NovelTrans Studio\tests\unit\tabular\translation-spreadsheet.test.ts
+  114:49  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  116:51  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  147:18  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  148:16  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  267:23  error  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+Γ£û 255 problems (253 errors, 2 warnings)
+  65 errors and 0 warnings potentially fixable with the `--fix` option.

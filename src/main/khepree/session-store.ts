@@ -1,4 +1,5 @@
-import { KHEPREE_SECRET_KEYS } from '@shared/constants/khepree';
+import { KHEPREE_META_KEYS, KHEPREE_SECRET_KEYS } from '@shared/constants/khepree';
+import type { DatabaseManager } from '../db/database-manager';
 import type { SecretStorageService } from '../security/secret-storage-service';
 import {
   SafeStorageUnavailableError,
@@ -20,8 +21,12 @@ export class KhepreeSessionStore {
   private accessToken: string | null = null;
   private accessExpiresAt: number | null = null;
   private userId: string | null = null;
+  private sessionPublicId: string | null = null;
 
-  constructor(private readonly secretStorage: SecretStorageService) {}
+  constructor(
+    private readonly secretStorage: SecretStorageService,
+    private readonly getDb?: () => DatabaseManager,
+  ) {}
 
   getSnapshot(): KhepreeSessionSnapshot {
     return {
@@ -35,6 +40,29 @@ export class KhepreeSessionStore {
     this.accessToken = token;
     this.accessExpiresAt = Date.now() + expiresInSec * 1000;
     this.userId = userId;
+  }
+
+  setAccessTokenExpiresAt(token: string, expiresAtIso: string, userId: string): void {
+    this.accessToken = token;
+    this.accessExpiresAt = Date.parse(expiresAtIso);
+    this.userId = userId;
+  }
+
+  getSessionPublicId(): string | null {
+    if (this.sessionPublicId) return this.sessionPublicId;
+    const fromMeta = this.getDb?.().appMeta.get(KHEPREE_META_KEYS.sessionPublicId);
+    this.sessionPublicId = fromMeta ?? null;
+    return this.sessionPublicId;
+  }
+
+  setSessionPublicId(sessionPublicId: string): void {
+    this.sessionPublicId = sessionPublicId;
+    this.getDb?.().appMeta.set(KHEPREE_META_KEYS.sessionPublicId, sessionPublicId);
+  }
+
+  clearSessionPublicId(): void {
+    this.sessionPublicId = null;
+    this.getDb?.().appMeta.delete(KHEPREE_META_KEYS.sessionPublicId);
   }
 
   getAccessToken(): string | null {
@@ -95,6 +123,7 @@ export class KhepreeSessionStore {
     await this.secretStorage.delete(KHEPREE_SECRET_KEYS.refreshToken);
     this.clearAccessToken();
     this.userId = null;
+    this.clearSessionPublicId();
   }
 
   private async assertSafeStorage(): Promise<void> {

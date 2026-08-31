@@ -1,0 +1,59 @@
+﻿> tsc --noEmit
+forge.config.ts(109,5): error TS2322: Type '(_config: ResolvedForgeConfig, buildPath: string) => void' is not assignable to type 'ForgeSimpleHookFn<"packageAfterCopy">'.
+  Type 'void' is not assignable to type 'Promise<void | Listr<any, "default", "simple">>'.
+forge.config.ts(130,5): error TS2322: Type '(_config: ResolvedForgeConfig, packageResult: { platform: string; arch: string; outputPaths: string[]; }) => void' is not assignable to type 'ForgeSimpleHookFn<"postPackage">'.
+  Type 'void' is not assignable to type 'Promise<void | Listr<any, "default", "simple">>'.
+src/main/ai/ai-provider-manager.ts(163,5): error TS2322: Type 'string[]' is not assignable to type '("UNKNOWN" | "LOGIN_REQUIRED" | "ERROR" | "SUCCESS" | "SESSION_EXPIRED" | "RATE_LIMIT" | "TIMEOUT" | "NETWORK_ERROR" | "SERVICE_UNAVAILABLE")[]'.
+  Type 'string' is not assignable to type '"UNKNOWN" | "LOGIN_REQUIRED" | "ERROR" | "SUCCESS" | "SESSION_EXPIRED" | "RATE_LIMIT" | "TIMEOUT" | "NETWORK_ERROR" | "SERVICE_UNAVAILABLE"'.
+src/main/ai/provider-preflight.ts(309,53): error TS2345: Argument of type 'string | null | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/main/automation/browser-runner/profile-lock.ts(350,5): error TS2322: Type 'boolean | undefined' is not assignable to type 'boolean'.
+  Type 'undefined' is not assignable to type 'boolean'.
+src/main/automation/index.ts(87,3): error TS2300: Duplicate identifier 'ProfileLeaseLockManager'.
+src/main/automation/index.ts(93,15): error TS2300: Duplicate identifier 'ProfileLeaseLockManager'.
+src/main/bootstrap/bootstrap-analysis-service.ts(93,5): error TS2322: Type 'string' is not assignable to type '"NOTEBOOK_PREPARE_FOR_TRANSLATE" | "NOTEBOOK_GROUNDING_UNVERIFIED" | "NOTEBOOK_VERSION_VERIFIED" | "NOTEBOOK_VERSION_MISMATCH" | "RESPONSE_CAPTURED" | "NOTEBOOK_PROVISION_STARTED" | ... 31 more ... | "BOOTSTRAP_SKIPPED"'.
+src/main/bootstrap/full-novel-preprocess-orchestrator.ts(513,31): error TS18047: 'run' is possibly 'null'.
+src/main/bootstrap/full-novel-preprocess-orchestrator.ts(583,31): error TS18047: 'run' is possibly 'null'.
+src/main/bootstrap/full-novel-preprocess-orchestrator.ts(661,67): error TS18047: 'run' is possibly 'null'.
+src/main/bootstrap/full-novel-preprocess-orchestrator.ts(673,31): error TS18047: 'run' is possibly 'null'.
+src/main/bootstrap/full-novel-preprocess-orchestrator.ts(674,46): error TS18047: 'run' is possibly 'null'.
+src/main/jobs/translation-context-diagnostics.ts(155,5): error TS2322: Type 'string' is not assignable to type '"NOTEBOOK_PREPARE_FOR_TRANSLATE" | "NOTEBOOK_GROUNDING_UNVERIFIED" | "NOTEBOOK_VERSION_VERIFIED" | "NOTEBOOK_VERSION_MISMATCH" | "RESPONSE_CAPTURED" | "NOTEBOOK_PROVISION_STARTED" | ... 31 more ... | "BOOTSTRAP_SKIPPED"'.
+src/main/notebook/hot-memory-builder.ts(375,3): error TS2322: Type '{ category: "world" | "cultivation" | "location"; key: string; value: string | undefined; firstSeenChapter: number | null; updatedAt: string; }[]' is not assignable to type 'HotMemoryEventFact[]'.
+  Type '{ category: HotMemoryEventFact["category"]; key: string; value: string | undefined; firstSeenChapter: number | null; updatedAt: string; }' is not assignable to type 'HotMemoryEventFact'.
+    Types of property 'value' are incompatible.
+      Type 'string | undefined' is not assignable to type 'string'.
+        Type 'undefined' is not assignable to type 'string'.
+src/main/services/drive-sync-service-singleton.ts(16,26): error TS2345: Argument of type '(projectId: string) => Promise<DriveSyncResult> | undefined' is not assignable to parameter of type '(projectId: string) => Promise<unknown>'.
+  Type 'Promise<DriveSyncResult> | undefined' is not assignable to type 'Promise<unknown>'.
+    Type 'undefined' is not assignable to type 'Promise<unknown>'.
+src/renderer/pages/AiMemoryPage.tsx(394,33): error TS5076: '||' and '??' operations cannot be mixed without parentheses.
+tests/integration/notebook-grounding-e2e.test.ts(96,7): error TS2353: Object literal may only specify known properties, and 'title' does not exist in type 'CreateChapterInput'.
+tests/integration/notebook-grounding-e2e.test.ts(207,9): error TS2322: Type 'string' is not assignable to type 'Promise<string>'.
+tests/integration/notebook-grounding-e2e.test.ts(336,9): error TS2322: Type 'string' is not assignable to type 'Promise<string>'.
+tests/unit/accounts/account-worker.test.ts(168,96): error TS2322: Type '"test"' is not assignable to type '"translation" | "full_preprocess" | "notebook_setup" | "manual_browser" | "runtime" | "diagnostics_repair" | "legacy"'.
+tests/unit/accounts/account-worker.test.ts(171,106): error TS2322: Type '"test"' is not assignable to type '"translation" | "full_preprocess" | "notebook_setup" | "manual_browser" | "runtime" | "diagnostics_repair" | "legacy"'.
+tests/unit/ai/ai-provider-manager.test.ts(10,3): error TS2739: Type '{ projectId: string; chapterIds: string[]; chapterNumbers: number[]; style: "balanced"; prompt: string; sections: { taskHeader: string; criticalRules: string; hotMemoryDelta: string; activeProjectTerms: string; sourceParagraphs: string; outputProtocol: string; }; size: { ...; }; promptHash: string; }' is missing the following properties from type '{ size: { chapterCount: number; paragraphCount: number; sourceChars: number; contextChars: number; totalChars: number; estimatedTokens: number; activeTermCount: number; activeCharacterCount: number; relationshipCount: number; recentMemoryCount: number; }; ... 9 more ...; promptHash: string; }': baseContext, operationPrompt, operationType
+tests/unit/ai/ai-provider-manager.test.ts(296,11): error TS2352: Conversion of type 'DatabaseManager' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'DatabaseManager'.
+tests/unit/ai/provider-routing-preflight.test.ts(25,3): error TS2739: Type '{ projectId: string; chapterIds: string[]; chapterNumbers: number[]; style: "balanced"; prompt: string; sections: { taskHeader: string; criticalRules: string; hotMemoryDelta: string; activeProjectTerms: string; sourceParagraphs: string; outputProtocol: string; }; size: { ...; }; promptHash: string; }' is missing the following properties from type '{ size: { chapterCount: number; paragraphCount: number; sourceChars: number; contextChars: number; totalChars: number; estimatedTokens: number; activeTermCount: number; activeCharacterCount: number; relationshipCount: number; recentMemoryCount: number; }; ... 9 more ...; promptHash: string; }': baseContext, operationPrompt, operationType
+tests/unit/ai/provider-routing-preflight.test.ts(191,55): error TS2345: Argument of type '(_db: DatabaseManager, input: CheckProviderForJobInput) => { providerId: string; result: string; message: string; checks: {}; }' is not assignable to parameter of type 'NormalizedPrecedure<(db: DatabaseManager, input: CheckProviderForJobInput) => Promise<ProviderPreflightReport>>'.
+  Type '{ providerId: string; result: string; message: string; checks: {}; }' is missing the following properties from type 'Promise<ProviderPreflightReport>': then, catch, finally, [Symbol.toStringTag]
+tests/unit/automation/browser-engine-resolver.test.ts(224,94): error TS2322: Type '"test"' is not assignable to type '"translation" | "full_preprocess" | "notebook_setup" | "manual_browser" | "runtime" | "diagnostics_repair" | "legacy"'.
+tests/unit/automation/browser-engine-resolver.test.ts(227,96): error TS2322: Type '"test"' is not assignable to type '"translation" | "full_preprocess" | "notebook_setup" | "manual_browser" | "runtime" | "diagnostics_repair" | "legacy"'.
+tests/unit/automation/browser-runtime-manager.test.ts(74,11): error TS2322: Type '() => { context: BrowserContext; resolved: { preference: string; engine: string; executablePath: null; playwrightVersion: string; displayName: string; }; headless: boolean; disableAutomationControlled: boolean; loginCompat: boolean; }' is not assignable to type 'LaunchContextFn'.
+  Type '{ context: BrowserContext; resolved: { preference: string; engine: string; executablePath: null; playwrightVersion: string; displayName: string; }; headless: boolean; disableAutomationControlled: boolean; loginCompat: boolean; }' is missing the following properties from type 'Promise<LaunchPersistentContextResult>': then, catch, finally, [Symbol.toStringTag]
+tests/unit/automation/browser-runtime-manager.test.ts(185,11): error TS2322: Type '(_p: Page, url: string) => void' is not assignable to type '(page: Page, notebookUrl: string) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(188,11): error TS2322: Type '() => void' is not assignable to type '(page: Page) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(205,11): error TS2322: Type '(_p: Page, url: string) => void' is not assignable to type '(page: Page, notebookUrl: string) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(208,11): error TS2322: Type '() => void' is not assignable to type '(page: Page) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(225,11): error TS2322: Type '(_p: Page, url: string) => void' is not assignable to type '(page: Page, notebookUrl: string) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(228,11): error TS2322: Type '() => void' is not assignable to type '(page: Page) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+tests/unit/automation/browser-runtime-manager.test.ts(301,7): error TS2345: Argument of type '() => void' is not assignable to parameter of type '(handle: ExclusiveRuntimeHandle) => Promise<unknown>'.
+  Type 'void' is not assignable to type 'Promise<unknown>'.
+tests/unit/automation/browser-runtime-manager.test.ts(373,15): error TS2322: Type 'string' is not assignable to type 'Promise<unknown>'.

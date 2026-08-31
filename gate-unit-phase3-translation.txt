@@ -1,0 +1,19 @@
+﻿> npm rebuild better-sqlite3
+rebuilt dependencies successfully
+> vitest run tests/unit/translation
+ RUN  v2.1.9 D:/PROGRAM-TRONG/NovelTrans Studio
+ Γ£ô tests/unit/translation/translate-preflight.test.ts (14 tests) 15ms
+ Γ£ô tests/unit/translation/chapter-copy-export.test.ts (9 tests) 12ms
+ Γ£ô tests/unit/translation/startup-ai-readiness.test.ts (8 tests) 10ms
+ Γ£ô tests/unit/translation/translation-workspace-store.test.ts (3 tests) 688ms
+   Γ£ô translation shell acceptance > marks translation focus paths 678ms
+ Test Files  4 passed (4)
+      Tests  34 passed (34)
+   Start at  20:06:19
+   Duration  1.53s (transform 532ms, setup 0ms, collect 334ms, tests 725ms, environment 2ms, prepare 978ms)
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+stderr | tests/unit/translation/translation-workspace-store.test.ts > translation-workspace-store defaults > persist policy keeps layout prefs only
+[zustand persist middleware] Unable to update item 'noveltrans-translation-workspace', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'noveltrans-translation-workspace', the given storage is currently unavailable.
+- Searching dependency tree
+ΓêÜ Rebuild Complete

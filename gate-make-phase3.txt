@@ -1,0 +1,58 @@
+﻿> electron-forge make
+> Checking your system
+> Checking package manager version
+ΓêÜ Found npm@10.9.7
+ΓêÜ Checking your system
+[?25h> Loading configuration
+ΓêÜ Loading configuration
+> Resolving make targets
+ΓÇ║ Making for the following targets: 
+ΓêÜ Resolving make targets
+> Running package command
+> Preparing to package application
+ΓêÜ Preparing to package application
+> Running packaging hooks
+> Running generateAssets hook
+ΓêÜ Running generateAssets hook
+> Running prePackage hook
+> [plugin-vite] Building production Vite bundles
+> Building main and preload targets...
+> Building renderer targets...
+> Building src/main/main.ts target
+> Building src/main/automation/browser-runner/runner-entry.ts target
+> Building src/preload/preload.ts target
+ΓêÜ Building src/preload/preload.ts target
+ΓêÜ Building src/main/automation/browser-runner/runner-entry.ts target
+ΓêÜ Built target main_window
+ΓêÜ Building renderer targets...
+ΓêÜ Building src/main/main.ts target
+ΓêÜ Building main and preload targets...
+ΓêÜ [plugin-vite] Building production Vite bundles
+ΓêÜ Running prePackage hook
+ΓêÜ Running packaging hooks
+> Packaging application
+ΓÇ║ Determining targets...
+> Packaging for x64 on win32
+> Copying files
+> Preparing native dependencies
+> Finalizing package
+ΓêÜ Copying files
+ΓêÜ Preparing native dependencies: 1 / 1
+ΓêÜ Finalizing package
+ΓêÜ Packaging for x64 on win32
+ΓêÜ Packaging application
+> Running postPackage hook
+> Running postPackage hook from forgeConfig
+ΓêÜ Running postPackage hook from forgeConfig
+ΓêÜ Running postPackage hook
+ΓêÜ Running package command
+> Running preMake hook
+ΓêÜ Running preMake hook
+> Making distributables
+> Making a squirrel distributable for win32/x64
+ΓêÜ Making a squirrel distributable for win32/x64
+ΓêÜ Making distributables
+> Running postMake hook
+ΓÇ║ Artifacts available at: D:\PROGRAM-TRONG\NovelTrans Studio\out\make
+ΓêÜ Running postMake hook
+[?25h

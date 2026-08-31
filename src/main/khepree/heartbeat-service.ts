@@ -13,7 +13,9 @@ export class KhepreeHeartbeatService {
   constructor(private readonly access: KhepreeAccessService) {}
 
   start(): void {
-    this.stop();
+    // ponytail: idempotent — emit() after each tick must not restart the scheduler (was tight API loop / freeze).
+    if (this.timer) return;
+
     const tick = () => {
       if (this.inFlight) return;
       this.inFlight = true;

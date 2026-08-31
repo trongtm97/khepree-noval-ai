@@ -1,0 +1,11 @@
+﻿> npm rebuild better-sqlite3 && vitest run --config vitest.perf.config.ts
+rebuilt dependencies successfully
+ RUN  v2.1.9 D:/PROGRAM-TRONG/NovelTrans Studio
+ Γ£ô tests/perf/scale.test.ts (2 tests) 20878ms
+   Γ£ô Performance scale (release gate) > inserts 100000 terms and queries by source 18626ms
+   Γ£ô Performance scale (release gate) > creates 3 projects with 2000 chapters each 2251ms
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  20:07:34
+   Duration  22.33s (transform 592ms, setup 0ms, collect 859ms, tests 20.88s, environment 0ms, prepare 187ms)
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
