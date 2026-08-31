@@ -68,6 +68,16 @@ export const KhepreeColdStartResultSchema = z.object({
 
 export type KhepreeColdStartResult = z.infer<typeof KhepreeColdStartResultSchema>;
 
+export const KhepreeHeartbeatRequestSchema = z.object({
+  installationId: z.string().uuid(),
+  deviceId: z.string().min(1),
+  timestamp: z.string().min(1),
+  nonce: z.string().min(1),
+  signature: z.string().min(1),
+});
+
+export type KhepreeHeartbeatRequest = z.infer<typeof KhepreeHeartbeatRequestSchema>;
+
 export const KhepreeHeartbeatResponseSchema = z.object({
   status: z.enum(KHEPREE_HEARTBEAT_STATUSES),
 });

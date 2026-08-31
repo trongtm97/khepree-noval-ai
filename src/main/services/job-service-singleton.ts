@@ -16,3 +16,7 @@ export function getJobService(): JobService {
 export function resetJobServiceForTests(): void {
   instance = null;
 }
+
+export function setJobServiceForTests(service: JobService | null): void {
+  instance = service;
+}

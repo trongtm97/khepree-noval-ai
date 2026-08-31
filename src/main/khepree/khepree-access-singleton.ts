@@ -4,6 +4,7 @@ import { KhepreeAccessService } from './khepree-access-service';
 import { KhepreeHeartbeatService } from './heartbeat-service';
 import { broadcastKhepreeAccessState } from './access-state-bridge';
 import { setKhepreeProductAccessEnforcer } from './product-access-boundary';
+import { lockProtectedJobsOnKhepreeRevocation } from './licensing-job-guard';
 import { logger } from '../logging/logger';
 
 let accessService: KhepreeAccessService | null = null;
@@ -14,6 +15,9 @@ export function initializeKhepreeAccessService(): KhepreeAccessService {
   accessService = new KhepreeAccessService(() => getDatabase(), getSecretStorage());
   setKhepreeProductAccessEnforcer((feature) => {
     accessService!.assertProductAccess(feature);
+  });
+  accessService.setRuntimeRevocationHandler((reason) => {
+    lockProtectedJobsOnKhepreeRevocation(reason);
   });
   accessService.subscribe((state) => {
     broadcastKhepreeAccessState(state);
@@ -47,6 +51,10 @@ export function restartKhepreeHeartbeat(): void {
   heartbeatService?.restart();
 }
 
+export function triggerKhepreeHeartbeatNow(): void {
+  heartbeatService?.triggerNow();
+}
+
 export async function shutdownKhepreeAccess(): Promise<void> {
   heartbeatService?.stop();
   await accessService?.shutdown();
@@ -55,6 +63,7 @@ export async function shutdownKhepreeAccess(): Promise<void> {
 export function resetKhepreeAccessForTests(): void {
   heartbeatService?.stop();
   heartbeatService = null;
+  accessService?.setRuntimeRevocationHandler(null);
   accessService = null;
   setKhepreeProductAccessEnforcer(null);
 }

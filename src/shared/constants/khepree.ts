@@ -40,6 +40,7 @@ export {
 export const KHEPREE_HEARTBEAT_STATUSES = [
   'ACTIVE',
   'ENTITLEMENT_SUSPENDED',
+  'ENTITLEMENT_EXPIRED',
   'DEVICE_REMOVED',
   'DEVICE_BLOCKED',
   'SESSION_REVOKED',
@@ -60,6 +61,9 @@ export type KhepreeFeatureKey = (typeof KHEPREE_FEATURES)[keyof typeof KHEPREE_F
 
 /** Default heartbeat interval (ms) — server may override via lease. */
 export const KHEPREE_DEFAULT_HEARTBEAT_MS = 15 * 60 * 1000;
+
+/** Debounce system resume → immediate heartbeat (avoid duplicate ticks). */
+export const KHEPREE_RESUME_HEARTBEAT_DEBOUNCE_MS = 30 * 1000;
 
 /** OAuth loopback callback path. */
 export const KHEPREE_OAUTH_CALLBACK_PATH = '/oauth/callback';

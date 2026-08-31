@@ -85,6 +85,9 @@ export interface KhepreeApiClient {
     accessToken: string;
     installationId: string;
     deviceId: string;
+    timestamp: string;
+    nonce: string;
+    signature: string;
   }): Promise<{ status: KhepreeHeartbeatStatus }>;
 
   getCheckoutUrl(input: { accessToken: string; productId: string }): Promise<{ checkoutUrl: string }>;
@@ -131,6 +134,11 @@ const mockPendingAuth = new Map<
   string,
   { installationId: string; codeChallenge: string; redirectUri: string }
 >();
+
+export const mockKhepreeHeartbeatState = {
+  nextStatus: 'ACTIVE' as KhepreeHeartbeatStatus,
+  networkFail: false,
+};
 
 /** In-process mock for dev — simulates Khepree API without network. */
 export class MockKhepreeApiClient implements KhepreeApiClient {
@@ -309,8 +317,23 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     return this.coldStartValidate(input).then((result) => result.lease);
   }
 
-  heartbeat(): Promise<{ status: KhepreeHeartbeatStatus }> {
-    return Promise.resolve({ status: 'ACTIVE' });
+  heartbeat(input: {
+    accessToken: string;
+    installationId: string;
+    deviceId: string;
+    timestamp: string;
+    nonce: string;
+    signature: string;
+  }): Promise<{ status: KhepreeHeartbeatStatus }> {
+    if (mockKhepreeHeartbeatState.networkFail || process.env.KHEPREE_MOCK_HEARTBEAT_NETWORK === '1') {
+      throw new KhepreeNetworkError();
+    }
+    if (!input.timestamp || !input.nonce || !input.signature) {
+      throw new KhepreeAccessError('HEARTBEAT_PROOF_REQUIRED', 'Device proof required.');
+    }
+    const envStatus = process.env.KHEPREE_MOCK_HEARTBEAT_STATUS as KhepreeHeartbeatStatus | undefined;
+    const status = envStatus ?? mockKhepreeHeartbeatState.nextStatus;
+    return Promise.resolve({ status });
   }
 
   getCheckoutUrl(): Promise<{ checkoutUrl: string }> {
@@ -458,6 +481,9 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     accessToken: string;
     installationId: string;
     deviceId: string;
+    timestamp: string;
+    nonce: string;
+    signature: string;
   }): Promise<{ status: KhepreeHeartbeatStatus }> {
     return this.request(
       '/heartbeat',
@@ -467,6 +493,9 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
         body: JSON.stringify({
           installationId: input.installationId,
           deviceId: input.deviceId,
+          timestamp: input.timestamp,
+          nonce: input.nonce,
+          signature: input.signature,
         }),
       },
       KhepreeHeartbeatResponseSchema,
@@ -495,6 +524,8 @@ export function resetMockKhepreeApiStateForTests(): void {
   mockSessions.clear();
   mockDevices.clear();
   mockPendingAuth.clear();
+  mockKhepreeHeartbeatState.nextStatus = 'ACTIVE';
+  mockKhepreeHeartbeatState.networkFail = false;
 }
 
 export function createKhepreeApiClient(baseUrl: string, useMock: boolean): KhepreeApiClient {

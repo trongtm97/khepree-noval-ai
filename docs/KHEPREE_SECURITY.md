@@ -56,6 +56,17 @@ Protected IPC calls `assertProductAccess()` via `product-access-boundary` (fail-
 
 Device limit UI: manage devices URL, retry activation (no re-login), sign out.
 
+## Heartbeat + runtime revocation (Phase N05)
+
+- **Owner:** main-process `KhepreeHeartbeatService` — no renderer timers.
+- **Start/stop:** only when access `status === ACTIVE`; stops on logout/shutdown.
+- **Interval:** from signed lease `heartbeatIntervalMs`, else `KHEPREE_DEFAULT_HEARTBEAT_MS`.
+- **Device proof:** each heartbeat POST includes `timestamp`, `nonce`, canonical JSON, Ed25519 signature (main-only private key).
+- **Server responses:** map to access states; `SESSION_REVOKED` clears session → `AUTH_REQUIRED`; device removed clears local `deviceId`.
+- **Network transient:** stay `ACTIVE` while lease/grace valid; if lease expired → `OFFLINE_COLD_START` (no infinite offline mode).
+- **Running jobs:** `lockProtectedJobsOnKhepreeRevocation` pauses scheduler + queued jobs (`PAUSED`, reason `khepree:*`); in-flight batches finish at safe boundary.
+- **Windows resume:** `powerMonitor` resume/unlock triggers immediate heartbeat (debounced).
+
 ## OAuth browser login (Phase N03)
 
 - **Protocol:** `khepree-novel-ai://auth/callback` (registered as "Khepree Novel AI" in Windows installer)

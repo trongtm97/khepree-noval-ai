@@ -42,6 +42,7 @@ import {
   isKhepreeDevMockEnabled,
 } from './config';
 import { verifySignedLease, isLeaseCurrentlyValid } from './lease-verifier';
+import { buildHeartbeatProofPayload } from './heartbeat-proof';
 import {
   KhepreeAccessError,
   KhepreeCredentialCorruptError,
@@ -55,6 +56,7 @@ import {
 import { openValidatedKhepreeUrl } from './external-links';
 
 type AccessListener = (state: KhepreeAccessState) => void;
+type RuntimeRevocationHandler = (reason: string) => void;
 
 export class KhepreeAccessService {
   private readonly api: KhepreeApiClient;
@@ -77,6 +79,7 @@ export class KhepreeAccessService {
   private loginInProgress = false;
   private loginPhase: KhepreeLoginPhase | null = 'idle';
   private hasRefreshCredential = false;
+  private runtimeRevocationHandler: RuntimeRevocationHandler | null = null;
 
   constructor(
     getDb: () => DatabaseManager,
@@ -91,6 +94,14 @@ export class KhepreeAccessService {
     this.listeners.add(listener);
     listener(this.getPublicState());
     return () => this.listeners.delete(listener);
+  }
+
+  setRuntimeRevocationHandler(handler: RuntimeRevocationHandler | null): void {
+    this.runtimeRevocationHandler = handler;
+  }
+
+  private notifyRuntimeRevocation(reason: string): void {
+    this.runtimeRevocationHandler?.(reason);
   }
 
   private emit(): void {
@@ -638,17 +649,30 @@ export class KhepreeAccessService {
     const deviceId = identity.deviceId;
     if (!accessToken || !deviceId) return;
 
+    const proof = buildHeartbeatProofPayload(identity.installationId, deviceId);
+    const signature = await this.deviceIdentity.signHeartbeatProof(proof);
+
     try {
       const { status } = await this.api.heartbeat({
         accessToken,
-        installationId: identity.installationId,
-        deviceId,
+        installationId: proof.installationId,
+        deviceId: proof.deviceId,
+        timestamp: proof.timestamp,
+        nonce: proof.nonce,
+        signature,
       });
       this.heartbeatStatus = status;
       await this.applyHeartbeatStatus(status);
     } catch (error) {
       if (error instanceof KhepreeNetworkError) {
         this.heartbeatStatus = 'NETWORK_TEMPORARY';
+        if (isLeaseCurrentlyValid(this.currentLease)) {
+          return;
+        }
+        this.notifyRuntimeRevocation('NETWORK_LEASE_EXPIRED');
+        this.currentLease = null;
+        this.status = 'OFFLINE_COLD_START';
+        this.lastError = { code: error.code, message: error.message };
         return;
       }
       logger.warn('Khepree heartbeat failed', {
@@ -664,19 +688,30 @@ export class KhepreeAccessService {
       case 'ACTIVE':
         break;
       case 'ENTITLEMENT_SUSPENDED':
+        this.notifyRuntimeRevocation(status);
         this.currentLease = null;
         this.entitlement = 'suspended';
         this.status = 'ENTITLEMENT_SUSPENDED';
         break;
-      case 'DEVICE_REMOVED':
+      case 'ENTITLEMENT_EXPIRED':
+        this.notifyRuntimeRevocation(status);
         this.currentLease = null;
+        this.entitlement = 'expired';
+        this.status = 'ENTITLEMENT_EXPIRED';
+        break;
+      case 'DEVICE_REMOVED':
+        this.notifyRuntimeRevocation(status);
+        this.currentLease = null;
+        this.deviceIdentity.clearDeviceId();
         this.status = 'DEVICE_REMOVED';
         break;
       case 'DEVICE_BLOCKED':
+        this.notifyRuntimeRevocation(status);
         this.currentLease = null;
         this.status = 'DEVICE_BLOCKED';
         break;
       case 'SESSION_REVOKED':
+        this.notifyRuntimeRevocation(status);
         await this.signOut();
         break;
       case 'NETWORK_TEMPORARY':

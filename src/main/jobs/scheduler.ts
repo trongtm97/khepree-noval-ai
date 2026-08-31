@@ -166,9 +166,9 @@ export class AutomationScheduler {
     this.running = false;
   }
 
-  pauseAll(): number {
+  pauseAll(reason = 'pause_all'): number {
     this.writeSetting(SCHEDULER_SETTING_KEYS.pauseAll, '1');
-    return this.db.jobs.pauseAllQueued();
+    return this.db.jobs.pauseAllQueued(reason);
   }
 
   resumeAll(): number {

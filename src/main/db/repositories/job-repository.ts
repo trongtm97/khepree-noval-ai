@@ -426,13 +426,13 @@ export class JobRepository extends BaseRepository {
     return result.changes;
   }
 
-  pauseAllQueued(): number {
+  pauseAllQueued(reason = 'pause_all'): number {
     const result = this.db
       .prepare(
-        `UPDATE jobs SET state = 'PAUSED', paused_reason = 'pause_all', updated_at = ?
+        `UPDATE jobs SET state = 'PAUSED', paused_reason = ?, updated_at = ?
          WHERE state IN ('QUEUED', 'WAITING_WORKER')`,
       )
-      .run(utcNow());
+      .run(reason, utcNow());
     return result.changes;
   }
 

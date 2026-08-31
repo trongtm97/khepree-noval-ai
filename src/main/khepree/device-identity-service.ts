@@ -11,6 +11,10 @@ import {
   KhepreeCredentialCorruptError,
   KhepreeSafeStorageRequiredError,
 } from './errors';
+import {
+  canonicalHeartbeatProof,
+  type HeartbeatProofPayload,
+} from './heartbeat-proof';
 
 export interface DeviceIdentity {
   installationId: string;
@@ -44,6 +48,10 @@ export class DeviceIdentityService {
     this.getDb().appMeta.set(KHEPREE_META_KEYS.deviceId, deviceId);
   }
 
+  clearDeviceId(): void {
+    this.getDb().appMeta.delete(KHEPREE_META_KEYS.deviceId);
+  }
+
   getDeviceName(): string {
     const stored = this.getDb().appMeta.get(KHEPREE_META_KEYS.deviceName);
     if (stored) return stored;
@@ -73,6 +81,12 @@ export class DeviceIdentityService {
       deviceId: this.getDeviceId(),
       publicKeySpki: keypair.publicKeySpki,
     };
+  }
+
+  async signHeartbeatProof(payload: HeartbeatProofPayload): Promise<string> {
+    const keypair = await this.getOrCreateKeypair();
+    const signature = keypair.sign(canonicalHeartbeatProof(payload));
+    return signature.toString('base64url');
   }
 
   private async loadKeypairFromStorage(): Promise<{

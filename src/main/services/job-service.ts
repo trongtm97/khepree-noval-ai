@@ -452,6 +452,13 @@ export class JobService {
     return { affected };
   }
 
+  pauseAllForLicensing(reason: string): { affected: number } {
+    const licensingReason = `khepree:${reason}`;
+    const affected =
+      this.scheduler?.pauseAll(licensingReason) ?? this.db.jobs.pauseAllQueued(licensingReason);
+    return { affected };
+  }
+
   resumeAll(): { affected: number } {
     const affected = this.scheduler?.resumeAll() ?? this.db.jobs.resumeAllPaused();
     return { affected };

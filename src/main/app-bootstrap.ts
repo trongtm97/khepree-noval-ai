@@ -42,6 +42,7 @@ import {
   startupKhepreeAccess,
   shutdownKhepreeAccess,
 } from './khepree/khepree-access-singleton';
+import { installKhepreeHeartbeatResumeHandlers } from './khepree/heartbeat-resume-bootstrap';
 import {
   flushQueuedKhepreeAuthCallback,
   installKhepreeAuthDeepLinkHandlers,
@@ -204,6 +205,7 @@ function bootApplication(): void {
       message: error instanceof Error ? error.message : String(error),
     });
   });
+  installKhepreeHeartbeatResumeHandlers();
   // Profile leases already recovered in recoverJobsGeminiAndProfilesOnStartup;
   // keep a second pass for leases created after DB init.
   try {
