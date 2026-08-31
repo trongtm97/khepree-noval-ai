@@ -187,15 +187,18 @@ Core translate flow: build `TranslationPack` from SQLite + local knowledge → s
 
 See [NOTEBOOK_ARCHITECTURE.md](./NOTEBOOK_ARCHITECTURE.md).
 
-## 4d. Commercial licensing
+## 4d. Commercial licensing (Khepree)
 
 | Capability | Status |
 |------------|--------|
-| In-app license key / entitlement check | **NOT IMPLEMENTED** |
-| Billing / subscription | **NOT IMPLEMENTED** |
-| Marketing website integration | **NOT IMPLEMENTED** |
+| Khepree OAuth login + device activation | **IMPLEMENTED** (N01–N04) |
+| Entitlement lease verification + heartbeat | **IMPLEMENTED** (N04–N05) |
+| Account / Plan / Devices / About UI | **IMPLEMENTED** (N06) |
+| In-app checkout + upgrade polling | **IMPLEMENTED** (N07) |
+| Security hardening + IPC gate | **IMPLEMENTED** (N08) |
+| Cross-system acceptance matrix | **MOCK PASS** (N09) — see [KHEPREE_ACCEPTANCE.md](./KHEPREE_ACCEPTANCE.md) |
 
-Application is **UNLICENSED** in `package.json`. No fake license gates in code.
+Staging/live Khepree verification and production signing key remain external blockers.
 
 
 ### `src/main/jobs/`
@@ -384,7 +387,34 @@ Production providers implement `IAIProvider` and receive the same `TranslationPa
 
 Job system depends on `AiProviderManager`, not Gemini-specific code paths.
 
-## 12. Release readiness (architecture view)
+## 12. Khepree commercial licensing (N01–N09)
+
+Khepree Novel AI gates protected workspace features behind Khepree account entitlement. Renderer sees sanitized `KhepreeAccessState` only; tokens and device private keys stay in main process.
+
+```
+Renderer (Khepree hub UI)
+  → IPC khepree:*
+Main: KhepreeAccessService
+  → DeviceIdentityService (installation UUID + Ed25519)
+  → SessionStore (safeStorage refresh; memory-only access token)
+  → LeaseVerifier (signed lease binding)
+  → KhepreeApiClient (HTTP prod / dev mock)
+  → KhepreeCheckoutPoller + KhepreeHeartbeatService
+  → product-access-boundary → JobService + protected IPC
+```
+
+| Concern | Implementation |
+|---------|----------------|
+| Login | OAuth PKCE via system browser; callback `khepree-novel-ai://` |
+| Entitlement | Server-signed lease; features map in lease payload |
+| Devices | Activation + heartbeat device proof; limit/block/remove states |
+| Billing | Plan catalog + checkout URL validation + status polling (not redirect-trust) |
+| Offline | Fail closed — no stale lease bypass on cold start |
+| Security | Log redaction, IPC audit, renderer schema excludes secrets |
+
+Details: [KHEPREE_SECURITY.md](./KHEPREE_SECURITY.md), acceptance matrix: [KHEPREE_ACCEPTANCE.md](./KHEPREE_ACCEPTANCE.md).
+
+## 13. Release readiness (architecture view)
 
 **Not production-ready** until live provider E2E passes. Documented blockers:
 
@@ -395,11 +425,12 @@ Job system depends on `AiProviderManager`, not Gemini-specific code paths.
 | Response anchoring | DOM-dependent; needs live verification |
 | Crash recovery | `ai_requests` planner wired for Gemini; ChatGPT/Meta partial |
 | Code signing / updates | Optional signing; placeholder update server |
-| Licensing | NOT IMPLEMENTED — no enforcement |
+| Khepree licensing | **IMPLEMENTED** (N01–N09) — mock acceptance PASS; staging/live Khepree NOT RUN |
+| Browser AI licensing gate | Separate — live provider smoke still NOT RUN |
 
 See [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md), [PROJECT_STATE.md](./PROJECT_STATE.md).
 
-## 13. Development Phases
+## 14. Development Phases
 
 | Phase | Focus | Exit Criteria |
 |-------|-------|---------------|
@@ -416,11 +447,11 @@ See [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md), [PROJECT_STATE.md](./PROJECT
 | **10 — Local backup** | Atomic backup, portability, export bundles | Backup/restore without Drive |
 | **11 — Installer & Polish** | Squirrel installer, diagnostics, settings | Installable Windows build |
 
-## 14. Folder Structure
+## 15. Folder Structure
 
 See [PROJECT_STATE.md](./PROJECT_STATE.md) for the canonical directory tree.
 
-## 15. Key Risks
+## 16. Key Risks
 
 | Risk | Mitigation |
 |------|------------|

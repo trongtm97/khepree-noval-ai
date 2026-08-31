@@ -176,6 +176,21 @@ Do **not** mark browser providers production-ready without **REAL TEST PASSED** 
 - [x] Commercial licensing documented as NOT IMPLEMENTED
 - [x] Release blockers explicit in PROJECT_STATE + RELEASE_CHECKLIST
 
+### Khepree Commercial Integration (N01–N09, 2026-08-31) — **IMPLEMENTATION COMPLETE**
+
+- [x] **N01** — Product rebrand, protocol handler, i18n VI/EN first-run
+- [x] **N02** — Device identity + safeStorage credentials
+- [x] **N03** — OAuth PKCE login via system browser
+- [x] **N04** — Access state machine + lease verification + cold start
+- [x] **N05** — Heartbeat runtime + job licensing guard
+- [x] **N06** — Khepree hub (Account, Plan, Devices, About)
+- [x] **N07** — Plan catalog + checkout polling + entitlement gate UI
+- [x] **N08** — Security hardening (IPC gaps, log redaction, URL validation)
+- [x] **N09** — Cross-system acceptance matrix (mock) + documentation
+
+**MOCK PASS:** `tests/integration/khepree-cross-system-acceptance.test.ts` (17 scenarios).  
+**NOT RUN:** Khepree staging/live cross-system; production signing key; production payment.
+
 ## In Progress
 
 - [ ] Playwright send-path hardening (selectors / confirm-sent / wait strategy) — **not started**; engine layer only
@@ -183,7 +198,7 @@ Do **not** mark browser providers production-ready without **REAL TEST PASSED** 
 
 ## Not Started
 
-### Follow-ups — Bundle Python runtime; Official Gemini API provider; lease renewal during long AI calls; commercial licensing; billing; website
+### Follow-ups — Bundle Python runtime; Official Gemini API provider; lease renewal during long AI calls; Khepree staging E2E; production signing key
 
 ## Next Recommended Step
 
@@ -198,7 +213,7 @@ Do **not** mark browser providers production-ready without **REAL TEST PASSED** 
 | Response anchoring / correlation extract | **OPEN** | Partial; provider DOM drift risk |
 | Crash recovery (ChatGPT/Meta `ai_requests`) | **OPEN** | Gemini planner only today |
 | Code signing / auto-update production server | **OPEN** | Optional signing; placeholder update provider |
-| Commercial licensing enforcement | **NOT IMPLEMENTED** | UNLICENSED; no in-app license checks |
+| Commercial licensing enforcement | **IMPLEMENTED** (Khepree N01–N09 mock PASS) | Staging/live Khepree NOT RUN; prod signing key empty |
 
 Priority order:
 1. Live browser smoke per provider (login → send → verify → restart)
@@ -206,5 +221,5 @@ Priority order:
 3. Browser AI crash recovery planner for ChatGPT/Meta
 4. Lease renewal during long AI calls
 5. Code signing + production update channel (when product ready)
-6. Commercial licensing (later — separate from core translation)
+6. Khepree staging cross-system acceptance + production signing key (when commercial ship authorized)
 

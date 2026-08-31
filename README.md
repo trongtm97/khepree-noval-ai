@@ -19,7 +19,7 @@ NovelTrans Studio is a Windows desktop application for AI-assisted multilingual 
 
 Phases 0–19 complete (scaffold → diagnostics). Multi-provider browser AI (ChatGPT, Meta AI) and UX passes through Phase 8 (browser compatibility) are **implemented in code** — see [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md).
 
-**Not production-ready.** Browser providers need live smoke tests before release claims. See [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) and [docs/MULTI_PROVIDER_ACCEPTANCE.md](docs/MULTI_PROVIDER_ACCEPTANCE.md).
+**Not production-ready** for browser AI providers — live smoke required. **Khepree commercial licensing is implemented** (Phases N01–N09) with mock acceptance PASS; staging/live Khepree verification still required before commercial ship. See [docs/KHEPREE_ACCEPTANCE.md](docs/KHEPREE_ACCEPTANCE.md) and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
 
 ### Provider live-test gate
 
@@ -49,6 +49,8 @@ These suites are **opt-in** and are **not** part of default `npm test` / CI.
 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common failures |
 | [RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Manual QA before shipping |
 | [MULTI_PROVIDER_ACCEPTANCE.md](docs/MULTI_PROVIDER_ACCEPTANCE.md) | Provider matrix (mock vs live) |
+| [KHEPREE_ACCEPTANCE.md](docs/KHEPREE_ACCEPTANCE.md) | Khepree commercial E2E matrix (N09) |
+| [KHEPREE_SECURITY.md](docs/KHEPREE_SECURITY.md) | Khepree licensing security boundary |
 | [BROWSER_COMPATIBILITY_AUDIT.md](docs/BROWSER_COMPATIBILITY_AUDIT.md) | No stealth dependency |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design |

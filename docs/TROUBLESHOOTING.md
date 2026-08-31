@@ -53,3 +53,19 @@ UI changed. Use Diagnostics:
 ## Code signing / SmartScreen
 
 Unsigned builds may show Windows SmartScreen. Sign via `WINDOWS_CERTIFICATE_*` env vars when releasing publicly.
+
+## Khepree access
+
+| Symptom | Fix |
+|---------|-----|
+| `AUTH_REQUIRED` / signed out | Khepree → Sign in |
+| `ENTITLEMENT_MISSING` | Khepree → Plan → purchase or upgrade |
+| `DEVICE_LIMIT_REACHED` | account.khepree.com → Devices → remove old device → **Retry Activation** |
+| `DEVICE_REMOVED` | Remove device on account site if needed → **Retry Activation** |
+| `DEVICE_BLOCKED` | Contact support — cannot reactivate locally |
+| `ENTITLEMENT_SUSPENDED` / expired | Renew on account.khepree.com → **Refresh entitlement** |
+| `OFFLINE_COLD_START` | Restore network — app does not bypass lease offline |
+| Checkout stuck on waiting | Use **Check status**; payment must confirm via Khepree API (browser success URL alone is insufficient) |
+| `CREDENTIAL_CORRUPT` | Sign out, clear Khepree secrets only if instructed — do not delete whole `data/` without backup |
+
+OAuth uses system browser only — never enter Khepree password inside the app window.

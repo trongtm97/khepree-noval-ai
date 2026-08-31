@@ -23,7 +23,7 @@ Browser providers (Gemini, ChatGPT, Meta AI) require **REAL TEST PASSED** live s
 | `npm run lint` | | |
 | `npm run typecheck` | | |
 | `npm test` (unit) | | |
-| `npm run test:integration` | | Includes multi-provider mock matrix |
+| `npm run test:integration` | | Includes multi-provider + Khepree N09 mock matrix |
 | `npm run test:perf` | | |
 | `npm run test:google-smoke` (opt-in Real Google A–H) | | Gemini / Notebook — opt-in |
 | Browser conversation smoke (ChatGPT / Meta / Gemini) | | `scripts/browser-conversation-smoke.ts` |
@@ -56,6 +56,9 @@ Browser providers (Gemini, ChatGPT, Meta AI) require **REAL TEST PASSED** live s
 | 17 | Multi-account concurrency | | |
 | 18 | Quota / rate-limit handling | | |
 | 19 | Uninstall/reinstall AppData preservation | | |
+| 20 | Khepree first login + entitlement (staging) | | See docs/KHEPREE_ACCEPTANCE.md |
+| 21 | Khepree device limit / new PC flow (staging) | | |
+| 22 | Khepree upgrade checkout (staging, authorized) | | No prod payment without authorization |
 
 ## Release blockers (must PASS for ship)
 
@@ -67,7 +70,9 @@ Browser providers (Gemini, ChatGPT, Meta AI) require **REAL TEST PASSED** live s
 | Crash recovery (all providers in use) | | |
 | Code signing (if shipping signed build) | | Optional |
 | Production auto-update server | | Placeholder OK for dev |
-| Commercial licensing | | **NOT IMPLEMENTED** — N/A |
+| Khepree commercial (mock N09) | | `tests/integration/khepree-cross-system-acceptance.test.ts` |
+| Khepree staging cross-system | | Manual — NOT RUN until staging configured |
+| Production Khepree signing key | | `KHEPREE_TRUSTED_SIGNING_KEYS.k1` must be set before prod |
 
 ## Security spot-check
 
@@ -77,7 +82,7 @@ Browser providers (Gemini, ChatGPT, Meta AI) require **REAL TEST PASSED** live s
 | `contextIsolation: true` | |
 | IPC whitelist + Zod | |
 | Navigation / external URL guards | |
-| No cert/password in repo | |
+| No cert/password/token in repo | |
 | No CAPTCHA/2FA bypass automation | |
 
 ## Sign-off

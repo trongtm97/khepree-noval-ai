@@ -65,4 +65,40 @@ See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for CAPTCHA, session expiry, prov
 
 ## Licensing
 
-The application is **UNLICENSED** — no in-app license key or billing. Commercial licensing is **not implemented** yet.
+Khepree Novel AI requires an active **Khepree** account entitlement for translation workspace features. Sign in via **Khepree → Sign in** (system browser — password never stored in the app).
+
+## Khepree commercial access
+
+### First installation
+
+1. Install Khepree Novel AI from the Windows installer.  
+2. On first launch, choose **Vietnamese** or **English** — preference persists across restarts.  
+3. Open **Khepree → Sign in** — complete login in your system browser.  
+4. If entitled, the app activates this device and verifies your lease automatically.  
+5. If not entitled, use **Plan** to purchase or upgrade; polling confirms entitlement without restart.  
+6. Use Projects, Jobs, and translation features when status is **Active**.
+
+### New computer
+
+1. On [account.khepree.com](https://account.khepree.com), open **Devices** and remove an old device if at the limit.  
+2. Install or open Khepree Novel AI on the new PC.  
+3. **Khepree → Sign in**.  
+4. Click **Retry Activation** if prompted after device removal.
+
+### Upgrade
+
+1. **Khepree → Plan → Upgrade** (or purchase from entitlement gate).  
+2. Complete checkout in the system browser.  
+3. Return to the app — status updates automatically when Khepree confirms payment (do not trust browser URL alone).  
+4. New plan features appear without restarting.
+
+### Khepree hub pages
+
+| Page | Purpose |
+|------|---------|
+| Account | Profile, sign out (revokes session; does not deactivate device on server) |
+| Plan | Catalog, upgrade, checkout waiting |
+| Devices | Local device info, link to manage devices on account.khepree.com |
+| About | Product version and links |
+
+See [KHEPREE_ACCEPTANCE.md](./KHEPREE_ACCEPTANCE.md) and [TROUBLESHOOTING.md](./TROUBLESHOOTING.md#khepree-access).

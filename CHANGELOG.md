@@ -3,6 +3,24 @@
 All notable changes to NovelTrans Studio are documented here.  
 Format inspired by [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added — Khepree commercial integration (N01–N09)
+
+- Khepree OAuth login, device activation, signed lease verification, heartbeat runtime
+- Khepree hub UI: Account, Plan, Devices, About (VI/EN)
+- In-app plan catalog, checkout via system browser, entitlement polling (no redirect-trust)
+- Product access boundary on protected IPC and jobs
+- Security hardening: log redaction, URL validation, renderer secret exclusion
+- Cross-system acceptance integration test (`tests/integration/khepree-cross-system-acceptance.test.ts`)
+- Docs: `KHEPREE_ACCEPTANCE.md`, `KHEPREE_SECURITY.md`, updated USER_GUIDE / ARCHITECTURE / RELEASE_CHECKLIST
+
+### Known gaps (Khepree)
+
+- Production lease signing key not configured in repo
+- Staging/live Khepree cross-system matrix NOT RUN
+- Browser AI live smoke still NOT RUN (separate gate)
+
 ## [0.1.0] — 2026-08-23
 
 ### Added
