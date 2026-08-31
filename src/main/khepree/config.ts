@@ -70,10 +70,16 @@ export function buildKhepreeAuthorizeUrl(input: {
 }
 
 export function resolveTrustedSigningKey(keyId: string): string | null {
+  const pinned = KHEPREE_TRUSTED_SIGNING_KEYS[keyId];
+  if (pinned && pinned.length > 0) {
+    return pinned;
+  }
+  if (!isKhepreeDevMockEnabled()) {
+    return null;
+  }
   const dev = getDevSigningKeys();
   if (dev?.keyId === keyId) {
     return dev.publicKeySpki;
   }
-  const pinned = KHEPREE_TRUSTED_SIGNING_KEYS[keyId];
-  return pinned && pinned.length > 0 ? pinned : null;
+  return null;
 }

@@ -1,5 +1,6 @@
 import type { IpcMainInvokeEvent } from 'electron';
 import type { ZodType } from 'zod';
+import { sanitizeIpcErrorMessage } from '../security/log-sanitize';
 
 export class IpcValidationError extends Error {
   constructor(message: string) {
@@ -21,7 +22,9 @@ export function createIpcHandler<TRequest, TResponse>(
         : (rawRequest as TRequest);
     } catch (error) {
       throw new IpcValidationError(
-        error instanceof Error ? error.message : 'Invalid IPC request',
+        sanitizeIpcErrorMessage(
+          error instanceof Error ? error.message : 'Invalid IPC request',
+        ),
       );
     }
 

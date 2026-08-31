@@ -4,6 +4,7 @@ import {
   type KhepreeExternalLinkTarget,
 } from '@shared/constants/khepree';
 import { logger } from '../logging/logger';
+import { sanitizeUrlForLog } from '../security/log-sanitize';
 
 const ALLOWED_HOSTS = new Set(['khepree.com', 'account.khepree.com']);
 
@@ -24,7 +25,7 @@ export function isAllowedKhepreeUrl(url: string): boolean {
 export async function openKhepreeExternal(target: KhepreeExternalLinkTarget): Promise<boolean> {
   const url = resolveKhepreeExternalUrl(target);
   if (!isAllowedKhepreeUrl(url)) {
-    logger.warn('Blocked Khepree external URL', { target, url });
+    logger.warn('Blocked Khepree external URL', { target, url: sanitizeUrlForLog(url) });
     return false;
   }
   await shell.openExternal(url);
@@ -33,7 +34,7 @@ export async function openKhepreeExternal(target: KhepreeExternalLinkTarget): Pr
 
 export async function openValidatedKhepreeUrl(url: string): Promise<boolean> {
   if (!isAllowedKhepreeUrl(url)) {
-    logger.warn('Blocked arbitrary Khepree URL from opening', { url });
+    logger.warn('Blocked arbitrary Khepree URL from opening', { url: sanitizeUrlForLog(url) });
     return false;
   }
   await shell.openExternal(url);

@@ -74,7 +74,7 @@ describe('KhepreeSessionStore', () => {
     const store = createStore(createXorBackend(true));
     store.setAccessToken('access-secret', 3600, 'user-1');
     expect(store.getAccessToken()).toBe('access-secret');
-    expect(store.getSnapshot().accessToken).toBe('access-secret');
+    expect(store.getSnapshot().hasAccessToken).toBe(true);
   });
 
   it('returns null when no refresh token exists', async () => {

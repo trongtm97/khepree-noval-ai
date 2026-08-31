@@ -21,7 +21,7 @@
 | Preload API | Whitelist only (`ALLOWED_IPC_CHANNELS`) |
 | CSP | `default-src 'self'` (see `index.html`) |
 | Navigation | `will-navigate` blocked except app origin / file |
-| Window open | Denied; allowed `http(s)/mailto` via `shell.openExternal` |
+| Window open | Denied; allowed `https`/`mailto` via `shell.openExternal` (no `http:`) |
 | Webview | `will-attach-webview` prevented |
 | Remote content | Not loaded with Node privileges |
 | Code signing | Env-only (`WINDOWS_CERTIFICATE_*`) — never commit certs |
@@ -140,3 +140,24 @@ When `false`, `AuditLogService.logDiagnosticContent` is a no-op — raw AI paylo
 2. Use `getSecretStorage().replace(...)` for credentials — then `getAuditLog().credentialsChanged(...)`
 3. Never expose decrypt results over IPC
 4. Before shipping a new IPC channel: add Zod schemas, whitelist entry, and `IPC_CHANNEL_AUDIT` row
+
+## 10. Commercial licensing (Khepree) — see also `docs/KHEPREE_SECURITY.md`
+
+Khepree Novel AI adds a main-process licensing boundary above translation/export IPC. Renderer receives sanitized state only.
+
+**Distribution notice:** Electron desktop clients cannot be made “uncrackable.” Public source exposure lowers the cost of patching licensing checks. Before commercial release, evaluate repository privacy, binary-only distribution, code signing, and update channel policy — this project does **not** change GitHub repository visibility automatically.
+
+## 11. Electron Forge fuses (packaged builds)
+
+Configured in `forge.config.ts` via `@electron-forge/plugin-fuses`:
+
+| Fuse | Value | Purpose |
+|------|-------|---------|
+| `RunAsNode` | `false` | Prevent `ELECTRON_RUN_AS_NODE` abuse |
+| `EnableCookieEncryption` | `true` | Encrypt Chromium cookies |
+| `EnableNodeOptionsEnvironmentVariable` | `false` | Block `NODE_OPTIONS` injection |
+| `EnableNodeCliInspectArguments` | `false` | Block `--inspect` on packaged app |
+| `EnableEmbeddedAsarIntegrityValidation` | `true` | Validate ASAR integrity |
+| `OnlyLoadAppFromAsar` | `true` | Load application code from ASAR only |
+
+Packaging tests: `tests/unit/khepree/security-audit.test.ts` (fuse assertions).

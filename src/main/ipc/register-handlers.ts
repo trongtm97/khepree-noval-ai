@@ -1529,6 +1529,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.TERM_EXPORT,
     createIpcHandler(TermExportRequestSchema, (request) => {
+      assertKhepreeProductAccess(KHEPREE_FEATURES.export);
       const result = getTermService().exportTerms({
         format: request.format,
         filters: request.filters,
@@ -1643,6 +1644,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.PACK_BUILD,
     createIpcHandler(BuildTranslationPackRequestSchema, (request) => {
+      assertKhepreeProductAccess(KHEPREE_FEATURES.translation);
       const pack = getTranslationPackService().build(request);
       return BuildTranslationPackResponseSchema.parse({ pack });
     }),
@@ -1753,6 +1755,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.NOTEBOOK_PREPARE_FOR_TRANSLATE,
     createIpcHandler(NotebookPrepareForTranslateRequestSchema, async (request) => {
+      assertKhepreeProductAccess(KHEPREE_FEATURES.translation);
       const result = await new NotebookBootstrapService(getDatabase()).prepareForTranslate(
         request.projectId,
         { accountId: request.accountId },
@@ -1764,6 +1767,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.TRANSLATE_ENSURE_READY,
     createIpcHandler(TranslateEnsureReadyRequestSchema, async (request) => {
+      assertKhepreeProductAccess(KHEPREE_FEATURES.translation);
       const result = await new TranslateReadinessService(getDatabase()).ensureForTranslate(
         request.projectId,
         request.accountId,
@@ -1775,6 +1779,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.NOTEBOOK_RUN_BOOTSTRAP_ANALYSIS,
     createIpcHandler(NotebookRunBootstrapAnalysisRequestSchema, async (request) => {
+      assertKhepreeProductAccess(KHEPREE_FEATURES.translation);
       const service = new BootstrapAnalysisService(getDatabase());
       const result = await service.run(
         request.projectId,
@@ -2582,6 +2587,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.TABULAR_EXPORT,
     createIpcHandler(TabularExportRequestSchema, async (request) => {
+      assertKhepreeProductAccess(KHEPREE_FEATURES.export);
       if (!request.outputPath) {
         throw new Error('outputPath is required for tabular export');
       }

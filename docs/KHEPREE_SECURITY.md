@@ -52,7 +52,7 @@ Cold start (saved session):
 
 Network failure during cold start → `OFFLINE_COLD_START` (lease cleared — no cached bypass).
 
-Protected IPC calls `assertProductAccess()` via `product-access-boundary` (fail-closed when packaged).
+Protected IPC calls `assertKhepreeProductAccess()` via `product-access-boundary` (fail-closed when packaged) on job enqueue, export, pack build, notebook bootstrap, and related translation paths.
 
 Device limit UI: manage devices URL, retry activation (no re-login), sign out.
 
@@ -85,6 +85,47 @@ Device limit UI: manage devices URL, retry activation (no re-login), sign out.
 - Entitlement-missing gate shows product info, plan cards, Visit Khepree, sign out.
 - Checkout logs redact URLs and session identifiers.
 
+## Security hardening (Phase N08)
+
+**Not uncrackable** — raises bypass cost for commercial access.
+
+### Authentication boundary audit
+
+- No `licensed=true` flags; entitlement from verified signed lease + Khepree API only.
+- No renderer Khepree API calls; no auth in `localStorage`/`sessionStorage`.
+- `assertKhepreeProductAccess()` on translation, export, notebook bootstrap, and related IPC (main-process fail-closed when packaged).
+- Dev mock / env overrides disabled when `app.isPackaged`.
+
+### IPC
+
+- Preload `ALLOWED_IPC_CHANNELS` whitelist; handlers use Zod request/response validation.
+- IPC validation errors sanitized (`sanitizeIpcErrorMessage`) — no raw tokens in renderer errors.
+
+### Navigation & DevTools
+
+- `will-navigate` restricted; webview attach blocked.
+- External opens from renderer: `https:` and `mailto:` only (no `http:` downgrade).
+- DevTools open only when `MAIN_WINDOW_VITE_DEV_SERVER_URL` is set (development).
+
+### Trust keys
+
+- Production keys pinned in `KHEPREE_TRUSTED_SIGNING_KEYS` at build time.
+- Dev signing keys (`dev-local`) accepted **only** when `isKhepreeDevMockEnabled()` (unpackaged mock).
+- Ship real Khepree Ed25519 public key before release — empty `k1` fails closed.
+
+### Logs
+
+- Global logger redacts tokens, refresh/access, authorization, OAuth query params in URLs.
+- Khepree checkout/OAuth paths use shared `log-sanitize` helpers.
+
+### Electron fuses
+
+See `docs/SECURITY.md` §11 — RunAsNode off, NODE_OPTIONS off, ASAR integrity on.
+
+### Distribution
+
+Public source makes Electron patching easier. Evaluate private repo / binary-only distribution before commercial release (no automatic GitHub privacy changes).
+
 ## OAuth browser login (Phase N03)
 
 - **Protocol:** `khepree-novel-ai://auth/callback` (registered as "Khepree Novel AI" in Windows installer)
@@ -99,4 +140,5 @@ Renderer calls `startLogin()` IPC only — never receives verifier, code, or tok
 
 ## Tests
 
-`tests/unit/khepree/` — device identity, session store, API schemas, lease verifier, config, renderer surface.
+`tests/unit/khepree/` — device identity, session store, API schemas, lease verifier, config, renderer surface, checkout, **security-audit (N08)**.
+`tests/unit/security/log-sanitize.test.ts` — token/URL redaction.

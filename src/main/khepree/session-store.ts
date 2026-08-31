@@ -11,7 +11,7 @@ import {
 
 /** In-memory access token only — never persisted plaintext. */
 export interface KhepreeSessionSnapshot {
-  accessToken: string | null;
+  hasAccessToken: boolean;
   accessExpiresAt: number | null;
   userId: string | null;
 }
@@ -25,7 +25,7 @@ export class KhepreeSessionStore {
 
   getSnapshot(): KhepreeSessionSnapshot {
     return {
-      accessToken: this.accessToken,
+      hasAccessToken: this.accessToken != null,
       accessExpiresAt: this.accessExpiresAt,
       userId: this.userId,
     };

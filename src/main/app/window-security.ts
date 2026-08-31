@@ -3,8 +3,10 @@ import { shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '../logging/logger';
+import { sanitizeUrlForLog } from '../security/log-sanitize';
 
-const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['https:', 'http:', 'mailto:']);
+/** External opens from renderer navigation — https/mailto only (no http downgrade). */
+const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['https:', 'mailto:']);
 
 /**
  * Navigation + external URL restrictions for the main BrowserWindow.
@@ -21,7 +23,7 @@ export function attachWindowSecurityGuards(win: BrowserWindow): void {
       return;
     }
     event.preventDefault();
-    logger.warn('Blocked renderer navigation', { url });
+    logger.warn('Blocked renderer navigation', { url: sanitizeUrlForLog(url) });
     void openExternalIfAllowed(url);
   });
 
@@ -61,13 +63,13 @@ async function openExternalIfAllowed(url: string): Promise<void> {
   try {
     const parsed = new URL(url);
     if (!ALLOWED_EXTERNAL_PROTOCOLS.has(parsed.protocol)) {
-      logger.warn('Blocked external URL protocol', { url });
+      logger.warn('Blocked external URL protocol', { url: sanitizeUrlForLog(url) });
       return;
     }
     await shell.openExternal(url);
   } catch (error) {
     logger.warn('Failed to open external URL', {
-      url,
+      url: sanitizeUrlForLog(url),
       error: error instanceof Error ? error.message : String(error),
     });
   }

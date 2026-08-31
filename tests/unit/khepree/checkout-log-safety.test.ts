@@ -10,8 +10,8 @@ describe('checkout log safety', () => {
       cardNumber: '4111',
     });
     expect(out.planId).toBe('pro-90d');
-    expect(out.checkoutUrl).toBe('[redacted]');
-    expect(out.checkoutSessionId).toBe('[redacted]');
-    expect(out.cardNumber).toBe('[redacted]');
+    expect(out.checkoutUrl).toBe('[REDACTED]');
+    expect(out.checkoutSessionId).toBe('[REDACTED]');
+    expect(out.cardNumber).toBe('[REDACTED]');
   });
 });

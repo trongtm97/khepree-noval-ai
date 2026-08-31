@@ -1,4 +1,4 @@
-import { app, shell } from 'electron';
+import { app } from 'electron';
 import {
   KHEPREE_DEFAULT_HEARTBEAT_MS,
   KHEPREE_FEATURES,
@@ -451,7 +451,10 @@ export class KhepreeAccessService {
         productId: getKhepreeProductId(),
       });
 
-      await shell.openExternal(authUrl);
+      const opened = await openValidatedKhepreeUrl(authUrl);
+      if (!opened) {
+        throw new KhepreeAccessError('OAUTH_OPEN_FAILED', 'Could not open Khepree sign-in page.');
+      }
       this.loginPhase = 'waiting_sign_in';
       this.emit();
 

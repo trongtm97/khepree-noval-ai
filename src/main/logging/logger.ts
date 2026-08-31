@@ -1,4 +1,5 @@
 import { FileWriter } from './file-writer';
+import { sanitizeLogContext, redactSecretsInString } from '../security/log-sanitize';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -9,36 +10,8 @@ interface LogEntry {
   timestamp: string;
 }
 
-const REDACT_KEYS = [
-  'token',
-  'cookie',
-  'password',
-  'secret',
-  'credential',
-  'authorization',
-  'oauth',
-  'localstorage',
-  'sessionstorage',
-];
-
 function redact(obj: Record<string, unknown>): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (REDACT_KEYS.some((k) => key.toLowerCase().includes(k))) {
-      result[key] = '[REDACTED]';
-    } else if (typeof value === 'string') {
-      result[key] = redactLogString(value);
-    } else {
-      result[key] = value;
-    }
-  }
-  return result;
-}
-
-function redactLogString(text: string): string {
-  return text
-    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]')
-    .replace(/ya29\.[A-Za-z0-9._-]+/g, '[REDACTED]');
+  return sanitizeLogContext(obj);
 }
 
 class Logger {
@@ -49,7 +22,12 @@ class Logger {
   }
 
   private write(entry: LogEntry): void {
-    const line = JSON.stringify(entry);
+    const safeEntry: LogEntry = {
+      ...entry,
+      message: redactSecretsInString(entry.message),
+      context: entry.context ? redact(entry.context) : undefined,
+    };
+    const line = JSON.stringify(safeEntry);
 
     if (entry.level === 'error') {
       console.error(line);
@@ -68,7 +46,7 @@ class Logger {
     this.write({
       level: 'debug',
       message,
-      context: context ? redact(context) : undefined,
+      context,
       timestamp: new Date().toISOString(),
     });
   }
@@ -77,7 +55,7 @@ class Logger {
     this.write({
       level: 'info',
       message,
-      context: context ? redact(context) : undefined,
+      context,
       timestamp: new Date().toISOString(),
     });
   }
@@ -86,7 +64,7 @@ class Logger {
     this.write({
       level: 'warn',
       message,
-      context: context ? redact(context) : undefined,
+      context,
       timestamp: new Date().toISOString(),
     });
   }
@@ -95,7 +73,7 @@ class Logger {
     this.write({
       level: 'error',
       message,
-      context: context ? redact(context) : undefined,
+      context,
       timestamp: new Date().toISOString(),
     });
   }
