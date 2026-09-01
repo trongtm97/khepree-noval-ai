@@ -139,7 +139,7 @@ Public source makes Electron patching easier. Evaluate private repo / binary-onl
 
 ## OAuth browser login (Phase N03)
 
-- **Protocol:** `khepree-novel-ai://auth/callback` (registered as "Khepree Novel AI" in Windows installer)
+- **Protocol:** `khepreenovelai://auth/callback` (registered as "Khepree Novel AI" in Windows installer)
 - **PKCE:** S256 challenge/verifier generated in main process only
 - **Callback:** validated in `OAuthAuthTransactionManager` — scheme, path, state, expiry, replay protection
 - **Exchange:** `POST /api/v1/desktop/auth/exchange` with code, verifier, clientId, redirectUri, device binding

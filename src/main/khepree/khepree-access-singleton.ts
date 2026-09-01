@@ -1,3 +1,4 @@
+import { app } from 'electron';
 import { getSecretStorage } from '../security';
 import { getDatabase } from '../db/connection';
 import { KhepreeAccessService } from './khepree-access-service';
@@ -6,6 +7,7 @@ import { broadcastKhepreeAccessState } from './access-state-bridge';
 import { setKhepreeProductAccessEnforcer } from './product-access-boundary';
 import { lockProtectedJobsOnKhepreeRevocation } from './licensing-job-guard';
 import { logger } from '../logging/logger';
+import { hasKhepreeTrustedSigningKey } from './config';
 
 let accessService: KhepreeAccessService | null = null;
 let heartbeatService: KhepreeHeartbeatService | null = null;
@@ -45,6 +47,11 @@ export function getKhepreeAccessService(): KhepreeAccessService {
 }
 
 export async function startupKhepreeAccess(): Promise<void> {
+  if (!hasKhepreeTrustedSigningKey() && app?.isPackaged) {
+    logger.warn(
+      'Khepree license signing public key is not configured; production lease verification will fail until KHEPREE_LICENSE_SIGNING_PUBLIC_KEY is set at build time.',
+    );
+  }
   const service = initializeKhepreeAccessService();
   const state = await service.initializeOnColdStart();
   logger.info('Khepree access cold start', { status: state.status, signedIn: state.signedIn });

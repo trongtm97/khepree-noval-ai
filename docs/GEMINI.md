@@ -14,7 +14,7 @@ See historical detail below. Multi-backend routing: [AI_PROVIDER.md](./AI_PROVID
 
 ## Web API (2026-08)
 
-Python worker + `gemini_webapi` — [GEMINI_WEB_API_PROVIDER.md](./GEMINI_WEB_API_PROVIDER.md).
+Python worker + [gemini-web2api](https://github.com/Sophomoresty/gemini-web2api) — [GEMINI_WEB_API_PROVIDER.md](./GEMINI_WEB_API_PROVIDER.md).
 
 ---
 

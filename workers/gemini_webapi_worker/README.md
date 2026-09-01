@@ -1,7 +1,9 @@
 # Gemini Web API Worker
 
-Localhost FastAPI bridge between NovelTrans Electron main process and
-[`gemini_webapi`](https://github.com/HanaokaYuzu/Gemini-API).
+Localhost bridge between NovelTrans Electron main process and
+[`gemini-web2api`](https://github.com/Sophomoresty/gemini-web2api).
+
+Replaces the previous HanaokaYuzu/Gemini-API (`gemini_webapi`) stack.
 
 ## Production (Windows packaged)
 
@@ -29,8 +31,12 @@ set NTS_GEMINI_WORKER_PORT=18765
 
 NovelTrans normally creates the venv under userData and spawns this process.
 
+## Third party
+
+- `gemini_web2api.py` — vendored from [Sophomoresty/gemini-web2api](https://github.com/Sophomoresty/gemini-web2api) (MIT)
+
 ## Security
 
 - Binds `127.0.0.1` only
-- Requires `X-NTS-Secret` header
+- Requires `X-NTS-Secret` header on NovelTrans endpoints; `/v1/*` uses Bearer with the same secret
 - Never logs cookies or tokens

@@ -3,7 +3,7 @@
 export const DEFAULT_MAX_REPAIR_ATTEMPTS = 2;
 
 /** User-facing cap on chapters per translation job (engine may shrink further). */
-export const DEFAULT_MAX_CHAPTERS_PER_JOB = 3;
+export const DEFAULT_MAX_CHAPTERS_PER_JOB = 4;
 
 /** Max CONTINUATION rounds when Gemini output is truncated. */
 export const DEFAULT_MAX_CONTINUATION_ATTEMPTS = 3;
@@ -12,11 +12,10 @@ export const DEFAULT_MAX_CONTINUATION_ATTEMPTS = 3;
 export const CONTINUATION_REPAIR_THRESHOLD = 5;
 
 /**
- * Max source paragraphs per translate job (Web API).
- * Larger batches often make Gemini Web API return soft errors
- * ("Sorry, something went wrong") instead of protocol output.
+ * Baseline max paragraphs per Web API chunk.
+ * Runtime auto-throughput may raise (stable history) or lower (soft errors).
  */
-export const DEFAULT_TRANSLATE_BATCH_PARAGRAPHS = 12;
+export const DEFAULT_TRANSLATE_BATCH_PARAGRAPHS = 16;
 
 /**
  * NotebookLM / browser transport can take much larger prompts than Web API.
@@ -27,8 +26,8 @@ export const PLAYWRIGHT_TRANSLATE_BATCH_PARAGRAPHS = 120;
 /** Soft cap on source chars per Playwright chunk (pack overhead adds ~10–15k). */
 export const PLAYWRIGHT_MAX_SOURCE_CHARS_PER_CHUNK = 40_000;
 
-/** Web API char budget per chapter batch (smaller than Playwright). */
-export const WEB_API_MAX_SOURCE_CHARS_PER_CHUNK = 8_000;
+/** Web API char budget baseline — auto-throughput adjusts per project stats. */
+export const WEB_API_MAX_SOURCE_CHARS_PER_CHUNK = 10_000;
 
 /** Global max concurrent Chromium profiles / workers (legacy fixed default). */
 export const DEFAULT_MAX_CONCURRENT_WORKERS = 3;

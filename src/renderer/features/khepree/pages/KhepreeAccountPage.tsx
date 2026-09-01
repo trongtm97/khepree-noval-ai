@@ -9,7 +9,7 @@ import {
   formatKhepreeRenewalLine,
   maskKhepreeEmail,
 } from '../khepree-display';
-import { KHEPREE_PRODUCT_ID } from '@shared/constants/khepree';
+import { KHEPREE_PRODUCT_CODE } from '@shared/constants/khepree';
 
 export function KhepreeAccountPage() {
   const t = useT();
@@ -40,7 +40,7 @@ export function KhepreeAccountPage() {
             </div>
             <div>
               <dt>{t('khepree.account.product')}</dt>
-              <dd>{t('khepree.account.productName', { id: KHEPREE_PRODUCT_ID })}</dd>
+              <dd>{t('khepree.account.productName', { id: KHEPREE_PRODUCT_CODE })}</dd>
             </div>
             <div>
               <dt>{t('khepree.account.plan')}</dt>

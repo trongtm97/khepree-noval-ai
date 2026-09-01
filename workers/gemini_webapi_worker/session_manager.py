@@ -1,4 +1,4 @@
-"""Per-account GeminiClient sessions. Never logs cookies."""
+"""Per-account cookie files for gemini-web2api. Never logs cookies."""
 
 from __future__ import annotations
 
@@ -7,21 +7,54 @@ import os
 import time
 from typing import Any
 
+from gemini_web2api import CONFIG, MODELS, extract_response_text, gemini_stream_generate
+
 logger = logging.getLogger("gemini_webapi_worker.session")
+
+COOKIE_FILENAME = "cookie.txt"
+
+# Legacy NovelTrans model ids → gemini-web2api model names
+LEGACY_MODEL_MAP: dict[str, str] = {
+    "gemini-flash": "gemini-3.6-flash",
+    "gemini-pro": "gemini-3.1-pro",
+}
+
+
+def format_cookie(secure_1psid: str, secure_1psidts: str = "") -> str:
+    parts = [f"__Secure-1PSID={secure_1psid.strip()}"]
+    if secure_1psidts.strip():
+        parts.append(f"__Secure-1PSIDTS={secure_1psidts.strip()}")
+    return "; ".join(parts)
+
+
+def resolve_model(model: str | None) -> tuple[str, int, int]:
+    raw = (model or "").strip()
+    name = LEGACY_MODEL_MAP.get(raw, raw) or CONFIG.get("default_model", "gemini-3.6-flash")
+    cfg = MODELS.get(name)
+    if not cfg:
+        name = CONFIG.get("default_model", "gemini-3.6-flash")
+        cfg = MODELS[name]
+    return name, int(cfg["mode"]), int(cfg["think"])
 
 
 class SessionManager:
     def __init__(self) -> None:
-        self._clients: dict[str, Any] = {}
+        self._accounts: dict[str, str] = {}
         self._started = time.monotonic()
 
     def uptime_sec(self) -> float:
         return time.monotonic() - self._started
 
     def list_account_ids(self) -> list[str]:
-        return list(self._clients.keys())
+        return list(self._accounts.keys())
 
-    async def init_account(
+    def cookie_path(self, account_id: str) -> str | None:
+        session_dir = self._accounts.get(account_id)
+        if not session_dir:
+            return None
+        return os.path.join(session_dir, COOKIE_FILENAME)
+
+    def init_account(
         self,
         *,
         account_id: str,
@@ -30,31 +63,19 @@ class SessionManager:
         secure_1psidts: str,
     ) -> None:
         os.makedirs(session_dir, exist_ok=True)
-        # Persist auto-refreshed cookies under this account dir only
-        os.environ["GEMINI_COOKIE_PATH"] = session_dir
-
-        from gemini_webapi import GeminiClient
-
-        # Close previous client for this account if any
-        old = self._clients.pop(account_id, None)
-        if old is not None:
-            try:
-                await old.close()
-            except Exception:  # noqa: BLE001
-                pass
-
-        client = GeminiClient(secure_1psid, secure_1psidts or None, proxy=None)
-        await client.init(timeout=30, auto_close=False, auto_refresh=True)
-        self._clients[account_id] = client
+        cookie_path = os.path.join(session_dir, COOKIE_FILENAME)
+        with open(cookie_path, "w", encoding="utf-8") as handle:
+            handle.write(format_cookie(secure_1psid, secure_1psidts))
+        self._accounts[account_id] = session_dir
         logger.info("session ready account=%s", account_id)
 
-    def _require(self, account_id: str) -> Any:
-        client = self._clients.get(account_id)
-        if client is None:
+    def activate(self, account_id: str) -> None:
+        path = self.cookie_path(account_id)
+        if not path or not os.path.exists(path):
             raise RuntimeError(f"SESSION_EXPIRED: no session for account {account_id}")
-        return client
+        CONFIG["cookie_file"] = path
 
-    async def generate(
+    def generate(
         self,
         *,
         account_id: str,
@@ -62,34 +83,16 @@ class SessionManager:
         model: str | None = None,
         files: list[str] | None = None,
     ) -> str:
-        client = self._require(account_id)
-        kwargs: dict[str, Any] = {}
-        if model:
-            kwargs["model"] = model
         if files:
-            kwargs["files"] = files
-        output = await client.generate_content(prompt, **kwargs)
-        text = getattr(output, "text", None)
-        if text is None:
-            text = str(output)
-        return text
+            raise RuntimeError("ERROR: file attachments not supported in gemini-web2api worker v1")
+        self.activate(account_id)
+        _model_name, model_id, think_mode = resolve_model(model)
+        raw = gemini_stream_generate(prompt, model_id, think_mode)
+        return extract_response_text(raw)
 
-    async def list_models(self, account_id: str) -> list[dict[str, Any]]:
-        client = self._require(account_id)
-        raw = []
-        if hasattr(client, "list_models"):
-            raw = await client.list_models()
-        result: list[dict[str, Any]] = []
-        for item in raw or []:
-            name = getattr(item, "name", None) or getattr(item, "model_name", None) or str(item)
-            display = getattr(item, "display_name", None) or name
-            result.append({"model_name": name, "display_name": display})
-        return result
-
-    async def close_all(self) -> None:
-        for account_id, client in list(self._clients.items()):
-            try:
-                await client.close()
-            except Exception:  # noqa: BLE001
-                pass
-            self._clients.pop(account_id, None)
+    def list_models(self, account_id: str) -> list[dict[str, Any]]:
+        self.activate(account_id)
+        return [
+            {"model_name": name, "display_name": cfg.get("desc", name)}
+            for name, cfg in MODELS.items()
+        ]

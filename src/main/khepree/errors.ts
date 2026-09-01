@@ -1,3 +1,5 @@
+import { DESKTOP_ERROR_CODES, type DesktopErrorCode } from '@khepree/sdk';
+
 export class KhepreeAccessError extends Error {
   readonly code: string;
 
@@ -122,4 +124,21 @@ export class KhepreeProductAccessDeniedError extends KhepreeAccessError {
     super('PRODUCT_ACCESS_DENIED', `Access denied for feature: ${feature}`);
     this.name = 'KhepreeProductAccessDeniedError';
   }
+}
+
+const DESKTOP_ERROR_CODE_SET = new Set<string>(DESKTOP_ERROR_CODES);
+
+export function isDesktopSdkErrorCode(code: string): code is DesktopErrorCode {
+  return DESKTOP_ERROR_CODE_SET.has(code);
+}
+
+/** Map Khepree API error codes to typed desktop errors where applicable. */
+export function mapDesktopApiErrorCode(code: string): string {
+  if (isDesktopSdkErrorCode(code)) {
+    return code;
+  }
+  if (code === 'DEVICE_LIMIT') {
+    return 'DEVICE_LIMIT_REACHED';
+  }
+  return code;
 }

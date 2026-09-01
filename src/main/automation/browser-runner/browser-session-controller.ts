@@ -10,7 +10,7 @@ export interface SessionProbeResult {
   reason?: string;
 }
 
-/** Cookies required by Gemini Web API worker (`gemini_webapi`). */
+/** Cookies required by Gemini Web API worker (gemini-web2api). */
 export interface GeminiSessionCookies {
   secure1psid: string;
   secure1psidts: string;

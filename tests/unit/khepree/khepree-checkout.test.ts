@@ -115,7 +115,7 @@ describe('Khepree checkout flow (N07)', () => {
     const { service } = createService(tempRoot);
     await loginActive(service);
 
-    const state = await service.startCheckout('pro-90d');
+    const state = await service.startCheckout('plan_month:price_month');
     expect(state.checkoutPhase).toBe('waiting');
     expect(state.billing).toBe('checkout_pending');
     expect(state.checkoutCanReopen).toBe(true);
@@ -142,7 +142,7 @@ describe('Khepree checkout flow (N07)', () => {
     const { service } = createService(tempRoot);
     await loginActive(service);
 
-    const state = await service.startCheckout('pro-90d');
+    const state = await service.startCheckout('plan_month:price_month');
     expect(state.checkoutPhase).toBe('failed');
     expect(state.checkoutError?.code).toBe('CHECKOUT_URL_BLOCKED');
     expect(checkoutOpenCalls()).toHaveLength(0);
@@ -158,7 +158,7 @@ describe('Khepree checkout flow (N07)', () => {
     await loginActive(service);
     expect(service.getPublicState().status).toBe('FREE');
 
-    await service.startCheckout('pro-90d');
+    await service.startCheckout('plan_month:price_month');
     await vi.advanceTimersByTimeAsync(10_000);
     await vi.runAllTimersAsync();
 
@@ -177,7 +177,7 @@ describe('Khepree checkout flow (N07)', () => {
 
     const { service } = createService(tempRoot);
     await loginActive(service);
-    await service.startCheckout('pro-90d');
+    await service.startCheckout('plan_month:price_month');
     await service.checkCheckoutNow();
 
     expect(service.getPublicState().checkoutPhase).toBe('confirming');
@@ -197,7 +197,7 @@ describe('Khepree checkout flow (N07)', () => {
     process.env.KHEPREE_MOCK_CHECKOUT_STATUS = 'FAILED';
     const { service } = createService(tempRoot);
     await loginActive(service);
-    await service.startCheckout('pro-90d');
+    await service.startCheckout('plan_month:price_month');
     await service.checkCheckoutNow();
 
     const state = service.getPublicState();
@@ -209,7 +209,7 @@ describe('Khepree checkout flow (N07)', () => {
   it('user cancel stops checkout polling', async () => {
     const { service } = createService(tempRoot);
     await loginActive(service);
-    await service.startCheckout('pro-90d');
+    await service.startCheckout('plan_month:price_month');
     const cancelled = await service.cancelCheckout();
     expect(cancelled.checkoutPhase).toBe('cancelled');
     expect(cancelled.billing).not.toBe('checkout_pending');
@@ -229,7 +229,7 @@ describe('Khepree checkout flow (N07)', () => {
   it('public state never exposes checkout URL or session id', async () => {
     const { service } = createService(tempRoot);
     await loginActive(service);
-    await service.startCheckout('pro-90d');
+    await service.startCheckout('plan_month:price_month');
     const json = JSON.stringify(service.getPublicState());
     expect(json).not.toMatch(/mock-checkout/);
     expect(json).not.toMatch(/account\.khepree\.com\/checkout/);

@@ -1,60 +1,39 @@
-"""Gemini Web API worker — localhost HTTP bridge for NovelTrans Studio.
+"""NovelTrans Gemini worker — gemini-web2api backend with account bridge.
 
-Uses gemini_webapi (HanaokaYuzu/Gemini-API). No translation business logic.
+Upstream: https://github.com/Sophomoresty/gemini-web2api (MIT)
 """
 
 from __future__ import annotations
 
-import asyncio
+import json
 import logging
 import os
 import time
-from typing import Any
+from http.server import HTTPServer
+from socketserver import ThreadingMixIn
+from urllib.parse import parse_qs, urlparse
 
-from fastapi import Depends, FastAPI, Request
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+import gemini_web2api as g2a
+from gemini_web2api import CONFIG, GeminiHandler, fetch_latest_bl
 
-from auth import require_shared_secret
 from session_manager import SessionManager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("gemini_webapi_worker")
 
-# Never log cookies / tokens
-for noisy in ("httpx", "httpcore", "gemini_webapi"):
-    logging.getLogger(noisy).setLevel(logging.WARNING)
-
 HOST = os.environ.get("NTS_GEMINI_WORKER_HOST", "127.0.0.1")
 PORT = int(os.environ.get("NTS_GEMINI_WORKER_PORT", "18765"))
 
-app = FastAPI(title="NovelTrans Gemini Web API Worker", version="1.0.0")
 sessions = SessionManager()
 
-# In-flight cancel flags
-_cancel_flags: dict[str, asyncio.Event] = {}
-
-
-class SessionInitRequest(BaseModel):
-    account_id: str
-    session_dir: str
-    secure_1psid: str = Field(..., min_length=1)
-    secure_1psidts: str = ""
-    email: str | None = None
-
-
-class ChatRequest(BaseModel):
-    request_id: str
-    account_id: str
-    model: str | None = None
-    prompt: str = Field(..., min_length=1)
-    system_instruction: str | None = None
-    attachments: list[str] | None = None
-    options: dict[str, Any] | None = None
-
-
-class CancelRequest(BaseModel):
-    request_id: str
+_SOFT_ERROR_MARKERS = (
+    "sorry, something went wrong",
+    "please try your request again",
+    "i encountered an error doing what you asked",
+    "i'm having a hard time fulfilling your request",
+    "can i help you with something else instead",
+    "unable to process your request",
+)
 
 
 def map_exception(exc: BaseException) -> tuple[str, str]:
@@ -77,18 +56,7 @@ def map_exception(exc: BaseException) -> tuple[str, str]:
     return "ERROR", msg
 
 
-_SOFT_ERROR_MARKERS = (
-    "sorry, something went wrong",
-    "please try your request again",
-    "i encountered an error doing what you asked",
-    "i'm having a hard time fulfilling your request",
-    "can i help you with something else instead",
-    "unable to process your request",
-)
-
-
 def is_gemini_soft_error_text(text: str | None) -> bool:
-    """True when Gemini returned a polite failure bubble instead of content."""
     if not text:
         return False
     trimmed = text.strip()
@@ -100,138 +68,202 @@ def is_gemini_soft_error_text(text: str | None) -> bool:
     return any(marker in lower for marker in _SOFT_ERROR_MARKERS)
 
 
-@app.middleware("http")
-async def localhost_only(request: Request, call_next):  # type: ignore[no-untyped-def]
-    client = request.client.host if request.client else ""
-    if client not in ("127.0.0.1", "::1", "localhost", "testclient"):
-        return JSONResponse(status_code=403, content={"detail": "Localhost only"})
-    return await call_next(request)
+def configure_from_env() -> None:
+    secret = os.environ.get("NTS_GEMINI_WORKER_SECRET", "")
+    CONFIG.update(
+        {
+            "host": HOST,
+            "port": PORT,
+            "api_keys": [secret] if secret else [],
+            "log_requests": True,
+            "temporary_chats": True,
+            "default_model": "gemini-3.6-flash",
+        }
+    )
+    new_bl = fetch_latest_bl()
+    if new_bl:
+        CONFIG["gemini_bl"] = new_bl
 
 
-@app.get("/health")
-async def health(_: None = Depends(require_shared_secret)) -> dict[str, Any]:
-    return {
-        "ok": True,
-        "accounts": sessions.list_account_ids(),
-        "uptime_sec": sessions.uptime_sec(),
-    }
+class NovelTransHandler(GeminiHandler):
+    def _nts_secret_ok(self) -> bool:
+        expected = os.environ.get("NTS_GEMINI_WORKER_SECRET", "")
+        if not expected:
+            return False
+        if self.headers.get("X-NTS-Secret", "") == expected:
+            return True
+        auth = self.headers.get("Authorization", "")
+        return auth == f"Bearer {expected}"
 
+    def _reject_localhost(self) -> bool:
+        client = self.client_address[0] if self.client_address else ""
+        return client not in ("127.0.0.1", "::1", "localhost", "testclient")
 
-@app.post("/gemini/session/init")
-async def session_init(
-    body: SessionInitRequest,
-    _: None = Depends(require_shared_secret),
-) -> dict[str, Any]:
-    try:
-        await sessions.init_account(
-            account_id=body.account_id,
-            session_dir=body.session_dir,
-            secure_1psid=body.secure_1psid,
-            secure_1psidts=body.secure_1psidts or "",
-        )
-        return {"status": "SUCCESS", "account_id": body.account_id}
-    except Exception as exc:  # noqa: BLE001
-        status, message = map_exception(exc)
-        logger.warning("session init failed account=%s status=%s", body.account_id, status)
-        return {"status": status, "account_id": body.account_id, "error": message}
-
-
-@app.post("/gemini/chat")
-async def chat(body: ChatRequest, _: None = Depends(require_shared_secret)) -> dict[str, Any]:
-    cancel = asyncio.Event()
-    _cancel_flags[body.request_id] = cancel
-    started = time.monotonic()
-    try:
-        if cancel.is_set():
-            return {
-                "request_id": body.request_id,
-                "status": "ERROR",
-                "text": "",
-                "usage": None,
-                "error": "Cancelled",
-            }
-
-        text = await sessions.generate(
-            account_id=body.account_id,
-            prompt=body.prompt,
-            model=body.model,
-            files=body.attachments,
-        )
-        elapsed_ms = int((time.monotonic() - started) * 1000)
-        if is_gemini_soft_error_text(text):
-            logger.warning(
-                "chat soft-error account=%s request_id=%s elapsed_ms=%s",
-                body.account_id,
-                body.request_id,
-                elapsed_ms,
+    def do_GET(self) -> None:
+        if self._reject_localhost():
+            self.send_json({"detail": "Localhost only"}, 403)
+            return
+        if self.path == "/health":
+            if not self._nts_secret_ok():
+                self.send_json({"detail": "Unauthorized"}, 401)
+                return
+            self.send_json(
+                {
+                    "ok": True,
+                    "accounts": sessions.list_account_ids(),
+                    "uptime_sec": sessions.uptime_sec(),
+                    "engine": "gemini-web2api",
+                    "version": g2a.__version__,
+                }
             )
-            return {
-                "request_id": body.request_id,
-                "status": "SERVICE_UNAVAILABLE",
-                "text": "",
-                "usage": None,
-                "error": (text or "").strip()[:240],
-            }
-        logger.info(
-            "chat ok account=%s request_id=%s elapsed_ms=%s",
-            body.account_id,
-            body.request_id,
-            elapsed_ms,
-        )
-        return {
-            "request_id": body.request_id,
-            "status": "SUCCESS",
-            "text": text or "",
-            "usage": None,
-            "error": None,
-        }
-    except Exception as exc:  # noqa: BLE001
-        status, message = map_exception(exc)
-        logger.warning(
-            "chat failed account=%s request_id=%s status=%s",
-            body.account_id,
-            body.request_id,
-            status,
-        )
-        return {
-            "request_id": body.request_id,
-            "status": status,
-            "text": "",
-            "usage": None,
-            "error": message,
-        }
-    finally:
-        _cancel_flags.pop(body.request_id, None)
+            return
+        if self.path.startswith("/gemini/models"):
+            if not self._nts_secret_ok():
+                self.send_json({"detail": "Unauthorized"}, 401)
+                return
+            query = parse_qs(urlparse(self.path).query)
+            account_id = (query.get("account_id") or [""])[0]
+            try:
+                models = sessions.list_models(account_id)
+                self.send_json({"status": "SUCCESS", "models": models})
+            except Exception as exc:  # noqa: BLE001
+                status, message = map_exception(exc)
+                self.send_json({"status": status, "models": [], "error": message})
+            return
+        super().do_GET()
 
+    def do_POST(self) -> None:
+        if self._reject_localhost():
+            self.send_json({"detail": "Localhost only"}, 403)
+            return
+        if self.path == "/gemini/session/init":
+            if not self._nts_secret_ok():
+                self.send_json({"detail": "Unauthorized"}, 401)
+                return
+            body = json.loads(self._read_request_body() or b"{}")
+            try:
+                sessions.init_account(
+                    account_id=body["account_id"],
+                    session_dir=body["session_dir"],
+                    secure_1psid=body["secure_1psid"],
+                    secure_1psidts=body.get("secure_1psidts") or "",
+                )
+                self.send_json({"status": "SUCCESS", "account_id": body["account_id"]})
+            except Exception as exc:  # noqa: BLE001
+                status, message = map_exception(exc)
+                logger.warning(
+                    "session init failed account=%s status=%s",
+                    body.get("account_id"),
+                    status,
+                )
+                self.send_json(
+                    {
+                        "status": status,
+                        "account_id": body.get("account_id"),
+                        "error": message,
+                    }
+                )
+            return
 
-@app.post("/gemini/cancel")
-async def cancel(body: CancelRequest, _: None = Depends(require_shared_secret)) -> dict[str, Any]:
-    flag = _cancel_flags.get(body.request_id)
-    if flag:
-        flag.set()
-    return {"status": "SUCCESS", "request_id": body.request_id}
+        if self.path == "/gemini/chat":
+            if not self._nts_secret_ok():
+                self.send_json({"detail": "Unauthorized"}, 401)
+                return
+            body = json.loads(self._read_request_body() or b"{}")
+            request_id = body.get("request_id", "")
+            account_id = body.get("account_id", "")
+            started = time.monotonic()
+            try:
+                text = sessions.generate(
+                    account_id=account_id,
+                    prompt=body["prompt"],
+                    model=body.get("model"),
+                    files=body.get("attachments"),
+                )
+                elapsed_ms = int((time.monotonic() - started) * 1000)
+                if is_gemini_soft_error_text(text):
+                    logger.warning(
+                        "chat soft-error account=%s request_id=%s elapsed_ms=%s",
+                        account_id,
+                        request_id,
+                        elapsed_ms,
+                    )
+                    self.send_json(
+                        {
+                            "request_id": request_id,
+                            "status": "SERVICE_UNAVAILABLE",
+                            "text": "",
+                            "usage": None,
+                            "error": (text or "").strip()[:240],
+                        }
+                    )
+                    return
+                logger.info(
+                    "chat ok account=%s request_id=%s elapsed_ms=%s",
+                    account_id,
+                    request_id,
+                    elapsed_ms,
+                )
+                self.send_json(
+                    {
+                        "request_id": request_id,
+                        "status": "SUCCESS",
+                        "text": text or "",
+                        "usage": None,
+                        "error": None,
+                    }
+                )
+            except Exception as exc:  # noqa: BLE001
+                status, message = map_exception(exc)
+                logger.warning(
+                    "chat failed account=%s request_id=%s status=%s",
+                    account_id,
+                    request_id,
+                    status,
+                )
+                self.send_json(
+                    {
+                        "request_id": request_id,
+                        "status": status,
+                        "text": "",
+                        "usage": None,
+                        "error": message,
+                    }
+                )
+            return
 
+        if self.path == "/gemini/cancel":
+            if not self._nts_secret_ok():
+                self.send_json({"detail": "Unauthorized"}, 401)
+                return
+            body = json.loads(self._read_request_body() or b"{}")
+            self.send_json({"status": "SUCCESS", "request_id": body.get("request_id", "")})
+            return
 
-@app.get("/gemini/models")
-async def list_models(
-    account_id: str,
-    _: None = Depends(require_shared_secret),
-) -> dict[str, Any]:
-    try:
-        models = await sessions.list_models(account_id)
-        return {"status": "SUCCESS", "models": models}
-    except Exception as exc:  # noqa: BLE001
-        status, message = map_exception(exc)
-        return {"status": status, "models": [], "error": message}
+        super().do_POST()
 
 
 def main() -> None:
-    import uvicorn
-
     if HOST not in ("127.0.0.1", "localhost", "::1"):
         raise SystemExit("Refusing to bind non-localhost host")
-    logger.info("Starting Gemini Web API worker on %s:%s", HOST, PORT)
-    uvicorn.run(app, host=HOST, port=PORT, log_level="info")
+    configure_from_env()
+
+    class ThreadedServer(ThreadingMixIn, HTTPServer):
+        daemon_threads = True
+        allow_reuse_address = True
+
+    server = ThreadedServer((HOST, PORT), NovelTransHandler)
+    logger.info(
+        "Starting gemini-web2api worker on %s:%s (v%s)",
+        HOST,
+        PORT,
+        g2a.__version__,
+    )
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        logger.info("Stopped.")
+        server.shutdown()
 
 
 if __name__ == "__main__":

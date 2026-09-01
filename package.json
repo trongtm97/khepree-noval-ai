@@ -8,7 +8,9 @@
   "protocols": [
     {
       "name": "Khepree Novel AI",
-      "schemes": ["khepree-novel-ai"]
+      "schemes": [
+        "khepreenovelai"
+      ]
     }
   ],
   "scripts": {
@@ -35,6 +37,7 @@
     "test:google-smoke": "node scripts/run-google-smoke.mjs",
     "test:notebook-grounding-smoke": "node scripts/run-notebook-grounding-smoke.mjs",
     "test:watch": "vitest",
+    "check:khepree-signing": "node scripts/check-khepree-signing.mjs",
     "release:check": "npm run lint && npm run typecheck && npm run test && npm run test:integration",
     "pretest": "npm rebuild better-sqlite3",
     "posttest": "npx @electron/rebuild -f -w better-sqlite3",
@@ -77,6 +80,7 @@
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
+    "@khepree/sdk": "file:../KHEPREE/packages/sdk",
     "@tanstack/react-virtual": "^3.14.10",
     "better-sqlite3": "^11.7.0",
     "chokidar": "^4.0.3",

@@ -76,7 +76,7 @@ Do **not** mark browser providers production-ready without **REAL TEST PASSED** 
 ### AI Provider Manager + Gemini Web API (2026-08-24)
 - [x] Migration **016** — `ai_providers`, `ai_accounts`, `ai_models`
 - [x] `IAIProvider` + `AiProviderManager` + Playwright adapter
-- [x] Python `workers/gemini_webapi_worker` (FastAPI localhost)
+- [x] Python `workers/gemini_webapi_worker` (gemini-web2api localhost)
 - [x] Wire production `sendInitial` / `sendRepair` through manager
 - [x] Settings → Nhà cung cấp AI; help `ai-providers`
 - [x] `docs/AI_PROVIDER.md`, `docs/GEMINI_WEB_API_PROVIDER.md`
@@ -176,7 +176,14 @@ Do **not** mark browser providers production-ready without **REAL TEST PASSED** 
 - [x] Commercial licensing documented as NOT IMPLEMENTED
 - [x] Release blockers explicit in PROJECT_STATE + RELEASE_CHECKLIST
 
-### Khepree Commercial Integration (N01–N09, 2026-08-31) — **IMPLEMENTATION COMPLETE**
+### Khepree Commercial Integration (N01–N09, 2026-08-31) — **PRODUCTION ALIGNMENT**
+
+- [x] Product Studio identity: `khepree.novel-ai.desktop`, `khepreenovelai://`, `novel_ai.access`
+- [x] `@khepree/sdk` types + desktop error code mapping
+- [x] `GET /api/v1/desktop/plans` catalog (KHEPREE API) + in-app Plan UI + account product hub fallback
+- [x] `docs/DESKTOP-INTEGRATION.md`, `npm run check:khepree-signing`
+
+**NOT RUN:** Live production cross-system manual matrix; production signing key pin at build.
 
 - [x] **N01** — Product rebrand, protocol handler, i18n VI/EN first-run
 - [x] **N02** — Device identity + safeStorage credentials

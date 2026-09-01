@@ -7,7 +7,7 @@ import { openKhepreeExternal } from '../khepree-external';
 import { formatKhepreeEntitlement, formatKhepreeRenewalLine } from '../khepree-display';
 import { KhepreePlanCatalog } from '../KhepreePlanCatalog';
 import { KhepreeCheckoutWaiting } from '../KhepreeCheckoutWaiting';
-import { KHEPREE_PRODUCT_ID } from '@shared/constants/khepree';
+import { KHEPREE_PRODUCT_CODE } from '@shared/constants/khepree';
 
 export function KhepreePlanPage() {
   const t = useT();
@@ -50,7 +50,7 @@ export function KhepreePlanPage() {
         />
       ) : (
         <>
-          <p className="setup-wizard__hint">{t('khepree.plans.productInfo', { id: KHEPREE_PRODUCT_ID })}</p>
+          <p className="setup-wizard__hint">{t('khepree.plans.productInfo', { id: KHEPREE_PRODUCT_CODE })}</p>
           <dl className="khepree-dl">
             <div>
               <dt>{t('khepree.plan.current')}</dt>
@@ -83,6 +83,9 @@ export function KhepreePlanPage() {
         </>
       )}
       <div className="khepree-gate__actions">
+        <Button type="button" variant="secondary" onClick={() => openKhepreeExternal('productHub')}>
+          {t('khepree.plan.viewProductHub')}
+        </Button>
         <Button type="button" variant="secondary" onClick={() => openKhepreeExternal('plans')}>
           {t('khepree.plan.viewPlans')}
         </Button>

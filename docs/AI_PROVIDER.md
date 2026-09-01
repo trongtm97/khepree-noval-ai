@@ -1,6 +1,6 @@
 # AI Provider Architecture
 
-NovelTrans routes all model calls through **AI Provider Manager**. Translation Engine / job repair loop never import Playwright or `gemini_webapi` directly.
+NovelTrans routes all model calls through **AI Provider Manager**. Translation Engine / job repair loop never import Playwright or the Gemini Web API worker directly.
 
 ## Routing stack
 

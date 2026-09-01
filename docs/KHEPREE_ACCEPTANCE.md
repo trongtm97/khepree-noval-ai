@@ -51,8 +51,10 @@ Supporting unit suites: `tests/unit/khepree/*`, `tests/unit/i18n/ui-language-ser
 | OAuth authorize | `https://account.khepree.com/desktop/authorize` |
 | Billing / plans | `https://account.khepree.com/billing` |
 | Devices | `https://account.khepree.com/devices` |
-| Desktop OAuth client | `khepree-novel-ai-desktop` |
-| Redirect URI | `khepree-novel-ai://auth/callback` |
+| Desktop OAuth client | `khepree.novel-ai.desktop` |
+| Redirect URI | `khepreenovelai://auth/callback` |
+| Access feature | `novel_ai.access` |
+| Product code | `KHEPREE_NOVEL_AI` |
 
 Packaged builds always use these URLs. Dev mock (`KHEPREE_DEV_MOCK=1`) bypasses HTTP for CI only.
 

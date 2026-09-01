@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import type { KhepreeAccessState } from '@shared/schemas/khepree';
 import type { KhepreeLoginPhase } from '@shared/constants/khepree';
-import { KHEPREE_PRODUCT_ID } from '@shared/constants/khepree';
+import { KHEPREE_PRODUCT_CODE } from '@shared/constants/khepree';
 import { useT } from '../../i18n';
 import { AppBrand } from '../../components/shell/AppBrand';
 import { Button } from '../../components/ui';
@@ -198,7 +198,7 @@ function EntitlementGate({
 
   return (
     <GateLayout title={t(titleKey)} subtitle={t(subtitleKey)} wide>
-      <p className="setup-wizard__hint">{t('khepree.plans.productInfo', { id: KHEPREE_PRODUCT_ID })}</p>
+      <p className="setup-wizard__hint">{t('khepree.plans.productInfo', { id: KHEPREE_PRODUCT_CODE })}</p>
       {loading ? <p className="setup-wizard__hint">{t('khepree.plans.loading')}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
       {!loading && !error && signedIn ? (

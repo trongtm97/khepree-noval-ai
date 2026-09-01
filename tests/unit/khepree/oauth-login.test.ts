@@ -8,7 +8,8 @@ import { SecretStorageService } from '@main/security/secret-storage-service';
 import type { SafeStorageBackend } from '@main/security/safe-storage-backend';
 import { KhepreeAccessService } from '@main/khepree/khepree-access-service';
 import { resetMockKhepreeApiStateForTests } from '@main/khepree/khepree-api-client';
-import { KHEPREE_OAUTH_REDIRECT_URI, KHEPREE_SECRET_KEYS } from '@shared/constants/khepree';
+import { KHEPREE_OAUTH_REDIRECT_URI, KHEPREE_PRODUCT_SLUG, KHEPREE_SECRET_KEYS } from '@shared/constants/khepree';
+import { getKhepreeOAuthClientId } from '@main/khepree/config';
 
 process.env.KHEPREE_DEV_MOCK = '1';
 
@@ -152,7 +153,7 @@ describe('KhepreeAccessService OAuth login', () => {
       redirectUri: KHEPREE_OAUTH_REDIRECT_URI,
       installationId: identity.installationId,
       devicePublicKey: identity.publicKeySpki,
-      productId: 'novel-ai',
+      productId: KHEPREE_PRODUCT_SLUG,
     });
 
     await expect(
@@ -160,7 +161,7 @@ describe('KhepreeAccessService OAuth login', () => {
         code: 'mock-code-bad',
         state: 'state-pkce',
         codeVerifier: 'wrong-verifier-012345678901234567890123456789012345678901',
-        clientId: 'khepree-novel-ai-desktop',
+        clientId: getKhepreeOAuthClientId(),
         redirectUri: KHEPREE_OAUTH_REDIRECT_URI,
         installationId: identity.installationId,
         devicePublicKey: identity.publicKeySpki,

@@ -2,7 +2,7 @@ import { app } from 'electron';
 import {
   KHEPREE_DEFAULT_HEARTBEAT_MS,
   KHEPREE_DESKTOP_PROOF_PATHS,
-  KHEPREE_FEATURES,
+  KHEPREE_ACCESS_FEATURE,
   KHEPREE_OAUTH_REDIRECT_URI,
   type KhepreeAccessStatus,
   type KhepreeCheckoutPhase,
@@ -190,7 +190,7 @@ export class KhepreeAccessService {
   private canStartTranslation(): boolean {
     return (
       this.canUseWorkspace() &&
-      this.features[KHEPREE_FEATURES.translation] === true &&
+      this.features[KHEPREE_ACCESS_FEATURE] === true &&
       this.entitlement === 'active'
     );
   }
@@ -537,6 +537,16 @@ export class KhepreeAccessService {
       const pkce = generatePkcePair();
       oauthState = buildPendingOAuthState();
       this.oauthTransaction.beginTransaction(oauthState, pkce.codeVerifier);
+
+      await this.api.startDeviceAuth({
+        state: oauthState,
+        codeChallenge: pkce.codeChallenge,
+        codeChallengeMethod: 'S256',
+        redirectUri: KHEPREE_OAUTH_REDIRECT_URI,
+        installationId: identity.installationId,
+        devicePublicKey: identity.publicKeySpki,
+        productId: getKhepreeProductId(),
+      });
 
       const authUrl = buildKhepreeAuthorizeUrl({
         state: oauthState,
@@ -1115,7 +1125,7 @@ export class KhepreeAccessService {
     }
   }
 
-  assertProductAccess(feature: string = KHEPREE_FEATURES.translation): void {
+  assertProductAccess(feature: string = KHEPREE_ACCESS_FEATURE): void {
     if (!isKhepreeActive(this.status)) {
       throw new KhepreeProductAccessDeniedError(feature);
     }
@@ -1125,7 +1135,10 @@ export class KhepreeAccessService {
     if (!isLeaseCurrentlyValid(this.currentLease)) {
       throw new KhepreeProductAccessDeniedError(feature);
     }
-    if (!this.features[feature]) {
+    if (!this.features[KHEPREE_ACCESS_FEATURE]) {
+      throw new KhepreeProductAccessDeniedError(KHEPREE_ACCESS_FEATURE);
+    }
+    if (feature !== KHEPREE_ACCESS_FEATURE && !this.features[feature]) {
       throw new KhepreeProductAccessDeniedError(feature);
     }
   }

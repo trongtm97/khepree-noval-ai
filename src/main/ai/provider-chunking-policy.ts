@@ -10,6 +10,8 @@ import {
   isBrowserTransport,
   type ProviderCapabilities,
 } from './provider-capabilities';
+import type { ThroughputHistory } from '../jobs/auto-throughput-policy';
+import { resolveAutoChunkBudget } from '../jobs/auto-throughput-policy';
 
 export interface ChunkingPolicy {
   transport: ProviderCapabilities['transport'];
@@ -40,27 +42,13 @@ export function resolveTranslateBatchParagraphs(
 /** Char budget for batch sizer — adapts to provider capability + optional history shrink. */
 export function resolveProviderCharBudget(
   providerType: AiProviderType | string | null | undefined,
-  history?: {
-    avgOutputRatio: number;
-    recentIncompleteRate: number;
-    recentSuccessRate: number;
-  },
+  history?: ThroughputHistory,
 ): { maxSourceChars: number; maxParagraphs: number } {
-  const policy = resolveChunkingPolicy(providerType);
-  let maxSourceChars = policy.maxSourceChars;
-  const maxParagraphs = policy.maxParagraphs;
-
-  if (history) {
-    if (history.recentIncompleteRate >= 0.35) {
-      maxSourceChars = Math.floor(maxSourceChars * 0.65);
-    } else if (history.recentIncompleteRate >= 0.15) {
-      maxSourceChars = Math.floor(maxSourceChars * 0.8);
-    }
-    const ratioHeadroom = history.avgOutputRatio > 1.5 ? 0.85 : 1;
-    maxSourceChars = Math.floor(maxSourceChars / ratioHeadroom);
-  }
-
-  return { maxSourceChars, maxParagraphs };
+  const auto = resolveAutoChunkBudget(providerType, history);
+  return {
+    maxSourceChars: auto.maxSourceChars,
+    maxParagraphs: auto.maxParagraphs,
+  };
 }
 
 /** Legacy aliases for imports that still reference job.ts constant names. */

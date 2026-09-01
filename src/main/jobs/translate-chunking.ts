@@ -2,6 +2,8 @@ import {
   PLAYWRIGHT_MAX_SOURCE_CHARS_PER_CHUNK,
   PLAYWRIGHT_TRANSLATE_BATCH_PARAGRAPHS,
 } from '@shared/constants/job';
+import { resolveAutoChunkBudget } from '@main/jobs/auto-throughput-policy';
+import type { ThroughputHistory } from '@main/jobs/auto-throughput-policy';
 import { resolveChunkingPolicy } from '@main/ai/provider-chunking-policy';
 import type { TermDeltaItem } from '@shared/schemas/term-delta';
 import type { MemoryDeltaItem } from '@shared/schemas/memory-delta';
@@ -20,11 +22,40 @@ export function chunkParagraphBatch<T>(
   return chunks;
 }
 
-/** Web API stays small; browser transport uses larger paragraph batch from capabilities. */
+/** Web API: paragraph cap AND source char cap (same pattern as Playwright). */
+export function chunkParagraphBatchForWebApi<T extends { sourceText?: string }>(
+  items: T[],
+  maxParagraphs: number,
+  maxSourceChars: number,
+): T[][] {
+  if (items.length === 0) return [];
+  const chunks: T[][] = [];
+  let current: T[] = [];
+  let charSum = 0;
+
+  for (const item of items) {
+    const len = item.sourceText?.length ?? 0;
+    const overflow =
+      current.length > 0 &&
+      (current.length >= maxParagraphs || charSum + len > maxSourceChars);
+    if (overflow) {
+      chunks.push(current);
+      current = [];
+      charSum = 0;
+    }
+    current.push(item);
+    charSum += len;
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
+/** Capability + history aware paragraph batch size. */
 export function resolveTranslateBatchParagraphs(
   firstProviderType: string | null | undefined,
+  history?: ThroughputHistory,
 ): number {
-  return resolveChunkingPolicy(firstProviderType).maxParagraphs;
+  return resolveAutoChunkBudget(firstProviderType, history).maxParagraphs;
 }
 
 /** @deprecated Use isBrowserTransportType from provider-capabilities */

@@ -14,6 +14,7 @@ import {
   type ConcurrencyPolicy,
   type GlobalMaxWorkersMode,
 } from '@shared/constants/concurrency-policy';
+import { resolveAutoConcurrencyCaps } from './auto-throughput-policy';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
 import { recoverJobsGeminiAndProfilesOnStartup } from '../gemini/startup-recovery';
 import { pathsService } from '../services/paths-service';
@@ -318,7 +319,7 @@ export class AutomationScheduler {
 
   private resolvePolicy(): ConcurrencyPolicy {
     const loaded = loadConcurrencyPolicy(this.db);
-    return {
+    const merged: ConcurrencyPolicy = {
       ...DEFAULT_CONCURRENCY_POLICY,
       ...loaded,
       ...this.policyOverrides,
@@ -329,6 +330,19 @@ export class AutomationScheduler {
       },
       autoCap: this.policyOverrides.autoCap ?? loaded.autoCap,
     };
+
+    if (merged.globalMaxWorkers === GLOBAL_MAX_MODE_AUTO) {
+      const ready =
+        this.pool.listAvailable().length + this.countBusyWorkers();
+      const auto = resolveAutoConcurrencyCaps(ready);
+      return {
+        ...merged,
+        autoCap: auto.autoCap,
+        perProviderMax: auto.perProviderMax,
+      };
+    }
+
+    return merged;
   }
 
   private countBusyWorkers(): number {

@@ -25,6 +25,7 @@ import {
   historyFromProjectStats,
   type ChapterBatchInput,
 } from '../jobs/batch-sizer';
+import { resolveAutoMaxChaptersPerJob } from '../jobs/auto-throughput-policy';
 import type { JobAttemptRow, JobRow } from '../db/repositories/job-repository';
 import type { AutomationScheduler } from '../jobs/scheduler';
 import { healIdleWorkers } from '../jobs/heal-workers';
@@ -221,7 +222,9 @@ export class JobService {
     const providerType = this.db.aiProviders.listEnabledOrdered()[0]?.type ?? null;
     const stats = this.db.batchSize.getProjectStats(input.projectId);
     const history = historyFromProjectStats(stats);
-    const maxChaptersUser = input.maxChaptersPerJob ?? DEFAULT_MAX_CHAPTERS_PER_JOB;
+    const maxChaptersUser =
+      input.maxChaptersPerJob ??
+      resolveAutoMaxChaptersPerJob(providerType, history);
     const batchPlans = planChapterBatches(eligible, {
       maxChaptersUser,
       providerType,

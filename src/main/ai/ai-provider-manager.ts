@@ -32,13 +32,18 @@ import type { TranslationPackBuildResult } from '../services/translation-pack-se
 import { ResponseParser } from '../jobs/response-parser';
 import {
   buildMergedTranslationProtocol,
-  chunkParagraphBatch,
   chunkParagraphBatchForPlaywright,
+  chunkParagraphBatchForWebApi,
   mergeTermDeltas,
   mergeMemoryDeltas,
-  resolveTranslateBatchParagraphs,
   splitParagraphChunkInHalf,
 } from '../jobs/translate-chunking';
+import {
+  resolveAutoChunkBudget,
+  resolveInterChunkDelayMs,
+  pickWebApiModelForChunk,
+} from '../jobs/auto-throughput-policy';
+import { historyFromProjectStats } from '../jobs/batch-sizer';
 import type { TranslationLine } from '@shared/schemas/output-protocol';
 import type { TermDeltaItem } from '@shared/schemas/term-delta';
 import type { MemoryDeltaItem } from '@shared/schemas/memory-delta';
@@ -88,14 +93,10 @@ import {
   getProviderCapabilities,
   providerIdForType,
 } from './execution-target';
-import { resolveChunkingPolicy } from './provider-chunking-policy';
 import { shouldSplitChunkOnSoftError } from './provider-retry-policy';
 
 /** Retries when a chunk fails transiently or returns zero translation lines. */
 const CHUNK_SEND_RETRIES = 2;
-
-/** Pause between successful Web API chunks — reduces Gemini soft-error streaks. */
-const WEB_API_INTER_CHUNK_DELAY_MS = 2_500;
 
 const TRANSIENT_CHUNK_STATUSES = new Set([
   'NETWORK_ERROR',
@@ -631,15 +632,23 @@ export class AiProviderManager {
         'NO_READY_PROVIDER: Không có AI provider READY cho tài khoản/job này (preflight).',
       );
     }
-    const batchSize = resolveTranslateBatchParagraphs(ordered[0]?.providerType);
-    const chunkPolicy = resolveChunkingPolicy(ordered[0]?.providerType);
-    const chunks = chunkPolicy.useBrowserChunking
+    const firstProviderType = ordered.at(0)?.providerType;
+    const throughputHistory = historyFromProjectStats(
+      this.db.batchSize.getProjectStats(ctx.job.project_id),
+    );
+    const chunkBudget = resolveAutoChunkBudget(firstProviderType, throughputHistory);
+    const chunks = chunkBudget.useBrowserChunking
       ? chunkParagraphBatchForPlaywright(
           paragraphs,
-          chunkPolicy.maxParagraphs,
-          chunkPolicy.maxSourceChars,
+          chunkBudget.maxParagraphs,
+          chunkBudget.maxSourceChars,
         )
-      : chunkParagraphBatch(paragraphs, batchSize);
+      : chunkParagraphBatchForWebApi(
+          paragraphs,
+          chunkBudget.maxParagraphs,
+          chunkBudget.maxSourceChars,
+        );
+    const batchSize = chunkBudget.maxParagraphs;
     const totalParas = paragraphs.length;
     const chunkTotal = Math.max(1, chunks.length);
 
@@ -653,7 +662,6 @@ export class AiProviderManager {
       firstProvider: ordered[0]?.providerType ?? null,
     });
 
-    const firstProviderType = ordered.at(0)?.providerType;
     const packMode = this.resolvePackMode(ctx, firstProviderType);
 
     if (chunks.length <= 1) {
@@ -689,11 +697,20 @@ export class AiProviderManager {
         providerType: firstProviderType,
         diagnostics,
       });
+      const singleChunkChars = paragraphs.reduce(
+        (sum, p) => sum + p.sourceText.length,
+        0,
+      );
       const response = await this.sendWithFallback(pack, {
         projectId: ctx.job.project_id,
         executionTarget: ctx.executionTarget,
         jobId: ctx.job.id,
         packMode,
+        model: this.resolveChunkModel(
+          ordered[0]?.providerId,
+          firstProviderType,
+          singleChunkChars,
+        ),
         pinnedProviderId:
           (config as { pinnedProviderId?: string }).pinnedProviderId ?? null,
       });
@@ -838,12 +855,21 @@ export class AiProviderManager {
           providerType: lastProviderType,
         });
 
+        const chunkSourceChars = chunk.reduce(
+          (sum, p) => sum + (p.sourceText?.length ?? 0),
+          0,
+        );
         const response = await this.sendWithFallback(pack, {
           projectId: ctx.job.project_id,
           executionTarget: ctx.executionTarget,
           jobId: ctx.job.id,
           requestId: newId(),
           packMode,
+          model: this.resolveChunkModel(
+            ordered[0]?.providerId,
+            firstProviderType,
+            chunkSourceChars,
+          ),
           pinnedProviderId:
             (config as { pinnedProviderId?: string }).pinnedProviderId ?? null,
         });
@@ -967,12 +993,12 @@ export class AiProviderManager {
         providerType: lastProviderType,
       });
 
-      // Pace Web API between chunks to avoid "Sorry, something went wrong" streaks.
-      if (
-        queue.length > 0 &&
-        getProviderCapabilities(lastProviderType).transport === 'LOCAL_WORKER'
-      ) {
-        await sleepMs(WEB_API_INTER_CHUNK_DELAY_MS);
+      const interChunkDelay = resolveInterChunkDelayMs(
+        lastProviderType,
+        throughputHistory,
+      );
+      if (queue.length > 0 && interChunkDelay > 0) {
+        await sleepMs(interChunkDelay);
       }
     }
 
@@ -1025,6 +1051,20 @@ export class AiProviderManager {
         ? ctx.executionTarget.accountId
         : legacyGoogleAccountId(ctx.executionTarget) ?? ctx.executionTarget.accountId;
     return this.resolvePackModeForProject(ctx.job.project_id, accountId);
+  }
+
+  private resolveChunkModel(
+    providerId: string | undefined,
+    providerType: string | undefined,
+    sourceChars: number,
+  ): string | undefined {
+    if (getProviderCapabilities(providerType).transport !== 'LOCAL_WORKER') {
+      return undefined;
+    }
+    const configured =
+      this.db.aiModels.listEnabledByProvider(providerId ?? '').at(0)?.model_name ?? null;
+    const picked = pickWebApiModelForChunk(configured, sourceChars);
+    return picked ?? undefined;
   }
 
   private buildSendOptionsForProvider(

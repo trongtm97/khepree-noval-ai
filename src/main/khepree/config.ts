@@ -2,7 +2,7 @@ import { app } from 'electron';
 import {
   KHEPREE_ACCOUNT_AUTHORIZE_PATH,
   KHEPREE_EXTERNAL_URLS,
-  KHEPREE_PRODUCT_ID,
+  KHEPREE_PRODUCT_SLUG,
   KHEPREE_PRODUCTION,
 } from '@shared/constants/khepree';
 import { computeSigningKeyId } from './platform-lease';
@@ -15,8 +15,8 @@ export const KHEPREE_ENDPOINTS = {
   account: KHEPREE_PRODUCTION.account,
 } as const;
 
-/** Desktop OAuth client registered on Khepree platform. */
-export const KHEPREE_OAUTH_CLIENT_ID_DEFAULT = 'khepree-novel-ai-desktop' as const;
+/** Desktop OAuth client registered on Khepree platform (Product Studio). */
+export const KHEPREE_OAUTH_CLIENT_ID_DEFAULT = 'khepree.novel-ai.desktop' as const;
 
 /** Trusted Khepree Ed25519 public keys pinned at build time (keyId → SPKI base64). */
 export const KHEPREE_TRUSTED_SIGNING_KEYS: Readonly<Record<string, string>> = {
@@ -48,10 +48,10 @@ export function isKhepreeDevMockEnabled(): boolean {
 
 export function getKhepreeProductId(): string {
   if (app?.isPackaged) {
-    return KHEPREE_PRODUCT_ID;
+    return KHEPREE_PRODUCT_SLUG;
   }
   const override = process.env.KHEPREE_PRODUCT_ID?.trim();
-  return override && override.length > 0 ? override : KHEPREE_PRODUCT_ID;
+  return override && override.length > 0 ? override : KHEPREE_PRODUCT_SLUG;
 }
 
 export function getKhepreeOAuthClientId(): string {
@@ -79,6 +79,29 @@ export function buildKhepreeAuthorizeUrl(input: {
   url.searchParams.set('code_challenge', input.codeChallenge);
   url.searchParams.set('code_challenge_method', 'S256');
   return url.toString();
+}
+
+/** Returns true when a trusted signing key is available for packaged lease verification. */
+export function hasKhepreeTrustedSigningKey(): boolean {
+  if (Object.keys(KHEPREE_TRUSTED_SIGNING_KEYS).length > 0) {
+    return true;
+  }
+  const envPublicKey = process.env.KHEPREE_LICENSE_SIGNING_PUBLIC_KEY?.trim();
+  return Boolean(envPublicKey && envPublicKey.length > 0);
+}
+
+export function assertPackagedSigningKeyConfigured(): void {
+  if (!app?.isPackaged) {
+    return;
+  }
+  if (isKhepreeDevMockEnabled()) {
+    return;
+  }
+  if (!hasKhepreeTrustedSigningKey()) {
+    throw new Error(
+      'KHEPREE_LICENSE_SIGNING_PUBLIC_KEY or KHEPREE_TRUSTED_SIGNING_KEYS must be set for packaged builds.',
+    );
+  }
 }
 
 export function resolveTrustedSigningKey(keyId: string): string | null {

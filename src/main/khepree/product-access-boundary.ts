@@ -1,5 +1,5 @@
 import { app } from 'electron';
-import { KHEPREE_FEATURES } from '@shared/constants/khepree';
+import { KHEPREE_ACCESS_FEATURE } from '@shared/constants/khepree';
 import { KhepreeProductAccessDeniedError } from './errors';
 
 /** Injectable licensing boundary — fail-closed when enforcer unset in packaged builds. */
@@ -17,7 +17,7 @@ export function assertKhepreeProductAccess(feature?: string): void {
     return;
   }
   if (app?.isPackaged) {
-    throw new KhepreeProductAccessDeniedError(feature ?? KHEPREE_FEATURES.translation);
+    throw new KhepreeProductAccessDeniedError(feature ?? KHEPREE_ACCESS_FEATURE);
   }
 }
 

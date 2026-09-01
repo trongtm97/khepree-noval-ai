@@ -30,7 +30,7 @@ import {
 } from '@main/khepree/oauth-auth-transaction';
 import { KhepreeOAuthCallbackReplayError } from '@main/khepree/errors';
 import { KhepreeProductAccessDeniedError } from '@main/khepree/errors';
-import { KHEPREE_FEATURES, KHEPREE_OAUTH_REDIRECT_URI, KHEPREE_SECRET_KEYS } from '@shared/constants/khepree';
+import { KHEPREE_ACCESS_FEATURE, KHEPREE_FEATURES, KHEPREE_OAUTH_REDIRECT_URI, KHEPREE_SECRET_KEYS } from '@shared/constants/khepree';
 import { UI_LANGUAGE_META_KEYS } from '@shared/constants/ui-language';
 
 process.env.KHEPREE_DEV_MOCK = '1';
@@ -424,13 +424,14 @@ describe('Khepree cross-system acceptance (N09)', { timeout: 30_000 }, () => {
       await loginActive(service);
       expect(service.getPublicState().status).toBe('FREE');
 
-      await service.startCheckout('pro-90d');
+      await service.startCheckout('plan_month:price_month');
       await vi.advanceTimersByTimeAsync(10_000);
       await vi.runAllTimersAsync();
 
       const final = service.getPublicState();
       expect(final.status).toBe('ACTIVE');
       expect(final.checkoutPhase).toBe('idle');
+      expect(final.features[KHEPREE_ACCESS_FEATURE]).toBe(true);
       expect(final.features[KHEPREE_FEATURES.translation]).toBe(true);
       await service.shutdown();
     });
@@ -444,7 +445,7 @@ describe('Khepree cross-system acceptance (N09)', { timeout: 30_000 }, () => {
 
       const { service } = createService(tempRoot);
       await loginActive(service);
-      await service.startCheckout('pro-90d');
+      await service.startCheckout('plan_month:price_month');
       await service.checkCheckoutNow();
 
       const state = service.getPublicState();

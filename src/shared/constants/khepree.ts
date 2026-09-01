@@ -1,6 +1,16 @@
 /** Khepree commercial licensing — shared constants. */
 
-export const KHEPREE_PRODUCT_ID = 'novel-ai' as const;
+/** Stable internal product code (Product Studio metadata). */
+export const KHEPREE_PRODUCT_CODE = 'KHEPREE_NOVEL_AI' as const;
+
+/** Public catalog slug — used for lease productSlug binding and account URLs. */
+export const KHEPREE_PRODUCT_SLUG = 'khepree-novel-ai' as const;
+
+/** @deprecated Use KHEPREE_PRODUCT_SLUG */
+export const KHEPREE_PRODUCT_ID = KHEPREE_PRODUCT_SLUG;
+
+/** Primary entitlement feature — never branch on plan name strings. */
+export const KHEPREE_ACCESS_FEATURE = 'novel_ai.access' as const;
 
 /** Pinned production origins — match KHEPREE deploy (.env.production). */
 export const KHEPREE_PRODUCTION = {
@@ -23,6 +33,7 @@ export const KHEPREE_DESKTOP_API_PATHS = {
   me: '/desktop/me',
   heartbeat: '/desktop/heartbeat',
   checkout: '/desktop/checkout',
+  plans: '/desktop/plans',
 } as const;
 
 /** Full device-proof paths (include /api/v1 prefix). */
@@ -51,6 +62,7 @@ export const KHEPREE_EXTERNAL_URLS = {
   devices: `${KHEPREE_PRODUCTION.account}/devices`,
   plans: `${KHEPREE_PRODUCTION.account}/billing`,
   checkout: `${KHEPREE_PRODUCTION.account}/checkout`,
+  productHub: `${KHEPREE_PRODUCTION.account}/products/khepree-novel-ai`,
 } as const;
 
 export type KhepreeExternalLinkTarget = keyof typeof KHEPREE_EXTERNAL_URLS;
@@ -100,7 +112,7 @@ export const KHEPREE_RESUME_HEARTBEAT_DEBOUNCE_MS = 30 * 1000;
 export const KHEPREE_OAUTH_CALLBACK_PATH = '/oauth/callback';
 
 /** Custom protocol for browser OAuth return (URL-safe scheme — registered as "Khepree Novel AI"). */
-export const KHEPREE_AUTH_PROTOCOL_SCHEME = 'khepree-novel-ai' as const;
+export const KHEPREE_AUTH_PROTOCOL_SCHEME = 'khepreenovelai' as const;
 export const KHEPREE_OAUTH_CALLBACK_HOST = 'auth' as const;
 export const KHEPREE_OAUTH_CALLBACK_RELATIVE_PATH = '/callback' as const;
 export const KHEPREE_OAUTH_REDIRECT_URI =

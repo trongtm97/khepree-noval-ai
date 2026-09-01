@@ -1,6 +1,6 @@
 # Gemini Web API Provider
 
-Reverse-engineered web session bridge using [HanaokaYuzu/Gemini-API](https://github.com/HanaokaYuzu/Gemini-API) (`gemini_webapi`) behind a **localhost Python worker**.
+Reverse-engineered web session bridge using [Sophomoresty/gemini-web2api](https://github.com/Sophomoresty/gemini-web2api) behind a **localhost Python worker**.
 
 ## Architecture
 
@@ -8,8 +8,8 @@ Reverse-engineered web session bridge using [HanaokaYuzu/Gemini-API](https://git
 Electron Main
   → GeminiWebApiProvider
     → WorkerProcessManager (spawn venv python)
-      → workers/gemini_webapi_worker (FastAPI 127.0.0.1:18765)
-        → gemini_webapi.GeminiClient
+      → workers/gemini_webapi_worker (127.0.0.1:18765)
+        → gemini_web2api (OpenAI-compatible /v1 + NovelTrans /gemini/*)
 ```
 
 Electron never imports the Python package. Renderer never calls Gemini.
@@ -28,9 +28,11 @@ Bundled Python runtime is **not** in the installer yet (follow-up).
 1. **Thêm tài khoản** → creates `ai_accounts` row + `{userData}/data/gemini-webapi-profiles/{id}/`.
 2. Paste `__Secure-1PSID` (+ optional `__Secure-1PSIDTS`) from gemini.google.com DevTools.
 3. Main encrypts JSON payload with `SecretStorageService` (`gemini_web_session:{accountId}`).
-4. Worker `POST /gemini/session/init` receives plaintext **once in memory**, stores refresh cookies under `session_dir` (`GEMINI_COOKIE_PATH`).
+4. Worker `POST /gemini/session/init` writes `cookie.txt` under `session_dir`.
 
 Never store Google passwords. Never log cookies/tokens.
+
+Anonymous Flash access works without cookies (gemini-web2api); NovelTrans still uses per-account cookies for quota routing and Pro models.
 
 ## HTTP API (worker)
 
@@ -38,9 +40,10 @@ Never store Google passwords. Never log cookies/tokens.
 |--------|------|---------|
 | GET | `/health` | Liveness |
 | POST | `/gemini/session/init` | Bind cookies to account |
-| POST | `/gemini/chat` | `generate_content` |
+| POST | `/gemini/chat` | Generate (wraps gemini-web2api) |
 | POST | `/gemini/cancel` | Best-effort cancel |
 | GET | `/gemini/models` | List models for sync |
+| POST | `/v1/chat/completions` | OpenAI-compatible (same engine) |
 
 Auth: header `X-NTS-Secret` (random per worker process). Bind host forced to `127.0.0.1`.
 
@@ -48,13 +51,13 @@ Auth: header `X-NTS-Secret` (random per worker process). Bind host forced to `12
 
 `SUCCESS` · `ERROR` · `LOGIN_REQUIRED` · `SESSION_EXPIRED` · `RATE_LIMIT` · `TIMEOUT` · `NETWORK_ERROR` · `SERVICE_UNAVAILABLE` · `UNKNOWN`
 
+## Models
+
+Legacy DB ids `gemini-flash` / `gemini-pro` map to `gemini-3.6-flash` / `gemini-3.1-pro`. Sync from worker via `aiModels:sync` when session ready.
+
 ## Prompt compatibility
 
 Provider sends `TranslationPack.prompt` as-is. Response parser / QA / repair loop unchanged (`<TRANSLATION>`, `<TERM_DELTA>`, `<MEMORY_DELTA>`).
-
-## Models
-
-Catalog in `ai_models` (Flash / Pro seeded). Sync from worker via `aiModels:sync` when session ready. Do not hardcode model enums from the deprecated library `Model` enum.
 
 ## Streaming
 

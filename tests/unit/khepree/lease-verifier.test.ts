@@ -44,7 +44,7 @@ describe('lease-verifier', () => {
     const payload: KhepreeSignedLeasePayload = {
       installationId: '11111111-1111-4111-8111-111111111111',
       deviceId: 'dev-device',
-      productId: 'novel-ai',
+      productId: 'khepree-novel-ai',
       entitlementId: 'ent-test',
       features: { translation: true },
       iat: new Date().toISOString(),
@@ -61,7 +61,7 @@ describe('lease-verifier', () => {
     const payload: KhepreeSignedLeasePayload = {
       installationId: '11111111-1111-4111-8111-111111111111',
       deviceId: 'dev-device',
-      productId: 'novel-ai',
+      productId: 'khepree-novel-ai',
       entitlementId: 'ent-test',
       features: { translation: true },
       iat: new Date().toISOString(),
@@ -77,7 +77,7 @@ describe('lease-verifier', () => {
     const payload: KhepreeSignedLeasePayload = {
       installationId: '11111111-1111-4111-8111-111111111111',
       deviceId: 'dev-device',
-      productId: 'novel-ai',
+      productId: 'khepree-novel-ai',
       entitlementId: 'ent-test',
       features: { translation: true },
       iat: new Date().toISOString(),
@@ -90,7 +90,7 @@ describe('lease-verifier', () => {
         binding: {
           installationId: '22222222-2222-4222-8222-222222222222',
           deviceId: 'dev-device',
-          productId: 'novel-ai',
+          productId: 'khepree-novel-ai',
         },
       }),
     ).toThrow();

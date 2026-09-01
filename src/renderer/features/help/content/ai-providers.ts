@@ -38,7 +38,7 @@ export const aiProviderArticles: HelpArticle[] = [
         type: 'list',
         ordered: false,
         items: [
-          'Kết nối nền qua thư viện gemini_webapi (Python worker localhost).',
+          'Kết nối nền qua gemini-web2api (Python worker localhost, OpenAI-compatible).',
           'Thường nhanh hơn, ít phụ thuộc giao diện — phù hợp nhiều batch.',
           'Cần duy trì session cookie Google (__Secure-1PSID / PSIDTS).',
           'Có thể thay đổi khi Google cập nhật web API nội bộ.',

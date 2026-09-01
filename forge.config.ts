@@ -74,7 +74,7 @@ const config: ForgeConfig = {
     protocols: [
       {
         name: 'Khepree Novel AI',
-        schemes: ['khepree-novel-ai'],
+        schemes: ['khepreenovelai'],
       },
     ],
     // User data lives in %APPDATA%/KhepreeNovelAI — never under install dir.

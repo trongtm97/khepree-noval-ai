@@ -2642,6 +2642,7 @@ export const vi = {
       billingStatus: 'Thanh toán',
       upgrade: 'Nâng cấp',
       viewPlans: 'Xem các gói',
+      viewProductHub: 'Mở sản phẩm trên tài khoản Khepree',
     },
     planStatus: {
       active: 'Đang hoạt động',

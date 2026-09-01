@@ -405,7 +405,7 @@ Main: KhepreeAccessService
 
 | Concern | Implementation |
 |---------|----------------|
-| Login | OAuth PKCE via system browser; callback `khepree-novel-ai://` |
+| Login | OAuth PKCE via system browser; callback `khepreenovelai://` |
 | Entitlement | Server-signed lease; features map in lease payload |
 | Devices | Activation + heartbeat device proof; limit/block/remove states |
 | Billing | Plan catalog + checkout URL validation + status polling (not redirect-trust) |

@@ -28,15 +28,12 @@ describe('translate batch chunking', () => {
     expect(chunkParagraphBatch(paras)).toHaveLength(1);
   });
 
-  it('splits 48 paragraphs into 12-sized chunks (internal only)', () => {
+  it('splits 48 paragraphs into auto-sized chunks (internal only)', () => {
     const paras = Array.from({ length: 48 }, (_, i) => ({
       paragraphId: `[C000001:P${String(i + 1).padStart(6, '0')}]`,
     }));
     const chunks = chunkParagraphBatch(paras);
-    expect(chunks).toHaveLength(4);
-    expect(chunks.every((c) => c.length <= DEFAULT_TRANSLATE_BATCH_PARAGRAPHS)).toBe(
-      true,
-    );
+    expect(chunks.length).toBeGreaterThanOrEqual(3);
     expect(chunks.flat().map((p) => p.paragraphId)).toEqual(
       paras.map((p) => p.paragraphId),
     );
@@ -78,9 +75,9 @@ describe('translate batch chunking', () => {
     expect(composerFillLooksValid(1000, 900)).toBe(true);
   });
 
-  it('resolveTranslateBatchParagraphs: Web API stays 12, Playwright 120', () => {
-    expect(resolveTranslateBatchParagraphs('GEMINI_WEB_API')).toBe(12);
-    expect(resolveTranslateBatchParagraphs(null)).toBe(12);
+  it('resolveTranslateBatchParagraphs: Web API auto baseline, Playwright 120', () => {
+    expect(resolveTranslateBatchParagraphs('GEMINI_WEB_API')).toBeGreaterThanOrEqual(16);
+    expect(resolveTranslateBatchParagraphs(null)).toBeGreaterThanOrEqual(16);
     expect(resolveTranslateBatchParagraphs('PLAYWRIGHT_GEMINI')).toBe(120);
   });
 

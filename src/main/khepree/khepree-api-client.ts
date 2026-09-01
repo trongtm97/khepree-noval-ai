@@ -24,9 +24,10 @@ import {
   type PlatformSignedLease,
 } from './platform-lease';
 import {
+  KHEPREE_ACCESS_FEATURE,
   KHEPREE_DESKTOP_API_PATHS,
 } from '@shared/constants/khepree';
-import { KhepreeApiResponseInvalidError, KhepreeDeviceLimitError, KhepreeNetworkError, KhepreeAccessError } from './errors';
+import { KhepreeApiResponseInvalidError, KhepreeDeviceLimitError, KhepreeNetworkError, KhepreeAccessError, mapDesktopApiErrorCode } from './errors';
 
 export type { KhepreeAuthTokenResult, KhepreeColdStartResult };
 
@@ -196,37 +197,37 @@ export const mockKhepreeCheckoutState = {
 function buildMockPlanCatalog(): KhepreePlanCatalogResponse {
   const hasEntitlement = process.env.KHEPREE_MOCK_NO_ENTITLEMENT !== '1';
   return {
-    currentPlanId: hasEntitlement ? 'pro-90d' : null,
+    currentPlanId: hasEntitlement ? 'plan_year:price_year' : null,
     plans: [
       {
-        planId: 'starter-90d',
-        planName: 'Starter',
+        planId: 'plan_trial:price_trial',
+        planName: 'Free Trial',
+        price: 0,
+        currency: 'VND',
+        accessTerm: '24 hours',
+        featureSummary: ['Full access'],
+        isCurrent: false,
+        isUpgradeAvailable: true,
+      },
+      {
+        planId: 'plan_month:price_month',
+        planName: '1 Tháng',
         price: 99_000,
         currency: 'VND',
-        accessTerm: '90 days',
-        featureSummary: ['Translation', 'Export'],
+        accessTerm: '30 days',
+        featureSummary: ['Full access'],
         isCurrent: false,
         isUpgradeAvailable: true,
       },
       {
-        planId: 'pro-90d',
-        planName: 'Pro',
-        price: 199_000,
-        currency: 'VND',
-        accessTerm: '90 days',
-        featureSummary: ['Translation', 'Export', 'Multi-provider', 'Learning'],
-        isCurrent: hasEntitlement,
-        isUpgradeAvailable: !hasEntitlement,
-      },
-      {
-        planId: 'pro-365d',
-        planName: 'Pro Annual',
-        price: 699_000,
+        planId: 'plan_year:price_year',
+        planName: '1 Năm',
+        price: 900_000,
         currency: 'VND',
         accessTerm: '365 days',
-        featureSummary: ['Translation', 'Export', 'Multi-provider', 'Learning'],
-        isCurrent: false,
-        isUpgradeAvailable: true,
+        featureSummary: ['Full access'],
+        isCurrent: hasEntitlement,
+        isUpgradeAvailable: !hasEntitlement,
       },
     ],
   };
@@ -353,6 +354,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     const features: Record<string, boolean> =
       entitlement === 'active'
         ? {
+            [KHEPREE_ACCESS_FEATURE]: true,
             translation: true,
             export: true,
             multi_provider: true,
@@ -362,7 +364,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     const payload: KhepreeSignedLeasePayload = {
       installationId,
       deviceId,
-      productId: process.env.KHEPREE_MOCK_WRONG_PRODUCT === '1' ? 'wrong-product' : 'novel-ai',
+      productId: process.env.KHEPREE_MOCK_WRONG_PRODUCT === '1' ? 'wrong-product' : getKhepreeProductId(),
       entitlementId: `ent-${user.id}`,
       features,
       iat: new Date(now).toISOString(),
@@ -577,13 +579,14 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
   }
 
   private mapAccessError(code: string, message: string, details?: Record<string, unknown>): never {
-    if (code === 'DEVICE_LIMIT_REACHED' || code === 'DEVICE_LIMIT') {
+    const mappedCode = mapDesktopApiErrorCode(code);
+    if (mappedCode === 'DEVICE_LIMIT_REACHED' || mappedCode === 'DEVICE_LIMIT') {
       throw new KhepreeDeviceLimitError(
         Number(details?.devicesUsed ?? details?.slotsUsed ?? 0),
         Number(details?.devicesMax ?? details?.slotsMax ?? 0),
       );
     }
-    throw new KhepreeAccessError(code, message);
+    throw new KhepreeAccessError(mappedCode, message);
   }
 
   private async requestRaw(
@@ -940,22 +943,39 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     productId: string;
   }): Promise<KhepreePlanCatalogResponse> {
     void input.productId;
-    return this.getDesktopMe(input.accessToken).then((me) => ({
-      currentPlanId: me.plan?.planPublicId ?? me.plan?.planSlug ?? null,
-      plans: me.plan
-        ? [
-            {
-              planId: me.plan.planPublicId ?? me.plan.planSlug ?? 'current',
-              planName: me.plan.name,
-              price: 0,
-              currency: 'VND',
-              accessTerm: 'See Khepree account',
-              featureSummary: [],
-              isCurrent: true,
-              isUpgradeAvailable: false,
-            },
-          ]
-        : [],
+    const clientId = encodeURIComponent(getKhepreeOAuthClientId());
+    return this.requestData(
+      `${KHEPREE_DESKTOP_API_PATHS.plans}?clientId=${clientId}`,
+      { method: 'GET', accessToken: input.accessToken },
+      z.object({
+        currentPlanId: z.string().nullable(),
+        plans: z.array(
+          z.object({
+            planPublicId: z.string(),
+            pricePublicId: z.string(),
+            planSlug: z.string().nullable(),
+            name: z.string(),
+            priceAmount: z.number(),
+            currency: z.string(),
+            accessTermLabel: z.string(),
+            isCurrent: z.boolean(),
+            isUpgradeAvailable: z.boolean(),
+          }),
+        ),
+      }),
+      'desktop/plans',
+    ).then((data) => ({
+      currentPlanId: data.currentPlanId,
+      plans: data.plans.map((plan) => ({
+        planId: `${plan.planPublicId}:${plan.pricePublicId}`,
+        planName: plan.name,
+        price: plan.priceAmount,
+        currency: plan.currency,
+        accessTerm: plan.accessTermLabel,
+        featureSummary: [],
+        isCurrent: plan.isCurrent,
+        isUpgradeAvailable: plan.isUpgradeAvailable,
+      })),
     }));
   }
 

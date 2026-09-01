@@ -2636,6 +2636,7 @@ export const en: LocaleMessages = {
       billingStatus: 'Billing',
       upgrade: 'Upgrade',
       viewPlans: 'View Plans',
+      viewProductHub: 'Open product on Khepree account',
     },
     planStatus: {
       active: 'Active',

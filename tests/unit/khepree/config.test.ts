@@ -5,7 +5,8 @@ import {
   getKhepreeApiBaseUrl,
   getKhepreeProductId,
 } from '@main/khepree/config';
-import { KHEPREE_EXTERNAL_URLS, KHEPREE_PRODUCT_ID, KHEPREE_PRODUCTION } from '@shared/constants/khepree';
+import { KHEPREE_EXTERNAL_URLS, KHEPREE_OAUTH_REDIRECT_URI, KHEPREE_PRODUCT_SLUG, KHEPREE_PRODUCTION } from '@shared/constants/khepree';
+import { getKhepreeOAuthClientId } from '@main/khepree/config';
 
 vi.mock('electron', () => ({
   app: {
@@ -37,13 +38,13 @@ describe('Khepree config', () => {
     const url = buildKhepreeAuthorizeUrl({
       state: 'state-1',
       codeChallenge: 'challenge',
-      redirectUri: 'khepree-novel-ai://auth/callback',
-      clientId: 'khepree-novel-ai-desktop',
+      redirectUri: KHEPREE_OAUTH_REDIRECT_URI,
+      clientId: getKhepreeOAuthClientId(),
       installationId: 'inst-1',
-      productId: 'novel-ai',
+      productId: KHEPREE_PRODUCT_SLUG,
     });
     expect(url).toBe(
-      'https://account.khepree.com/desktop/authorize?client_id=khepree-novel-ai-desktop&redirect_uri=khepree-novel-ai%3A%2F%2Fauth%2Fcallback&state=state-1&code_challenge=challenge&code_challenge_method=S256',
+      'https://account.khepree.com/desktop/authorize?client_id=khepree.novel-ai.desktop&redirect_uri=khepreenovelai%3A%2F%2Fauth%2Fcallback&state=state-1&code_challenge=challenge&code_challenge_method=S256',
     );
   });
 
@@ -52,9 +53,9 @@ describe('Khepree config', () => {
     expect(getKhepreeApiBaseUrl()).toBe('http://localhost:3004/api/v1');
   });
 
-  it('defaults product id to novel-ai in dev', () => {
+  it('defaults product slug in dev', () => {
     delete process.env.KHEPREE_PRODUCT_ID;
-    expect(getKhepreeProductId()).toBe(KHEPREE_PRODUCT_ID);
+    expect(getKhepreeProductId()).toBe(KHEPREE_PRODUCT_SLUG);
   });
 });
 
