@@ -44,11 +44,11 @@ export function useSystemStatusPoll(intervalMs = 4000): SystemStatus {
     const tick = async () => {
       try {
         const [workersRes, scheduler, accountsRes, jobsRes, projectsRes] = await Promise.all([
-          window.novelTrans.jobs.workers(),
-          window.novelTrans.jobs.schedulerStatus(),
-          window.novelTrans.accounts.list(),
-          window.novelTrans.jobs.list(undefined),
-          window.novelTrans.projects.list(),
+          window.khepreeNovelAI.jobs.workers(),
+          window.khepreeNovelAI.jobs.schedulerStatus(),
+          window.khepreeNovelAI.accounts.list(),
+          window.khepreeNovelAI.jobs.list(undefined),
+          window.khepreeNovelAI.projects.list(),
         ]);
 
         if (cancelledRef.current) return;

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { APP_PATH_KEYS } from '../constants/paths';
+import { OFFICIAL_CONTACT_CHANNEL_IDS } from '../constants/official-contacts';
 
 export const PingResponseSchema = z.object({
   ok: z.literal(true),
@@ -42,6 +43,14 @@ export const OpenFolderResponseSchema = z.object({
   path: z.string(),
 });
 
+export const OpenOfficialContactRequestSchema = z.object({
+  channel: z.enum(OFFICIAL_CONTACT_CHANNEL_IDS),
+});
+
+export const OpenOfficialContactResponseSchema = z.object({
+  ok: z.boolean(),
+});
+
 export const OpenGuideRequestSchema = z.object({
   guideId: z.enum(['drive-oauth-setup']),
 });
@@ -65,6 +74,8 @@ export type AppPaths = z.infer<typeof AppPathsSchema>;
 export type GetPathsResponse = z.infer<typeof GetPathsResponseSchema>;
 export type OpenFolderRequest = z.infer<typeof OpenFolderRequestSchema>;
 export type OpenFolderResponse = z.infer<typeof OpenFolderResponseSchema>;
+export type OpenOfficialContactRequest = z.infer<typeof OpenOfficialContactRequestSchema>;
+export type OpenOfficialContactResponse = z.infer<typeof OpenOfficialContactResponseSchema>;
 export type OpenGuideRequest = z.infer<typeof OpenGuideRequestSchema>;
 export type OpenGuideResponse = z.infer<typeof OpenGuideResponseSchema>;
 export type SecurityHealthCheckResponse = z.infer<

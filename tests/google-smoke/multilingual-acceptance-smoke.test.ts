@@ -1,6 +1,6 @@
 /**
  * Multilingual acceptance smoke — synthetic offline validation.
- * Opt-in live Gemini: NOVELTRANS_MULTILINGUAL_SMOKE=1 (see docs/MULTILINGUAL_PROMPT_ACCEPTANCE.md).
+ * Opt-in live Gemini: KHEPREE_NOVEL_AI_MULTILINGUAL_SMOKE=1 (see docs/MULTILINGUAL_PROMPT_ACCEPTANCE.md).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -146,10 +146,10 @@ describe('multilingual acceptance smoke (synthetic)', () => {
 });
 
 describe('multilingual live smoke gate', () => {
-  const live = process.env.NOVELTRANS_MULTILINGUAL_SMOKE?.trim().toLowerCase();
+  const live = process.env.KHEPREE_NOVEL_AI_MULTILINGUAL_SMOKE?.trim().toLowerCase();
   const enabled = live === '1' || live === 'true' || live === 'yes';
 
-  it.skipIf(!enabled)('live Gemini smoke requires NOVELTRANS_MULTILINGUAL_SMOKE=1', () => {
+  it.skipIf(!enabled)('live Gemini smoke requires KHEPREE_NOVEL_AI_MULTILINGUAL_SMOKE=1', () => {
     expect(enabled).toBe(true);
   });
 

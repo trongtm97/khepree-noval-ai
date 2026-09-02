@@ -17,7 +17,7 @@ export function SystemHealthPanel() {
     setBusy(true);
     setError(null);
     try {
-      const health = await window.novelTrans.diagnostics.runSystemHealth();
+      const health = await window.khepreeNovelAI.diagnostics.runSystemHealth();
       setResult(health);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));

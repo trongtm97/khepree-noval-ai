@@ -5,6 +5,7 @@ import { applyTheme, useThemeStore } from './stores/theme-store';
 import { ensureOverlayRoot } from './components/overlay/overlay-root';
 import './styles/global.css';
 import './styles/ui.css';
+import './styles/khepree.css';
 import './styles/projects.css';
 import './styles/help.css';
 import './styles/overlay.css';

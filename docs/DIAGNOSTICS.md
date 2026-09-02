@@ -61,7 +61,7 @@ File: `{data}/selector-overrides.json`
 Developer Diagnostics → **Run Real Google Smoke**, or:
 
 ```bash
-set NOVELTRANS_GOOGLE_SMOKE=1
+set KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1
 npm run test:google-smoke
 ```
 

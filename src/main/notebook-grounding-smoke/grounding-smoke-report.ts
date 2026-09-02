@@ -99,7 +99,7 @@ export function renderGroundingReportMarkdown(report: GroundingSmokeRunReport): 
     '```bash',
     'copy google-smoke.config.example.json google-smoke.config.json',
     '# edit profilePath + smoke notebookUrl; optionally grounding*DriveFileId',
-    'set NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE=1',
+    'set KHEPREE_NOVEL_AI_NOTEBOOK_GROUNDING_SMOKE=1',
     'npm run test:notebook-grounding-smoke',
     '```',
     '',
@@ -142,7 +142,7 @@ export function renderNotRunGroundingReport(): string {
       notebookName: null,
       packMode: null,
       response: null,
-      message: 'NOT_RUN — opt-in via Diagnostics or NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE=1',
+      message: 'NOT_RUN — opt-in via Diagnostics or KHEPREE_NOVEL_AI_NOTEBOOK_GROUNDING_SMOKE=1',
       screenshotPath: null,
     })),
   });

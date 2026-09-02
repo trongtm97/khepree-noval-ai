@@ -1,7 +1,7 @@
 # Multi-Provider Release Acceptance Matrix (Phase 7)
 
 **Date:** 2026-08-29  
-**Scope:** Prove Gemini, ChatGPT, and Meta AI share the **same** NovelTrans translation pipeline — not adapter-only unit tests.
+**Scope:** Prove Gemini, ChatGPT, and Meta AI share the **same** Khepree Novel AI translation pipeline — not adapter-only unit tests.
 
 **Final status:** **READY FOR EXTENDED TEST** (mock integration PASS; live browser smoke NOT_RUN in CI)
 
@@ -209,7 +209,7 @@ Failure reports must include provider, account, surface, request state, selector
 set BROWSER_CONVERSATION_SMOKE=1
 npx tsx scripts/browser-conversation-smoke.ts chatgpt
 npx tsx scripts/browser-conversation-smoke.ts meta
-# Gemini: NOT_RUN — use tests/google-smoke with NOVELTRANS_GOOGLE_SMOKE=1
+# Gemini: NOT_RUN — use tests/google-smoke with KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1
 npx tsx scripts/browser-conversation-smoke-report.ts
 ```
 

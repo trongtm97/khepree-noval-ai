@@ -11,7 +11,7 @@ import {
   type LaunchContextFn,
   type PrepareNotebookInput,
 } from './playwright-worker-runtime';
-import { launchNovelTransPersistentContext } from './launch-persistent-context';
+import { launchKhepreeNovelAIPersistentContext } from './launch-persistent-context';
 import { logger } from '../../logging/logger';
 import { AutomationError } from '../errors/automation-errors';
 
@@ -79,7 +79,7 @@ export class BrowserRuntimeManager {
       options.launchFn ??
       (async (input) => {
         this.totalLaunchCount += 1;
-        return launchNovelTransPersistentContext({
+        return launchKhepreeNovelAIPersistentContext({
           profilePath: input.profilePath,
           headless: input.headless,
           headlessDefault: false,

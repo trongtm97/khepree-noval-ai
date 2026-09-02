@@ -45,7 +45,7 @@ export function DataExportMenu({
       setBusy(true);
       try {
         if (format === 'json' && section.dataType === 'terms') {
-          const result = await window.novelTrans.terms.export({ format: 'json', filters: {} });
+          const result = await window.khepreeNovelAI.terms.export({ format: 'json', filters: {} });
           await navigator.clipboard.writeText(result.content);
           onComplete({
             message: t('dataHub.exportJsonClipboard', { count: result.count }),
@@ -63,7 +63,7 @@ export function DataExportMenu({
         if (built.ok) {
           outputPath = built.outputPath;
         } else {
-          const picked = await window.novelTrans.tabular.selectExportPath({
+          const picked = await window.khepreeNovelAI.tabular.selectExportPath({
             dataType: section.dataType,
             format: exportFormat,
             defaultName: `${sectionId}-export`,
@@ -72,7 +72,7 @@ export function DataExportMenu({
           outputPath = picked.filePath;
         }
 
-        const result = await window.novelTrans.tabular.export({
+        const result = await window.khepreeNovelAI.tabular.export({
           dataType: section.dataType,
           format: exportFormat,
           outputPath,

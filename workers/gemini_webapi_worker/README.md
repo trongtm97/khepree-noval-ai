@@ -1,6 +1,6 @@
 # Gemini Web API Worker
 
-Localhost bridge between NovelTrans Electron main process and
+Localhost bridge between Khepree Novel AI Electron main process and
 [`gemini-web2api`](https://github.com/Sophomoresty/gemini-web2api).
 
 Replaces the previous HanaokaYuzu/Gemini-API (`gemini_webapi`) stack.
@@ -13,7 +13,7 @@ Build a standalone exe on the **build machine** (end users need no Python):
 npm run build:gemini-worker
 ```
 
-Output: `resources/workers/NovelTransGeminiWorker.exe` (copied into the installer via Forge `extraResource`).
+Output: `resources/workers/KhepreeNovelAIGeminiWorker.exe` (copied into the installer via Forge `extraResource`).
 
 See `docs/WINDOWS_RUNTIME_DEPENDENCIES.md`.
 
@@ -29,7 +29,7 @@ set NTS_GEMINI_WORKER_PORT=18765
 .venv\Scripts\python main.py
 ```
 
-NovelTrans normally creates the venv under userData and spawns this process.
+Khepree Novel AI normally creates the venv under userData and spawns this process.
 
 ## Third party
 
@@ -38,5 +38,5 @@ NovelTrans normally creates the venv under userData and spawns this process.
 ## Security
 
 - Binds `127.0.0.1` only
-- Requires `X-NTS-Secret` header on NovelTrans endpoints; `/v1/*` uses Bearer with the same secret
+- Requires `X-NTS-Secret` header on Khepree Novel AI endpoints; `/v1/*` uses Bearer with the same secret
 - Never logs cookies or tokens

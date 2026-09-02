@@ -5,7 +5,7 @@ import {
   formatLanguagePickerLabel,
   formatLanguagePickerStacked,
   groupLanguageProfilesByRegion,
-  NOVELTRANS_VERIFICATION_LABELS_VI,
+  KHEPREE_NOVEL_AI_VERIFICATION_LABELS_VI,
   REGION_GROUP_LABELS_VI,
   REGION_GROUP_ORDER,
   searchLanguageProfiles,
@@ -114,19 +114,19 @@ export function LanguagePicker({
     if (lang.providerSupport === 'CATALOG_ONLY' || lang.aiSupportTier === 'EXPERIMENTAL') {
       return null;
     }
-    const verified = lang.novelTransVerification === 'VERIFIED';
+    const verified = lang.khepreeNovelAiVerification === 'VERIFIED';
     return (
       <span
         className={`language-picker-verify${verified ? ' is-verified' : ''}`}
         title={
           verified
-            ? NOVELTRANS_VERIFICATION_LABELS_VI.VERIFIED
+            ? KHEPREE_NOVEL_AI_VERIFICATION_LABELS_VI.VERIFIED
             : 'Gemini hỗ trợ ngôn ngữ này. Khepree Novel AI chưa kiểm thử đầy đủ quy trình dịch.'
         }
         aria-label={
           verified
-            ? NOVELTRANS_VERIFICATION_LABELS_VI.VERIFIED
-            : NOVELTRANS_VERIFICATION_LABELS_VI.UNTESTED
+            ? KHEPREE_NOVEL_AI_VERIFICATION_LABELS_VI.VERIFIED
+            : KHEPREE_NOVEL_AI_VERIFICATION_LABELS_VI.UNTESTED
         }
       >
         {verified ? '✓' : '○'}

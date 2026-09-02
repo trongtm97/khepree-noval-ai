@@ -22,7 +22,7 @@ export function ProjectExportSettingsPanel({
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const settings = await window.novelTrans.portability.getProjectExportSettings({ projectId });
+    const settings = await window.khepreeNovelAI.portability.getProjectExportSettings({ projectId });
     setUseOverride(settings.useProjectOverride);
     setProjectDirectory(settings.projectExportDirectory);
     setDefaultDirectory(settings.defaultExportDirectory);
@@ -41,16 +41,16 @@ export function ProjectExportSettingsPanel({
     setMessage(null);
     try {
       if (!override) {
-        await window.novelTrans.portability.setProjectExportDirectory({
+        await window.khepreeNovelAI.portability.setProjectExportDirectory({
           projectId,
           directory: null,
         });
       } else if (!projectDirectory) {
-        const pick = await window.novelTrans.portability.selectExportDirectory();
+        const pick = await window.khepreeNovelAI.portability.selectExportDirectory();
         if (pick.canceled || !pick.directory) {
           return;
         }
-        await window.novelTrans.portability.setProjectExportDirectory({
+        await window.khepreeNovelAI.portability.setProjectExportDirectory({
           projectId,
           directory: pick.directory,
         });
@@ -67,9 +67,9 @@ export function ProjectExportSettingsPanel({
     setBusy(true);
     setError(null);
     try {
-      const pick = await window.novelTrans.portability.selectExportDirectory();
+      const pick = await window.khepreeNovelAI.portability.selectExportDirectory();
       if (pick.canceled || !pick.directory) return;
-      await window.novelTrans.portability.setProjectExportDirectory({
+      await window.khepreeNovelAI.portability.setProjectExportDirectory({
         projectId,
         directory: pick.directory,
       });
@@ -87,7 +87,7 @@ export function ProjectExportSettingsPanel({
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.portability.openExportDirectory({ projectId });
+      await window.khepreeNovelAI.portability.openExportDirectory({ projectId });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('exportDirectory.openFailed'));
     } finally {

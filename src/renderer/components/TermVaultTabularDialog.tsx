@@ -70,12 +70,12 @@ export function TermVaultTabularDialog({
     setBusy(true);
     setError(null);
     try {
-      const selected = await window.novelTrans.tabular.selectImportFile({
+      const selected = await window.khepreeNovelAI.tabular.selectImportFile({
         dataType: 'terms',
         format: 'any',
       });
       if (selected.canceled || !selected.filePath) return;
-      const result = await window.novelTrans.tabular.preview({
+      const result = await window.khepreeNovelAI.tabular.preview({
         filePath: selected.filePath,
         projectId,
         editionId,
@@ -104,13 +104,13 @@ export function TermVaultTabularDialog({
     setBusy(true);
     setError(null);
     try {
-      const picked = await window.novelTrans.tabular.selectExportPath({
+      const picked = await window.khepreeNovelAI.tabular.selectExportPath({
         dataType: 'terms',
         format: exportFormat,
         defaultName: `terms-${exportScope}`,
       });
       if (picked.canceled || !picked.filePath) return;
-      const result = await window.novelTrans.tabular.export({
+      const result = await window.khepreeNovelAI.tabular.export({
         dataType: 'terms',
         format: exportFormat,
         outputPath: picked.filePath,
@@ -132,7 +132,7 @@ export function TermVaultTabularDialog({
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.tabular.downloadTermTemplate({});
+      const result = await window.khepreeNovelAI.tabular.downloadTermTemplate({});
       onComplete?.(t('terms.tabularTemplateSaved', { path: result.filePath }));
     } catch (err) {
       if (err instanceof Error && err.message.includes('canceled')) return;
@@ -147,7 +147,7 @@ export function TermVaultTabularDialog({
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.tabular.commit({
+      const result = await window.khepreeNovelAI.tabular.commit({
         previewId: preview.previewId,
         mode: importMode,
         projectId,
@@ -187,7 +187,7 @@ export function TermVaultTabularDialog({
 
   const cancelImport = useCallback(async () => {
     if (preview) {
-      await window.novelTrans.tabular.discardPreview({ previewId: preview.previewId });
+      await window.khepreeNovelAI.tabular.discardPreview({ previewId: preview.previewId });
     }
     setImportOpen(false);
     setPreview(null);
@@ -200,7 +200,7 @@ export function TermVaultTabularDialog({
     setError(null);
     try {
       const format: 'csv' | 'json' = content.trim().startsWith('[') ? 'json' : 'csv';
-      const result = await window.novelTrans.terms.import({
+      const result = await window.khepreeNovelAI.terms.import({
         format,
         content,
         scope: 'GLOBAL',
@@ -217,7 +217,7 @@ export function TermVaultTabularDialog({
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.terms.export({ format: 'json', filters: {} });
+      const result = await window.khepreeNovelAI.terms.export({ format: 'json', filters: {} });
       await navigator.clipboard.writeText(result.content);
       onComplete?.(t('terms.exported', { count: result.count, format: 'json' }));
     } catch (err) {

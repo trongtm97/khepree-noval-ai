@@ -10,6 +10,11 @@ export interface KhepreeDeviceProof {
   bodySha256: string;
 }
 
+export interface SignedDesktopRequest {
+  wireBody: string;
+  deviceProof: KhepreeDeviceProof;
+}
+
 export function sha256Hex(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
@@ -33,31 +38,83 @@ export function buildKhepreeDeviceProofMessage(input: {
   ].join('\n');
 }
 
-export async function buildKhepreeDeviceProof(input: {
+/** Canonical signed payload — excludes deviceProof (matches Khepree API verification). */
+export function buildCanonicalDesktopPayloadSha256(
+  sessionPublicId: string,
+  extraFields: Array<[string, string]>,
+): string {
+  const payload: Record<string, string> = { sessionPublicId };
+  for (const [key, value] of extraFields) {
+    payload[key] = value;
+  }
+  return sha256Hex(JSON.stringify(payload));
+}
+
+function serializeSignedRequestBody(
+  sessionPublicId: string,
+  extraFields: Array<[string, string]>,
+  proof: KhepreeDeviceProof,
+): string {
+  const body: Record<string, unknown> = { sessionPublicId };
+  for (const [key, value] of extraFields) {
+    body[key] = value;
+  }
+  body.deviceProof = {
+    bodySha256: proof.bodySha256,
+    method: proof.method,
+    nonce: proof.nonce,
+    path: proof.path,
+    signature: proof.signature,
+    timestamp: proof.timestamp,
+  };
+  return JSON.stringify(body);
+}
+
+/**
+ * Build a signed desktop API request body. Device proof hashes the canonical JSON
+ * payload (session fields only, excluding deviceProof) — same rule as Khepree API.
+ */
+export function buildSignedDesktopRequestBody(input: {
   sessionPublicId: string;
   method: string;
   path: string;
-  body: string;
+  extraFields: Array<[string, string]>;
   sign: (message: Buffer) => Buffer;
-}): Promise<KhepreeDeviceProof> {
-  const timestamp = Math.floor(Date.now() / 1000);
+  nowSeconds?: number;
+}): SignedDesktopRequest {
+  const timestamp = input.nowSeconds ?? Math.floor(Date.now() / 1000);
   const nonce = randomUUID();
-  const bodySha256 = sha256Hex(input.body);
+  const method = input.method.toUpperCase();
+  const bodySha256 = buildCanonicalDesktopPayloadSha256(
+    input.sessionPublicId,
+    input.extraFields,
+  );
+
   const message = buildKhepreeDeviceProofMessage({
     sessionPublicId: input.sessionPublicId,
     timestamp,
     nonce,
-    method: input.method,
+    method,
     path: input.path,
     bodySha256,
   });
   const signature = input.sign(Buffer.from(message, 'utf8')).toString('base64');
-  return {
+
+  const deviceProof: KhepreeDeviceProof = {
     timestamp,
     nonce,
     signature,
-    method: input.method.toUpperCase(),
+    method,
     path: input.path,
     bodySha256,
+  };
+
+  return {
+    wireBody: serializeSignedRequestBody(
+      input.sessionPublicId,
+      input.extraFields,
+      deviceProof,
+    ),
+    deviceProof,
   };
 }

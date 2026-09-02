@@ -1,4 +1,4 @@
-# NovelTrans Studio — Project State
+# Khepree Novel AI — Project State
 
 > Last updated: 2026-08-29
 
@@ -90,7 +90,7 @@ Do **not** mark browser providers production-ready without **REAL TEST PASSED** 
 ### Playwright Browser Engine (2026-08-26)
 - [x] Playwright **1.62.1** (from `^1.49.1`)
 - [x] `BrowserEngineResolver` — AUTO / EDGE / CHROME / PLAYWRIGHT_CHROMIUM
-- [x] Windows AUTO: Edge → Chrome → bundled Chromium; dedicated NovelTrans profiles only
+- [x] Windows AUTO: Edge → Chrome → bundled Chromium; dedicated Khepree Novel AI profiles only
 - [x] Remove default `--disable-blink-features=AutomationControlled` (opt-in advanced)
 - [x] Headed default for Gemini/Notebook/`BrowserSession`
 - [x] Engine/version in `engine-info.json` + failure diagnostics

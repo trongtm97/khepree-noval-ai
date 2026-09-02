@@ -96,7 +96,7 @@ File: `src/main/prompt/translation-pack-builder.ts` → `buildActiveTerms`.
 
 | Step | Harness |
 | --- | --- |
-| Corpus pack / prompt / import / parser / SQLite / knowledge build | **Real** NovelTrans code |
+| Corpus pack / prompt / import / parser / SQLite / knowledge build | **Real** Khepree Novel AI code |
 | Research Notebook chat (Gemini analysis) | **Fixture** raw response (FULL schema) |
 | Drive upload | **Noop** sync callback |
 | Version probe capture | **Injected** expected version+nonce |

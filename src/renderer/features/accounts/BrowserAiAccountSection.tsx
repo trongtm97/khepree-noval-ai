@@ -30,7 +30,7 @@ export function BrowserAiAccountSection({
   const [removeTarget, setRemoveTarget] = useState<AiAccountDto | null>(null);
 
   const refresh = useCallback(async () => {
-    const res = await window.novelTrans.aiAccounts.list({ providerId });
+    const res = await window.khepreeNovelAI.aiAccounts.list({ providerId });
     setAccounts(res.accounts);
   }, [providerId]);
 
@@ -67,7 +67,7 @@ export function BrowserAiAccountSection({
 
   const handleAdd = (displayName: string) => {
     void runAccountAction(null, async () => {
-      await window.novelTrans.aiAccounts.create({
+      await window.khepreeNovelAI.aiAccounts.create({
         providerId,
         displayName: displayName || undefined,
       });
@@ -81,7 +81,7 @@ export function BrowserAiAccountSection({
     const target = removeTarget;
     setRemoveTarget(null);
     void runAccountAction(target.id, async () => {
-      await window.novelTrans.aiAccounts.delete({ accountId: target.id });
+      await window.khepreeNovelAI.aiAccounts.delete({ accountId: target.id });
       onToast('SUCCESS', t('accounts.toastDeleted'));
     });
   };
@@ -132,7 +132,7 @@ export function BrowserAiAccountSection({
                     disabled={busyId === account.id}
                     onClick={() => {
                       void runAccountAction(account.id, async () => {
-                        const res = await window.novelTrans.aiAccounts.openBrowserLogin({
+                        const res = await window.khepreeNovelAI.aiAccounts.openBrowserLogin({
                           accountId: account.id,
                         });
                         if (!res.ok) {
@@ -148,7 +148,7 @@ export function BrowserAiAccountSection({
                     disabled={busyId === account.id}
                     onClick={() => {
                       void runAccountAction(account.id, async () => {
-                        await window.novelTrans.aiAccounts.verifyBrowser({
+                        await window.khepreeNovelAI.aiAccounts.verifyBrowser({
                           accountId: account.id,
                         });
                         onToast('SUCCESS', t('accounts.toastCheckOk'));
@@ -200,7 +200,7 @@ export function BrowserAiAccountSection({
           if (!target) return;
           setEditTarget(null);
           void runAccountAction(target.id, async () => {
-            await window.novelTrans.aiAccounts.updateDisplayName({
+            await window.khepreeNovelAI.aiAccounts.updateDisplayName({
               accountId: target.id,
               displayName,
             });

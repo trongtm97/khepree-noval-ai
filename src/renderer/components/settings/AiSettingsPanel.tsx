@@ -49,7 +49,7 @@ export function AiSettingsPanel({
   const [actionError, setActionError] = useState<string | null>(null);
 
   const refreshStatus = useCallback(async () => {
-    const snap = await window.novelTrans.aiProviders.autoSetupStatus();
+    const snap = await window.khepreeNovelAI.aiProviders.autoSetupStatus();
     setStatus(snap);
     onLoadError(null);
   }, [onLoadError]);
@@ -75,7 +75,7 @@ export function AiSettingsPanel({
     setActionError(null);
     setResult(null);
     try {
-      const setupResult = await window.novelTrans.aiProviders.autoSetupRun();
+      const setupResult = await window.khepreeNovelAI.aiProviders.autoSetupRun();
       setResult(setupResult);
       await refreshStatus();
     } catch (err: unknown) {

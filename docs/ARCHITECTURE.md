@@ -1,4 +1,4 @@
-# NovelTrans Studio — Architecture
+# Khepree Novel AI — Architecture
 
 > Windows desktop app for AI-assisted **multilingual** novel translation.  
 > Local-first SQLite, multiple target editions, Gemini / ChatGPT / Meta AI via one provider-neutral pipeline.
@@ -54,7 +54,7 @@
 
 ### Preload Responsibilities
 
-- `contextBridge.exposeInMainWorld('novelTrans', api)`
+- `contextBridge.exposeInMainWorld('khepreeNovelAI', api)`
 - Thin typed wrappers around `ipcRenderer.invoke`
 - No business logic
 
@@ -62,7 +62,7 @@
 
 - One process can host one or more Playwright contexts (configurable)
 - Each account → persistent `userDataDir` at:
-  `{userData}/NovelTrans/browser-profiles/{profileDirName}/`
+  `{userData}/KhepreeNovelAI/browser-profiles/{profileDirName}/`
   (Google Gemini workers and generic AI browser accounts use separate profile dirs — never the OS default Chrome profile)
 - Communicates with main via structured messages (JSON over stdio or Node IPC)
 - Actions: launch, navigate, send prompt, scrape response, screenshot, health check
@@ -158,7 +158,7 @@ See [AI_PROVIDER.md](./AI_PROVIDER.md), [MULTI_PROVIDER_ACCEPTANCE.md](./MULTI_P
 
 ## 4b. Account model
 
-NovelTrans uses two persistence families behind one Accounts UI:
+Khepree Novel AI uses two persistence families behind one Accounts UI:
 
 | Kind | Storage | Used for | Login |
 |------|---------|----------|-------|
@@ -171,7 +171,7 @@ NovelTrans uses two persistence families behind one Accounts UI:
 
 **Google account is not globally required.** Projects routed to ChatGPT or Meta AI only need a READY row in `ai_accounts` for that provider. Gemini paths (Playwright or Web API) still need Google session or cookies as today.
 
-No passwords stored. Sessions live in isolated Chromium profiles under `%APPDATA%\NovelTrans\browser-profiles\`.
+No passwords stored. Sessions live in isolated Chromium profiles under `%APPDATA%\KhepreeNovelAI\browser-profiles\`.
 
 ## 4c. Research Notebook (optional)
 
@@ -339,7 +339,7 @@ AI-discovered terms enter at `DISCOVERED` or `CANDIDATE`. Never auto-promote to 
 ### Local knowledge & portability
 
 - **SQLite** is authoritative for terms, memory, translations, jobs
-- **NotebookKnowledgeBuilder** writes `00–08` markdown under `%APPDATA%/NovelTrans/cache/knowledge/{projectId}/`
+- **NotebookKnowledgeBuilder** writes `00–08` markdown under `%APPDATA%/KhepreeNovelAI/cache/knowledge/{projectId}/`
 - After each learning PASS, local knowledge version bumps immediately (Phase 7)
 - **Backups:** daily ZIP via `VACUUM INTO` + tiered retention (Phase 8) — see [PORTABILITY.md](./PORTABILITY.md)
 - **Legacy Drive tables** (`drive_resources`, `drive_sync_state`) remain for opening old databases only — no runtime Drive API (Phase 9)

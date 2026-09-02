@@ -5,7 +5,7 @@ import {
 } from '@shared/constants/ipc-channels';
 import type { AppPathKey } from '@shared/constants/paths';
 import type { GoogleAccountPlan } from '@shared/constants/google-account';
-import type { NovelTransApi } from '@shared/types/ipc';
+import type { KhepreeNovelAIApi } from '@shared/types/ipc';
 
 function invokeChannel<T>(channel: string, payload?: unknown): Promise<T> {
   if (!ALLOWED_IPC_CHANNELS.has(channel)) {
@@ -17,13 +17,15 @@ function invokeChannel<T>(channel: string, payload?: unknown): Promise<T> {
   return ipcRenderer.invoke(channel, payload) as Promise<T>;
 }
 
-const api: NovelTransApi = {
+const api: KhepreeNovelAIApi = {
   ping: () => invokeChannel(IPC_CHANNELS.APP_PING),
   getVersion: () => invokeChannel(IPC_CHANNELS.APP_GET_VERSION),
   getInfo: () => invokeChannel(IPC_CHANNELS.APP_GET_INFO),
   getPaths: () => invokeChannel(IPC_CHANNELS.APP_GET_PATHS),
   openFolder: (pathKey: AppPathKey) =>
     invokeChannel(IPC_CHANNELS.APP_OPEN_FOLDER, { pathKey }),
+  openOfficialContact: (channel) =>
+    invokeChannel(IPC_CHANNELS.APP_OPEN_OFFICIAL_CONTACT, { channel }),
   securityHealthCheck: () => invokeChannel(IPC_CHANNELS.SECURITY_HEALTH_CHECK),
   accounts: {
     list: () => invokeChannel(IPC_CHANNELS.ACCOUNT_LIST),
@@ -442,5 +444,5 @@ const api: NovelTransApi = {
   checkForUpdates: () => invokeChannel(IPC_CHANNELS.APP_CHECK_FOR_UPDATES),
 };
 
-contextBridge.exposeInMainWorld('novelTrans', api);
+contextBridge.exposeInMainWorld('khepreeNovelAI', api);
 

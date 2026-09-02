@@ -30,7 +30,7 @@ async function main(): Promise<void> {
 
   const provider = (process.argv[2] ?? 'chatgpt').toLowerCase();
   if (provider === 'gemini') {
-    console.error('Gemini live smoke: use tests/google-smoke with NOVELTRANS_GOOGLE_SMOKE=1');
+    console.error('Gemini live smoke: use tests/google-smoke with KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1');
     process.exit(2);
   }
 

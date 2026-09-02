@@ -1,4 +1,4 @@
-# NovelTrans Studio — Browser Automation
+# Khepree Novel AI — Browser Automation
 
 > Playwright-driven browser automation core. Gemini/Notebook provider logic stays **outside** `BrowserWorker`.
 
@@ -69,17 +69,17 @@ Why separate process: Playwright crash isolation, kill/restart, memory separatio
 ## 3. Profile paths
 
 ```
-%APPDATA%/NovelTrans/browser-profiles/<workerId>/
+%APPDATA%/KhepreeNovelAI/browser-profiles/<workerId>/
 ```
 
 - Created by account manager (Phase 4)
 - `ProfileLockManager` prevents two Playwright instances on the same `userDataDir`
-- Diagnostics: `%APPDATA%/NovelTrans/cache/automation/<workerId>/`
-- **Never** use the OS default Edge/Chrome user profile — only NovelTrans dedicated dirs
+- Diagnostics: `%APPDATA%/KhepreeNovelAI/cache/automation/<workerId>/`
+- **Never** use the OS default Edge/Chrome user profile — only Khepree Novel AI dedicated dirs
 
 ### Browser engine (Windows)
 
-`BrowserEngineResolver` + `launchNovelTransPersistentContext` (single launch entry).
+`BrowserEngineResolver` + `launchKhepreeNovelAIPersistentContext` (single launch entry).
 
 | Preference | Behavior |
 |------------|----------|
@@ -266,7 +266,7 @@ npm run smoke:runner:packaged
 npm run smoke:runner
 ```
 
-Launches `NovelTransStudio.exe --nts-smoke-runner` → OPEN / GET_STATUS / SCREENSHOT / CLOSE (headless).  
+Launches `KhepreeNovelAI.exe --nts-smoke-runner` → OPEN / GET_STATUS / SCREENSHOT / CLOSE (headless).  
 Stdout marker: `SMOKE_RUNNER_PASS`. Exit `0` = packaged PASS.
 
 ### Dev

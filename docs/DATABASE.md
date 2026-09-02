@@ -1,14 +1,14 @@
-# NovelTrans Studio — Database Design
+# Khepree Novel AI — Database Design
 
-> SQLite via `better-sqlite3`. Database file: `%APPDATA%/NovelTrans/data/noveltrans.db`. WAL mode enabled.
+> SQLite via `better-sqlite3`. Database file: `%APPDATA%/KhepreeNovelAI/data/khepree-novel-ai.db`. WAL mode enabled.
 
 ## 1. Location & Conventions
 
 | Item | Value |
 |------|-------|
-| AppData root | `%APPDATA%/NovelTrans/` (via `app.getPath('appData')`) |
-| Database file | `{AppData}/NovelTrans/data/noveltrans.db` |
-| Backups | `{AppData}/NovelTrans/backups/` |
+| AppData root | `%APPDATA%/KhepreeNovelAI/` (via `app.getPath('appData')`) |
+| Database file | `{AppData}/KhepreeNovelAI/data/khepree-novel-ai.db` |
+| Backups | `{AppData}/KhepreeNovelAI/backups/` |
 | Primary keys | TEXT UUID v4 |
 | Timestamps | ISO 8601 UTC (`created_at`, `updated_at`) |
 | Soft delete | `deleted_at` on `projects`, `terms` |
@@ -43,7 +43,7 @@ CREATE TABLE schema_migrations (
 ### Runner behavior
 
 1. Compare `MAX(schema_migrations.version)` vs available migrations
-2. If DB exists at version ≥ 1 → **automatic file backup** to `backups/noveltrans-pre-migration-{timestamp}.db`
+2. If DB exists at version ≥ 1 → **automatic file backup** to `backups/khepree-novel-ai-pre-migration-{timestamp}.db`
 3. Apply each pending migration inside a **transaction**
 4. Record version + checksum in `schema_migrations`
 5. On success → delete backup; on failure → **restore from backup**

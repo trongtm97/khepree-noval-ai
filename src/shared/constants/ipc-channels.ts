@@ -4,6 +4,7 @@ export const IPC_CHANNELS = {
   APP_GET_INFO: 'app:getInfo',
   APP_GET_PATHS: 'app:getPaths',
   APP_OPEN_FOLDER: 'app:openFolder',
+  APP_OPEN_OFFICIAL_CONTACT: 'app:openOfficialContact',
   SECURITY_HEALTH_CHECK: 'security:healthCheck',
   ACCOUNT_LIST: 'account:list',
   ACCOUNT_GET: 'account:get',

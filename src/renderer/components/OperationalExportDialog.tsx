@@ -41,13 +41,13 @@ export function OperationalExportDialog({
         const defaultName = projectId
           ? `${dataType}-${projectId.slice(0, 8)}`
           : `${dataType}-all`;
-        const picked = await window.novelTrans.tabular.selectExportPath({
+        const picked = await window.khepreeNovelAI.tabular.selectExportPath({
           dataType,
           format,
           defaultName,
         });
         if (picked.canceled || !picked.filePath) return;
-        const result = await window.novelTrans.tabular.export({
+        const result = await window.khepreeNovelAI.tabular.export({
           dataType,
           format,
           outputPath: picked.filePath,

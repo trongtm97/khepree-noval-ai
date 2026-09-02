@@ -18,7 +18,7 @@ export function useKhepreePlanCatalog(enabled: boolean): {
     setLoading(true);
     setError(null);
     try {
-      const result = await window.novelTrans.khepree.getPlanCatalog();
+      const result = await window.khepreeNovelAI.khepree.getPlanCatalog();
       if (result.ok) {
         setPlans(result.catalog.plans);
         setCurrentPlanId(result.catalog.currentPlanId);

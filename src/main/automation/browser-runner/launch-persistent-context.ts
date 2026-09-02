@@ -95,10 +95,10 @@ export function writeBrowserEngineDiagnostics(
 }
 
 /**
- * Single entry for NovelTrans Playwright persistent contexts.
+ * Single entry for Khepree Novel AI Playwright persistent contexts.
  * Dedicated userDataDir only — never OS Edge/Chrome default profile.
  */
-export async function launchNovelTransPersistentContext(
+export async function launchKhepreeNovelAIPersistentContext(
   input: LaunchPersistentContextInput,
 ): Promise<LaunchPersistentContextResult> {
   const config = getBrowserEngineConfig();

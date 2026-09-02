@@ -61,8 +61,8 @@ export function PrimaryTranslationProviderPanel() {
 
   const refresh = useCallback(async () => {
     const [list, routing] = await Promise.all([
-      window.novelTrans.aiProviders.list(),
-      window.novelTrans.aiProviders.getRouting(),
+      window.khepreeNovelAI.aiProviders.list(),
+      window.khepreeNovelAI.aiProviders.getRouting(),
     ]);
     setProviders(list.providers);
     setFallbackEnabled(list.fallbackEnabled);
@@ -106,7 +106,7 @@ export function PrimaryTranslationProviderPanel() {
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.aiProviders.setPrimary({ providerId: next });
+      await window.khepreeNovelAI.aiProviders.setPrimary({ providerId: next });
       await refresh();
       setPrimaryId(next);
       showSaved(t('settings.primaryProviderSaved'));
@@ -122,7 +122,7 @@ export function PrimaryTranslationProviderPanel() {
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.aiProviders.setFallback({ enabled });
+      await window.khepreeNovelAI.aiProviders.setFallback({ enabled });
       setFallbackEnabled(enabled);
       await refresh();
       showSaved(t('settings.primaryProviderSaved'));
@@ -138,7 +138,7 @@ export function PrimaryTranslationProviderPanel() {
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.aiProviders.check({
+      const result = await window.khepreeNovelAI.aiProviders.check({
         providerId: primaryProvider.id,
       });
       showSaved(result.message);

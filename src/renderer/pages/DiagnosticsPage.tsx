@@ -34,10 +34,10 @@ export function DiagnosticsPage() {
 
   const refresh = useCallback(async () => {
     const [{ accounts: list }, status, overrides, report] = await Promise.all([
-      window.novelTrans.accounts.list(),
-      window.novelTrans.diagnostics.listProviders(),
-      window.novelTrans.diagnostics.getOverrides(),
-      window.novelTrans.diagnostics.healthReport(),
+      window.khepreeNovelAI.accounts.list(),
+      window.khepreeNovelAI.diagnostics.listProviders(),
+      window.khepreeNovelAI.diagnostics.getOverrides(),
+      window.khepreeNovelAI.diagnostics.healthReport(),
     ]);
     setAccounts(list);
     if (!accountId && list[0]) setAccountId(list[0].id);
@@ -66,7 +66,7 @@ export function DiagnosticsPage() {
     setError(null);
     setMessage(null);
     try {
-      const result = await window.novelTrans.diagnostics.connectionTest({
+      const result = await window.khepreeNovelAI.diagnostics.connectionTest({
         kind,
         accountId,
       });
@@ -93,10 +93,10 @@ export function DiagnosticsPage() {
     setMessage(null);
     setSmokeResult(null);
     try {
-      const result = await window.novelTrans.diagnostics.googleSmoke({
+      const result = await window.khepreeNovelAI.diagnostics.googleSmoke({
         accountId,
         notebookUrl: smokeNotebookUrl.trim(),
-        smokeProjectLabel: 'NOVELTRANS_SMOKE',
+        smokeProjectLabel: 'KHEPREE_NOVEL_AI_SMOKE',
         headless: false,
       });
       setSmokeResult(result);
@@ -120,10 +120,10 @@ export function DiagnosticsPage() {
     setMessage(null);
     setGroundingResult(null);
     try {
-      const result = await window.novelTrans.diagnostics.notebookGroundingSmoke({
+      const result = await window.khepreeNovelAI.diagnostics.notebookGroundingSmoke({
         accountId,
         notebookUrl: smokeNotebookUrl.trim(),
-        smokeProjectLabel: 'NOVELTRANS_SMOKE',
+        smokeProjectLabel: 'KHEPREE_NOVEL_AI_SMOKE',
         headless: false,
       });
       setGroundingResult(result);
@@ -144,9 +144,9 @@ export function DiagnosticsPage() {
     setBusy(true);
     setError(null);
     try {
-      const pick = await window.novelTrans.diagnostics.selectExportPath();
+      const pick = await window.khepreeNovelAI.diagnostics.selectExportPath();
       if (pick.canceled || !pick.filePath) return;
-      const result = await window.novelTrans.diagnostics.export({
+      const result = await window.khepreeNovelAI.diagnostics.export({
         outputPath: pick.filePath,
       });
       setMessage(
@@ -167,9 +167,9 @@ export function DiagnosticsPage() {
     setBusy(true);
     setError(null);
     try {
-      const pick = await window.novelTrans.diagnostics.selectOverridePath();
+      const pick = await window.khepreeNovelAI.diagnostics.selectOverridePath();
       if (pick.canceled || !pick.filePath) return;
-      const result = await window.novelTrans.diagnostics.loadOverrides({
+      const result = await window.khepreeNovelAI.diagnostics.loadOverrides({
         filePath: pick.filePath,
       });
       if (!result.ok) {
@@ -193,7 +193,7 @@ export function DiagnosticsPage() {
   const reloadOverrides = async () => {
     setBusy(true);
     try {
-      const result = await window.novelTrans.diagnostics.reloadOverrides();
+      const result = await window.khepreeNovelAI.diagnostics.reloadOverrides();
       setMessage(
         result.ok
           ? t('diagnostics.reloadedOverrides', { count: result.overrideCount })
@@ -214,9 +214,9 @@ export function DiagnosticsPage() {
     setSuggestion(null);
     try {
       if (repairSessionId) {
-        await window.novelTrans.diagnostics.repairCancel({ sessionId: repairSessionId });
+        await window.khepreeNovelAI.diagnostics.repairCancel({ sessionId: repairSessionId });
       }
-      const started = await window.novelTrans.diagnostics.repairStart({
+      const started = await window.khepreeNovelAI.diagnostics.repairStart({
         accountId,
         providerId,
         selectorKey,
@@ -235,7 +235,7 @@ export function DiagnosticsPage() {
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.diagnostics.repairCapture({
+      const result = await window.khepreeNovelAI.diagnostics.repairCapture({
         sessionId: repairSessionId,
         timeoutMs: 90_000,
       });
@@ -256,7 +256,7 @@ export function DiagnosticsPage() {
     if (!repairSessionId) return;
     setBusy(true);
     try {
-      const result = await window.novelTrans.diagnostics.repairApply({
+      const result = await window.khepreeNovelAI.diagnostics.repairApply({
         sessionId: repairSessionId,
         mode: 'prepend',
       });
@@ -273,7 +273,7 @@ export function DiagnosticsPage() {
 
   const cancelRepair = async () => {
     if (!repairSessionId) return;
-    await window.novelTrans.diagnostics.repairCancel({ sessionId: repairSessionId });
+    await window.khepreeNovelAI.diagnostics.repairCancel({ sessionId: repairSessionId });
     setRepairSessionId(null);
     setSuggestion(null);
     setMessage(t('diagnostics.repairCancelled'));
@@ -488,7 +488,7 @@ export function DiagnosticsPage() {
             className="btn-secondary"
             disabled={busy}
             onClick={() => {
-              void window.novelTrans.diagnostics.healthReport().then(setHealth);
+              void window.khepreeNovelAI.diagnostics.healthReport().then(setHealth);
             }}
           >
             {t('diagnostics.refreshHealth')}

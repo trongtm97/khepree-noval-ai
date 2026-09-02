@@ -45,7 +45,7 @@ describe('LanguageProfile registry', () => {
       direction: 'ltr',
       regionGroup: 'EUROPE',
       providerSupport: 'GEMINI_API_EXTENDED',
-      novelTransVerification: 'UNTESTED',
+      khepreeNovelAiVerification: 'UNTESTED',
       aiSupportTier: 'GEMINI_EXTENDED',
       segmentationStrategy: 'whitespace',
       quoteStyle: 'curly',

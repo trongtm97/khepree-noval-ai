@@ -91,22 +91,22 @@ export function AiMemoryPage() {
     if (!projectId) return;
     const [dual, accounts, boot, resolved, chars, rels, terms, storyRes, conflictRes, projectRes] =
       await Promise.all([
-      window.novelTrans.notebook.health({
+      window.khepreeNovelAI.notebook.health({
         projectId,
         dual: true,
       }) as Promise<NotebookDualHealthDto>,
-      window.novelTrans.accounts.list(),
-      window.novelTrans.notebook.getBootstrapStatus(projectId),
-      window.novelTrans.projects.resolveWorker({
+      window.khepreeNovelAI.accounts.list(),
+      window.khepreeNovelAI.notebook.getBootstrapStatus(projectId),
+      window.khepreeNovelAI.projects.resolveWorker({
         projectId,
         purpose: 'notebook',
       }),
-      window.novelTrans.memory.listCharacters(projectId),
-      window.novelTrans.memory.listRelationships({ projectId }),
-      window.novelTrans.terms.search({ projectId, limit: 500 }),
-      window.novelTrans.memory.getStoryState(projectId),
-      window.novelTrans.memory.listConflicts(projectId),
-      window.novelTrans.projects.get(projectId),
+      window.khepreeNovelAI.memory.listCharacters(projectId),
+      window.khepreeNovelAI.memory.listRelationships({ projectId }),
+      window.khepreeNovelAI.terms.search({ projectId, limit: 500 }),
+      window.khepreeNovelAI.memory.getStoryState(projectId),
+      window.khepreeNovelAI.memory.listConflicts(projectId),
+      window.khepreeNovelAI.projects.get(projectId),
     ]);
     setDualHealth(dual);
     setHealth(dual.translation);
@@ -140,7 +140,7 @@ export function AiMemoryPage() {
     setError(null);
     setMessage(null);
     try {
-      const result = await window.novelTrans.projects.setWorker({
+      const result = await window.khepreeNovelAI.projects.setWorker({
         projectId,
         accountId: nextAccountId,
         ensureNotebook: false,
@@ -171,7 +171,7 @@ export function AiMemoryPage() {
   useEffect(() => {
     if (!busy || !projectId) return;
     const id = window.setInterval(() => {
-      void window.novelTrans.notebook.getAutoPreprocessProgress(projectId).then((p) => {
+      void window.khepreeNovelAI.notebook.getAutoPreprocessProgress(projectId).then((p) => {
         if (p.message) setProgressMsg(p.message);
       });
     }, 1000);
@@ -202,7 +202,7 @@ export function AiMemoryPage() {
       return;
     }
     try {
-      await window.novelTrans.notebook.openResearch({ projectId, accountId });
+      await window.khepreeNovelAI.notebook.openResearch({ projectId, accountId });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
     }
@@ -215,7 +215,7 @@ export function AiMemoryPage() {
     setMessage(null);
     setResearchAnswer(null);
     try {
-      const result = await window.novelTrans.notebook.researchQuery({
+      const result = await window.khepreeNovelAI.notebook.researchQuery({
         projectId,
         accountId: accountId ?? undefined,
         question: researchQuestion.trim(),
@@ -236,7 +236,7 @@ export function AiMemoryPage() {
     setMessage(null);
     setProgressMsg(t('aiMemory.initStarting'));
     try {
-      const result = await window.novelTrans.notebook.runAutoPreprocess({
+      const result = await window.khepreeNovelAI.notebook.runAutoPreprocess({
         projectId,
         forceFull,
         googleAccountId: accountId,
@@ -268,7 +268,7 @@ export function AiMemoryPage() {
     setError(null);
     setMessage(null);
     try {
-      const result = await window.novelTrans.notebook.packNovelCorpus({ projectId });
+      const result = await window.khepreeNovelAI.notebook.packNovelCorpus({ projectId });
       setPackInfo({
         outputDir: result.outputDir,
         parts: result.parts.map((p) => ({
@@ -302,7 +302,7 @@ export function AiMemoryPage() {
     setMessage(null);
     try {
       const partFileNames = packInfo?.parts.map((p) => p.fileName);
-      const result = await window.novelTrans.notebook.getPreprocessPrompt({
+      const result = await window.khepreeNovelAI.notebook.getPreprocessPrompt({
         projectId,
         partFileNames,
       });
@@ -329,7 +329,7 @@ export function AiMemoryPage() {
     setError(null);
     setMessage(null);
     try {
-      const result = await window.novelTrans.notebook.importPreprocessResult({
+      const result = await window.khepreeNovelAI.notebook.importPreprocessResult({
         projectId,
         text: filePath ? undefined : importText,
         filePath: filePath ?? undefined,
@@ -747,7 +747,7 @@ export function AiMemoryPage() {
                   if (!accountId) return;
                   void run(
                     () =>
-                      window.novelTrans.notebook.provision({
+                      window.khepreeNovelAI.notebook.provision({
                         projectId,
                         accountId,
                         role: 'RESEARCH',
@@ -769,7 +769,7 @@ export function AiMemoryPage() {
                 disabled={busy}
                 variant="ghost"
                 onClick={() =>
-                  void window.novelTrans.notebook
+                  void window.khepreeNovelAI.notebook
                     .selectPreprocessResultPath()
                     .then((pick) => {
                       if (!pick.canceled && pick.filePath) {
@@ -787,7 +787,7 @@ export function AiMemoryPage() {
                 onClick={() =>
                   void run(
                     () =>
-                      window.novelTrans.notebook.runBootstrapAnalysis({
+                      window.khepreeNovelAI.notebook.runBootstrapAnalysis({
                         projectId,
                         mode: 'BALANCED',
                         googleAccountId: accountId,
@@ -812,7 +812,7 @@ export function AiMemoryPage() {
                 variant="ghost"
                 onClick={() =>
                   void run(
-                    () => window.novelTrans.notebook.rebuild(projectId),
+                    () => window.khepreeNovelAI.notebook.rebuild(projectId),
                     t('aiMemory.msgRebuilt'),
                   )
                 }
@@ -832,7 +832,7 @@ export function AiMemoryPage() {
                     setMessage(null);
                     setProgressMsg(t('aiMemory.initStarting'));
                     try {
-                      const result = await window.novelTrans.notebook.resetAiMemory({
+                      const result = await window.khepreeNovelAI.notebook.resetAiMemory({
                         projectId,
                         confirm: true,
                         runInitAfter: true,

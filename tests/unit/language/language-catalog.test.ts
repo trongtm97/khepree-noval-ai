@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   GEMINI_WEB_OFFICIAL_CODES,
   GEMINI_WEB_OFFICIAL_AUDIT_DATE,
-  NOVELTRANS_VERIFIED_CODES,
+  KHEPREE_NOVEL_AI_VERIFIED_CODES,
 } from '@shared/constants/gemini-web-official-2026';
 import {
   AI_SUPPORT_TIERS,
@@ -55,7 +55,7 @@ describe('World Language Catalog', () => {
       expect(['GEMINI_WEB_OFFICIAL', 'GEMINI_API_EXTENDED', 'CATALOG_ONLY']).toContain(
         p.providerSupport,
       );
-      expect(['VERIFIED', 'UNTESTED', 'KNOWN_ISSUE']).toContain(p.novelTransVerification);
+      expect(['VERIFIED', 'UNTESTED', 'KNOWN_ISSUE']).toContain(p.khepreeNovelAiVerification);
     }
   });
 
@@ -85,19 +85,19 @@ describe('World Language Catalog', () => {
   });
 
   it('Khepree Novel AI VERIFIED is subset of official Web languages', () => {
-    for (const code of NOVELTRANS_VERIFIED_CODES) {
+    for (const code of KHEPREE_NOVEL_AI_VERIFIED_CODES) {
       expect(GEMINI_WEB_OFFICIAL_CODES.has(code)).toBe(true);
-      expect(getLanguageProfile(code).novelTransVerification).toBe('VERIFIED');
+      expect(getLanguageProfile(code).khepreeNovelAiVerification).toBe('VERIFIED');
     }
   });
 
   it('official but untested languages are not labeled VERIFIED', () => {
     const untestedOfficial = profiles.filter(
-      (p) => p.providerSupport === 'GEMINI_WEB_OFFICIAL' && !NOVELTRANS_VERIFIED_CODES.has(p.code),
+      (p) => p.providerSupport === 'GEMINI_WEB_OFFICIAL' && !KHEPREE_NOVEL_AI_VERIFIED_CODES.has(p.code),
     );
     expect(untestedOfficial.length).toBeGreaterThan(0);
     for (const p of untestedOfficial) {
-      expect(p.novelTransVerification).toBe('UNTESTED');
+      expect(p.khepreeNovelAiVerification).toBe('UNTESTED');
     }
   });
 

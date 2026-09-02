@@ -42,12 +42,12 @@ export function ProjectDataPage() {
   const refresh = useCallback(async () => {
     if (!projectId) return;
     const [{ project: p }, charResult, relResult, termCount, bootstrap, hist] = await Promise.all([
-      window.novelTrans.projects.get(projectId),
-      window.novelTrans.memory.listCharacters(projectId),
-      window.novelTrans.memory.listRelationships({ projectId }),
-      window.novelTrans.terms.countByProject(projectId),
-      window.novelTrans.notebook.getBootstrapStatus(projectId).catch(() => null),
-      window.novelTrans.tabular.listHistory({ projectId }),
+      window.khepreeNovelAI.projects.get(projectId),
+      window.khepreeNovelAI.memory.listCharacters(projectId),
+      window.khepreeNovelAI.memory.listRelationships({ projectId }),
+      window.khepreeNovelAI.terms.countByProject(projectId),
+      window.khepreeNovelAI.notebook.getBootstrapStatus(projectId).catch(() => null),
+      window.khepreeNovelAI.tabular.listHistory({ projectId }),
     ]);
     setProject(p);
     setHistory(hist.entries);
@@ -98,7 +98,7 @@ export function ProjectDataPage() {
   const handleUndo = async (_entryId: string) => {
     setBusy(true);
     try {
-      const result = await window.novelTrans.tabular.undoLast({ projectId });
+      const result = await window.khepreeNovelAI.tabular.undoLast({ projectId });
       setMessage(result.message);
       await refresh();
     } catch (err: unknown) {
@@ -132,7 +132,7 @@ export function ProjectDataPage() {
                 size="sm"
                 variant="secondary"
                 onClick={() => {
-                  void window.novelTrans.portability.openExportedFile({
+                  void window.khepreeNovelAI.portability.openExportedFile({
                     projectId,
                     filePath: exportResult.filePath,
                     editionId,
@@ -145,7 +145,7 @@ export function ProjectDataPage() {
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  void window.novelTrans.portability.openExportDirectory({
+                  void window.khepreeNovelAI.portability.openExportDirectory({
                     projectId,
                     editionId,
                   });

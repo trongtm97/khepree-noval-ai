@@ -112,7 +112,7 @@ Phase 3 tightened vertical/horizontal budgets, compact chapter navigator and con
 
 ## Persisted UI state (§XVI)
 
-Stored in `noveltrans-translation-workspace`:
+Stored in `khepree-novel-ai-translation-workspace`:
 
 - `chapterRailCollapsed`, `chapterRailWidth`
 - `contextCollapsed`, `contextWidth`

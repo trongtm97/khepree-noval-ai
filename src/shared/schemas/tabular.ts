@@ -20,6 +20,8 @@ import {
 export const TabularMetaSchema = z.object({
   khepree_format: z.string().optional(),
   /** @deprecated legacy export field */
+  khepree_novel_ai_format: z.string().optional(),
+  /** @deprecated NovelTrans-era export field */
   noveltrans_format: z.string().optional(),
   schema_version: z.union([z.string(), z.number()]).optional(),
   exported_at: z.string().optional(),

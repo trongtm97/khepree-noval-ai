@@ -303,9 +303,9 @@ export async function buildEpubBuffer(
     <dc:title>${escapeXml(data.projectTitle)}</dc:title>
     <dc:language>${escapeXml(normalizeLanguageCode(data.targetLanguage))}</dc:language>
     <meta property="dcterms:source">${escapeXml(normalizeLanguageCode(data.sourceLanguage))}</meta>
-    <meta name="noveltrans:source-language" content="${escapeXml(data.sourceLanguageLabel)}"/>
-    <meta name="noveltrans:target-language" content="${escapeXml(data.targetLanguageLabel)}"/>
-    <dc:identifier id="uid">urn:noveltrans:${Date.now()}</dc:identifier>
+    <meta name="khepree-novel-ai:source-language" content="${escapeXml(data.sourceLanguageLabel)}"/>
+    <meta name="khepree-novel-ai:target-language" content="${escapeXml(data.targetLanguageLabel)}"/>
+    <dc:identifier id="uid">urn:khepree-novel-ai:${Date.now()}</dc:identifier>
   </metadata>
   <manifest>
     ${manifestItems.join('\n    ')}

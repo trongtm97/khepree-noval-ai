@@ -24,7 +24,7 @@ export function AiProvidersSettingsPanel() {
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    const list = await window.novelTrans.aiProviders.list();
+    const list = await window.khepreeNovelAI.aiProviders.list();
     setState({
       providers: list.providers,
       primaryProviderId: list.primaryProviderId,
@@ -63,7 +63,7 @@ export function AiProvidersSettingsPanel() {
               onClick={() => {
                 setBusy(true);
                 setActionError(null);
-                void window.novelTrans.aiProviders
+                void window.khepreeNovelAI.aiProviders
                   .installWorker()
                   .then((installResult) => {
                     showSaved(installResult.message);
@@ -96,7 +96,7 @@ export function AiProvidersSettingsPanel() {
           type="checkbox"
           checked={state?.fallbackEnabled ?? true}
           onChange={(event) => {
-            void window.novelTrans.aiProviders
+            void window.khepreeNovelAI.aiProviders
               .setFallback({ enabled: event.target.checked })
               .then(() => refresh())
               .catch((err: unknown) => {
@@ -142,7 +142,7 @@ export function AiProvidersSettingsPanel() {
                   disabled={busy}
                   onClick={() => {
                     setBusy(true);
-                    void window.novelTrans.aiProviders
+                    void window.khepreeNovelAI.aiProviders
                       .check({ providerId: provider.id })
                       .then((checkResult) => {
                         showSaved(checkResult.message);
@@ -164,7 +164,7 @@ export function AiProvidersSettingsPanel() {
                   variant="secondary"
                   disabled={busy || isPrimary}
                   onClick={() => {
-                    void window.novelTrans.aiProviders
+                    void window.khepreeNovelAI.aiProviders
                       .setPriority({
                         providerId: provider.id,
                         promote: true,
@@ -178,7 +178,7 @@ export function AiProvidersSettingsPanel() {
                   variant="secondary"
                   disabled={busy}
                   onClick={() => {
-                    void window.novelTrans.aiProviders
+                    void window.khepreeNovelAI.aiProviders
                       .setEnabled({
                         providerId: provider.id,
                         enabled: !provider.enabled,

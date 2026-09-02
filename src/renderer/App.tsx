@@ -30,7 +30,6 @@ import { KhepreeAccountPage } from './features/khepree/pages/KhepreeAccountPage'
 import { KhepreePlanPage } from './features/khepree/pages/KhepreePlanPage';
 import { KhepreeDevicesPage } from './features/khepree/pages/KhepreeDevicesPage';
 import { KhepreeAccessGate } from './features/khepree/KhepreeAccessGate';
-import { KhepreeFreeTierBanner } from './features/khepree/KhepreeFreeTierBanner';
 import { useKhepreeAccessState } from './features/khepree/useKhepreeAccessState';
 import { HelpPage } from './features/help/HelpPage';
 import { OverlayPlaygroundPage } from './pages/dev/OverlayPlaygroundPage';
@@ -67,9 +66,9 @@ export function App() {
     void (async () => {
       try {
         const [info, setup, language] = await Promise.all([
-          window.novelTrans.getInfo(),
-          window.novelTrans.setup.getStatus(),
-          window.novelTrans.uiLanguage.get(),
+          window.khepreeNovelAI.getInfo(),
+          window.khepreeNovelAI.setup.getStatus(),
+          window.khepreeNovelAI.uiLanguage.get(),
         ]);
         if (!alive.current) return;
         applyUiLanguageStatus(language);
@@ -92,12 +91,12 @@ export function App() {
   }, []);
 
   const enterApp = async () => {
-    const setup = await window.novelTrans.setup.getStatus();
+    const setup = await window.khepreeNovelAI.setup.getStatus();
     setSetupStatus(setup);
   };
 
   const completeLanguageFirstRun = async () => {
-    const language = await window.novelTrans.uiLanguage.get();
+    const language = await window.khepreeNovelAI.uiLanguage.get();
     applyUiLanguageStatus(language);
     setUiLanguage(language);
   };
@@ -154,7 +153,6 @@ export function App() {
     return (
       <BrowserRouter>
         <AppShell appInfo={appInfo}>
-          {khepreeState.status === 'FREE' ? <KhepreeFreeTierBanner /> : null}
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/projects" element={<ProjectsPage />} />

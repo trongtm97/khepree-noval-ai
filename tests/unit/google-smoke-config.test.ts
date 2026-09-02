@@ -11,7 +11,7 @@ describe('google-smoke config guards', () => {
       parseGoogleSmokeConfig({
         profilePath: 'C:/tmp/profile',
         notebookUrl: 'https://notebooklm.google.com/notebook/abc',
-        smokeProjectLabel: 'NOVELTRANS_SMOKE',
+        smokeProjectLabel: 'KHEPREE_NOVEL_AI_SMOKE',
         allowNonSmokeNotebook: true,
       }),
     ).toThrow(/forbidden/i);
@@ -36,7 +36,7 @@ describe('google-smoke config guards', () => {
     const cfg = parseGoogleSmokeConfig({
       profilePath: 'C:/tmp/profile',
       notebookUrl: 'https://notebooklm.google.com/notebook/smoke-id',
-      smokeProjectLabel: 'NOVELTRANS_SMOKE',
+      smokeProjectLabel: 'KHEPREE_NOVEL_AI_SMOKE',
     });
     expect(cfg.smokeProjectLabel).toContain('SMOKE');
   });

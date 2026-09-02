@@ -3,6 +3,83 @@ import type { KhepreeAccessStatus } from '@shared/constants/khepree';
 
 type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
 
+export function formatKhepreeProductDisplayName(t: TranslateFn): string {
+  const key = 'khepree.account.productDisplayName';
+  const label = t(key);
+  return label === key ? 'Khepree Novel AI' : label;
+}
+
+/** Device count with semantic fallbacks — never renders "? / ?". */
+export function formatKhepreeDevicesCount(
+  t: TranslateFn,
+  used: number | null | undefined,
+  max: number | null | undefined,
+): string {
+  if (used == null && max == null) {
+    return t('khepree.devices.unavailable');
+  }
+  if (used == null || max == null) {
+    return '—';
+  }
+  return t('khepree.account.devicesCount', { used, max });
+}
+
+export function formatKhepreeDevicesRemaining(
+  t: TranslateFn,
+  used: number | null | undefined,
+  max: number | null | undefined,
+): string | null {
+  if (used == null || max == null || max <= 0) return null;
+  const remaining = Math.max(0, max - used);
+  return t('khepree.devices.slotsRemaining', { count: remaining });
+}
+
+export type KhepreeConnectionTone = 'success' | 'warning' | 'error';
+
+export function khepreeAccountConnectionTone(
+  state: Pick<KhepreeAccessState, 'status' | 'entitlement' | 'signedIn'>,
+): KhepreeConnectionTone {
+  if (!state.signedIn) return 'warning';
+  if (state.entitlement === 'expired') return 'error';
+  if (state.entitlement === 'suspended') return 'warning';
+  if (state.status === 'ACTIVE' || state.status === 'FREE') return 'success';
+  return 'warning';
+}
+
+export function formatKhepreeAccountConnectionLabel(
+  t: TranslateFn,
+  state: Pick<KhepreeAccessState, 'status' | 'entitlement' | 'signedIn'>,
+): string {
+  if (khepreeAccountConnectionTone(state) === 'success') {
+    return t('khepree.account.connected');
+  }
+  return formatKhepreeAccessStatus(t, state.status);
+}
+
+/** Initials for profile avatar — first + last word, or first two chars. */
+export function khepreeDisplayInitials(name: string | null | undefined): string {
+  const trimmed = name?.trim();
+  if (!trimmed) return '?';
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ''}${parts[parts.length - 1][0] ?? ''}`.toUpperCase();
+}
+
+export function khepreeEntitlementBadgeVariant(
+  entitlement: KhepreeAccessState['entitlement'],
+): 'success' | 'warning' | 'error' | 'info' {
+  switch (entitlement) {
+    case 'active':
+      return 'success';
+    case 'suspended':
+      return 'warning';
+    case 'expired':
+      return 'error';
+    default:
+      return 'info';
+  }
+}
+
 /** Mask email for display — first char + domain visible. */
 export function maskKhepreeEmail(email: string): string {
   const at = email.indexOf('@');

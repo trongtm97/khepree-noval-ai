@@ -24,8 +24,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     console.error('Renderer error boundary caught:', error, info.componentStack);
     try {
       // Best-effort: main may log via future IPC; keep renderer safe if preload missing
-      void (window as unknown as { novelTrans?: { ping?: () => Promise<unknown> } })
-        .novelTrans?.ping?.();
+      void (window as unknown as { khepreeNovelAI?: { ping?: () => Promise<unknown> } })
+        .khepreeNovelAI?.ping?.();
     } catch {
       // ignore
     }

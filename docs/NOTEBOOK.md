@@ -10,7 +10,7 @@ Playwright-driven NotebookLM / Gemini Notebook automation. Selectors live in one
 
 | Field | Value |
 |-------|--------|
-| Name | `[NovelTrans] <Novel Name>` |
+| Name | `[Khepree Novel AI] <Novel Name>` |
 | Sources | Local-built markdown `00_BOOK_PROFILE.md` … `07_RECENT_CONTEXT.md` (from SQLite via `NotebookKnowledgeBuilder`) |
 | Instructions | Long-term knowledge role + `style_config` overrides |
 

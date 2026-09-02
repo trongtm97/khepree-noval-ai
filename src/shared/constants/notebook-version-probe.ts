@@ -3,10 +3,10 @@
  * not merely that a source card with the right name exists.
  */
 export const SYNC_STATE_SOURCE_NAME = '08_SYNC_STATE';
-export const SYNC_STATE_SOURCE_ALIAS = '_NOVELTRANS_STATE';
+export const SYNC_STATE_SOURCE_ALIAS = '_KHEPREE_NOVEL_AI_STATE';
 
 export const VERSION_PROBE_PROMPT = [
-  'From the NovelTrans sync-state source,',
+  'From the Khepree Novel AI sync-state source,',
   'return ONLY:',
   '',
   'NT_VERSION=<value>',
@@ -44,20 +44,29 @@ export function generateSyncNonce(): string {
 
 export function buildSyncStateManifestContent(manifest: SyncStateManifest): string {
   return [
-    '# NovelTrans sync state',
+    '# Khepree Novel AI sync state',
     '# Machine-readable — do not paraphrase.',
-    `NOVELTRANS_PROJECT_ID=${manifest.projectId}`,
-    `NOVELTRANS_KNOWLEDGE_VERSION=${manifest.knowledgeVersion}`,
-    `NOVELTRANS_SYNC_NONCE=${manifest.syncNonce}`,
+    `KHEPREE_NOVEL_AI_PROJECT_ID=${manifest.projectId}`,
+    `KHEPREE_NOVEL_AI_KNOWLEDGE_VERSION=${manifest.knowledgeVersion}`,
+    `KHEPREE_NOVEL_AI_SYNC_NONCE=${manifest.syncNonce}`,
   ].join('\n');
 }
 
 export function parseSyncStateManifestContent(
   content: string,
 ): SyncStateManifest | null {
-  const projectId = (/NOVELTRANS_PROJECT_ID=(\S+)/.exec(content))?.[1] ?? null;
-  const versionRaw = (/NOVELTRANS_KNOWLEDGE_VERSION=(\d+)/.exec(content))?.[1] ?? null;
-  const syncNonce = (/NOVELTRANS_SYNC_NONCE=([A-Fa-f0-9]+)/.exec(content))?.[1] ?? null;
+  const projectId =
+    (/KHEPREE_NOVEL_AI_PROJECT_ID=(\S+)/.exec(content))?.[1] ??
+    (/NOVELTRANS_PROJECT_ID=(\S+)/.exec(content))?.[1] ??
+    null;
+  const versionRaw =
+    (/KHEPREE_NOVEL_AI_KNOWLEDGE_VERSION=(\d+)/.exec(content))?.[1] ??
+    (/NOVELTRANS_KNOWLEDGE_VERSION=(\d+)/.exec(content))?.[1] ??
+    null;
+  const syncNonce =
+    (/KHEPREE_NOVEL_AI_SYNC_NONCE=([A-Fa-f0-9]+)/.exec(content))?.[1] ??
+    (/NOVELTRANS_SYNC_NONCE=([A-Fa-f0-9]+)/.exec(content))?.[1] ??
+    null;
   if (!projectId || !versionRaw || !syncNonce) return null;
   return {
     projectId,

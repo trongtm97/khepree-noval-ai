@@ -13,7 +13,7 @@ logger = logging.getLogger("gemini_webapi_worker.session")
 
 COOKIE_FILENAME = "cookie.txt"
 
-# Legacy NovelTrans model ids → gemini-web2api model names
+# Legacy Khepree Novel AI model ids → gemini-web2api model names
 LEGACY_MODEL_MAP: dict[str, str] = {
     "gemini-flash": "gemini-3.6-flash",
     "gemini-pro": "gemini-3.1-pro",

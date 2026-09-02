@@ -48,7 +48,7 @@ export function useSourceFolderEvents(): void {
   const add = useNotificationStore((s) => s.add);
 
   useEffect(() => {
-    const unsubscribe = window.novelTrans.sourceFolder.onEvent((event) => {
+    const unsubscribe = window.khepreeNovelAI.sourceFolder.onEvent((event) => {
       if (event.type === 'scan_progress') return;
       add({
         kind: mapEventKind(event),

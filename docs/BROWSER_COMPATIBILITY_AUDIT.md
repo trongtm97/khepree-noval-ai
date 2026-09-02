@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-29  
 **Scope:** Gemini, ChatGPT, Meta AI browser providers  
-**Goal:** NovelTrans must not depend on stealth techniques to function.
+**Goal:** Khepree Novel AI must not depend on stealth techniques to function.
 
 ---
 
@@ -38,14 +38,14 @@
 - `PlaywrightBrowserAiService.openLoginBrowser` — ChatGPT, Meta AI headed login
 - `PlaywrightBrowserAiService.verifyLogin` — ChatGPT, Meta AI headless verify when login browser closed
 
-**Verdict:** Not required. Removed. NovelTrans login/session must work via standard Playwright + dedicated profile + UI selectors.
+**Verdict:** Not required. Removed. Khepree Novel AI login/session must work via standard Playwright + dedicated profile + UI selectors.
 
 ---
 
 ### 1.2 KEPT (opt-in) — `BrowserCompatibilityPatch.GOOGLE_LOGIN_LAUNCH`
 
 **Module:** `src/main/automation/browser-runner/browser-compatibility-patch.ts`  
-**Applied via:** `launchNovelTransPersistentContext({ loginCompat: true })`
+**Applied via:** `launchKhepreeNovelAIPersistentContext({ loginCompat: true })`
 
 | Launch option | What it changes | Why it exists | Required? |
 |---------------|-----------------|----------------|-----------|
@@ -59,7 +59,7 @@
 | **Gemini** | `PlaywrightBrowserSessionController.open` → Google account login | `true` |
 | ChatGPT | `PlaywrightBrowserAiService.openLoginBrowser` | **`false` (removed in Phase 8)** |
 | Meta AI | `PlaywrightBrowserAiService.openLoginBrowser` | **`false` (removed in Phase 8)** |
-| Translation send (all) | `browser-runtime-manager` → `launchNovelTransPersistentContext` | `false` |
+| Translation send (all) | `browser-runtime-manager` → `launchKhepreeNovelAIPersistentContext` | `false` |
 
 **Detection when patch insufficient:** `looksLikeInsecureBrowserInterstitial()` → reason `BROWSER_NOT_SECURE` (`browser-session-controller.ts`).
 
@@ -95,14 +95,14 @@ Surface adapters classify CAPTCHA/security pages → `NEEDS_ATTENTION` / non-ret
 ## 2. Default behavior
 
 ```
-launchNovelTransPersistentContext({
-  profilePath,          // dedicated NovelTrans dir only
+launchKhepreeNovelAIPersistentContext({
+  profilePath,          // dedicated Khepree Novel AI dir only
   headless: false,       // login default: headed
   loginCompat: false,    // no patches unless Google login
 })
 ```
 
-**Single entry:** `launchNovelTransPersistentContext` in `launch-persistent-context.ts`  
+**Single entry:** `launchKhepreeNovelAIPersistentContext` in `launch-persistent-context.ts`  
 **Never uses:** OS default Chrome/Edge profile (`userDataDir` = `browserProfiles/<worker-id>` only)
 
 Named patches live in `browser-compatibility-patch.ts` — not "stealth".

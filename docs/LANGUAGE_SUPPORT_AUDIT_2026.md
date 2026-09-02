@@ -5,7 +5,7 @@
 | Source | URL | Date |
 |--------|-----|------|
 | Gemini Web supported languages | https://support.google.com/gemini/answer/13575153 | 2026-08-29 |
-| NovelTrans catalog | `src/shared/constants/world-language-catalog.ts` | 2026-08-29 |
+| Khepree Novel AI catalog | `src/shared/constants/world-language-catalog.ts` | 2026-08-29 |
 | Official fixture | `src/shared/constants/gemini-web-official-2026.ts` | 2026-08-29 |
 
 ## Summary
@@ -14,20 +14,20 @@
 |--------|------:|
 | Catalog total (canonical codes) | 129 |
 | Gemini Web official (`GEMINI_WEB_OFFICIAL`) | 78 |
-| NovelTrans workflow verified (`VERIFIED`) | 43 |
+| Khepree Novel AI workflow verified (`VERIFIED`) | 43 |
 | Gemini API extended (`GEMINI_API_EXTENDED`) | ~40 |
 | Catalog-only / experimental | remainder |
 
 ## Bug fixed
 
-`GEMINI_WEB_VERIFIED_CODES` previously listed only **43** languages as “Web verified”, conflating **Google UI availability** with **NovelTrans QA**. Many officially supported Gemini Web languages (e.g. `af`, `fa`, `fil`, `ta`, `mr`, `zu`) were incorrectly tiered as `GEMINI_EXTENDED`.
+`GEMINI_WEB_VERIFIED_CODES` previously listed only **43** languages as “Web verified”, conflating **Google UI availability** with **Khepree Novel AI QA**. Many officially supported Gemini Web languages (e.g. `af`, `fa`, `fil`, `ta`, `mr`, `zu`) were incorrectly tiered as `GEMINI_EXTENDED`.
 
 ### Resolution
 
 Two dimensions:
 
 - **`providerSupport`**: `GEMINI_WEB_OFFICIAL` | `GEMINI_API_EXTENDED` | `CATALOG_ONLY`
-- **`novelTransVerification`**: `VERIFIED` | `UNTESTED` | `KNOWN_ISSUE`
+- **`khepreeNovelAiVerification`**: `VERIFIED` | `UNTESTED` | `KNOWN_ISSUE`
 
 All **78** official Gemini Web languages now map to `GEMINI_WEB_OFFICIAL`. Only the 43 browser-workflow-tested pairs remain `VERIFIED`.
 
@@ -75,7 +75,7 @@ Aliases never create new catalog rows.
 
 - Picker default: stacked `International` / `Native · code`
 - Subtle `✓` / `○` verification indicator (not “Gemini dịch hoàn hảo”)
-- Tooltip: *Gemini hỗ trợ ngôn ngữ này. NovelTrans chưa kiểm thử đầy đủ quy trình dịch.*
+- Tooltip: *Gemini hỗ trợ ngôn ngữ này. Khepree Novel AI chưa kiểm thử đầy đủ quy trình dịch.*
 
 ## Known limitations
 

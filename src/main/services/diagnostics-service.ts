@@ -187,7 +187,7 @@ export class DiagnosticsService {
       profilePath,
       notebookUrl: input.notebookUrl,
       headless: input.headless ?? false,
-      smokeProjectLabel: input.smokeProjectLabel ?? 'NOVELTRANS_SMOKE',
+      smokeProjectLabel: input.smokeProjectLabel ?? 'KHEPREE_NOVEL_AI_SMOKE',
       scenarios: input.scenarios,
       reportMarkdownPath: reportPath,
       artifactsDir,
@@ -245,7 +245,7 @@ export class DiagnosticsService {
       profilePath,
       notebookUrl: input.notebookUrl,
       headless: input.headless ?? false,
-      smokeProjectLabel: input.smokeProjectLabel ?? 'NOVELTRANS_SMOKE',
+      smokeProjectLabel: input.smokeProjectLabel ?? 'KHEPREE_NOVEL_AI_SMOKE',
       tests: input.tests,
       reportMarkdownPath: reportPath,
       artifactsDir,
@@ -606,10 +606,10 @@ export class DiagnosticsService {
       profilePath,
       ownerId,
     });
-    const { launchNovelTransPersistentContext } = await import(
+    const { launchKhepreeNovelAIPersistentContext } = await import(
       '../automation/browser-runner/launch-persistent-context'
     );
-    const { context } = await launchNovelTransPersistentContext({
+    const { context } = await launchKhepreeNovelAIPersistentContext({
       profilePath,
       // Connection probes may run headless; caller path is diagnostics-only.
       headless: true,
@@ -652,10 +652,10 @@ export class DiagnosticsService {
       profilePath,
       ownerId,
     });
-    const { launchNovelTransPersistentContext } = await import(
+    const { launchKhepreeNovelAIPersistentContext } = await import(
       '../automation/browser-runner/launch-persistent-context'
     );
-    const { context } = await launchNovelTransPersistentContext({
+    const { context } = await launchKhepreeNovelAIPersistentContext({
       profilePath,
       headless: false,
       diagnosticsDir: path.join(

@@ -1,4 +1,4 @@
-# UI overlay policy — NovelTrans Studio
+# UI overlay policy — Khepree Novel AI
 
 ## Rule
 
@@ -52,7 +52,7 @@ rootRef.current.contains(event.target)
 | `--z-modal` (1100) | Dialog, drawer backdrop |
 | `--z-toast` (1200) | Toast notifications |
 
-Mount point: `#noveltrans-overlay-root` on `document.body`.
+Mount point: `#khepree-overlay-root` on `document.body`.
 
 ## Regression
 

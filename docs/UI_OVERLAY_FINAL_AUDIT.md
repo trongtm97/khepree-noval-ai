@@ -67,7 +67,7 @@ Raw `z-index: 40` removed from overlay implementations. Remaining low values: ta
 
 ## Toast ordering
 
-Toasts portaled to `#noveltrans-overlay-root` at `--z-toast` — above modal backdrops.
+Toasts portaled to `#khepree-overlay-root` at `--z-toast` — above modal backdrops.
 
 ## Tests
 

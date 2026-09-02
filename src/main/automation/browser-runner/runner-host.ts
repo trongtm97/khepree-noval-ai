@@ -193,7 +193,7 @@ export class UtilityProcessBrowserWorker implements BrowserWorker {
         });
 
         const child = utilityProcess.fork(this.runnerScriptPath, [], {
-          serviceName: `NovelTransBrowserRunner:${this.workerId}`,
+          serviceName: `KhepreeNovelAIBrowserRunner:${this.workerId}`,
           env: this.env,
           stdio: 'pipe',
         });

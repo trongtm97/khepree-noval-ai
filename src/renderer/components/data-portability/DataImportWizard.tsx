@@ -66,7 +66,7 @@ export function DataImportWizard({
 
   const runPreview = useCallback(
     async (path: string, mapping?: Record<string, string>) => {
-      const result = await window.novelTrans.tabular.preview({
+      const result = await window.khepreeNovelAI.tabular.preview({
         filePath: path,
         projectId,
         editionId,
@@ -86,7 +86,7 @@ export function DataImportWizard({
     setBusy(true);
     setError(null);
     try {
-      const selected = await window.novelTrans.tabular.selectImportFile({
+      const selected = await window.khepreeNovelAI.tabular.selectImportFile({
         dataType: section.dataType,
         format: 'any',
       });
@@ -121,7 +121,7 @@ export function DataImportWizard({
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.tabular.commit({
+      const result = await window.khepreeNovelAI.tabular.commit({
         previewId: preview.previewId,
         mode: importMode,
         projectId,
@@ -156,7 +156,7 @@ export function DataImportWizard({
 
   const cancel = useCallback(async () => {
     if (preview) {
-      await window.novelTrans.tabular.discardPreview({ previewId: preview.previewId });
+      await window.khepreeNovelAI.tabular.discardPreview({ previewId: preview.previewId });
     }
     onClose();
   }, [onClose, preview]);
@@ -192,7 +192,7 @@ export function DataImportWizard({
                   size="sm"
                   disabled={busy}
                   onClick={() => {
-                    void window.novelTrans.tabular
+                    void window.khepreeNovelAI.tabular
                       .downloadTermTemplate({})
                       .then((r) => onComplete(t('terms.tabularTemplateSaved', { path: r.filePath })))
                       .catch(() => undefined);

@@ -1,13 +1,13 @@
 # Tabular Data Import / Export
 
-NovelTrans Studio tabular subsystem for **CSV** and **XLSX** import/export. SQLite remains the source of truth. This does **not** replace full backup ZIP (`.nts-project.zip`).
+Khepree Novel AI tabular subsystem for **CSV** and **XLSX** import/export. SQLite remains the source of truth. This does **not** replace full backup ZIP (`.nts-project.zip`).
 
 ## Architecture
 
 | Component | Role |
 |-----------|------|
 | `TabularSchemaRegistry` | Maps `terms` / `characters` / `translations` data types to column schemas and handlers |
-| `TabularExportService` | Writes NovelTrans-owned exports with `_META` (XLSX) or sidecar `.meta.json` (CSV) |
+| `TabularExportService` | Writes Khepree Novel AI-owned exports with `_META` (XLSX) or sidecar `.meta.json` (CSV) |
 | `TabularImportService` | File dialogs + orchestration |
 | `ImportPreviewService` | Parse → validate → preview session (max 500 rows in UI payload) |
 | `ImportCommitService` | Transactional commit + `import_history` audit + undo |
@@ -25,7 +25,7 @@ Parsing runs in the **main process** (not renderer).
 
 ### XLSX
 
-- Sheet `_META`: `noveltrans_format=NTS_TABULAR`, `schema_version=2`, `exported_at`, `data_type`, `project_id`, `edition_id`, `source_language`, `target_language`
+- Sheet `_META`: `khepree_novel_ai_format=NTS_TABULAR`, `schema_version=2`, `exported_at`, `data_type`, `project_id`, `edition_id`, `source_language`, `target_language`
 - Data sheet: `terms`, `characters`, or `TRANSLATIONS`
 - No formula evaluation; no macros (`.xlsm` not supported)
 
@@ -34,7 +34,7 @@ Parsing runs in the **main process** (not renderer).
 - UTF-8 / UTF-8 BOM (import via existing `detectAndDecode`)
 - Delimiter auto-detect: comma, semicolon, tab
 - Export: UTF-8 BOM **on** by default (Excel Windows)
-- NovelTrans export writes `filename.csv.meta.json` sidecar; header `# key: value` comments also supported
+- Khepree Novel AI export writes `filename.csv.meta.json` sidecar; header `# key: value` comments also supported
 
 External CSV without metadata is allowed when headers match a known schema.
 
@@ -45,7 +45,7 @@ External CSV without metadata is allowed when headers match a known schema.
 
 ## Idempotency
 
-- Rows with stable `id` from NovelTrans export → update existing record
+- Rows with stable `id` from Khepree Novel AI export → update existing record
 - External rows without `id` → natural key (`source_text` + language pair + scope for terms; `canonical_source_name` per project for characters)
 
 ## Audit & undo

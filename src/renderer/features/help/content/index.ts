@@ -1,3 +1,4 @@
+import { contactArticles } from './contact';
 import { introArticles } from './intro';
 import { accountArticles } from './accounts';
 import { aiProviderArticles } from './ai-providers';
@@ -11,21 +12,22 @@ import type { HelpArticle, HelpCategory } from '../types';
 
 export const HELP_CATEGORIES: HelpCategory[] = [
   { id: 'start', label: 'Bắt đầu', order: 1 },
-  { id: 'accounts', label: 'Tài khoản', order: 2 },
-  { id: 'projects', label: 'Dự án', order: 3 },
-  { id: 'translation', label: 'Dịch truyện', order: 4 },
-  { id: 'terms', label: 'Thuật ngữ', order: 5 },
-  { id: 'characters', label: 'Nhân vật', order: 6 },
-  { id: 'notebook', label: 'Notebook', order: 7 },
-  { id: 'jobs', label: 'Tiến trình', order: 8 },
-  { id: 'editor', label: 'Chỉnh sửa', order: 9 },
-  { id: 'logs', label: 'Nhật ký', order: 10 },
-  { id: 'backup', label: 'Sao lưu', order: 11 },
-  { id: 'export', label: 'Xuất truyện', order: 12 },
-  { id: 'troubleshooting', label: 'Xử lý lỗi', order: 13 },
-  { id: 'faq', label: 'FAQ', order: 14 },
-  { id: 'shortcuts', label: 'Phím tắt', order: 15 },
-  { id: 'glossary', label: 'Thuật ngữ NT', order: 16 },
+  { id: 'support', label: 'Liên hệ & cộng đồng', order: 2 },
+  { id: 'accounts', label: 'Tài khoản', order: 3 },
+  { id: 'projects', label: 'Dự án', order: 4 },
+  { id: 'translation', label: 'Dịch truyện', order: 5 },
+  { id: 'terms', label: 'Thuật ngữ', order: 6 },
+  { id: 'characters', label: 'Nhân vật', order: 7 },
+  { id: 'notebook', label: 'Notebook', order: 8 },
+  { id: 'jobs', label: 'Tiến trình', order: 9 },
+  { id: 'editor', label: 'Chỉnh sửa', order: 10 },
+  { id: 'logs', label: 'Nhật ký', order: 11 },
+  { id: 'backup', label: 'Sao lưu', order: 12 },
+  { id: 'export', label: 'Xuất truyện', order: 13 },
+  { id: 'troubleshooting', label: 'Xử lý lỗi', order: 14 },
+  { id: 'faq', label: 'FAQ', order: 15 },
+  { id: 'shortcuts', label: 'Phím tắt', order: 16 },
+  { id: 'glossary', label: 'Thuật ngữ NT', order: 17 },
 ];
 
 export const HELP_ARTICLES: HelpArticle[] = [
@@ -39,6 +41,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   ...operationsArticles,
   ...troubleshootingArticles,
   ...metaArticles,
+  ...contactArticles,
 ].sort((a, b) => a.order - b.order);
 
 export const HELP_ARTICLE_MAP = new Map(HELP_ARTICLES.map((a) => [a.id, a]));

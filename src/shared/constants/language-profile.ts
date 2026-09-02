@@ -5,18 +5,18 @@
  */
 
 import { buildLanguageProfile } from './language-catalog-build';
-import type { AiSupportTier, RegionGroup, NovelTransVerification, ProviderSupport } from './language-catalog-types';
+import type { AiSupportTier, RegionGroup, KhepreeNovelAIVerification, ProviderSupport } from './language-catalog-types';
 import { formatLanguagePairStackedFromProfiles } from './language-catalog-search';
 import { WORLD_LANGUAGE_CATALOG } from './world-language-catalog';
 import { LANGUAGE_CODE_ALIASES } from './language-code-aliases';
 
-export type { AiSupportTier, RegionGroup, ProviderSupport, NovelTransVerification, LanguageProviderSupport } from './language-catalog-types';
-export { AI_SUPPORT_TIERS, REGION_GROUPS, PROVIDER_SUPPORT_LEVELS, NOVELTRANS_VERIFICATION_LEVELS } from './language-catalog-types';
+export type { AiSupportTier, RegionGroup, ProviderSupport, KhepreeNovelAIVerification, LanguageProviderSupport } from './language-catalog-types';
+export { AI_SUPPORT_TIERS, REGION_GROUPS, PROVIDER_SUPPORT_LEVELS, KHEPREE_NOVEL_AI_VERIFICATION_LEVELS } from './language-catalog-types';
 export {
   GEMINI_WEB_OFFICIAL_CODES,
   GEMINI_WEB_OFFICIAL_AUDIT_DATE,
   GEMINI_WEB_OFFICIAL_SOURCE_URL,
-  NOVELTRANS_VERIFIED_CODES,
+  KHEPREE_NOVEL_AI_VERIFIED_CODES,
   GEMINI_WEB_VERIFIED_CODES,
   GEMINI_EXTENDED_CODES,
 } from './world-language-catalog';
@@ -30,7 +30,7 @@ export {
   REGION_GROUP_LABELS_VI,
   REGION_GROUP_ORDER,
   AI_SUPPORT_TIER_LABELS_VI,
-  NOVELTRANS_VERIFICATION_LABELS_VI,
+  KHEPREE_NOVEL_AI_VERIFICATION_LABELS_VI,
   PROVIDER_SUPPORT_LABELS_VI,
 } from './language-catalog-search';
 
@@ -86,8 +86,8 @@ export interface LanguageProfile {
   direction: TextDirection;
   regionGroup: RegionGroup;
   providerSupport: ProviderSupport;
-  novelTransVerification: NovelTransVerification;
-  /** @deprecated Use providerSupport + novelTransVerification. */
+  khepreeNovelAiVerification: KhepreeNovelAIVerification;
+  /** @deprecated Use providerSupport + khepreeNovelAiVerification. */
   aiSupportTier: AiSupportTier;
   segmentationStrategy: SegmentationStrategy;
   quoteStyle: QuoteStyle;
@@ -154,7 +154,7 @@ export function registerLanguageProfile(profile: LanguageProfile): void {
     nativeName: profile.nativeName ?? profile.displayNameNative,
     internationalName: profile.internationalName ?? profile.displayNameNative,
     providerSupport: profile.providerSupport ?? 'CATALOG_ONLY',
-    novelTransVerification: profile.novelTransVerification ?? 'UNTESTED',
+    khepreeNovelAiVerification: profile.khepreeNovelAiVerification ?? 'UNTESTED',
   });
 }
 
@@ -224,7 +224,7 @@ export function getLanguageProfile(code: string): LanguageProfile {
     direction: 'ltr',
     regionGroup: 'OTHER',
     providerSupport: 'CATALOG_ONLY',
-    novelTransVerification: 'UNTESTED',
+    khepreeNovelAiVerification: 'UNTESTED',
     aiSupportTier: 'EXPERIMENTAL',
     segmentationStrategy: 'mixed',
     quoteStyle: 'ascii',
@@ -233,9 +233,9 @@ export function getLanguageProfile(code: string): LanguageProfile {
   };
 }
 
-/** Target language not fully verified for NovelTrans translation workflows. */
+/** Target language not fully verified for Khepree Novel AI translation workflows. */
 export function isExperimentalTranslationLanguage(
-  profile: Pick<LanguageProfile, 'providerSupport' | 'novelTransVerification'>,
+  profile: Pick<LanguageProfile, 'providerSupport' | 'khepreeNovelAiVerification'>,
 ): boolean {
   return profile.providerSupport === 'CATALOG_ONLY';
 }

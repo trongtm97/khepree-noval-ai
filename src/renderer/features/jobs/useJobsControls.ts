@@ -40,7 +40,7 @@ export function useJobsControls(refresh: () => Promise<void>) {
       setShowAdvanced(false);
       setError(null);
       try {
-        const detail = await window.novelTrans.jobs.get(jobId);
+        const detail = await window.khepreeNovelAI.jobs.get(jobId);
         setAttempts(detail.attempts);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
@@ -65,7 +65,7 @@ export function useJobsControls(refresh: () => Promise<void>) {
         }
         await refresh();
         if (selectedId) {
-          const detail = await window.novelTrans.jobs.get(selectedId);
+          const detail = await window.khepreeNovelAI.jobs.get(selectedId);
           setAttempts(detail.attempts);
         }
       } catch (err: unknown) {
@@ -80,7 +80,7 @@ export function useJobsControls(refresh: () => Promise<void>) {
   const setJobPriority = useCallback(
     async (jobId: string, band: PriorityBand) => {
       await runControl(async () => {
-        await window.novelTrans.jobs.move(jobId, JOB_PRIORITY[band]);
+        await window.khepreeNovelAI.jobs.move(jobId, JOB_PRIORITY[band]);
         return { message: t('jobs.priorityUpdated') };
       });
     },
@@ -92,7 +92,7 @@ export function useJobsControls(refresh: () => Promise<void>) {
       if (jobIds.length === 0) return;
       await runControl(async () => {
         for (const jobId of jobIds) {
-          await window.novelTrans.jobs.move(jobId, JOB_PRIORITY[band]);
+          await window.khepreeNovelAI.jobs.move(jobId, JOB_PRIORITY[band]);
         }
         return { message: t('jobs.priorityUpdated') };
       });
@@ -102,14 +102,14 @@ export function useJobsControls(refresh: () => Promise<void>) {
 
   const pauseAll = useCallback(async () => {
     await runControl(async () => {
-      const r = await window.novelTrans.jobs.pauseAll();
+      const r = await window.khepreeNovelAI.jobs.pauseAll();
       return { message: r.affected ? t('jobs.pauseAllDone') : undefined };
     });
   }, [runControl, t]);
 
   const resumeAll = useCallback(async () => {
     await runControl(async () => {
-      const r = await window.novelTrans.jobs.resumeAll();
+      const r = await window.khepreeNovelAI.jobs.resumeAll();
       return { message: r.affected ? t('jobs.resumeAllDone') : undefined };
     });
   }, [runControl, t]);
@@ -117,7 +117,7 @@ export function useJobsControls(refresh: () => Promise<void>) {
   const retryJob = useCallback(
     async (jobId: string) => {
       await runControl(async () => {
-        await window.novelTrans.jobs.retry(jobId);
+        await window.khepreeNovelAI.jobs.retry(jobId);
         return { message: t('jobs.retryDone') };
       });
     },
@@ -127,7 +127,7 @@ export function useJobsControls(refresh: () => Promise<void>) {
   const cancelJob = useCallback(
     async (jobId: string) => {
       await runControl(async () => {
-        await window.novelTrans.jobs.cancel(jobId);
+        await window.khepreeNovelAI.jobs.cancel(jobId);
         setCancelJobId(null);
         return { message: t('jobs.cancelDone') };
       });
@@ -149,7 +149,7 @@ export function useJobsControls(refresh: () => Promise<void>) {
     if (!action || selectedJobIds.size === 0) return;
     const jobIds = [...selectedJobIds];
     await runControl(async () => {
-      const result = await window.novelTrans.jobs.bulk({ jobIds, action });
+      const result = await window.khepreeNovelAI.jobs.bulk({ jobIds, action });
       setPendingBulkAction(null);
       clearJobSelection();
       return { message: result.message };

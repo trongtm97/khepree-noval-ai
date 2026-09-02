@@ -182,11 +182,11 @@ export function TranslationCommandBar({
   };
 
   const pauseJob = () => {
-    void window.novelTrans.jobs.pauseAll();
+    void window.khepreeNovelAI.jobs.pauseAll();
   };
 
   const resumeJob = () => {
-    void window.novelTrans.jobs.resumeAll();
+    void window.khepreeNovelAI.jobs.resumeAll();
   };
 
   return (

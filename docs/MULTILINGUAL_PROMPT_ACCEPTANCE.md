@@ -110,7 +110,7 @@ Test: `tests/google-smoke/multilingual-acceptance-smoke.test.ts`
 **Not run in CI.** Opt-in:
 
 ```bash
-NOVELTRANS_MULTILINGUAL_SMOKE=1 npm run test:google-smoke
+KHEPREE_NOVEL_AI_MULTILINGUAL_SMOKE=1 npm run test:google-smoke
 ```
 
 Uses copyright-safe synthetic paragraphs (3 per pair), stable paragraph IDs, one locked term per pair. Asserts IDs, target-language signals, locked-term preservation, no obvious source leakage.

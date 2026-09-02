@@ -15,7 +15,7 @@ import {
   setBrowserEngineConfigOverride,
 } from '@main/automation/browser-runner/browser-engine-config';
 import {
-  launchNovelTransPersistentContext,
+  launchKhepreeNovelAIPersistentContext,
   writeBrowserEngineDiagnostics,
   toBrowserEngineDiagnosticsSnapshot,
   playwrightLaunchAutomationOptions,
@@ -207,7 +207,7 @@ describe('BrowserEngineResolver', () => {
   });
 });
 
-describe('launchNovelTransPersistentContext + profile lock', () => {
+describe('launchKhepreeNovelAIPersistentContext + profile lock', () => {
   afterEach(() => {
     resetBrowserEngineConfigOverride();
   });
@@ -230,7 +230,7 @@ describe('launchNovelTransPersistentContext + profile lock', () => {
     // Prefer installed Edge/Chrome; Chromium only if actually on disk.
     setBrowserEngineConfigOverride({ enginePreference: 'AUTO' });
 
-    const launched = await launchNovelTransPersistentContext({
+    const launched = await launchKhepreeNovelAIPersistentContext({
       profilePath,
       headless: true,
       diagnosticsDir,
@@ -256,7 +256,7 @@ describe('launchNovelTransPersistentContext + profile lock', () => {
     fs.writeFileSync(marker, 'ok', 'utf8');
     await launched.context.close();
 
-    const relaunched = await launchNovelTransPersistentContext({
+    const relaunched = await launchKhepreeNovelAIPersistentContext({
       profilePath,
       headless: true,
       diagnosticsDir,
@@ -281,7 +281,7 @@ describe('launchNovelTransPersistentContext + profile lock', () => {
       enginePreference: edge.engine === 'EDGE' ? 'EDGE' : 'CHROME',
     });
 
-    const launched = await launchNovelTransPersistentContext({
+    const launched = await launchKhepreeNovelAIPersistentContext({
       profilePath,
       headless: true,
       diagnosticsDir: path.join(root, 'diag'),

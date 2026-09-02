@@ -1,4 +1,4 @@
-# NovelTrans Studio — AI Output Protocol
+# Khepree Novel AI — AI Output Protocol
 
 > Contract between prompt builder, browser automation, output parser, and QA layer.
 

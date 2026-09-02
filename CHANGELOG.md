@@ -1,9 +1,18 @@
 # Changelog
 
-All notable changes to NovelTrans Studio are documented here.  
+All notable changes to Khepree Novel AI are documented here.  
 Format inspired by [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
+
+### Changed
+
+- Rebrand remaining NovelTrans Studio / NovelTrans identifiers to Khepree Novel AI (UI, IPC bridge, worker exe, docs, smoke env vars)
+
+### Added
+
+- Official Khepree Labs contact channels in Help (Facebook, YouTube, TikTok, Telegram, Zalo) with secure system-browser opening via IPC
+- Settings → General entry point linking to Help → Contact & Community
 
 ### Added — Khepree commercial integration (N01–N09)
 
@@ -25,7 +34,7 @@ Format inspired by [Keep a Changelog](https://keepachangelog.com/). Versioning f
 
 ### Added
 
-- Windows packaging via Electron Forge + Squirrel installer (`NovelTransStudioSetup.exe`)
+- Windows packaging via Electron Forge + Squirrel installer (`KhepreeNovelAISetup.exe`)
 - First-run setup wizard (welcome → storage → account → Drive optional → import → notebook → Gemini test → ready)
 - Code signing configuration via `WINDOWS_CERTIFICATE_*` environment variables (no certs in repo)
 - Update provider abstraction + honest manual placeholder (no fake update server)

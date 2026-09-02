@@ -41,7 +41,7 @@ export function ProjectPrimaryProviderPanel() {
       setSelection(GLOBAL_VALUE);
       return;
     }
-    const settings = await window.novelTrans.projects.getTranslatePackSettings(projectId);
+    const settings = await window.khepreeNovelAI.projects.getTranslatePackSettings(projectId);
     if (settings.useGlobalPrimary || !settings.primaryProviderId) {
       setSelection(GLOBAL_VALUE);
     } else {
@@ -62,12 +62,12 @@ export function ProjectPrimaryProviderPanel() {
     setError(null);
     try {
       if (value === GLOBAL_VALUE) {
-        await window.novelTrans.projects.setPrimaryProvider({
+        await window.khepreeNovelAI.projects.setPrimaryProvider({
           projectId,
           useGlobalPrimary: true,
         });
       } else {
-        await window.novelTrans.projects.setPrimaryProvider({
+        await window.khepreeNovelAI.projects.setPrimaryProvider({
           projectId,
           useGlobalPrimary: false,
           primaryProviderId: value,

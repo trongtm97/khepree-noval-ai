@@ -39,7 +39,7 @@ export function CharacterDetailDrawer({
 
   const save = async () => {
     try {
-      await window.novelTrans.memory.upsertCharacter({
+      await window.khepreeNovelAI.memory.upsertCharacter({
         id: draft.id,
         projectId,
         canonicalName: draft.canonicalName,

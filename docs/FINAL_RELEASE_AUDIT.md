@@ -1,4 +1,4 @@
-# FINAL RELEASE AUDIT — NovelTrans Studio
+# FINAL RELEASE AUDIT — Khepree Novel AI
 
 **Role:** Independent Release Engineer  
 **Date:** 2026-08-24  
@@ -83,7 +83,7 @@ Reasons: core translation scheduler cannot send to Gemini; lease/duplicate-run r
 | M8 | Raw Gemini response deleted after ~5s unless retain flag |
 | M9 | Duplicate paragraphs → MANUAL_REVIEW only (no auto-repair) — OK design, ops load |
 | M10 | Drive OAuth revoked does not affect Gemini (OK) but sync fails silently to UI unless checked |
-| M11 | Electron `userData` path ≠ `%APPDATA%\NovelTrans` (split storage) |
+| M11 | Electron `userData` path ≠ `%APPDATA%\KhepreeNovelAI` (split storage) |
 | M12 | Unsigned installer without `WINDOWS_CERTIFICATE_*` |
 | M13 | Transient `RetryPolicy` unused on Gemini send path |
 | M14 | Orphan `RUNNING` gemini_requests / jobs without lease |
@@ -171,7 +171,7 @@ Reasons: core translation scheduler cannot send to Gemini; lease/duplicate-run r
 | `npm run test:integration` | **PASS** |
 | `npm run test:perf` | **PASS** |
 | `npm run package` | **PASS** |
-| `npm run make` | **PASS** (`NovelTransStudioSetup.exe`) |
+| `npm run make` | **PASS** (`KhepreeNovelAISetup.exe`) |
 
 Automated packaging does **not** override product BLOCKERs. Jobs still cannot translate via scheduler.
 

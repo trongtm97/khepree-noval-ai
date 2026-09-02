@@ -46,8 +46,8 @@ export function normalizeSearchQuery(query: string): string {
   return query.trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
 }
 
-export const NOVELTRANS_VERIFICATION_LABELS_VI: Record<
-  import('./language-catalog-types').NovelTransVerification,
+export const KHEPREE_NOVEL_AI_VERIFICATION_LABELS_VI: Record<
+  import('./language-catalog-types').KhepreeNovelAIVerification,
   string
 > = {
   VERIFIED: 'Đã xác minh',

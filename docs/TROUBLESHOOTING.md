@@ -1,10 +1,10 @@
-# Troubleshooting — NovelTrans Studio
+# Troubleshooting — Khepree Novel AI
 
 ## App won't start
 
 - Confirm Windows 10/11 x64.  
-- Delete only `cache/` under `%APPDATA%\NovelTrans` if corrupted — **do not** delete `data/` or `browser-profiles/` unless instructed.  
-- Check `%APPDATA%\NovelTrans\logs\`.
+- Delete only `cache/` under `%APPDATA%\KhepreeNovelAI` if corrupted — **do not** delete `data/` or `browser-profiles/` unless instructed.  
+- Check `%APPDATA%\KhepreeNovelAI\logs\`.
 
 ## Login / session issues
 
@@ -17,10 +17,10 @@
 Google blocks sign-in when Playwright’s bundled Chromium or automation flags are detected.
 
 1. Install **Google Chrome** or **Microsoft Edge** (Stable).  
-2. Close any leftover NovelTrans / Chromium login windows.  
+2. Close any leftover Khepree Novel AI / Chromium login windows.  
 3. Accounts → **Open browser** again (app prefers Chrome → Edge with login-compat launch).  
 4. Optional: set `NTS_BROWSER_ENGINE=CHROME` before `npm run dev` / starting the app.  
-5. Do **not** use the OS default Chrome/Edge profile — NovelTrans keeps a dedicated profile under `%APPDATA%\NovelTrans\browser-profiles\`.  
+5. Do **not** use the OS default Chrome/Edge profile — Khepree Novel AI keeps a dedicated profile under `%APPDATA%\KhepreeNovelAI\browser-profiles\`.  
 
 If Check session reports `BROWSER_NOT_SECURE`, fix the browser install / close old windows, then Open browser and retry sign-in.
 
@@ -46,7 +46,7 @@ UI changed. Use Diagnostics:
 
 ## Upgrade / reinstall
 
-- Upgrades keep `%APPDATA%\NovelTrans` (DB, profiles, settings).  
+- Upgrades keep `%APPDATA%\KhepreeNovelAI` (DB, profiles, settings).  
 - Uninstall that removes AppData will wipe data — verify installer options.  
 - After reinstall, run Test Browser Profile before large batches.
 

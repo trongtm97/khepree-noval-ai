@@ -18,7 +18,7 @@ export function AiWebApiManualConnectPanel() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const acc = await window.novelTrans.aiAccounts.list({
+    const acc = await window.khepreeNovelAI.aiAccounts.list({
       providerId: AI_PROVIDER_IDS.GEMINI_WEB_API,
     });
     setAccounts(acc.accounts);
@@ -101,7 +101,7 @@ export function AiWebApiManualConnectPanel() {
               if (!selectedAccountId) return;
               setBusy(true);
               setActionError(null);
-              void window.novelTrans.aiAccounts
+              void window.khepreeNovelAI.aiAccounts
                 .pasteCookies({
                   accountId: selectedAccountId,
                   secure1psid: psid,

@@ -1,6 +1,6 @@
 # Packaged Gemini Web API worker (Windows)
 
-Production ships `NovelTransGeminiWorker.exe` here (PyInstaller one-file).
+Production ships `KhepreeNovelAIGeminiWorker.exe` here (PyInstaller one-file).
 
 Build on a Windows machine with Python 3.11+:
 

@@ -1,6 +1,6 @@
 /**
  * Opt-in Real Notebook grounding smoke suite.
- * Skips unless NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE=1 (or NOVELTRANS_GOOGLE_SMOKE=1).
+ * Skips unless KHEPREE_NOVEL_AI_NOTEBOOK_GROUNDING_SMOKE=1 (or KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1).
  * Never included in default `npm test`.
  */
 

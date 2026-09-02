@@ -44,7 +44,7 @@ export function TranslationSettingsPanel(props: {
   const setEditorFontPreset = useTranslationWorkspaceStore((s) => s.setEditorFontPreset);
 
   const refresh = useCallback(async () => {
-    const s = await window.novelTrans.jobs.schedulerStatus();
+    const s = await window.khepreeNovelAI.jobs.schedulerStatus();
     setState({
       globalMaxMode: s.globalMaxMode,
       perProjectMax: s.perProjectMax,
@@ -88,7 +88,7 @@ export function TranslationSettingsPanel(props: {
   ) => {
     setSaving(true);
     try {
-      const next = await window.novelTrans.jobs.updateSchedulerSettings(patch);
+      const next = await window.khepreeNovelAI.jobs.updateSchedulerSettings(patch);
       setState({
         globalMaxMode: next.globalMaxMode,
         perProjectMax: next.perProjectMax,

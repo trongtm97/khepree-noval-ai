@@ -7,6 +7,8 @@ import {
   GetVersionResponseSchema,
   OpenFolderRequestSchema,
   OpenFolderResponseSchema,
+  OpenOfficialContactRequestSchema,
+  OpenOfficialContactResponseSchema,
   PingResponseSchema,
   SecurityHealthCheckResponseSchema,
 } from '@shared/schemas/ipc';
@@ -559,6 +561,19 @@ export function registerIpcHandlers(): void {
         return { ok: true as const, path: targetPath };
       },
       OpenFolderResponseSchema,
+    ),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.APP_OPEN_OFFICIAL_CONTACT,
+    createIpcHandler(
+      OpenOfficialContactRequestSchema,
+      async (request) => {
+        const { openOfficialContact } = await import('../app/official-contact-links');
+        const ok = await openOfficialContact(request.channel);
+        return OpenOfficialContactResponseSchema.parse({ ok });
+      },
+      OpenOfficialContactResponseSchema,
     ),
   );
 

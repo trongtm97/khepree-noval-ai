@@ -79,7 +79,7 @@ const config: ForgeConfig = {
     ],
     // User data lives in %APPDATA%/KhepreeNovelAI — never under install dir.
     // Squirrel upgrades must not wipe AppData (DB, profiles, settings).
-    // resources/workers: NovelTransGeminiWorker.exe only (no .venv / secrets / py source).
+    // resources/workers: KhepreeNovelAIGeminiWorker.exe only (no .venv / secrets / py source).
     extraResource: ['./resources/guides', './resources/workers'],
     ...(windowsSign
       ? {
@@ -89,7 +89,11 @@ const config: ForgeConfig = {
         }
       : {}),
   },
-  rebuildConfig: {},
+  rebuildConfig: {
+    // Project node_modules already ships Electron ABI via ensure-electron-native / postinstall.
+    // Avoid node-gyp during package on machines without Visual Studio Build Tools.
+    ignoreModules: ['better-sqlite3'],
+  },
   makers: [
     new MakerSquirrel({
       name: 'KhepreeNovelAI',
@@ -141,7 +145,7 @@ const config: ForgeConfig = {
       const outputPaths = packageResult.outputPaths;
       let found = false;
       for (const out of outputPaths) {
-        const workerExe = path.join(out, 'resources', 'workers', 'NovelTransGeminiWorker.exe');
+        const workerExe = path.join(out, 'resources', 'workers', 'KhepreeNovelAIGeminiWorker.exe');
         if (fs.existsSync(workerExe)) {
           found = true;
           break;
@@ -149,7 +153,7 @@ const config: ForgeConfig = {
       }
       if (!found) {
         console.warn(
-          '[forge] NovelTransGeminiWorker.exe missing under resources/workers — ' +
+          '[forge] KhepreeNovelAIGeminiWorker.exe missing under resources/workers — ' +
             'Web API optional; run npm run build:gemini-worker before make for full self-contained Web API.',
         );
       }

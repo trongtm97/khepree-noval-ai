@@ -1,4 +1,4 @@
-# NovelTrans Studio — UI / UX
+# Khepree Novel AI — UI / UX
 
 > Modern Windows desktop productivity UI. Dark-first. Vietnamese default.
 
@@ -104,4 +104,4 @@ Min usable ~1366×768; sidebar collapses under 1366 unless pinned. Not a mobile 
 
 ## Logs
 
-Activity: derived from jobs/attempts. Technical: `logs:tail` IPC reads redacted `noveltrans.log`.
+Activity: derived from jobs/attempts. Technical: `logs:tail` IPC reads redacted `khepree-novel-ai.log`.

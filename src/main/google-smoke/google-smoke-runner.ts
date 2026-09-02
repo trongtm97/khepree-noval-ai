@@ -1,6 +1,6 @@
 /**
  * Real Google smoke runner — headed Playwright against a logged-in profile.
- * Opt-in only (NOVELTRANS_GOOGLE_SMOKE=1). Never default CI.
+ * Opt-in only (KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1). Never default CI.
  */
 
 import fs from 'node:fs';
@@ -8,7 +8,7 @@ import path from 'node:path';
 import type { BrowserContext, Page } from 'playwright';
 import { GeminiBrowserProvider } from '../automation/providers/google/gemini-browser-provider';
 import { BrowserEventLogger } from '../automation/browser-event-logger';
-import { launchNovelTransPersistentContext } from '../automation/browser-runner/launch-persistent-context';
+import { launchKhepreeNovelAIPersistentContext } from '../automation/browser-runner/launch-persistent-context';
 import { AutomationError } from '../automation/errors/automation-errors';
 import { formatParagraphId } from '@shared/utils/stable-id';
 import { buildFullNovelPreprocessPrompt } from '../bootstrap/full-novel-preprocess-prompts';
@@ -143,7 +143,7 @@ async function openSession(
 ): Promise<Session> {
   const diagnosticsDir = path.join(artifactsDir, 'diagnostics');
   fs.mkdirSync(diagnosticsDir, { recursive: true });
-  const { context } = await launchNovelTransPersistentContext({
+  const { context } = await launchKhepreeNovelAIPersistentContext({
     profilePath: config.profilePath,
     headless: config.headless,
     diagnosticsDir,
@@ -390,7 +390,7 @@ async function scenarioH(session: Session): Promise<void> {
     formatParagraphId(1, 3) + ' 庙里有个老和尚。',
   ].join('\n');
   const base = buildFullNovelPreprocessPrompt({
-    projectTitle: 'NOVELTRANS_SMOKE Tiny Fixture',
+    projectTitle: 'KHEPREE_NOVEL_AI_SMOKE Tiny Fixture',
     author: 'Smoke',
     genre: 'test',
     partFileNames: ['NOVEL_PART_01.txt'],

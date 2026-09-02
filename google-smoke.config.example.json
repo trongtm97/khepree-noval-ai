@@ -2,13 +2,13 @@
   "$schema": "./google-smoke.config.schema.json",
   "comment": "Copy to google-smoke.config.json (gitignored). NEVER point at a production novel project. For Notebook grounding B/D: connect Drive on worker; optional grounding*DriveFileId for pre-linked docs.",
   "enabled": true,
-  "profilePath": "C:/Users/YOU/AppData/Roaming/NovelTrans/browser-profiles/ACCOUNT_DIR",
+  "profilePath": "C:/Users/YOU/AppData/Roaming/KhepreeNovelAI/browser-profiles/ACCOUNT_DIR",
   "notebookUrl": "https://notebooklm.google.com/notebook/SMOKE_NOTEBOOK_ID",
   "headless": false,
-  "smokeProjectLabel": "NOVELTRANS_SMOKE",
+  "smokeProjectLabel": "KHEPREE_NOVEL_AI_SMOKE",
   "scenarios": ["A", "B", "C", "D", "E", "F", "G", "H"],
   "reportMarkdownPath": "docs/REAL_GOOGLE_TEST_REPORT.md",
   "artifactsDir": "tmp/google-smoke-artifacts",
-  "groundingDriveFolderName": "NOVELTRANS_SMOKE_GROUNDING",
+  "groundingDriveFolderName": "KHEPREE_NOVEL_AI_SMOKE_GROUNDING",
   "tests": ["A", "B", "C", "D"]
 }

@@ -1,4 +1,4 @@
-"""NovelTrans Gemini worker — gemini-web2api backend with account bridge.
+"""Khepree Novel AI Gemini worker — gemini-web2api backend with account bridge.
 
 Upstream: https://github.com/Sophomoresty/gemini-web2api (MIT)
 """
@@ -85,7 +85,7 @@ def configure_from_env() -> None:
         CONFIG["gemini_bl"] = new_bl
 
 
-class NovelTransHandler(GeminiHandler):
+class KhepreeNovelAIHandler(GeminiHandler):
     def _nts_secret_ok(self) -> bool:
         expected = os.environ.get("NTS_GEMINI_WORKER_SECRET", "")
         if not expected:
@@ -252,7 +252,7 @@ def main() -> None:
         daemon_threads = True
         allow_reuse_address = True
 
-    server = ThreadedServer((HOST, PORT), NovelTransHandler)
+    server = ThreadedServer((HOST, PORT), KhepreeNovelAIHandler)
     logger.info(
         "Starting gemini-web2api worker on %s:%s (v%s)",
         HOST,

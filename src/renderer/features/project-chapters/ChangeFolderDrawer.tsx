@@ -34,7 +34,7 @@ export function ChangeFolderDrawer({
   };
 
   const pickFolder = async () => {
-    const pick = await window.novelTrans.sourceFolder.selectFolder();
+    const pick = await window.khepreeNovelAI.sourceFolder.selectFolder();
     if (!pick.canceled && pick.folderPath) {
       setNewPath(pick.folderPath);
       setPreviewCount(null);
@@ -46,7 +46,7 @@ export function ChangeFolderDrawer({
     if (!projectId || !newPath.trim()) return;
     setLocalBusy(true);
     try {
-      const preview = await window.novelTrans.sourceFolder.changeFolder({
+      const preview = await window.khepreeNovelAI.sourceFolder.changeFolder({
         projectId,
         newFolderPath: newPath.trim(),
         confirm: false,
@@ -66,7 +66,7 @@ export function ChangeFolderDrawer({
     if (!projectId || !previewPath) return;
     setLocalBusy(true);
     try {
-      await window.novelTrans.sourceFolder.changeFolder({
+      await window.khepreeNovelAI.sourceFolder.changeFolder({
         projectId,
         newFolderPath: previewPath,
         confirm: true,

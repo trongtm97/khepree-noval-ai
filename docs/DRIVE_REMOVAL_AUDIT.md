@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-NovelTrans Studio has **~110 files** touching Google Drive directly or indirectly across main process, SQLite schema, IPC, renderer UI, tests, docs, and resources.
+Khepree Novel AI has **~110 files** touching Google Drive directly or indirectly across main process, SQLite schema, IPC, renderer UI, tests, docs, and resources.
 
 | Layer | Role today | After Drive removal |
 |-------|------------|---------------------|
@@ -22,7 +22,7 @@ NovelTrans Studio has **~110 files** touching Google Drive directly or indirectl
 
 **Package dependency:** `googleapis@^144.0.0` — used exclusively by the Drive layer.
 
-**Renderer note:** Drive IPC (`window.novelTrans.drive.*`) is wired in preload/handlers, but almost no renderer page calls it directly except **Settings** (OAuth client ID). Knowledge sync is routed through **`notebook.syncNow`** on AiMemoryPage.
+**Renderer note:** Drive IPC (`window.khepreeNovelAI.drive.*`) is wired in preload/handlers, but almost no renderer page calls it directly except **Settings** (OAuth client ID). Knowledge sync is routed through **`notebook.syncNow`** on AiMemoryPage.
 
 ---
 
@@ -183,7 +183,7 @@ Artifacts: `gate-lint-phase1.txt`, `typecheck-phase1.txt`, `unit-test-phase1.txt
 | Account Drive channels | `src/shared/constants/ipc-channels.ts` | connectDrive, connectDriveAuth, disconnectDrive | Per-account OAuth | A | Remove | Low | Remove with UI |
 | IPC handlers (Drive) | `src/main/ipc/register-handlers.ts` | Handlers for all drive:* + account Drive + notebook:syncNow → syncDrive | Renderer/main bridge | C | Rewire syncNow to local sync | Medium | Incremental |
 | IPC audit | `src/main/security/ipc-audit.ts` | Drive channel allowlist | Security | A | Remove Drive entries | Low | Cleanup |
-| preload Drive API | `src/preload/preload.ts` | `window.novelTrans.drive.*`, account connectDrive | Renderer exposure | A | Remove | Low | With UI |
+| preload Drive API | `src/preload/preload.ts` | `window.khepreeNovelAI.drive.*`, account connectDrive | Renderer exposure | A | Remove | Low | With UI |
 | IPC types | `src/shared/types/ipc.ts` | DriveSyncStatusDto, connectDrive signatures | Type contracts | A | Remove | Low | Cleanup |
 | drive schemas | `src/shared/schemas/drive.ts` | Zod schemas for Drive DTOs | Validation | A | Delete | Low | Phase 2 |
 | drive constants | `src/shared/constants/drive.ts` | Resource keys, OAuth meta keys | Shared naming | B | Rename to knowledge constants | Low | Rename |
@@ -232,7 +232,7 @@ Artifacts: `gate-lint-phase1.txt`, `typecheck-phase1.txt`, `unit-test-phase1.txt
 
 | Component | File | Current Drive Dependency | Why It Exists | Can Remove | Replacement | Risk | Action |
 |-----------|------|--------------------------|---------------|------------|-------------|------|--------|
-| SettingsPage | `src/renderer/pages/SettingsPage.tsx` | Drive OAuth client ID, guide link, `window.novelTrans.drive.*` | Pre-req for Connect Drive | A | Remove Drive section | Low | Phase 2 UI |
+| SettingsPage | `src/renderer/pages/SettingsPage.tsx` | Drive OAuth client ID, guide link, `window.khepreeNovelAI.drive.*` | Pre-req for Connect Drive | A | Remove Drive section | Low | Phase 2 UI |
 | AccountsPage | `src/renderer/pages/AccountsPage.tsx` | Connect/disconnect Drive, OAuth fallback UI, badge | Per-worker Drive auth | A | Remove; keep Gemini/Notebook | Low | Phase 2 UI |
 | AiMemoryPage | `src/renderer/pages/AiMemoryPage.tsx` | `syncNow` → Drive; `lastDriveSyncAt` display | Operator knowledge sync | C | "Push to Notebook (local files)" | Medium | Relabel + rewire |
 | DiagnosticsPage | `src/renderer/pages/DiagnosticsPage.tsx` | Drive health test display | Ops | A | Remove Drive test | Low | Phase 2 |

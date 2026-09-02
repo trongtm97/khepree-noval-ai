@@ -9,7 +9,7 @@ Electron Main
   → GeminiWebApiProvider
     → WorkerProcessManager (spawn venv python)
       → workers/gemini_webapi_worker (127.0.0.1:18765)
-        → gemini_web2api (OpenAI-compatible /v1 + NovelTrans /gemini/*)
+        → gemini_web2api (OpenAI-compatible /v1 + Khepree Novel AI /gemini/*)
 ```
 
 Electron never imports the Python package. Renderer never calls Gemini.
@@ -32,7 +32,7 @@ Bundled Python runtime is **not** in the installer yet (follow-up).
 
 Never store Google passwords. Never log cookies/tokens.
 
-Anonymous Flash access works without cookies (gemini-web2api); NovelTrans still uses per-account cookies for quota routing and Pro models.
+Anonymous Flash access works without cookies (gemini-web2api); Khepree Novel AI still uses per-account cookies for quota routing and Pro models.
 
 ## HTTP API (worker)
 

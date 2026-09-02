@@ -77,10 +77,10 @@ export function ProjectSourcePage() {
   const refresh = useCallback(async () => {
     if (!projectId) return;
     const [status, projectRes, chapterRes, jobsRes] = await Promise.all([
-      window.novelTrans.sourceFolder.getStatus(projectId),
-      window.novelTrans.projects.get(projectId),
-      window.novelTrans.pack.listChapters(projectId),
-      window.novelTrans.jobs.list(projectId),
+      window.khepreeNovelAI.sourceFolder.getStatus(projectId),
+      window.khepreeNovelAI.projects.get(projectId),
+      window.khepreeNovelAI.pack.listChapters(projectId),
+      window.khepreeNovelAI.jobs.list(projectId),
     ]);
     setSettings(status.settings);
     setSummary(status.scanSummary);
@@ -100,7 +100,7 @@ export function ProjectSourcePage() {
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.sourceFolder.scan(projectId);
+      await window.khepreeNovelAI.sourceFolder.scan(projectId);
       await refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('sourceFolder.scanFailed'));
@@ -114,10 +114,10 @@ export function ProjectSourcePage() {
     setBusy(true);
     setError(null);
     try {
-      const scan = await window.novelTrans.sourceFolder.scan(projectId);
+      const scan = await window.khepreeNovelAI.sourceFolder.scan(projectId);
       const nums = scan.scanResult.newChapters.map((c) => c.chapterNumber);
       if (nums.length === 0) return;
-      await window.novelTrans.sourceFolder.import({
+      await window.khepreeNovelAI.sourceFolder.import({
         projectId,
         projectTitle: settings.sourceFolderPath?.split(/[/\\]/).pop() ?? 'Project',
         chapterNumbers: nums,
@@ -136,7 +136,7 @@ export function ProjectSourcePage() {
     setRedetectBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.projects.redetectSourceLanguage({
+      const result = await window.khepreeNovelAI.projects.redetectSourceLanguage({
         projectId,
         apply,
       });
@@ -255,7 +255,7 @@ export function ProjectSourcePage() {
           label: t('sourceFolder.openFolder'),
           disabled: busy,
           onClick: () => {
-            void window.novelTrans.sourceFolder.openFolder(projectId);
+            void window.khepreeNovelAI.sourceFolder.openFolder(projectId);
           },
         }}
         overflowActions={overflowActions}
@@ -284,7 +284,7 @@ export function ProjectSourcePage() {
           {settings?.sourceFolderPath ?? '—'}
         </p>
         <div className="source-status-bar__foot">
-          <Button size="sm" variant="secondary" disabled={busy} onClick={() => void window.novelTrans.sourceFolder.openFolder(projectId)}>
+          <Button size="sm" variant="secondary" disabled={busy} onClick={() => void window.khepreeNovelAI.sourceFolder.openFolder(projectId)}>
             {t('sourceFolder.openFolder')}
           </Button>
           <span className="muted">

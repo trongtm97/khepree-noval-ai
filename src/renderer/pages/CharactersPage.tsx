@@ -76,11 +76,11 @@ export function CharactersPage() {
   const refresh = useCallback(async () => {
     if (!projectId) return;
     const [charResult, relResult, storyResult, conflictResult, projectRes] = await Promise.all([
-      window.novelTrans.memory.listCharacters(projectId),
-      window.novelTrans.memory.listRelationships({ projectId }),
-      window.novelTrans.memory.getStoryState(projectId),
-      window.novelTrans.memory.listConflicts(projectId),
-      window.novelTrans.projects.get(projectId),
+      window.khepreeNovelAI.memory.listCharacters(projectId),
+      window.khepreeNovelAI.memory.listRelationships({ projectId }),
+      window.khepreeNovelAI.memory.getStoryState(projectId),
+      window.khepreeNovelAI.memory.listConflicts(projectId),
+      window.khepreeNovelAI.projects.get(projectId),
     ]);
     setCharacters(charResult.characters);
     setRelationships(relResult.relationships);
@@ -166,7 +166,7 @@ export function CharactersPage() {
         aliases.add(other.canonicalSourceName ?? other.canonicalName);
         for (const a of other.aliases) aliases.add(a);
       }
-      await window.novelTrans.memory.upsertCharacter({
+      await window.khepreeNovelAI.memory.upsertCharacter({
         id: keep.id,
         projectId,
         canonicalName: keep.canonicalName,
@@ -234,7 +234,7 @@ export function CharactersPage() {
           onClick={(e) => {
             e.stopPropagation();
             void run(async () => {
-              await window.novelTrans.memory.upsertCharacter({
+              await window.khepreeNovelAI.memory.upsertCharacter({
                 id: c.id,
                 projectId,
                 canonicalName: c.canonicalName,
@@ -302,7 +302,7 @@ export function CharactersPage() {
           disabled: busy || !projectId,
           onClick: () => {
             void run(async () => {
-              await window.novelTrans.memory.upsertCharacter({
+              await window.khepreeNovelAI.memory.upsertCharacter({
                 projectId,
                 canonicalName: '新角色',
                 translatedName: 'Nhân vật mới',
@@ -405,7 +405,7 @@ export function CharactersPage() {
                 actionLabel={t('characters.addCharacter')}
                 onAction={() => {
                   void run(async () => {
-                    await window.novelTrans.memory.upsertCharacter({
+                    await window.khepreeNovelAI.memory.upsertCharacter({
                       projectId,
                       canonicalName: '新角色',
                       translatedName: 'Nhân vật mới',
@@ -531,7 +531,7 @@ export function CharactersPage() {
                     busy={busy}
                     onKeep={() => {
                       void run(async () => {
-                        await window.novelTrans.memory.resolveConflict({
+                        await window.khepreeNovelAI.memory.resolveConflict({
                           conflictId: conflict.id,
                           status: 'DISCARDED',
                         });
@@ -539,7 +539,7 @@ export function CharactersPage() {
                     }}
                     onUseNew={() => {
                       void run(async () => {
-                        await window.novelTrans.memory.resolveConflict({
+                        await window.khepreeNovelAI.memory.resolveConflict({
                           conflictId: conflict.id,
                           status: 'RESOLVED',
                         });

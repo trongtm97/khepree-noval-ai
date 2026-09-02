@@ -13,7 +13,7 @@ export function LearningPage() {
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    const projectResult = await window.novelTrans.projects.list();
+    const projectResult = await window.khepreeNovelAI.projects.list();
     setProjects(projectResult.projects);
     const pid = projectId || projectResult.projects[0]?.id || '';
     if (!projectId && pid) setProjectId(pid);
@@ -21,7 +21,7 @@ export function LearningPage() {
       setData(null);
       return;
     }
-    const dashboard = await window.novelTrans.learning.dashboard(pid);
+    const dashboard = await window.khepreeNovelAI.learning.dashboard(pid);
     setData(dashboard);
   }, [projectId]);
 

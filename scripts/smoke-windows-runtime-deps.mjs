@@ -81,7 +81,7 @@ async function main() {
   console.log('[runtime-deps] packaged dir:', appDir);
 
   const resourcesWorkers = path.join(appDir, 'resources', 'workers');
-  const workerExe = path.join(resourcesWorkers, 'NovelTransGeminiWorker.exe');
+  const workerExe = path.join(resourcesWorkers, 'KhepreeNovelAIGeminiWorker.exe');
   const guides = path.join(appDir, 'resources', 'guides');
 
   if (!fs.existsSync(guides)) {
@@ -91,7 +91,7 @@ async function main() {
   // Worker exe optional — warn only
   if (!fs.existsSync(workerExe)) {
     console.warn(
-      '[runtime-deps] WARN: NovelTransGeminiWorker.exe not packaged — Web API optional. Run npm run build:gemini-worker before package for full self-contained Web API.',
+      '[runtime-deps] WARN: KhepreeNovelAIGeminiWorker.exe not packaged — Web API optional. Run npm run build:gemini-worker before package for full self-contained Web API.',
     );
   } else {
     console.log('[runtime-deps] bundled worker OK:', workerExe);

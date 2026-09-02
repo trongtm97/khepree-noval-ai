@@ -76,12 +76,12 @@ export function ToastViewport({
                     onClick={() => {
                       markRead(item.id);
                       if (action.action === 'open-file') {
-                        void window.novelTrans.portability.openExportedFile({
+                        void window.khepreeNovelAI.portability.openExportedFile({
                           projectId: item.projectId ?? '',
                           filePath: action.path,
                         });
                       } else {
-                        void window.novelTrans.portability.openExportDirectory({
+                        void window.khepreeNovelAI.portability.openExportDirectory({
                           projectId: item.projectId ?? '',
                         });
                       }

@@ -23,13 +23,27 @@ describe('sync-state manifest + version probe', () => {
       knowledgeVersion: 47,
       syncNonce: '8F7A2C19',
     });
-    expect(content).toContain('NOVELTRANS_KNOWLEDGE_VERSION=47');
-    expect(content).toContain('NOVELTRANS_SYNC_NONCE=8F7A2C19');
+    expect(content).toContain('KHEPREE_NOVEL_AI_KNOWLEDGE_VERSION=47');
+    expect(content).toContain('KHEPREE_NOVEL_AI_SYNC_NONCE=8F7A2C19');
     const parsed = parseSyncStateManifestContent(content);
     expect(parsed).toEqual({
       projectId: 'proj-1',
       knowledgeVersion: 47,
       syncNonce: '8F7A2C19',
+    });
+  });
+
+  it('parses legacy NovelTrans manifest keys', () => {
+    const legacy = [
+      '# NovelTrans sync state',
+      'NOVELTRANS_PROJECT_ID=legacy-proj',
+      'NOVELTRANS_KNOWLEDGE_VERSION=12',
+      'NOVELTRANS_SYNC_NONCE=ABCD1234',
+    ].join('\n');
+    expect(parseSyncStateManifestContent(legacy)).toEqual({
+      projectId: 'legacy-proj',
+      knowledgeVersion: 12,
+      syncNonce: 'ABCD1234',
     });
   });
 

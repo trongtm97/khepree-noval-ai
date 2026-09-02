@@ -30,7 +30,7 @@
 | `npm run test:perf` | **PASS** | 1 file / 2 tests (~18s). |
 | `npm run package` | **PASS** | Electron Forge packaging x64/win32 OK. |
 | `npm run make` | **PASS** | Squirrel distributable OK → `out/make`. |
-| `npm run test:google-smoke` | **NOT RUN** | No `google-smoke.config.json`; env `NOVELTRANS_GOOGLE_SMOKE` not set. Report remains **NOT_RUN**. |
+| `npm run test:google-smoke` | **NOT RUN** | No `google-smoke.config.json`; env `KHEPREE_NOVEL_AI_GOOGLE_SMOKE` not set. Report remains **NOT_RUN**. |
 
 ### Unit failures observed (this run)
 
@@ -103,7 +103,7 @@ Operator must run on a **non-production SMOKE** project with a logged-in Google 
 | Field | Value |
 | --- | --- |
 | Config present | **No** (`google-smoke.config.json` absent) |
-| Env | `NOVELTRANS_GOOGLE_SMOKE` unset |
+| Env | `KHEPREE_NOVEL_AI_GOOGLE_SMOKE` unset |
 | Report | [`docs/REAL_GOOGLE_TEST_REPORT.md`](REAL_GOOGLE_TEST_REPORT.md) → **Overall = NOT_RUN** |
 | UI path | Diagnostics → Run Real Google Smoke (wired; not exercised) |
 
@@ -112,7 +112,7 @@ Operator must run on a **non-production SMOKE** project with a logged-in Google 
 ```bash
 copy google-smoke.config.example.json google-smoke.config.json
 # profilePath + dedicated SMOKE notebook only
-set NOVELTRANS_GOOGLE_SMOKE=1
+set KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1
 npm run test:google-smoke
 ```
 

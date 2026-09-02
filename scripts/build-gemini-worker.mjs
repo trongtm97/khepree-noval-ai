@@ -1,5 +1,5 @@
 /**
- * Build standalone NovelTransGeminiWorker.exe (PyInstaller) into resources/workers/.
+ * Build standalone KhepreeNovelAIGeminiWorker.exe (PyInstaller) into resources/workers/.
  *
  * Requires Python 3.11+ with pip on the *build* machine only.
  * End users of the packaged app do not need Python.
@@ -17,7 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const workerDir = path.join(root, 'workers', 'gemini_webapi_worker');
 const outDir = path.join(root, 'resources', 'workers');
-const exeName = 'NovelTransGeminiWorker.exe';
+const exeName = 'KhepreeNovelAIGeminiWorker.exe';
 const distExe = path.join(workerDir, 'dist', exeName);
 const targetExe = path.join(outDir, exeName);
 
@@ -72,7 +72,7 @@ function main() {
   const py = findPython();
   if (!py) {
     console.error(
-      'Python 3.11+ required on the build machine to produce NovelTransGeminiWorker.exe.',
+      'Python 3.11+ required on the build machine to produce KhepreeNovelAIGeminiWorker.exe.',
     );
     process.exit(1);
   }
@@ -80,7 +80,7 @@ function main() {
   run([...py, '-m', 'pip', 'install', '-U', 'pip', 'pyinstaller']);
   run([...py, '-m', 'pip', 'install', '-r', path.join(workerDir, 'requirements.txt')]);
 
-  const spec = path.join(workerDir, 'noveltrans_gemini_worker.spec');
+  const spec = path.join(workerDir, 'khepree_novel_ai_gemini_worker.spec');
   run([...py, '-m', 'PyInstaller', '--noconfirm', '--clean', spec], {
     cwd: workerDir,
   });

@@ -32,7 +32,7 @@ export { resolveRunnerScriptPath, buildRunnerPathCandidates } from './browser-ru
 export { AutomationManager } from './automation-manager';
 export { resolveBrowserEngine } from './browser-runner/browser-engine-resolver';
 export type { ResolvedBrowserEngine } from './browser-runner/browser-engine-resolver';
-export { launchNovelTransPersistentContext } from './browser-runner/launch-persistent-context';
+export { launchKhepreeNovelAIPersistentContext } from './browser-runner/launch-persistent-context';
 export {
   BrowserRuntimeManager,
   getBrowserRuntimeManager,

@@ -870,6 +870,7 @@ body {
   grid-area: status;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
   padding: 0 var(--space-4);
   font-size: var(--font-small);
@@ -878,6 +879,88 @@ body {
   border-top: 1px solid var(--border);
   white-space: nowrap;
   overflow: hidden;
+  min-height: var(--statusbar-height);
+}
+
+.statusbar__primary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusbar-contacts {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+  margin-left: var(--space-3);
+}
+
+.statusbar-contacts__label {
+  margin-right: var(--space-2);
+  font-size: var(--font-small);
+  color: var(--text-muted);
+}
+
+.statusbar-contact-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.statusbar-contact-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.statusbar-contact-btn:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.statusbar-contact-btn--facebook:hover {
+  color: #1877f2;
+}
+
+.statusbar-contact-btn--youtube:hover {
+  color: #ff0000;
+}
+
+.statusbar-contact-btn--tiktok:hover {
+  color: #25f4ee;
+}
+
+.statusbar-contact-btn--telegram:hover {
+  color: #26a5e4;
+}
+
+.statusbar-contact-btn--zalo:hover {
+  color: #0068ff;
+}
+
+.statusbar-contact-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+@media (max-width: 900px) {
+  .statusbar-contacts__label {
+    display: none;
+  }
 }
 
 .statusbar-sep {
@@ -2961,20 +3044,6 @@ body {
 .khepree-gate__actions .nt-btn {
   width: 100%;
   justify-content: center;
-}
-
-.khepree-free-tier-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin: 0 var(--space-4) var(--space-3);
-}
-
-.khepree-free-tier-banner p {
-  margin: 0;
-  flex: 1 1 12rem;
 }
 
 .language-first-run__options {

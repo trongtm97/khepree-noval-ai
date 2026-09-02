@@ -1,6 +1,6 @@
 # Book Metadata Architecture
 
-NovelTrans separates **project metadata**, **auxiliary documents**, and **chapters**.
+Khepree Novel AI separates **project metadata**, **auxiliary documents**, and **chapters**.
 
 ## Principles
 

@@ -1,6 +1,6 @@
 # Source Folder Workflow
 
-NovelTrans Studio V1 uses **one project → one source folder → many TXT chapter files**.
+Khepree Novel AI V1 uses **one project → one source folder → many TXT chapter files**.
 
 ## Flow
 

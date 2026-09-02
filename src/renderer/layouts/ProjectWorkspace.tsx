@@ -47,7 +47,7 @@ export function ProjectWorkspace() {
   useEffect(() => {
     if (!projectId) return;
     let alive = true;
-    void window.novelTrans.projects
+    void window.khepreeNovelAI.projects
       .get(projectId)
       .then((result) => {
         if (!alive) return;

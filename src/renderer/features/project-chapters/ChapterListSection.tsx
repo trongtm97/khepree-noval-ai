@@ -72,7 +72,7 @@ export function ChapterListSection({
 
   const copyTranslation = async (chapter: ChapterSummaryDto) => {
     try {
-      const result = await window.novelTrans.editor.getChapter({
+      const result = await window.khepreeNovelAI.editor.getChapter({
         projectId,
         chapterId: chapter.id,
       });
@@ -102,7 +102,7 @@ export function ChapterListSection({
     format: Extract<NovelExportFormat, 'txt' | 'docx'>,
   ) => {
     try {
-      await window.novelTrans.portability.exportChapter({
+      await window.khepreeNovelAI.portability.exportChapter({
         projectId,
         chapterNumber: chapterRef(chapter),
         chapterTitle: chapter.title,
@@ -117,7 +117,7 @@ export function ChapterListSection({
 
   const retranslateChapter = async (chapter: ChapterSummaryDto) => {
     try {
-      await window.novelTrans.editor.retranslateChapter({
+      await window.khepreeNovelAI.editor.retranslateChapter({
         projectId,
         chapterId: chapter.id,
       });

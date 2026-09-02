@@ -49,7 +49,7 @@ export function SwitchTranslationControl({
 
   useEffect(() => {
     if (!open) return;
-    void window.novelTrans.languages.list().then((res) => {
+    void window.khepreeNovelAI.languages.list().then((res) => {
       setLangs(res.languages);
     });
     setRecentPairs(loadRecentLanguagePairs());
@@ -63,7 +63,7 @@ export function SwitchTranslationControl({
     setSaving(true);
     setError(null);
     try {
-      const res = await window.novelTrans.projects.updateLanguages({
+      const res = await window.khepreeNovelAI.projects.updateLanguages({
         projectId,
         sourceLanguage,
         targetLanguage: target,

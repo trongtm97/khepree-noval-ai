@@ -1,7 +1,6 @@
 import { app } from 'electron';
 import {
   KHEPREE_DEFAULT_HEARTBEAT_MS,
-  KHEPREE_DESKTOP_PROOF_PATHS,
   KHEPREE_ACCESS_FEATURE,
   KHEPREE_OAUTH_REDIRECT_URI,
   type KhepreeAccessStatus,
@@ -46,7 +45,6 @@ import {
   isKhepreeDevMockEnabled,
 } from './config';
 import { verifySignedLease, isLeaseCurrentlyValid } from './lease-verifier';
-import { buildKhepreeDeviceProof } from './khepree-device-proof';
 import {
   KhepreeAccessError,
   KhepreeCredentialCorruptError,
@@ -104,20 +102,9 @@ export class KhepreeAccessService {
     this.sessionStore = new KhepreeSessionStore(secretStorage, getDb);
   }
 
-  private async buildDesktopDeviceProof(
-    sessionPublicId: string,
-    method: string,
-    path: string,
-    body: string,
-  ) {
+  private async getDeviceSign(): Promise<(message: Buffer) => Buffer> {
     const keypair = await this.deviceIdentity.getOrCreateKeypair();
-    return buildKhepreeDeviceProof({
-      sessionPublicId,
-      method,
-      path,
-      body,
-      sign: keypair.sign,
-    });
+    return keypair.sign;
   }
 
   private requireSessionPublicId(): string {
@@ -239,21 +226,12 @@ export class KhepreeAccessService {
     if (!accessToken) {
       try {
         const sessionPublicId = this.requireSessionPublicId();
-        const refreshBody = JSON.stringify({
-          sessionPublicId,
-          refreshToken,
-        });
-        const deviceProof = await this.buildDesktopDeviceProof(
-          sessionPublicId,
-          'POST',
-          KHEPREE_DESKTOP_PROOF_PATHS.authRefresh,
-          refreshBody,
-        );
+        const sign = await this.getDeviceSign();
         const refreshed = await this.api.refreshSession({
           refreshToken,
           installationId: identity.installationId,
           sessionPublicId,
-          deviceProof,
+          sign,
         });
         await this.sessionStore.saveRefreshToken(refreshed.refreshToken, refreshed.user.id);
         this.sessionStore.setSessionPublicId(refreshed.sessionPublicId);
@@ -301,16 +279,7 @@ export class KhepreeAccessService {
     }
 
     const sessionPublicId = this.requireSessionPublicId();
-    const refreshBody = JSON.stringify({
-      sessionPublicId,
-      refreshToken,
-    });
-    const deviceProof = await this.buildDesktopDeviceProof(
-      sessionPublicId,
-      'POST',
-      KHEPREE_DESKTOP_PROOF_PATHS.authRefresh,
-      refreshBody,
-    );
+    const sign = await this.getDeviceSign();
     try {
       const result = await this.api.coldStartValidate({
         accessToken,
@@ -318,7 +287,7 @@ export class KhepreeAccessService {
         deviceId,
         sessionPublicId,
         refreshToken,
-        deviceProof,
+        sign,
         devicePublicKey: identity.publicKeySpki,
         deviceName: this.deviceIdentity.getDeviceName(),
         platform: process.platform,
@@ -505,6 +474,16 @@ export class KhepreeAccessService {
         this.currentLease = null;
         this.status = 'DEVICE_REMOVED';
         this.lastError = { code: error.code, message: error.message };
+        return;
+      }
+      if (error.code === 'DEVICE_PROOF_INVALID') {
+        this.currentLease = null;
+        this.status = 'ERROR';
+        this.lastError = {
+          code: error.code,
+          message:
+            'Device verification failed. Sign out, remove this device from your Khepree account if needed, then sign in again.',
+        };
         return;
       }
     }
@@ -1048,22 +1027,12 @@ export class KhepreeAccessService {
     const sessionPublicId = this.sessionStore.getSessionPublicId();
     if (!accessToken || !sessionPublicId) return;
 
-    const body = JSON.stringify({
-      sessionPublicId,
-      accessToken,
-    });
-    const deviceProof = await this.buildDesktopDeviceProof(
-      sessionPublicId,
-      'POST',
-      KHEPREE_DESKTOP_PROOF_PATHS.heartbeat,
-      body,
-    );
-
     try {
+      const sign = await this.getDeviceSign();
       const { status } = await this.api.heartbeat({
         accessToken,
         sessionPublicId,
-        deviceProof,
+        sign,
       });
       this.heartbeatStatus = status;
       await this.applyHeartbeatStatus(status);
@@ -1156,21 +1125,12 @@ export class KhepreeAccessService {
     const identity = await this.deviceIdentity.getIdentity();
     try {
       const sessionPublicId = this.requireSessionPublicId();
-      const refreshBody = JSON.stringify({
-        sessionPublicId,
-        refreshToken,
-      });
-      const deviceProof = await this.buildDesktopDeviceProof(
-        sessionPublicId,
-        'POST',
-        KHEPREE_DESKTOP_PROOF_PATHS.authRefresh,
-        refreshBody,
-      );
+      const sign = await this.getDeviceSign();
       const refreshed = await this.api.refreshSession({
         refreshToken,
         installationId: identity.installationId,
         sessionPublicId,
-        deviceProof,
+        sign,
       });
       await this.sessionStore.saveRefreshToken(refreshed.refreshToken, refreshed.user.id);
       this.sessionStore.setSessionPublicId(refreshed.sessionPublicId);

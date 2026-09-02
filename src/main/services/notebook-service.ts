@@ -329,14 +329,14 @@ export class NotebookService {
       lockHeld = false;
     };
 
-    const { launchNovelTransPersistentContext } = await import(
+    const { launchKhepreeNovelAIPersistentContext } = await import(
       '../automation/browser-runner/launch-persistent-context'
     );
     let context: import('playwright').BrowserContext | null = null;
 
     try {
       context = (
-        await launchNovelTransPersistentContext({
+        await launchKhepreeNovelAIPersistentContext({
           profilePath,
           // Headed: Google NotebookLM often blank / login-wall under headless.
           headless: input.headless,
@@ -583,7 +583,7 @@ export class NotebookService {
       lockHeld = false;
     };
 
-    const { launchNovelTransPersistentContext } = await import(
+    const { launchKhepreeNovelAIPersistentContext } = await import(
       '../automation/browser-runner/launch-persistent-context'
     );
     let context: import('playwright').BrowserContext | null = null;
@@ -591,7 +591,7 @@ export class NotebookService {
     try {
       // Headed so user can finish login / manual steps if automation stops.
       context = (
-        await launchNovelTransPersistentContext({
+        await launchKhepreeNovelAIPersistentContext({
           profilePath,
           headless: input.headless,
           headlessDefault: false,

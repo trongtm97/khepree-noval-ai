@@ -79,10 +79,10 @@ export function useHelpChecklist(): {
     setError(null);
     try {
       const [accountsRes, projectsRes, setupRes, jobsRes] = await Promise.all([
-        window.novelTrans.accounts.list(),
-        window.novelTrans.projects.list(),
-        window.novelTrans.setup.getStatus(),
-        window.novelTrans.jobs.list(undefined),
+        window.khepreeNovelAI.accounts.list(),
+        window.khepreeNovelAI.projects.list(),
+        window.khepreeNovelAI.setup.getStatus(),
+        window.khepreeNovelAI.jobs.list(undefined),
       ]);
 
       const accounts = accountsRes.accounts;
@@ -182,7 +182,13 @@ export function HelpRelatedArticles({
   );
 }
 
-export function HelpVersionFooter({ version }: { version: string }) {
+export function HelpVersionFooter({
+  version,
+  onOpenContact,
+}: {
+  version: string;
+  onOpenContact?: () => void;
+}) {
   const t = useT();
   const [copied, setCopied] = useState(false);
 
@@ -200,10 +206,17 @@ export function HelpVersionFooter({ version }: { version: string }) {
   return (
     <footer className="help-version-footer">
       <p className="muted">{t('help.versionLine', { version })}</p>
-      <Button size="sm" variant="ghost" onClick={() => void copyInfo()}>
-        <Copy size={14} aria-hidden />
-        {copied ? t('help.copied') : t('help.copyVersion')}
-      </Button>
+      <div className="help-version-footer__actions">
+        {onOpenContact ? (
+          <Button size="sm" variant="secondary" onClick={onOpenContact}>
+            {t('help.contactCta')}
+          </Button>
+        ) : null}
+        <Button size="sm" variant="ghost" onClick={() => void copyInfo()}>
+          <Copy size={14} aria-hidden />
+          {copied ? t('help.copied') : t('help.copyVersion')}
+        </Button>
+      </div>
     </footer>
   );
 }

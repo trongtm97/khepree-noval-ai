@@ -68,11 +68,11 @@ export function useDashboardData(): DashboardData {
     const errors: string[] = [];
 
     const [projectsRes, jobsRes, accountsRes, termsRes, aiStatusRes] = await Promise.allSettled([
-      window.novelTrans.projects.list(),
-      window.novelTrans.jobs.list(undefined),
-      window.novelTrans.accounts.list(),
-      window.novelTrans.terms.reviewQueue(),
-      window.novelTrans.aiProviders.autoSetupStatus(),
+      window.khepreeNovelAI.projects.list(),
+      window.khepreeNovelAI.jobs.list(undefined),
+      window.khepreeNovelAI.accounts.list(),
+      window.khepreeNovelAI.terms.reviewQueue(),
+      window.khepreeNovelAI.aiProviders.autoSetupStatus(),
     ]);
 
     if (projectsRes.status === 'rejected') {
@@ -121,9 +121,9 @@ export function useDashboardData(): DashboardData {
     await Promise.allSettled(
       activeProjects.map(async (project) => {
         const [candidatesRes, sourceRes, charactersRes] = await Promise.allSettled([
-          window.novelTrans.terms.listCandidates({ projectId: project.id }),
-          window.novelTrans.sourceFolder.getStatus(project.id),
-          window.novelTrans.memory.listCharacters(project.id),
+          window.khepreeNovelAI.terms.listCandidates({ projectId: project.id }),
+          window.khepreeNovelAI.sourceFolder.getStatus(project.id),
+          window.khepreeNovelAI.memory.listCharacters(project.id),
         ]);
 
         if (candidatesRes.status === 'fulfilled') {

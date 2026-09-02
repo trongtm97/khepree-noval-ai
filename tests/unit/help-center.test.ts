@@ -15,6 +15,7 @@ describe('help center content', () => {
     expect(HELP_ARTICLE_MAP.has('quick-start')).toBe(true);
     expect(HELP_ARTICLE_MAP.has('google-accounts')).toBe(true);
     expect(HELP_ARTICLE_MAP.has('faq')).toBe(true);
+    expect(HELP_ARTICLE_MAP.has('contact')).toBe(true);
   });
 
   it('resolves default and by id', () => {
@@ -55,6 +56,7 @@ describe('help center content', () => {
     expect(helpArticleForRoute('/accounts')).toBe('google-accounts');
     expect(helpArticleForRoute('/translation')).toBe('start-translate');
     expect(helpArticleForRoute('/help/troubleshooting-quota')).toBe('troubleshooting-quota');
+    expect(helpArticleForRoute('/help/contact')).toBe('contact');
   });
 
   it('maps error codes to troubleshooting articles', () => {

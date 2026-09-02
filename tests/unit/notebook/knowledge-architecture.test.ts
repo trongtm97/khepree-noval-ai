@@ -94,7 +94,7 @@ describe('NotebookKnowledgeBuilder', () => {
     expect(a['01_TRANSLATION_RULES.md']).toContain('LOCKED PROJECT TERM');
     expect(a['06_WORLD_KNOWLEDGE.md']).toBeTruthy();
     expect(a['07_RECENT_CONTEXT.md']).toBeTruthy();
-    expect(a['08_SYNC_STATE.md']).toContain('NOVELTRANS_PROJECT_ID=');
+    expect(a['08_SYNC_STATE.md']).toContain('KHEPREE_NOVEL_AI_PROJECT_ID=');
     expect(hashKnowledgeContent(a['00_BOOK_PROFILE.md'])).toBe(
       hashKnowledgeContent(b['00_BOOK_PROFILE.md']),
     );

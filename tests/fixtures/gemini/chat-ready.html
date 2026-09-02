@@ -7,7 +7,7 @@
 <body>
   <main data-testid="gemini-app" data-gemini-app="1" data-surface="gemini-chat">
     <div data-testid="notebook-context" data-notebook-context="1">
-      Notebook: [NovelTrans] Fixture Novel
+      Notebook: [Khepree Novel AI] Fixture Novel
     </div>
     <button type="button" data-testid="new-chat" data-action="new-chat">New chat</button>
     <ul data-testid="thread-list" data-thread-list="1"></ul>
@@ -44,7 +44,7 @@
   <script>
     const params = new URLSearchParams(location.search);
     const mode = params.get('mode') || 'ok';
-    const notebookName = params.get('notebook') || '[NovelTrans] Fixture Novel';
+    const notebookName = params.get('notebook') || '[Khepree Novel AI] Fixture Novel';
     document.querySelector('[data-testid="notebook-context"]').textContent =
       'Notebook: ' + notebookName;
 

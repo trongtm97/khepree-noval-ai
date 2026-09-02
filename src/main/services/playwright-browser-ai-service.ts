@@ -12,7 +12,7 @@ import { MetaAiBrowserProvider } from '../automation/providers/meta/meta-ai-brow
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
 import { profileLockManager, startLeaseHeartbeat } from '../automation/browser-runner/profile-lock';
 import { getBrowserRuntimeManager } from '../automation/browser-runner/browser-runtime-manager';
-import { launchNovelTransPersistentContext } from '../automation/browser-runner/launch-persistent-context';
+import { launchKhepreeNovelAIPersistentContext } from '../automation/browser-runner/launch-persistent-context';
 import { AutomationError } from '../automation/errors/automation-errors';
 import { pathsService } from './paths-service';
 import { logger } from '../logging/logger';
@@ -214,7 +214,7 @@ export class PlaywrightBrowserAiService {
       'login',
     );
 
-    const launched = await launchNovelTransPersistentContext({
+    const launched = await launchKhepreeNovelAIPersistentContext({
       profilePath,
       headless: false,
       headlessDefault: false,
@@ -310,7 +310,7 @@ export class PlaywrightBrowserAiService {
       }
 
       if (!page) {
-        const launched = await launchNovelTransPersistentContext({
+        const launched = await launchKhepreeNovelAIPersistentContext({
           profilePath,
           headless: true,
           headlessDefault: true,

@@ -10,7 +10,7 @@ export function useKhepreeAccessState(): {
   const [loading, setLoading] = useState(true);
 
   const refresh = async () => {
-    const next = await window.novelTrans.khepree.getAccessState();
+    const next = await window.khepreeNovelAI.khepree.getAccessState();
     setState(next);
   };
 
@@ -18,14 +18,14 @@ export function useKhepreeAccessState(): {
     let alive = true;
     void (async () => {
       try {
-        const initial = await window.novelTrans.khepree.getAccessState();
+        const initial = await window.khepreeNovelAI.khepree.getAccessState();
         if (!alive) return;
         setState(initial);
       } finally {
         if (alive) setLoading(false);
       }
     })();
-    const unsubscribe = window.novelTrans.khepree.onAccessState((next) => {
+    const unsubscribe = window.khepreeNovelAI.khepree.onAccessState((next) => {
       setState(next);
       setLoading(false);
     });

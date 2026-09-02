@@ -6,7 +6,7 @@ import type { AutomationCommand, AutomationResult } from './protocol';
 import { AutomationError, RetryPolicy } from './errors/automation-errors';
 import { captureFailureDiagnostics } from './diagnostics';
 import type { AutomationErrorCode } from './types';
-import { launchNovelTransPersistentContext } from './browser-runner/launch-persistent-context';
+import { launchKhepreeNovelAIPersistentContext } from './browser-runner/launch-persistent-context';
 import type { ResolvedBrowserEngine } from './browser-runner/browser-engine-resolver';
 
 export interface BrowserSessionOptions {
@@ -93,7 +93,7 @@ export class BrowserSession {
     fs.mkdirSync(this.diagnosticsDir, { recursive: true });
 
     try {
-      const launched = await launchNovelTransPersistentContext({
+      const launched = await launchKhepreeNovelAIPersistentContext({
         profilePath: this.profilePath,
         headless: this.headless,
         diagnosticsDir: this.diagnosticsDir,

@@ -37,7 +37,7 @@ export function EditionSwitcher({
   const [error, setError] = useState<string | null>(null);
 
   const reload = async () => {
-    const res = await window.novelTrans.editions.list(projectId);
+    const res = await window.khepreeNovelAI.editions.list(projectId);
     setEditions(res.editions);
     const activeEdition =
       res.editions.find((e) => e.isActive) ?? (res.editions.length > 0 ? res.editions[0] : null);
@@ -54,8 +54,8 @@ export function EditionSwitcher({
   useEffect(() => {
     if (!adding) return;
     void Promise.all([
-      window.novelTrans.languages.list(),
-      window.novelTrans.translationSettings.get(),
+      window.khepreeNovelAI.languages.list(),
+      window.khepreeNovelAI.translationSettings.get(),
     ])
       .then(([langRes, settings]) => {
         setLangs(langRes.languages);
@@ -113,7 +113,7 @@ export function EditionSwitcher({
           const editionId = event.target.value;
           setBusy(true);
           setError(null);
-          void window.novelTrans.editions
+          void window.khepreeNovelAI.editions
             .switch({ projectId, editionId })
             .then((res) => {
               setEditions(res.editions);
@@ -170,7 +170,7 @@ export function EditionSwitcher({
             onClick={() => {
               setBusy(true);
               setError(null);
-              void window.novelTrans.editions
+              void window.khepreeNovelAI.editions
                 .create({
                   projectId,
                   targetLanguage: newLang,

@@ -81,16 +81,16 @@ export function useStartupAiReadiness(intervalMs = 60_000): StartupAiReadinessSt
     try {
       const [accountsSettled, healthSettled, listSettled, aiAccSettled, chatGptAccSettled, metaAccSettled] =
         await Promise.allSettled([
-          window.novelTrans.accounts.list(),
-          window.novelTrans.aiProviders.health(),
-          window.novelTrans.aiProviders.list(),
-          window.novelTrans.aiAccounts.list({
+          window.khepreeNovelAI.accounts.list(),
+          window.khepreeNovelAI.aiProviders.health(),
+          window.khepreeNovelAI.aiProviders.list(),
+          window.khepreeNovelAI.aiAccounts.list({
             providerId: AI_PROVIDER_IDS.GEMINI_WEB_API,
           }),
-          window.novelTrans.aiAccounts.list({
+          window.khepreeNovelAI.aiAccounts.list({
             providerId: AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
           }),
-          window.novelTrans.aiAccounts.list({
+          window.khepreeNovelAI.aiAccounts.list({
             providerId: AI_PROVIDER_IDS.PLAYWRIGHT_META_AI,
           }),
         ]);

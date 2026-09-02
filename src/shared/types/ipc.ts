@@ -136,12 +136,15 @@ import type {
 } from '../schemas/ai-auto-setup';
 import type { AiResponseStatus } from '../constants/ai-provider';
 
-export interface NovelTransApi {
+export interface KhepreeNovelAIApi {
   ping: () => Promise<PingResponse>;
   getVersion: () => Promise<GetVersionResponse>;
   getInfo: () => Promise<GetInfoResponse>;
   getPaths: () => Promise<GetPathsResponse>;
   openFolder: (pathKey: AppPathKey) => Promise<OpenFolderResponse>;
+  openOfficialContact: (
+    channel: import('../constants/official-contacts').OfficialContactChannel,
+  ) => Promise<import('../schemas/ipc').OpenOfficialContactResponse>;
   securityHealthCheck: () => Promise<SecurityHealthCheckResponse>;
   checkForUpdates: () => Promise<z.infer<typeof CheckForUpdatesResponseSchema>>;
   setup: {
@@ -1349,7 +1352,7 @@ export interface NovelTransApi {
 
 declare global {
   interface Window {
-    novelTrans: NovelTransApi;
+    khepreeNovelAI: KhepreeNovelAIApi;
   }
 }
 

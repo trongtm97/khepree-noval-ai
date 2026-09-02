@@ -49,8 +49,8 @@ export function AiPreferencePanel() {
 
   const refresh = useCallback(async () => {
     const [list, route] = await Promise.all([
-      window.novelTrans.aiProviders.list(),
-      window.novelTrans.aiProviders.getRouting(),
+      window.khepreeNovelAI.aiProviders.list(),
+      window.khepreeNovelAI.aiProviders.getRouting(),
     ]);
     setRouting(route);
     setFallbackEnabled(list.fallbackEnabled);
@@ -68,7 +68,7 @@ export function AiPreferencePanel() {
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.aiProviders.setPreference({ preference: next });
+      await window.khepreeNovelAI.aiProviders.setPreference({ preference: next });
       await refresh();
       showSaved(t('settings.aiPreferenceSaved'));
     } catch (err: unknown) {
@@ -83,7 +83,7 @@ export function AiPreferencePanel() {
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.aiProviders.setFallback({ enabled });
+      await window.khepreeNovelAI.aiProviders.setFallback({ enabled });
       setFallbackEnabled(enabled);
       await refresh();
       showSaved(t('settings.aiPreferenceSaved'));
@@ -99,7 +99,7 @@ export function AiPreferencePanel() {
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.aiProviders.checkAll();
+      const result = await window.khepreeNovelAI.aiProviders.checkAll();
       showSaved(result.message);
       await refresh();
     } catch (err: unknown) {

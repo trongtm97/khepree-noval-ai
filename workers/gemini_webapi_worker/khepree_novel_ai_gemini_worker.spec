@@ -1,8 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec — build NovelTransGeminiWorker.exe for Windows packaging.
+"""PyInstaller spec — build KhepreeNovelAIGeminiWorker.exe for Windows packaging.
 
 Run via: node scripts/build-gemini-worker.mjs
-Or: pyinstaller workers/gemini_webapi_worker/noveltrans_gemini_worker.spec
+Or: pyinstaller workers/gemini_webapi_worker/khepree_novel_ai_gemini_worker.spec
 """
 
 from pathlib import Path
@@ -39,7 +39,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='NovelTransGeminiWorker',
+    name='KhepreeNovelAIGeminiWorker',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

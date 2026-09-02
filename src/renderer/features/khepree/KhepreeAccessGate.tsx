@@ -179,7 +179,7 @@ function EntitlementGate({
           state={state}
           busy={busy}
           onCheck={async () => {
-            await window.novelTrans.khepree.checkCheckout();
+            await window.khepreeNovelAI.khepree.checkCheckout();
           }}
           onCancel={runCheckoutCancel}
           onReopen={runCheckoutReopen}
@@ -189,11 +189,11 @@ function EntitlementGate({
   }
 
   async function runCheckoutCancel(): Promise<void> {
-    await window.novelTrans.khepree.cancelCheckout();
+    await window.khepreeNovelAI.khepree.cancelCheckout();
   }
 
   async function runCheckoutReopen(): Promise<void> {
-    await window.novelTrans.khepree.reopenCheckout();
+    await window.khepreeNovelAI.khepree.reopenCheckout();
   }
 
   return (
@@ -284,16 +284,22 @@ function DeviceAccessGate({
 
 function ErrorGate({
   error,
+  errorCode,
   onRetry,
   onSignOut,
 }: {
   error: string | null;
+  errorCode?: string | null;
   onRetry: () => Promise<void>;
   onSignOut: () => Promise<void>;
 }) {
   const t = useT();
+  const subtitleKey =
+    errorCode === 'DEVICE_PROOF_INVALID'
+      ? 'khepree.error.deviceProofInvalid'
+      : 'khepree.error.subtitle';
   return (
-    <GateLayout title={t('khepree.error.title')} subtitle={t('khepree.error.subtitle')}>
+    <GateLayout title={t('khepree.error.title')} subtitle={t(subtitleKey)}>
       {error ? <p className="form-error">{error}</p> : null}
       <div className="khepree-gate__actions">
         <Button type="button" variant="primary" onClick={() => void onRetry()}>
@@ -342,7 +348,7 @@ export function KhepreeAccessGate({
           loginPhase={state.loginPhase}
           errorCode={state.error?.code}
           error={state.error?.message ?? null}
-          onLogin={() => run(() => window.novelTrans.khepree.startLogin())}
+          onLogin={() => run(() => window.khepreeNovelAI.khepree.startLogin())}
         />
       );
     case 'AUTHENTICATING':
@@ -352,15 +358,15 @@ export function KhepreeAccessGate({
           loginPhase={state.loginPhase}
           errorCode={state.error?.code}
           error={state.error?.message ?? null}
-          onLogin={() => run(() => window.novelTrans.khepree.startLogin())}
+          onLogin={() => run(() => window.khepreeNovelAI.khepree.startLogin())}
         />
       );
     case 'OFFLINE_COLD_START':
       return (
         <OfflineColdStartGate
           error={state.error?.message ?? null}
-          onRetry={() => run(() => window.novelTrans.khepree.retryColdStart())}
-          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+          onRetry={() => run(() => window.khepreeNovelAI.khepree.retryColdStart())}
+          onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );
     case 'ENTITLEMENT_MISSING':
@@ -370,10 +376,10 @@ export function KhepreeAccessGate({
           subtitleKey="khepree.entitlement.subtitle"
           state={state}
           busy={busy}
-          onUpgrade={(planId) => run(() => window.novelTrans.khepree.startCheckout({ planId }))}
-          onRefresh={() => run(() => window.novelTrans.khepree.checkCheckout())}
+          onUpgrade={(planId) => run(() => window.khepreeNovelAI.khepree.startCheckout({ planId }))}
+          onRefresh={() => run(() => window.khepreeNovelAI.khepree.checkCheckout())}
           onVisit={() => run(async () => { await openKhepreeExternal('website'); })}
-          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+          onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );
     case 'ENTITLEMENT_EXPIRED':
@@ -383,10 +389,10 @@ export function KhepreeAccessGate({
           subtitleKey="khepree.entitlementExpired.subtitle"
           state={state}
           busy={busy}
-          onUpgrade={(planId) => run(() => window.novelTrans.khepree.startCheckout({ planId }))}
-          onRefresh={() => run(() => window.novelTrans.khepree.checkCheckout())}
+          onUpgrade={(planId) => run(() => window.khepreeNovelAI.khepree.startCheckout({ planId }))}
+          onRefresh={() => run(() => window.khepreeNovelAI.khepree.checkCheckout())}
           onVisit={() => run(async () => { await openKhepreeExternal('website'); })}
-          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+          onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );
     case 'ENTITLEMENT_SUSPENDED':
@@ -396,10 +402,10 @@ export function KhepreeAccessGate({
           subtitleKey="khepree.entitlementSuspended.subtitle"
           state={state}
           busy={busy}
-          onUpgrade={(planId) => run(() => window.novelTrans.khepree.startCheckout({ planId }))}
-          onRefresh={() => run(() => window.novelTrans.khepree.checkCheckout())}
+          onUpgrade={(planId) => run(() => window.khepreeNovelAI.khepree.startCheckout({ planId }))}
+          onRefresh={() => run(() => window.khepreeNovelAI.khepree.checkCheckout())}
           onVisit={() => run(async () => { await openKhepreeExternal('website'); })}
-          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+          onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );
     case 'DEVICE_LIMIT_REACHED':
@@ -407,9 +413,9 @@ export function KhepreeAccessGate({
         <DeviceLimitGate
           used={state.devicesUsed}
           max={state.devicesMax}
-          onManage={() => run(() => window.novelTrans.khepree.openExternal({ target: 'devices' }))}
-          onRetry={() => run(() => window.novelTrans.khepree.retryActivation())}
-          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+          onManage={() => run(() => window.khepreeNovelAI.khepree.openExternal({ target: 'devices' }))}
+          onRetry={() => run(() => window.khepreeNovelAI.khepree.retryActivation())}
+          onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );
     case 'DEVICE_REMOVED':
@@ -417,8 +423,8 @@ export function KhepreeAccessGate({
         <DeviceAccessGate
           titleKey="khepree.deviceRemoved.title"
           subtitleKey="khepree.deviceRemoved.subtitle"
-          onSignIn={() => run(() => window.novelTrans.khepree.startLogin())}
-          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+          onSignIn={() => run(() => window.khepreeNovelAI.khepree.startLogin())}
+          onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );
     case 'DEVICE_BLOCKED':
@@ -426,16 +432,17 @@ export function KhepreeAccessGate({
         <DeviceAccessGate
           titleKey="khepree.deviceBlocked.title"
           subtitleKey="khepree.deviceBlocked.subtitle"
-          onSignIn={() => run(() => window.novelTrans.khepree.startLogin())}
-          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+          onSignIn={() => run(() => window.khepreeNovelAI.khepree.startLogin())}
+          onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );
     case 'ERROR':
       return (
         <ErrorGate
+          errorCode={state.error?.code}
           error={state.error?.message ?? null}
-          onRetry={() => run(() => window.novelTrans.khepree.retryColdStart())}
-          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+          onRetry={() => run(() => window.khepreeNovelAI.khepree.retryColdStart())}
+          onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );
     case 'LANGUAGE_REQUIRED':
@@ -443,8 +450,8 @@ export function KhepreeAccessGate({
       return (
         <ErrorGate
           error={state.error?.message ?? null}
-          onRetry={() => run(() => window.novelTrans.khepree.retryColdStart())}
-          onSignOut={() => run(() => window.novelTrans.khepree.signOut())}
+          onRetry={() => run(() => window.khepreeNovelAI.khepree.retryColdStart())}
+          onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );
   }

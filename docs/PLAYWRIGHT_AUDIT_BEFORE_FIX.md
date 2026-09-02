@@ -11,7 +11,7 @@ Translation send path (production):
 | Step | File | Method | Evidence | Timeout | Retry | Failure mode |
 |------|------|--------|----------|---------|-------|--------------|
 | ACCOUNT LOGIN | `browser-session-controller.ts` / `account-worker-service.ts` | `PlaywrightBrowserSessionController.open` + `probeSession` | URL `accounts.google.com`, body email / captcha heuristics | goto 60s | Manual user login; reopen session | `LOGIN_REQUIRED` / `NEEDS_ATTENTION` |
-| PROFILE | `profile-manager.ts` + `profile-lock.ts` | `resolveProfilePath` + `acquire` | `%APPDATA%/NovelTrans/browser-profiles/<id>/` + `.noveltrans.lock` | n/a | `forceClearStaleLock` on crash paths | Throw if second owner |
+| PROFILE | `profile-manager.ts` + `profile-lock.ts` | `resolveProfilePath` + `acquire` | `%APPDATA%/KhepreeNovelAI/browser-profiles/<id>/` + `.khepree-novel-ai.lock` | n/a | `forceClearStaleLock` on crash paths | Throw if second owner |
 | OPEN NOTEBOOK | `gemini-browser-provider.ts` | `openProjectNotebook` | `page.goto(notebookUrl)`, `appShell` / `notebookContext` selectors | goto 30s; context visible 5s | none | `LOGIN_REQUIRED` / `SELECTOR_NOT_FOUND` |
 | FIND COMPOSER | `gemini-browser-provider.ts` | `createOrOpenTranslationThread` | `promptInput` editable; optional `activeThread` / `newChatButton` | 2.5–8s | reuse → new chat → wait | `SELECTOR_NOT_FOUND` |
 | FILL PROMPT | `gemini-browser-provider.ts` | `fillChatComposer` | Angular setter + char count validate | click 5s; fill 15s; settle 800ms | insertText → fill → setter again | `UNKNOWN_UI` char mismatch |
@@ -63,9 +63,9 @@ Translation send path (production):
 ## Browser Engine upgrade (same day, after this baseline)
 
 - Playwright **1.62.1** (was `^1.49.1`) — see `docs/PLAYWRIGHT_1_62_BREAKING_CHANGES.md`
-- `BrowserEngineResolver` + `launchNovelTransPersistentContext`
+- `BrowserEngineResolver` + `launchKhepreeNovelAIPersistentContext`
 - Windows AUTO: Edge → Chrome → Playwright Chromium
-- Dedicated NovelTrans `userDataDir` only
+- Dedicated Khepree Novel AI `userDataDir` only
 - Engine/version written to `engine-info.json` + failure diagnostics fields
 
 ## Gate results at baseline (2026-08-26, before engine code)

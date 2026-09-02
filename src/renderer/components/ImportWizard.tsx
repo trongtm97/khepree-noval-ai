@@ -36,12 +36,12 @@ export function ImportWizard({ onCancel, onComplete, onError }: ImportWizardProp
   const pickFile = async () => {
     setBusy(true);
     try {
-      const selected = await window.novelTrans.import.selectFile();
+      const selected = await window.khepreeNovelAI.import.selectFile();
       if (selected.canceled || !selected.filePath) {
         return;
       }
       setFilePath(selected.filePath);
-      const { preview: next } = await window.novelTrans.import.preview(selected.filePath);
+      const { preview: next } = await window.khepreeNovelAI.import.preview(selected.filePath);
       setPreview(next);
       setProjectTitle(next.fileName.replace(/\.[^.]+$/, ''));
       setTitleDrafts({});
@@ -63,7 +63,7 @@ export function ImportWizard({ onCancel, onComplete, onError }: ImportWizardProp
         title: (titleDrafts[ch.chapterNumber] ?? '').trim() || undefined,
         include: !excluded[ch.chapterNumber],
       }));
-      const { preview: next } = await window.novelTrans.import.updatePreview({
+      const { preview: next } = await window.khepreeNovelAI.import.updatePreview({
         previewId: preview.previewId,
         chapterPatches,
       });
@@ -90,7 +90,7 @@ export function ImportWizard({ onCancel, onComplete, onError }: ImportWizardProp
         offset: ch.startOffset,
         title: ch.title,
       }));
-      const { preview: next } = await window.novelTrans.import.updatePreview({
+      const { preview: next } = await window.khepreeNovelAI.import.updatePreview({
         previewId: preview.previewId,
         manualSplits: [
           ...existing,
@@ -111,7 +111,7 @@ export function ImportWizard({ onCancel, onComplete, onError }: ImportWizardProp
     if (!preview) return;
     setBusy(true);
     try {
-      const { preview: next } = await window.novelTrans.import.updatePreview({
+      const { preview: next } = await window.khepreeNovelAI.import.updatePreview({
         previewId: preview.previewId,
         redetect: true,
       });
@@ -128,7 +128,7 @@ export function ImportWizard({ onCancel, onComplete, onError }: ImportWizardProp
     setBusy(true);
     try {
       await applyTitlePatchesQuiet();
-      const result = await window.novelTrans.import.commit({
+      const result = await window.khepreeNovelAI.import.commit({
         previewId: preview.previewId,
         projectTitle: projectTitle.trim() || preview.fileName,
       });
@@ -150,7 +150,7 @@ export function ImportWizard({ onCancel, onComplete, onError }: ImportWizardProp
       title: (titleDrafts[ch.chapterNumber] ?? '').trim() || undefined,
       include: !excluded[ch.chapterNumber],
     }));
-    const { preview: next } = await window.novelTrans.import.updatePreview({
+    const { preview: next } = await window.khepreeNovelAI.import.updatePreview({
       previewId: preview.previewId,
       chapterPatches,
     });
@@ -162,7 +162,7 @@ export function ImportWizard({ onCancel, onComplete, onError }: ImportWizardProp
   const cancel = async () => {
     if (preview) {
       try {
-        await window.novelTrans.import.discard(preview.previewId);
+        await window.khepreeNovelAI.import.discard(preview.previewId);
       } catch {
         // ignore discard errors
       }

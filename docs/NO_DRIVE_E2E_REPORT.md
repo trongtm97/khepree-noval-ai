@@ -1,10 +1,10 @@
-# NovelTrans Studio — No-Drive E2E Acceptance Report
+# Khepree Novel AI — No-Drive E2E Acceptance Report
 
 > **Phase 10** · Date: 2026-08-28 · Profile: dev machine (not clean Windows user profile)
 
 ## Objective
 
-Prove NovelTrans operates **without Google Drive OAuth, Drive folder, Drive API, or Drive sync** at any step of the translation workflow.
+Prove Khepree Novel AI operates **without Google Drive OAuth, Drive folder, Drive API, or Drive sync** at any step of the translation workflow.
 
 ## Method
 
@@ -22,7 +22,7 @@ Drive gate check: `app-bootstrap.ts` does not initialize Drive services; `transl
 
 | # | Step | Result | Evidence |
 |---|------|--------|----------|
-| 1 | Install app | **MANUAL** | `npm run package` produces `out/NovelTrans Studio-win32-x64/NovelTransStudio.exe` ✓ |
+| 1 | Install app | **MANUAL** | `npm run package` produces `out/Khepree Novel AI-win32-x64/KhepreeNovelAI.exe` ✓ |
 | 2 | Add Google account | **MANUAL** | Browser profile flow — not automated |
 | 3 | Login Gemini | **MANUAL** | Requires headed browser + Google auth |
 | 4 | Do **not** connect Drive | **PASS** (code) | No Drive connect path wired; no blocker if `drive_connected=0` |

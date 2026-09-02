@@ -74,7 +74,7 @@ export function RunningJobsSection({ jobs, projects, totalRunning }: RunningJobs
                     size="sm"
                     variant="secondary"
                     onClick={() => {
-                      void window.novelTrans.jobs.pauseAll().then(() => {
+                      void window.khepreeNovelAI.jobs.pauseAll().then(() => {
                         navigate('/jobs');
                       });
                     }}

@@ -29,7 +29,7 @@ export function buildSmokeKnowledgeContent(input: {
   glossaryVi: string;
 }): string {
   return [
-    '# NovelTrans smoke knowledge',
+    '# Khepree Novel AI smoke knowledge',
     '# Machine-readable grounding fixture — do not paraphrase keys.',
     '',
     '## Knowledge keys',
@@ -60,7 +60,7 @@ export function buildSmokeSyncStateContent(input: {
 
 export function buildStaticGroundingQuestion(knowledgeKey: string): string {
   return [
-    'According to the NovelTrans knowledge source,',
+    'According to the Khepree Novel AI knowledge source,',
     'return only the value associated with',
     `${knowledgeKey}.`,
   ].join('\n');
@@ -70,7 +70,7 @@ export function buildStaticGroundingQuestion(knowledgeKey: string): string {
 export function buildSlimTranslationPrompt(chineseLine: string): string {
   return [
     'Translate the following Chinese line to Vietnamese.',
-    'Use NovelTrans Notebook knowledge for proper names.',
+    'Use Khepree Novel AI Notebook knowledge for proper names.',
     'Do not invent character names.',
     'Return only the Vietnamese translation.',
     '',

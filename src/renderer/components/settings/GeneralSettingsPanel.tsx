@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useThemeStore, type ThemeMode } from '../../stores/theme-store';
 import { useUiShellStore } from '../../stores/ui-shell-store';
 import { useT } from '../../i18n';
@@ -11,6 +12,7 @@ import { useSettingsFeedback } from './useSettingsFeedback';
 
 export function GeneralSettingsPanel() {
   const t = useT();
+  const navigate = useNavigate();
   const { showSaved, showInfo } = useSettingsFeedback();
   const mode = useThemeStore((s) => s.mode);
   const setMode = useThemeStore((s) => s.setMode);
@@ -37,7 +39,7 @@ export function GeneralSettingsPanel() {
       setDensity('comfortable');
       setShowAdvancedTools(false);
       setShowParagraphIds(false);
-      await window.novelTrans.jobs.updateSchedulerSettings({
+      await window.khepreeNovelAI.jobs.updateSchedulerSettings({
         globalMaxWorkers: 'AUTO',
       });
       showInfo(t('settings.recommendedApplied'));
@@ -99,6 +101,20 @@ export function GeneralSettingsPanel() {
             }
           />
         </SettingsGroup>
+      </SettingsSection>
+
+      <SettingsSection
+        title={t('contact.settings.khepreeLabs')}
+        description={t('contact.settings.khepreeLabsDescription')}
+      >
+        <Button
+          variant="secondary"
+          onClick={() => {
+            navigate('/help/contact');
+          }}
+        >
+          {t('contact.settings.viewContact')}
+        </Button>
       </SettingsSection>
     </>
   );

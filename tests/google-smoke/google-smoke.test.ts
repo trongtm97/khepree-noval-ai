@@ -1,6 +1,6 @@
 /**
  * Opt-in Real Google smoke suite.
- * Skips unless NOVELTRANS_GOOGLE_SMOKE=1.
+ * Skips unless KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1.
  * Never included in default `npm test` (see vitest.config.ts exclude).
  */
 

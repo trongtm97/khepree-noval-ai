@@ -18,7 +18,7 @@ export function detectTranslationMethod(
 }
 
 export async function applyTranslationMethod(mode: AiTranslationMethod): Promise<void> {
-  const api = window.novelTrans.aiProviders;
+  const api = window.khepreeNovelAI.aiProviders;
   const { GEMINI_WEB_API, PLAYWRIGHT_GEMINI, GEMINI_OFFICIAL } = AI_PROVIDER_IDS;
 
   await api.setEnabled({ providerId: GEMINI_OFFICIAL, enabled: false });

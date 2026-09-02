@@ -27,7 +27,7 @@ export function SourceDiffModal({
   >([]);
 
   useEffect(() => {
-    void window.novelTrans.sourceFolder
+    void window.khepreeNovelAI.sourceFolder
       .getSourceDiff({ projectId, chapterId })
       .then((res) => { setLines(res.lines); })
       .catch((err: unknown) => {

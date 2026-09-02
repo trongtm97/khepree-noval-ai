@@ -39,8 +39,8 @@ export function ProjectsPage() {
 
   const refresh = useCallback(async () => {
     const [projectRes, jobRes] = await Promise.all([
-      window.novelTrans.projects.list(),
-      window.novelTrans.jobs.list(undefined),
+      window.khepreeNovelAI.projects.list(),
+      window.khepreeNovelAI.jobs.list(undefined),
     ]);
     setProjects(projectRes.projects);
     setJobs(jobRes.jobs);
@@ -113,9 +113,9 @@ export function ProjectsPage() {
   const handleRestoreBackup = () => {
     void (async () => {
       try {
-        const pick = await window.novelTrans.portability.selectBackupPath();
+        const pick = await window.khepreeNovelAI.portability.selectBackupPath();
         if (pick.canceled || !pick.filePath) return;
-        const preview = await window.novelTrans.portability.previewRestore({
+        const preview = await window.khepreeNovelAI.portability.previewRestore({
           archivePath: pick.filePath,
         });
         if (!preview.compatible) {
@@ -134,7 +134,7 @@ export function ProjectsPage() {
           }),
         );
         if (!ok) return;
-        const result = await window.novelTrans.portability.restoreBackup({
+        const result = await window.khepreeNovelAI.portability.restoreBackup({
           archivePath: pick.filePath,
           confirmOverwrite: true,
         });
@@ -154,7 +154,7 @@ export function ProjectsPage() {
     setDeleting(true);
     void (async () => {
       try {
-        await window.novelTrans.projects.delete(project.id);
+        await window.khepreeNovelAI.projects.delete(project.id);
         setRemoveTarget(null);
         setProjects((prev) => prev.filter((p) => p.id !== project.id));
         if (currentProjectId === project.id) {

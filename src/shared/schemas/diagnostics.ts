@@ -66,7 +66,7 @@ export type AiBrowserProbeResponse = z.infer<typeof AiBrowserProbeResponseSchema
 export const GoogleSmokeRunRequestSchema = z.object({
   accountId: z.string().uuid(),
   notebookUrl: z.string().url(),
-  smokeProjectLabel: z.string().min(3).default('NOVELTRANS_SMOKE'),
+  smokeProjectLabel: z.string().min(3).default('KHEPREE_NOVEL_AI_SMOKE'),
   headless: z.boolean().optional(),
   scenarios: z
     .array(z.enum(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']))
@@ -97,7 +97,7 @@ export type GoogleSmokeRunResponse = z.infer<typeof GoogleSmokeRunResponseSchema
 export const NotebookGroundingSmokeRunRequestSchema = z.object({
   accountId: z.string().uuid(),
   notebookUrl: z.string().url(),
-  smokeProjectLabel: z.string().min(3).default('NOVELTRANS_SMOKE'),
+  smokeProjectLabel: z.string().min(3).default('KHEPREE_NOVEL_AI_SMOKE'),
   headless: z.boolean().optional(),
   tests: z.array(z.enum(['A', 'B', 'C', 'D'])).optional(),
   groundingKnowledgeDriveFileId: z.string().min(5).optional(),

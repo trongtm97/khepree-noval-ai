@@ -1,7 +1,7 @@
 /**
  * Named Playwright launch compatibility patches.
  *
- * NovelTrans default: standard Playwright persistent context — no init-script stealth.
+ * Khepree Novel AI default: standard Playwright persistent context — no init-script stealth.
  * Patches here are explicit, documented, and opt-in only.
  */
 

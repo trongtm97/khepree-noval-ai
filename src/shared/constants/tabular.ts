@@ -1,4 +1,4 @@
-/** NovelTrans tabular workbook metadata format. */
+/** Khepree Novel AI tabular workbook metadata format. */
 export const NTS_TABULAR_FORMAT = 'NTS_TABULAR' as const;
 export const TABULAR_SCHEMA_VERSION = 2;
 

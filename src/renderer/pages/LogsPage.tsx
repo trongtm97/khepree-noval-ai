@@ -60,12 +60,12 @@ export function LogsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadActivity = useCallback(async () => {
-    const listed = await window.novelTrans.jobs.list(undefined);
+    const listed = await window.khepreeNovelAI.jobs.list(undefined);
     setJobs(listed.jobs);
     const recent = listed.jobs.slice(0, 40);
     const details = await Promise.all(
       recent.map((job) =>
-        window.novelTrans.jobs.get(job.id).catch(() => ({ job, attempts: [] as JobAttemptDto[] })),
+        window.khepreeNovelAI.jobs.get(job.id).catch(() => ({ job, attempts: [] as JobAttemptDto[] })),
       ),
     );
     const lines: LogLine[] = [];
@@ -100,7 +100,7 @@ export function LogsPage() {
   }, []);
 
   const loadTechnical = useCallback(async () => {
-    const result = await window.novelTrans.logs.tail({
+    const result = await window.khepreeNovelAI.logs.tail({
       maxLines: 500,
       level: levelFilter === 'all' ? 'all' : (levelFilter as 'info' | 'warn' | 'error'),
     });
@@ -179,7 +179,7 @@ export function LogsPage() {
             <Button
               variant="secondary"
               onClick={() => {
-                void window.novelTrans.logs.openDir();
+                void window.khepreeNovelAI.logs.openDir();
               }}
             >
               <FolderOpen size={16} aria-hidden />
@@ -258,7 +258,7 @@ export function LogsPage() {
             title={t('logs.emptyTechnical')}
             actionLabel={t('actions.openLogFolder')}
             onAction={() => {
-              void window.novelTrans.logs.openDir();
+              void window.khepreeNovelAI.logs.openDir();
             }}
           />
         ) : (

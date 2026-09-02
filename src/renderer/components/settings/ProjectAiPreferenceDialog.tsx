@@ -40,7 +40,7 @@ export function ProjectAiPreferenceDialog({
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const settings = await window.novelTrans.projects.getTranslatePackSettings(projectId);
+    const settings = await window.khepreeNovelAI.projects.getTranslatePackSettings(projectId);
     if (settings.useGlobalPreference || !settings.aiPreference) {
       setSelection(GLOBAL_VALUE);
     } else {
@@ -62,12 +62,12 @@ export function ProjectAiPreferenceDialog({
     setError(null);
     try {
       if (value === GLOBAL_VALUE) {
-        await window.novelTrans.projects.setAiPreference({
+        await window.khepreeNovelAI.projects.setAiPreference({
           projectId,
           useGlobalPreference: true,
         });
       } else {
-        await window.novelTrans.projects.setAiPreference({
+        await window.khepreeNovelAI.projects.setAiPreference({
           projectId,
           useGlobalPreference: false,
           aiPreference: value as AiPreference,

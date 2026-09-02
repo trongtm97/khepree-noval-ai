@@ -35,7 +35,7 @@ export function TermDetailDrawer({
 
   const save = async () => {
     try {
-      await window.novelTrans.terms.upsert({
+      await window.khepreeNovelAI.terms.upsert({
         id: draft.id,
         sourceText: draft.sourceText,
         preferredTranslation: draft.preferredTranslation ?? undefined,

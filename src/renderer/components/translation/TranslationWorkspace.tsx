@@ -177,7 +177,7 @@ export function TranslationWorkspace({
   const openTerm = useCallback(async (termId: string) => {
     setInspectError(null);
     try {
-      const result = await window.novelTrans.terms.get(termId);
+      const result = await window.khepreeNovelAI.terms.get(termId);
       setInspectTerm(result.term);
     } catch (err: unknown) {
       setInspectError(err instanceof Error ? err.message : 'term');
@@ -188,7 +188,7 @@ export function TranslationWorkspace({
     async (characterId: string, canonicalName: string) => {
       setInspectError(null);
       try {
-        const result = await window.novelTrans.memory.listCharacters(projectId);
+        const result = await window.khepreeNovelAI.memory.listCharacters(projectId);
         const found =
           result.characters.find((item) => item.id === characterId) ??
           result.characters.find((item) => item.canonicalName === canonicalName) ??

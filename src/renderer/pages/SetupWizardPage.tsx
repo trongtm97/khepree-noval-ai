@@ -55,16 +55,16 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
   const pollAbort = useRef<AbortController | null>(null);
 
   const refreshAccounts = useCallback(async () => {
-    const result = await window.novelTrans.accounts.list();
+    const result = await window.khepreeNovelAI.accounts.list();
     setAccounts(result.accounts);
     return result.accounts;
   }, []);
 
   const refresh = useCallback(async () => {
     const [next, accountList, aiStatus] = await Promise.all([
-      window.novelTrans.setup.getStatus(),
-      window.novelTrans.accounts.list(),
-      window.novelTrans.aiProviders.autoSetupStatus(),
+      window.khepreeNovelAI.setup.getStatus(),
+      window.khepreeNovelAI.accounts.list(),
+      window.khepreeNovelAI.aiProviders.autoSetupStatus(),
     ]);
     setStatus(next);
     setAccounts(accountList.accounts);
@@ -83,8 +83,8 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
   useEffect(() => {
     if (status?.step !== 'defaultLanguage') return;
     void Promise.all([
-      window.novelTrans.languages.list(),
-      window.novelTrans.translationSettings.get(),
+      window.khepreeNovelAI.languages.list(),
+      window.khepreeNovelAI.translationSettings.get(),
     ])
       .then(([langRes, settings]) => {
         setSetupLanguages(langRes.languages);
@@ -116,18 +116,18 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
         browserAddKind === 'meta'
           ? AI_PROVIDER_IDS.PLAYWRIGHT_META_AI
           : AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT;
-      const created = await window.novelTrans.aiAccounts.create({
+      const created = await window.khepreeNovelAI.aiAccounts.create({
         providerId,
         displayName: displayName || undefined,
       });
       setBrowserAddOpen(false);
-      const login = await window.novelTrans.aiAccounts.openBrowserLogin({
+      const login = await window.khepreeNovelAI.aiAccounts.openBrowserLogin({
         accountId: created.account.id,
       });
       if (!login.ok) {
         throw new Error(login.message);
       }
-      await window.novelTrans.aiAccounts.verifyBrowser({ accountId: created.account.id });
+      await window.khepreeNovelAI.aiAccounts.verifyBrowser({ accountId: created.account.id });
       await refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -140,7 +140,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
     setBusy(true);
     setError(null);
     try {
-      const next = await window.novelTrans.setup.setStep({ step });
+      const next = await window.khepreeNovelAI.setup.setStep({ step });
       setStatus(next);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -153,7 +153,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.setup.complete({ confirm: true });
+      await window.khepreeNovelAI.setup.complete({ confirm: true });
       onComplete();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -166,7 +166,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.setup.explore({ confirm: true });
+      await window.khepreeNovelAI.setup.explore({ confirm: true });
       onExplore();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -178,7 +178,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
   const finishGoogleLogin = async (accountId: string): Promise<boolean> => {
     setLoginHint(t('setup.finishingLogin'));
     try {
-      const completed = await window.novelTrans.accounts.completeLogin(accountId, {});
+      const completed = await window.khepreeNovelAI.accounts.completeLogin(accountId, {});
       if (completed.account.status === 'READY') {
         await refresh();
         return true;
@@ -187,7 +187,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
       // probe may fail until user finishes browser login
     }
 
-    const probed = await window.novelTrans.accounts.testSession(accountId);
+    const probed = await window.khepreeNovelAI.accounts.testSession(accountId);
     if (probed.usable && probed.account.status === 'READY') {
       await refresh();
       return true;
@@ -231,7 +231,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
     setError(null);
     setLoginHint(null);
     try {
-      const result = await window.novelTrans.accounts.add({});
+      const result = await window.khepreeNovelAI.accounts.add({});
       await refreshAccounts();
       void pollUntilReady(result.account.id);
     } catch (err: unknown) {
@@ -404,7 +404,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
                       const id =
                         accounts.find((a) => a.status === 'READY')?.id ?? accounts[0]?.id;
                       if (!id) return;
-                      const result = await window.novelTrans.diagnostics.connectionTest({
+                      const result = await window.khepreeNovelAI.diagnostics.connectionTest({
                         kind: 'browserProfile',
                         accountId: id,
                       });
@@ -475,7 +475,7 @@ export function SetupWizardPage({ onComplete, onExplore }: SetupWizardPageProps)
                     setBusy(true);
                     setError(null);
                     try {
-                      await window.novelTrans.translationSettings.setDefaultTarget({
+                      await window.khepreeNovelAI.translationSettings.setDefaultTarget({
                         defaultTargetLanguage: setupDefaultTarget,
                       });
                       await go('createProject');

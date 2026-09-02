@@ -35,7 +35,7 @@ export function AdvancedSettingsPanel({
   const setShowParagraphIds = useUiShellStore((s) => s.setShowParagraphIds);
 
   useEffect(() => {
-    void window.novelTrans.getVersion().then((v) => {
+    void window.khepreeNovelAI.getVersion().then((v) => {
       setAppVersion(v.version);
     });
   }, []);
@@ -118,7 +118,7 @@ export function AdvancedSettingsPanel({
         <Button
           variant="secondary"
           onClick={() => {
-            void window.novelTrans.logs.openDir();
+            void window.khepreeNovelAI.logs.openDir();
           }}
         >
           {t('settings.openLogs')}
@@ -147,7 +147,7 @@ export function AdvancedSettingsPanel({
           onClick={() => {
             onClearLoadError();
             setUpdateError(null);
-            void window.novelTrans
+            void window.khepreeNovelAI
               .checkForUpdates()
               .then((result) => {
                 showSaved(`${result.providerLabel}: ${result.message}`);

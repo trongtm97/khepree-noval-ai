@@ -86,12 +86,12 @@ export function looksLikeInsecureBrowserInterstitial(
  */
 export class PlaywrightBrowserSessionController implements BrowserSessionController {
   async open(options: OpenBrowserOptions): Promise<BrowserSessionHandle> {
-    const { launchNovelTransPersistentContext } = await import(
+    const { launchKhepreeNovelAIPersistentContext } = await import(
       './launch-persistent-context'
     );
     const { resolveLoginBrowserPreference } = await import('./browser-engine-resolver');
     const enginePreference = resolveLoginBrowserPreference();
-    const { context } = await launchNovelTransPersistentContext({
+    const { context } = await launchKhepreeNovelAIPersistentContext({
       profilePath: options.profilePath,
       headless: options.headless ?? false,
       headlessDefault: false,

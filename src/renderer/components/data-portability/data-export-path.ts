@@ -4,7 +4,7 @@ export async function buildDataExportOutputPath(input: {
   editionId?: string | null;
   fileName: string;
 }): Promise<{ ok: true; outputPath: string } | { ok: false; reason: 'missing' | 'inaccessible' }> {
-  const resolved = await window.novelTrans.portability.resolveExportDirectory({
+  const resolved = await window.khepreeNovelAI.portability.resolveExportDirectory({
     projectId: input.projectId,
     editionId: input.editionId,
   });

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   AI_SUPPORT_TIERS,
   LANGUAGE_AUTO,
-  NOVELTRANS_VERIFICATION_LEVELS,
+  KHEPREE_NOVEL_AI_VERIFICATION_LEVELS,
   PROVIDER_SUPPORT_LEVELS,
   PUNCTUATION_PROFILES,
   QUOTE_STYLES,
@@ -22,7 +22,7 @@ export const LanguageProfileDtoSchema = z.object({
   direction: z.enum(TEXT_DIRECTIONS),
   regionGroup: z.enum(REGION_GROUPS),
   providerSupport: z.enum(PROVIDER_SUPPORT_LEVELS),
-  novelTransVerification: z.enum(NOVELTRANS_VERIFICATION_LEVELS),
+  khepreeNovelAiVerification: z.enum(KHEPREE_NOVEL_AI_VERIFICATION_LEVELS),
   aiSupportTier: z.enum(AI_SUPPORT_TIERS),
   segmentationStrategy: z.enum(SEGMENTATION_STRATEGIES),
   quoteStyle: z.enum(QUOTE_STYLES),

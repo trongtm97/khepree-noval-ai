@@ -1,6 +1,6 @@
 # Windows runtime dependencies (self-contained)
 
-NovelTrans Studio on Windows must run for end users **without** installing Node, npm, or Python.
+Khepree Novel AI on Windows must run for end users **without** installing Node, npm, or Python.
 
 ## What the installer ships
 
@@ -9,7 +9,7 @@ NovelTrans Studio on Windows must run for end users **without** installing Node,
 | Electron app + main/preload/renderer | app.asar / unpacked runner | Yes |
 | Playwright library (`playwright`, `playwright-core`) | `resources/app/.../node_modules` (via Forge copy) | Yes (Browser provider) |
 | Guides | `resources/guides` | Docs only |
-| Gemini Web API worker | `resources/workers/NovelTransGeminiWorker.exe` | **Optional** |
+| Gemini Web API worker | `resources/workers/KhepreeNovelAIGeminiWorker.exe` | **Optional** |
 
 User data (DB, profiles, venv for **dev only**) stays under `%APPDATA%` / configured data path — never under the install directory.
 
@@ -38,7 +38,7 @@ Developers may still run `npx playwright install chromium` for local Chromium-on
 | Environment | How worker starts |
 |-------------|-------------------|
 | **Development** | `workers/gemini_webapi_worker/main.py` + Python 3.11+ venv under userData (`WorkerProcessManager` install flow) |
-| **Production** | Spawn `resources/workers/NovelTransGeminiWorker.exe` (PyInstaller one-file). No system Python. |
+| **Production** | Spawn `resources/workers/KhepreeNovelAIGeminiWorker.exe` (PyInstaller one-file). No system Python. |
 
 Build the exe on a Windows build machine:
 
@@ -46,7 +46,7 @@ Build the exe on a Windows build machine:
 npm run build:gemini-worker
 ```
 
-Output: `resources/workers/NovelTransGeminiWorker.exe`  
+Output: `resources/workers/KhepreeNovelAIGeminiWorker.exe`  
 Forge `extraResource` includes `./resources/workers` (README + exe). Do not ship `.venv`, cookies, or private env files.
 
 If the exe is missing in a release:
@@ -67,9 +67,9 @@ Simulate: no Node, no npm, no Python on PATH for the **runtime** user (build mac
 
 Checks:
 
-1. App process starts (`NovelTransStudio.exe`)
+1. App process starts (`KhepreeNovelAI.exe`)
 2. Browser dependency health: usable if Edge/Chrome present
-3. If `NovelTransGeminiWorker.exe` is in `resources/workers` and Web API enabled → worker process can start and answer `/health`
+3. If `KhepreeNovelAIGeminiWorker.exe` is in `resources/workers` and Web API enabled → worker process can start and answer `/health`
 4. If worker missing → app remains usable with Browser provider only
 
 Scripts:

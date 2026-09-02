@@ -1,4 +1,4 @@
-# Release Checklist — NovelTrans Studio
+# Release Checklist — Khepree Novel AI
 
 Mark each item **PASS** / **FAIL** / **NOT TESTED**.  
 Do **not** call the build production-ready if any required item is FAIL or NOT TESTED.

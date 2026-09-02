@@ -25,7 +25,7 @@
 
 ### Toolbar
 - Single row: search (280–360px), sort (200px), segmented list/grid toggle.
-- Default view: **list** (persisted in `noveltrans-ui-shell` as `projectsViewMode`).
+- Default view: **list** (persisted in `khepree-novel-ai-ui-shell` as `projectsViewMode`).
 - Ctrl+F focuses search on Projects page.
 
 ### Project cards

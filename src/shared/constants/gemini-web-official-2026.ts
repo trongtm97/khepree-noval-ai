@@ -3,8 +3,8 @@
  * Source: https://support.google.com/gemini/answer/13575153
  * Audit date: 2026-08-29
  *
- * UI availability on Gemini Web ≠ NovelTrans translation quality.
- * Use providerSupport + novelTransVerification on catalog entries.
+ * UI availability on Gemini Web ≠ Khepree Novel AI translation quality.
+ * Use providerSupport + khepreeNovelAiVerification on catalog entries.
  */
 
 export const GEMINI_WEB_OFFICIAL_AUDIT_DATE = '2026-08-29';
@@ -95,10 +95,10 @@ export const GEMINI_WEB_OFFICIAL_CODES = new Set<string>([
 ]);
 
 /**
- * NovelTrans browser workflow pairs with evidence — subset of official Web languages.
+ * Khepree Novel AI browser workflow pairs with evidence — subset of official Web languages.
  * Official Web support does NOT imply this status.
  */
-export const NOVELTRANS_VERIFIED_CODES = new Set<string>([
+export const KHEPREE_NOVEL_AI_VERIFIED_CODES = new Set<string>([
   'ar',
   'bn',
   'bg',

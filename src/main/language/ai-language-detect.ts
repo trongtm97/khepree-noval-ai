@@ -18,7 +18,7 @@ Do NOT translate. Return ONLY valid JSON matching this schema:
   "secondary_languages": []
 }
 
-language_code MUST be a BCP-47 code from the NovelTrans World Language Catalog:
+language_code MUST be a BCP-47 code from the Khepree Novel AI World Language Catalog:
 ${catalogAllowList()}
 
 Do not invent codes outside this catalog. Distinguish zh-Hans vs zh-Hant when possible.

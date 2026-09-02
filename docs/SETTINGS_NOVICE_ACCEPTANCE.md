@@ -84,7 +84,7 @@ Automated guard: `tests/unit/settings/settings-novice-jargon.test.ts` — **PASS
 
 | Setting | Store | Key / mechanism |
 |---------|-------|-----------------|
-| UI locale preference | Electron renderer `localStorage` | `noveltrans-locale` (Zustand persist) |
+| UI locale preference | Electron renderer `localStorage` | `khepree-novel-ai-locale` (Zustand persist) |
 | Default target language | SQLite `app_meta` | `translation.defaultTargetLanguage` |
 | Translation AUTO | SQLite scheduler policy | `globalMaxWorkers: 'AUTO'` |
 | Storage root | SQLite `app_meta` | `export.defaultDirectory` + `backup.dir` via `setupStorageRoot` |
@@ -105,7 +105,7 @@ These were **not** new features — minimal fixes required to meet acceptance:
 
 ## Screenshots
 
-Captured with `node scripts/settings-novice-screenshots.mjs` (single app instance, no other NovelTrans running).
+Captured with `node scripts/settings-novice-screenshots.mjs` (single app instance, no other Khepree Novel AI running).
 
 ### 1366 × 768
 

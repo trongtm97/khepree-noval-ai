@@ -94,7 +94,7 @@ export class AutomationManager {
           workerId: options.workerId,
           runnerScriptPath: this.runnerScriptPath,
           env: {
-            NOVELTRANS_AUTOMATION_DIAGNOSTICS_DIR: diagnosticsDir,
+            KHEPREE_NOVEL_AI_AUTOMATION_DIAGNOSTICS_DIR: diagnosticsDir,
           },
         });
 

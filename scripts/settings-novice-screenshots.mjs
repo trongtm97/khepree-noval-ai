@@ -1,6 +1,6 @@
 /**
  * Capture Settings tab screenshots at 1366×768 and 1920×1080.
- * Run with NO other NovelTrans instance open (SQLite single-writer).
+ * Run with NO other Khepree Novel AI instance open (SQLite single-writer).
  *
  *   node scripts/settings-novice-screenshots.mjs
  */

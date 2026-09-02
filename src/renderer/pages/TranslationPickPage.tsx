@@ -16,7 +16,7 @@ export function TranslationPickPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void window.novelTrans.projects
+    void window.khepreeNovelAI.projects
       .list()
       .then((result) => {
         setProjects(result.projects);

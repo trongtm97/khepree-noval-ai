@@ -1,13 +1,13 @@
 import type {
   AiSupportTier,
   LanguageCatalogSeed,
-  NovelTransVerification,
+  KhepreeNovelAIVerification,
   ProviderSupport,
   RegionGroup,
 } from './language-catalog-types';
 import {
   GEMINI_WEB_OFFICIAL_CODES,
-  NOVELTRANS_VERIFIED_CODES,
+  KHEPREE_NOVEL_AI_VERIFIED_CODES,
 } from './gemini-web-official-2026';
 
 export { REGION_GROUPS } from './language-catalog-types';
@@ -15,7 +15,7 @@ export {
   GEMINI_WEB_OFFICIAL_AUDIT_DATE,
   GEMINI_WEB_OFFICIAL_CODES,
   GEMINI_WEB_OFFICIAL_SOURCE_URL,
-  NOVELTRANS_VERIFIED_CODES,
+  KHEPREE_NOVEL_AI_VERIFIED_CODES,
 } from './gemini-web-official-2026';
 
 /** @deprecated Use GEMINI_WEB_OFFICIAL_CODES — kept for tests during transition. */
@@ -41,8 +41,8 @@ function providerSupportFor(code: string): ProviderSupport {
   return 'CATALOG_ONLY';
 }
 
-function verificationFor(code: string): NovelTransVerification {
-  if (NOVELTRANS_VERIFIED_CODES.has(code)) return 'VERIFIED';
+function verificationFor(code: string): KhepreeNovelAIVerification {
+  if (KHEPREE_NOVEL_AI_VERIFIED_CODES.has(code)) return 'VERIFIED';
   return 'UNTESTED';
 }
 
@@ -74,7 +74,7 @@ function seeds(rows: Seed[]): LanguageCatalogSeed[] {
       direction,
       regionGroup: region,
       providerSupport,
-      novelTransVerification: verificationFor(code),
+      khepreeNovelAiVerification: verificationFor(code),
       aiSupportTier: tierFor(code, tier),
     };
   });

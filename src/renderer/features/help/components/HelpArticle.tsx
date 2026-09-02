@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { HelpCalloutVariant } from '../types';
 import { HELP_ARTICLE_MAP } from '../content';
 import { highlightText } from '../highlight';
+import { OfficialContactSection } from '../../../components/contact/OfficialContactCards';
 
 const LABELS: Record<HelpCalloutVariant, string> = {
   tip: 'Mẹo',
@@ -193,6 +194,9 @@ export function HelpArticleBody({
             </ul>
           </div>,
         );
+        break;
+      case 'official-contacts':
+        nodes.push(<OfficialContactSection key={i} />);
         break;
       default:
         break;

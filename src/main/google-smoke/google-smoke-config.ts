@@ -26,7 +26,7 @@ export const GoogleSmokeConfigSchema = z.object({
   notebookUrl: z.string().url(),
   headless: z.boolean().default(false),
   /** Must appear in notebookUrl or be set explicitly — blocks production projects. */
-  smokeProjectLabel: z.string().min(3).default('NOVELTRANS_SMOKE'),
+  smokeProjectLabel: z.string().min(3).default('KHEPREE_NOVEL_AI_SMOKE'),
   scenarios: z.array(z.enum(GOOGLE_SMOKE_SCENARIOS)).default([...GOOGLE_SMOKE_SCENARIOS]),
   reportMarkdownPath: z.string().default('docs/REAL_GOOGLE_TEST_REPORT.md'),
   artifactsDir: z.string().default('tmp/google-smoke-artifacts'),
@@ -36,16 +36,24 @@ export const GoogleSmokeConfigSchema = z.object({
 
 export type GoogleSmokeConfig = z.infer<typeof GoogleSmokeConfigSchema>;
 
-export const SMOKE_OK_TOKEN = 'NOVELTRANS_SMOKE_OK';
+export const SMOKE_OK_TOKEN = 'KHEPREE_NOVEL_AI_SMOKE_OK';
+
+function readEnvFlag(...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
 
 export function isGoogleSmokeEnvEnabled(): boolean {
-  const v = process.env.NOVELTRANS_GOOGLE_SMOKE?.trim().toLowerCase();
+  const v = readEnvFlag('KHEPREE_NOVEL_AI_GOOGLE_SMOKE', 'NOVELTRANS_GOOGLE_SMOKE')?.toLowerCase();
   return v === '1' || v === 'true' || v === 'yes';
 }
 
 export function resolveGoogleSmokeConfigPath(): string {
   return (
-    process.env.NOVELTRANS_GOOGLE_SMOKE_CONFIG?.trim() ??
+    readEnvFlag('KHEPREE_NOVEL_AI_GOOGLE_SMOKE_CONFIG', 'NOVELTRANS_GOOGLE_SMOKE_CONFIG') ??
     path.resolve(process.cwd(), 'google-smoke.config.json')
   );
 }
@@ -59,7 +67,7 @@ export function parseGoogleSmokeConfig(raw: unknown): GoogleSmokeConfig {
 export function loadGoogleSmokeConfig(filePath?: string): GoogleSmokeConfig {
   if (!isGoogleSmokeEnvEnabled()) {
     throw new Error(
-      'Real Google smoke disabled. Set NOVELTRANS_GOOGLE_SMOKE=1 and provide google-smoke.config.json',
+      'Real Google smoke disabled. Set KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1 and provide google-smoke.config.json',
     );
   }
   const resolved = filePath ?? resolveGoogleSmokeConfigPath();

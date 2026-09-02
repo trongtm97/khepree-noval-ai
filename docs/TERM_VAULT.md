@@ -1,4 +1,4 @@
-# NovelTrans Studio — Term Vault (Phase 7)
+# Khepree Novel AI — Term Vault (Phase 7)
 
 > Core terminology module. Local matching + candidate extraction. **No auto-promote.**
 

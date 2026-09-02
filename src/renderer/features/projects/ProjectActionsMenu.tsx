@@ -30,7 +30,7 @@ export function ProjectActionsMenu({
 
   const openExportFolder = () => {
     setOpen(false);
-    void window.novelTrans.portability
+    void window.khepreeNovelAI.portability
       .openExportDirectory({ projectId: project.id })
       .catch(() => {
         /* ignore — toast handled elsewhere if needed */

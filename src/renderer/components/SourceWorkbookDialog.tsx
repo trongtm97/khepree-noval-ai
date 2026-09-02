@@ -43,12 +43,12 @@ export function SourceWorkbookDialog({ projectId, onComplete }: SourceWorkbookDi
     setBusy(true);
     setError(null);
     try {
-      const selected = await window.novelTrans.tabular.selectImportFile({
+      const selected = await window.khepreeNovelAI.tabular.selectImportFile({
         dataType: 'source_workbook',
         format: 'any',
       });
       if (selected.canceled || !selected.filePath) return;
-      const result = await window.novelTrans.tabular.preview({
+      const result = await window.khepreeNovelAI.tabular.preview({
         filePath: selected.filePath,
         projectId,
         dataTypeHint: 'source_workbook',
@@ -68,13 +68,13 @@ export function SourceWorkbookDialog({ projectId, onComplete }: SourceWorkbookDi
       setBusy(true);
       setError(null);
       try {
-        const picked = await window.novelTrans.tabular.selectExportPath({
+        const picked = await window.khepreeNovelAI.tabular.selectExportPath({
           dataType: 'source_workbook',
           format,
           defaultName: `source-${projectId.slice(0, 8)}`,
         });
         if (picked.canceled || !picked.filePath) return;
-        const result = await window.novelTrans.tabular.export({
+        const result = await window.khepreeNovelAI.tabular.export({
           dataType: 'source_workbook',
           format,
           outputPath: picked.filePath,
@@ -96,7 +96,7 @@ export function SourceWorkbookDialog({ projectId, onComplete }: SourceWorkbookDi
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.tabular.commit({
+      const result = await window.khepreeNovelAI.tabular.commit({
         previewId: preview.previewId,
         mode: importMode,
         projectId,
@@ -118,7 +118,7 @@ export function SourceWorkbookDialog({ projectId, onComplete }: SourceWorkbookDi
 
   const cancelImport = useCallback(async () => {
     if (preview) {
-      await window.novelTrans.tabular.discardPreview({ previewId: preview.previewId });
+      await window.khepreeNovelAI.tabular.discardPreview({ previewId: preview.previewId });
     }
     setImportOpen(false);
     setPreview(null);

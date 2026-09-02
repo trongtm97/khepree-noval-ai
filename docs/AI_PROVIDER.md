@@ -1,6 +1,6 @@
 # AI Provider Architecture
 
-NovelTrans routes all model calls through **AI Provider Manager**. Translation Engine / job repair loop never import Playwright or the Gemini Web API worker directly.
+Khepree Novel AI routes all model calls through **AI Provider Manager**. Translation Engine / job repair loop never import Playwright or the Gemini Web API worker directly.
 
 ## Routing stack
 
@@ -48,7 +48,7 @@ Output: `AIResponse` with status `SUCCESS` | `LOGIN_REQUIRED` | `SESSION_EXPIRED
 
 - `ai_providers` · `ai_accounts` · `ai_models`
 - Google workers: legacy `worker_states` + account rows
-- AI browser accounts: `ai_accounts.profile_dir_name` → `%APPDATA%/NovelTrans/browser-profiles/`
+- AI browser accounts: `ai_accounts.profile_dir_name` → `%APPDATA%/KhepreeNovelAI/browser-profiles/`
 - Web API session cookies: `secrets` via `SecretKind: gemini_web_session` (safeStorage)
 
 ## Job wiring

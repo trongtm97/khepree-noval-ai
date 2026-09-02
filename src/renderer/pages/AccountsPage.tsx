@@ -155,13 +155,13 @@ export function AccountsPage() {
 
   const handleAddCreateConfirm = () => {
     void run(null, async () => {
-      const result = await window.novelTrans.accounts.add({
+      const result = await window.khepreeNovelAI.accounts.add({
         label: addLabelDraft.trim() || undefined,
       });
       setAddAccountId(result.account.id);
       setAddStep('login');
       try {
-        await window.novelTrans.accounts.completeLogin(result.account.id, {});
+        await window.khepreeNovelAI.accounts.completeLogin(result.account.id, {});
         setAddOpen(false);
         toast('SUCCESS', t('accounts.toastAdded'));
       } catch {
@@ -174,7 +174,7 @@ export function AccountsPage() {
     if (!addAccountId) return;
     void run(addAccountId, async () => {
       try {
-        await window.novelTrans.accounts.completeLogin(addAccountId, {});
+        await window.khepreeNovelAI.accounts.completeLogin(addAccountId, {});
         setAddOpen(false);
         toast('SUCCESS', t('accounts.toastAdded'));
       } catch (err: unknown) {
@@ -193,7 +193,7 @@ export function AccountsPage() {
     const email = addEmailDraft.trim();
     if (!email) return;
     void run(addAccountId, async () => {
-      await window.novelTrans.accounts.completeLogin(addAccountId, { email });
+      await window.khepreeNovelAI.accounts.completeLogin(addAccountId, { email });
       setAddOpen(false);
       toast('SUCCESS', t('accounts.toastAdded'));
     });
@@ -202,7 +202,7 @@ export function AccountsPage() {
   const handleAddReopenBrowser = () => {
     if (!addAccountId) return;
     void run(addAccountId, async () => {
-      await window.novelTrans.accounts.openBrowser(addAccountId, 'gemini');
+      await window.khepreeNovelAI.accounts.openBrowser(addAccountId, 'gemini');
     });
   };
 
@@ -212,14 +212,14 @@ export function AccountsPage() {
         ? AI_PROVIDER_IDS.PLAYWRIGHT_META_AI
         : AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT;
     void run(null, async () => {
-      const created = await window.novelTrans.aiAccounts.create({
+      const created = await window.khepreeNovelAI.aiAccounts.create({
         providerId,
         displayName: displayName || undefined,
       });
       setBrowserAddOpen(false);
       setBrowserVerifyAccountId(created.account.id);
       setBrowserVerifyOpen(true);
-      const login = await window.novelTrans.aiAccounts.openBrowserLogin({
+      const login = await window.khepreeNovelAI.aiAccounts.openBrowserLogin({
         accountId: created.account.id,
       });
       if (!login.ok) {
@@ -231,7 +231,7 @@ export function AccountsPage() {
   const handleBrowserVerify = () => {
     if (!browserVerifyAccountId) return;
     void run(browserVerifyAccountId, async () => {
-      await window.novelTrans.aiAccounts.verifyBrowser({
+      await window.khepreeNovelAI.aiAccounts.verifyBrowser({
         accountId: browserVerifyAccountId,
       });
       setBrowserVerifyOpen(false);
@@ -254,9 +254,9 @@ export function AccountsPage() {
     setRemoveTarget(null);
     void run(target.id, async () => {
       if (target.source.kind === 'google') {
-        await window.novelTrans.accounts.remove(target.id);
+        await window.khepreeNovelAI.accounts.remove(target.id);
       } else {
-        await window.novelTrans.aiAccounts.delete({ accountId: target.id });
+        await window.khepreeNovelAI.aiAccounts.delete({ accountId: target.id });
       }
       toast('SUCCESS', t('accounts.toastDeleted'));
     });
@@ -271,13 +271,13 @@ export function AccountsPage() {
     const account = editGoogleTarget;
     setEditGoogleTarget(null);
     void run(account.id, async () => {
-      await window.novelTrans.accounts.rename(account.id, data.label);
+      await window.khepreeNovelAI.accounts.rename(account.id, data.label);
       if (data.plan !== account.plan) {
-        await window.novelTrans.accounts.setPlan(account.id, data.plan);
+        await window.khepreeNovelAI.accounts.setPlan(account.id, data.plan);
       }
       const prevNotes = account.notes ?? '';
       if (data.notes !== prevNotes) {
-        await window.novelTrans.accounts.setNotes(account.id, data.notes || null);
+        await window.khepreeNovelAI.accounts.setNotes(account.id, data.notes || null);
       }
       toast('SUCCESS', t('accounts.toastUpdated'));
     });
@@ -286,11 +286,11 @@ export function AccountsPage() {
   const openSite = (vm: AiAccountViewModel) => {
     if (vm.source.kind === 'google') {
       void run(vm.id, async () => {
-        await window.novelTrans.accounts.openBrowser(vm.id, 'gemini');
+        await window.khepreeNovelAI.accounts.openBrowser(vm.id, 'gemini');
       });
     } else {
       void run(vm.id, async () => {
-        const res = await window.novelTrans.aiAccounts.openBrowserLogin({ accountId: vm.id });
+        const res = await window.khepreeNovelAI.aiAccounts.openBrowserLogin({ accountId: vm.id });
         if (!res.ok) throw new Error(res.message);
       });
     }
@@ -299,7 +299,7 @@ export function AccountsPage() {
   const checkAccount = (vm: AiAccountViewModel) => {
     if (vm.source.kind === 'google') {
       void run(vm.id, async () => {
-        const result = await window.novelTrans.accounts.testSession(vm.id);
+        const result = await window.khepreeNovelAI.accounts.testSession(vm.id);
         if (result.reason === 'BROWSER_NOT_SECURE') {
           setCardErrors((prev) => ({
             ...prev,
@@ -314,7 +314,7 @@ export function AccountsPage() {
       }, { clearCardError: false });
     } else {
       void run(vm.id, async () => {
-        await window.novelTrans.aiAccounts.verifyBrowser({ accountId: vm.id });
+        await window.khepreeNovelAI.aiAccounts.verifyBrowser({ accountId: vm.id });
         toast('SUCCESS', t('accounts.toastCheckOk'));
       });
     }
@@ -323,9 +323,9 @@ export function AccountsPage() {
   const pauseAccount = (vm: AiAccountViewModel) => {
     void run(vm.id, async () => {
       if (vm.source.kind === 'google') {
-        await window.novelTrans.accounts.disable(vm.id);
+        await window.khepreeNovelAI.accounts.disable(vm.id);
       } else {
-        await window.novelTrans.aiAccounts.disable({ accountId: vm.id });
+        await window.khepreeNovelAI.aiAccounts.disable({ accountId: vm.id });
       }
       toast('SUCCESS', t('accounts.toastPaused'));
     });
@@ -334,9 +334,9 @@ export function AccountsPage() {
   const resumeAccount = (vm: AiAccountViewModel) => {
     void run(vm.id, async () => {
       if (vm.source.kind === 'google') {
-        await window.novelTrans.accounts.enable(vm.id);
+        await window.khepreeNovelAI.accounts.enable(vm.id);
       } else {
-        await window.novelTrans.aiAccounts.verifyBrowser({ accountId: vm.id });
+        await window.khepreeNovelAI.aiAccounts.verifyBrowser({ accountId: vm.id });
       }
       toast('SUCCESS', t('accounts.toastResumed'));
     });
@@ -583,7 +583,7 @@ export function AccountsPage() {
           if (!target || target.source.kind !== 'ai') return;
           setEditBrowserTarget(null);
           void run(target.id, async () => {
-            await window.novelTrans.aiAccounts.updateDisplayName({
+            await window.khepreeNovelAI.aiAccounts.updateDisplayName({
               accountId: target.id,
               displayName,
             });

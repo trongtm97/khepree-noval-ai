@@ -1,6 +1,6 @@
-# NovelTrans Studio
+# Khepree Novel AI
 
-NovelTrans Studio is a Windows desktop application for AI-assisted multilingual novel translation.
+Khepree Novel AI is a Windows desktop application for AI-assisted multilingual novel translation.
 
 ## Core concepts
 
@@ -35,7 +35,7 @@ Gemini Google smoke (opt-in, separate suite):
 
 ```bash
 copy google-smoke.config.example.json google-smoke.config.json
-set NOVELTRANS_GOOGLE_SMOKE=1
+set KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1
 npm run test:google-smoke
 ```
 
@@ -64,7 +64,7 @@ These suites are **opt-in** and are **not** part of default `npm test` / CI.
 
 All user data lives under:
 
-`%APPDATA%\NovelTrans\`
+`%APPDATA%\KhepreeNovelAI\`
 
 | Path | Contents |
 |------|----------|
@@ -87,7 +87,7 @@ npm run lint
 npm test                  # Unit (+ integration via include; perf excluded)
 npm run test:integration
 npm run test:perf         # 100k terms + 2000×3 chapters (slow)
-npm run test:google-smoke # Real Google A–H (opt-in; set NOVELTRANS_GOOGLE_SMOKE=1)
+npm run test:google-smoke # Real Google A–H (opt-in; set KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1)
 npm run package           # Unpackaged build
 npm run make              # Windows Squirrel installer
 ```

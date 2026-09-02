@@ -3,7 +3,7 @@ import path from 'node:path';
 
 /**
  * Real Google smoke — NEVER part of default `npm test` / CI.
- * Requires NOVELTRANS_GOOGLE_SMOKE=1 + google-smoke.config.json
+ * Requires KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1 + google-smoke.config.json
  */
 export default defineConfig({
   resolve: {

@@ -162,7 +162,8 @@ export function buildMetaSheetRows(meta: TabularMeta): [string, string][] {
 
 export function assertKhepreeTabularMeta(meta: TabularMeta | undefined): void {
   if (!meta) return;
-  const format = meta.khepree_format ?? meta.noveltrans_format;
+  const format =
+    meta.khepree_format ?? meta.khepree_novel_ai_format ?? meta.noveltrans_format;
   if (format && format !== NTS_TABULAR_FORMAT) {
     throw new Error(`Unsupported khepree_format: ${format}`);
   }

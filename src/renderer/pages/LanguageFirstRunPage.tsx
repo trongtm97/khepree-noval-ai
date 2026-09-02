@@ -18,7 +18,7 @@ export function LanguageFirstRunPage({ onComplete }: { onComplete: () => void })
     setBusy(true);
     setError(null);
     try {
-      const status = await window.novelTrans.uiLanguage.completeFirstRun({ preference: selected });
+      const status = await window.khepreeNovelAI.uiLanguage.completeFirstRun({ preference: selected });
       applyUiLanguageStatus(status);
       onComplete();
     } catch (err: unknown) {

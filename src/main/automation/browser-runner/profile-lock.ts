@@ -10,7 +10,7 @@ import {
   type ProfileLeaseOperation,
 } from '@shared/constants/profile-lease';
 
-/** Stable per app/process lifetime — distinguishes two NovelTrans instances. */
+/** Stable per app/process lifetime — distinguishes two Khepree Novel AI instances. */
 export const PROCESS_INSTANCE_ID = randomUUID();
 
 export class ProfileBusyError extends Error {

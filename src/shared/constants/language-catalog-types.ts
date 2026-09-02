@@ -7,7 +7,7 @@ export const AI_SUPPORT_TIERS = [
 
 export type AiSupportTier = (typeof AI_SUPPORT_TIERS)[number];
 
-/** Google provider UI/API availability — not NovelTrans quality. */
+/** Google provider UI/API availability — not Khepree Novel AI quality. */
 export const PROVIDER_SUPPORT_LEVELS = [
   'GEMINI_WEB_OFFICIAL',
   'GEMINI_API_EXTENDED',
@@ -16,14 +16,14 @@ export const PROVIDER_SUPPORT_LEVELS = [
 
 export type ProviderSupport = (typeof PROVIDER_SUPPORT_LEVELS)[number];
 
-/** NovelTrans end-to-end translation workflow evidence. */
-export const NOVELTRANS_VERIFICATION_LEVELS = [
+/** Khepree Novel AI end-to-end translation workflow evidence. */
+export const KHEPREE_NOVEL_AI_VERIFICATION_LEVELS = [
   'VERIFIED',
   'UNTESTED',
   'KNOWN_ISSUE',
 ] as const;
 
-export type NovelTransVerification = (typeof NOVELTRANS_VERIFICATION_LEVELS)[number];
+export type KhepreeNovelAIVerification = (typeof KHEPREE_NOVEL_AI_VERIFICATION_LEVELS)[number];
 
 export interface LanguageProviderSupport {
   providerId: string;
@@ -59,8 +59,8 @@ export interface LanguageCatalogSeed {
   direction: 'ltr' | 'rtl';
   regionGroup: RegionGroup;
   providerSupport: ProviderSupport;
-  novelTransVerification: NovelTransVerification;
-  /** @deprecated Derived from providerSupport — use providerSupport + novelTransVerification. */
+  khepreeNovelAiVerification: KhepreeNovelAIVerification;
+  /** @deprecated Derived from providerSupport — use providerSupport + khepreeNovelAiVerification. */
   aiSupportTier: AiSupportTier;
   supportsTransliteration?: boolean;
   defaultTransliterationSystem?: string;

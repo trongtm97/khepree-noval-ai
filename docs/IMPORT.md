@@ -1,4 +1,4 @@
-# NovelTrans Studio — Novel Import Engine
+# Khepree Novel AI — Novel Import Engine
 
 > Phase 6. Parse → detect → preview → manual fix → commit. **No translation.**
 

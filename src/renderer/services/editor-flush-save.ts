@@ -25,7 +25,7 @@ export async function flushEditorSaves(input: FlushSaveInput): Promise<boolean> 
   try {
     await Promise.all(
       entries.map(async ([stableParagraphId, translatedText]) => {
-        const result = await window.novelTrans.editor.saveParagraph({
+        const result = await window.khepreeNovelAI.editor.saveParagraph({
           projectId: input.projectId,
           chapterId: input.chapterId,
           stableParagraphId,

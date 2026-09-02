@@ -119,7 +119,7 @@ Three sections:
 
 ### System locale decision
 
-Implemented `preference: 'system' | 'vi' | 'en'`. Resolves via `navigator.languages`; unsupported → `vi`. Persist key `noveltrans-locale` migrates legacy `{ locale: 'vi'|'en' }` → `{ preference }`.
+Implemented `preference: 'system' | 'vi' | 'en'`. Resolves via `navigator.languages`; unsupported → `vi`. Persist key `khepree-novel-ai-locale` migrates legacy `{ locale: 'vi'|'en' }` → `{ preference }`.
 
 ### Removed
 

@@ -36,7 +36,7 @@ export async function exportChapter(
   }
 
   try {
-    return await window.novelTrans.portability.exportChapter({
+    return await window.khepreeNovelAI.portability.exportChapter({
       projectId: input.projectId,
       chapterNumber: input.chapterNumber,
       chapterTitle: input.chapterTitle,
@@ -59,7 +59,7 @@ async function pickPersistAndExport(
   input: ExportChapterInput,
   persistPrompt?: ExportDirectoryPersistPrompt,
 ): Promise<ExportChapterResult> {
-  const pick = await window.novelTrans.portability.selectExportDirectory();
+  const pick = await window.khepreeNovelAI.portability.selectExportDirectory();
   if (pick.canceled || !pick.directory) {
     throw new Error('EXPORT_CANCELED');
   }
@@ -77,13 +77,13 @@ async function pickPersistAndExport(
     throw new Error('EXPORT_CANCELED');
   }
 
-  await window.novelTrans.portability.persistExportDirectory({
+  await window.khepreeNovelAI.portability.persistExportDirectory({
     projectId: input.projectId,
     directory: pick.directory,
     scope,
   });
 
-  return window.novelTrans.portability.exportChapter({
+  return window.khepreeNovelAI.portability.exportChapter({
     projectId: input.projectId,
     chapterNumber: input.chapterNumber,
     chapterTitle: input.chapterTitle,
@@ -112,7 +112,7 @@ export async function exportChapterRange(
   }
 
   try {
-    return await window.novelTrans.portability.exportChapterRange({
+    return await window.khepreeNovelAI.portability.exportChapterRange({
       projectId: input.projectId,
       chapterFrom: input.chapterFrom,
       chapterTo: input.chapterTo,
@@ -122,7 +122,7 @@ export async function exportChapterRange(
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '';
     if (msg === 'EXPORT_DIRECTORY_MISSING') {
-      const pick = await window.novelTrans.portability.selectExportDirectory();
+      const pick = await window.khepreeNovelAI.portability.selectExportDirectory();
       if (pick.canceled || !pick.directory) {
         throw new Error('EXPORT_CANCELED');
       }
@@ -137,12 +137,12 @@ export async function exportChapterRange(
       if (scope == null) {
         throw new Error('EXPORT_CANCELED');
       }
-      await window.novelTrans.portability.persistExportDirectory({
+      await window.khepreeNovelAI.portability.persistExportDirectory({
         projectId: input.projectId,
         directory: pick.directory,
         scope,
       });
-      return window.novelTrans.portability.exportChapterRange({
+      return window.khepreeNovelAI.portability.exportChapterRange({
         projectId: input.projectId,
         chapterFrom: input.chapterFrom,
         chapterTo: input.chapterTo,

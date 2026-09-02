@@ -30,7 +30,7 @@
 | ID | Intent |
 | --- | --- |
 | A | Open correct Translation Notebook |
-| B | Exact token `NOVELTRANS_SMOKE_OK` |
+| B | Exact token `KHEPREE_NOVEL_AI_SMOKE_OK` |
 | C | Multiline medium prompt |
 | D | Translate 3 fake paragraphs; assert all IDs |
 | E | Refresh page mid-session then continue |
@@ -43,7 +43,7 @@
 ```bash
 copy google-smoke.config.example.json google-smoke.config.json
 # edit profilePath + smoke notebookUrl (dedicated SMOKE notebook — never production)
-set NOVELTRANS_GOOGLE_SMOKE=1
+set KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1
 npm run test:google-smoke
 ```
 

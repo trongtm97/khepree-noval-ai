@@ -73,7 +73,7 @@ async function visibleText(page) {
 }
 
 async function bootstrapApp(page) {
-  await page.waitForFunction(() => Boolean(window.novelTrans?.setup?.explore), undefined, {
+  await page.waitForFunction(() => Boolean(window.khepreeNovelAI?.setup?.explore), undefined, {
     timeout: 90_000,
   });
   const skipExplore = page.getByRole('button', { name: /Bỏ qua và khám phá|Skip and explore/i });
@@ -171,7 +171,7 @@ async function clickCountScenario(page, clicks) {
   const storageRoot = path.join(os.tmpdir(), 'nts-novice-storage');
   fs.mkdirSync(storageRoot, { recursive: true });
   await page.evaluate(async (root) => {
-    await window.novelTrans.portability.setupStorageRoot({ root });
+    await window.khepreeNovelAI.portability.setupStorageRoot({ root });
   }, storageRoot);
   bump(1, 'Storage root setup (1 button equivalent via IPC — OS folder picker +1 in manual flow)');
 
@@ -182,10 +182,10 @@ async function readPersisted(page) {
   return page.evaluate(async () => {
     const localeRaw = localStorage.getItem('khepree-novel-ai-locale');
     const locale = localeRaw ? JSON.parse(localeRaw) : null;
-    const translation = await window.novelTrans.translationSettings.get();
-    const scheduler = await window.novelTrans.jobs.getSchedulerSettings();
-    const exportDir = await window.novelTrans.portability.getDefaultExportDirectory();
-    const backupDir = await window.novelTrans.portability.getBackupDirectory();
+    const translation = await window.khepreeNovelAI.translationSettings.get();
+    const scheduler = await window.khepreeNovelAI.jobs.getSchedulerSettings();
+    const exportDir = await window.khepreeNovelAI.portability.getDefaultExportDirectory();
+    const backupDir = await window.khepreeNovelAI.portability.getBackupDirectory();
     return {
       locale,
       defaultTargetLanguage: translation.defaultTargetLanguage,

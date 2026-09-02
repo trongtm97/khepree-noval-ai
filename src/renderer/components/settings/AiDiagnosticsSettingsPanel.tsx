@@ -40,8 +40,8 @@ export function AiDiagnosticsSettingsPanel({ embedded = false }: { embedded?: bo
 
   const refresh = useCallback(async () => {
     const [accRes, projRes] = await Promise.all([
-      window.novelTrans.accounts.list(),
-      window.novelTrans.projects.list(),
+      window.khepreeNovelAI.accounts.list(),
+      window.khepreeNovelAI.projects.list(),
     ]);
     const accOpts = accRes.accounts.map(
       (a: { id: string; email?: string | null; displayName?: string | null }) => ({
@@ -72,7 +72,7 @@ export function AiDiagnosticsSettingsPanel({ embedded = false }: { embedded?: bo
       setProbeError(t('settings.aiDiagNeedAccount'));
       return null;
     }
-    const result = await window.novelTrans.diagnostics.aiBrowserProbe({
+    const result = await window.khepreeNovelAI.diagnostics.aiBrowserProbe({
       kind,
       accountId,
       projectId: projectId || undefined,

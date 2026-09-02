@@ -15,7 +15,7 @@ import {
 import { GeminiBrowserProvider } from '../automation/providers/google/gemini-browser-provider';
 import { NotebookProvider } from '../automation/providers/google/notebook-provider';
 import { BrowserEventLogger } from '../automation/browser-event-logger';
-import { launchNovelTransPersistentContext } from '../automation/browser-runner/launch-persistent-context';
+import { launchKhepreeNovelAIPersistentContext } from '../automation/browser-runner/launch-persistent-context';
 import { AutomationError } from '../automation/errors/automation-errors';
 import type { DatabaseManager } from '../db/database-manager';
 import { newId } from '../db/utils/uuid';
@@ -179,7 +179,7 @@ async function openSession(
 ): Promise<Session> {
   const diagnosticsDir = path.join(artifactsDir, 'diagnostics');
   fs.mkdirSync(diagnosticsDir, { recursive: true });
-  const { context } = await launchNovelTransPersistentContext({
+  const { context } = await launchKhepreeNovelAIPersistentContext({
     profilePath: config.profilePath,
     headless: config.headless,
     diagnosticsDir,
@@ -253,9 +253,9 @@ async function bootstrapSources(
 function seedSmokeLearningRows(state: GroundingState): void {
   const db = state.db;
   if (!db) throw new Error('Database not initialized');
-  let project = db.projects.list().find((p) => p.title.includes('NOVELTRANS_SMOKE_GROUNDING'));
+  let project = db.projects.list().find((p) => p.title.includes('KHEPREE_NOVEL_AI_SMOKE_GROUNDING'));
   project ??= db.projects.create({
-      title: 'NOVELTRANS_SMOKE_GROUNDING',
+      title: 'KHEPREE_NOVEL_AI_SMOKE_GROUNDING',
       source_language: 'zh',
       target_language: 'vi',
       author_name: 'Smoke',

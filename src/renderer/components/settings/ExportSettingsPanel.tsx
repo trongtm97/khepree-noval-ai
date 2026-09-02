@@ -15,7 +15,7 @@ export function ExportSettingsPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const info = await window.novelTrans.portability.getDefaultExportDirectory();
+    const info = await window.khepreeNovelAI.portability.getDefaultExportDirectory();
     setDirectory(info.directory);
     setIsConfigured(info.isConfigured);
   }, []);
@@ -30,9 +30,9 @@ export function ExportSettingsPanel() {
     setBusy(true);
     setError(null);
     try {
-      const pick = await window.novelTrans.portability.selectExportDirectory();
+      const pick = await window.khepreeNovelAI.portability.selectExportDirectory();
       if (pick.canceled || !pick.directory) return;
-      const next = await window.novelTrans.portability.setDefaultExportDirectory({
+      const next = await window.khepreeNovelAI.portability.setDefaultExportDirectory({
         directory: pick.directory,
       });
       setDirectory(next.directory);
@@ -50,7 +50,7 @@ export function ExportSettingsPanel() {
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.portability.openDefaultExportDirectory();
+      await window.khepreeNovelAI.portability.openDefaultExportDirectory();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('exportDirectory.openFailed'));
     } finally {

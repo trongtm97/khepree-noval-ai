@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   maskKhepreeEmail,
   formatKhepreeRenewalLine,
+  formatKhepreeDevicesCount,
 } from '@renderer/features/khepree/khepree-display';
 
 describe('khepree-display', () => {
@@ -30,5 +31,17 @@ describe('khepree-display', () => {
         leaseValid: false,
       }),
     ).toBeNull();
+  });
+
+  it('formats device counts without question marks', () => {
+    const t = (key: string, params?: Record<string, string | number>) => {
+      if (key === 'khepree.devices.unavailable') return 'Unavailable';
+      if (key === 'khepree.account.devicesCount') {
+        return `${params?.used ?? ''} / ${params?.max ?? ''}`;
+      }
+      return key;
+    };
+    expect(formatKhepreeDevicesCount(t, null, null)).toBe('Unavailable');
+    expect(formatKhepreeDevicesCount(t, 1, 2)).toContain('1');
   });
 });

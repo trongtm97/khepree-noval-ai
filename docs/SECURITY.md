@@ -1,4 +1,4 @@
-# NovelTrans Studio — Security
+# Khepree Novel AI — Security
 
 > Local security model for desktop Windows build. Secrets never leave the machine as plaintext in the database.
 
@@ -85,7 +85,7 @@ Table `secrets` stores **only** `encrypted_blob` (BLOB) plus metadata (`secret_k
 | `app:openFolder` | yes\* | enum `pathKey` only | no | no |
 | `security:healthCheck` | no | no | no | no† |
 
-\* `shell.openPath` only for managed NovelTrans directories under `%APPDATA%/NovelTrans/`.  
+\* `shell.openPath` only for managed Khepree Novel AI directories under `%APPDATA%/KhepreeNovelAI/`.  
 † Returns availability flags only — never ciphertext or tokens.
 
 Every handler validates request (and response where applicable) with **Zod**. Invalid payloads → `IpcValidationError`.

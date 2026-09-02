@@ -29,7 +29,7 @@ export function SourceFolderSettingsDrawer({
   const save = async () => {
     setBusy(true);
     try {
-      const { settings: next } = await window.novelTrans.sourceFolder.updateSettings({
+      const { settings: next } = await window.khepreeNovelAI.sourceFolder.updateSettings({
         projectId,
         watchFolderEnabled,
         scanOnStartup,

@@ -62,10 +62,10 @@ export function PortabilityPage() {
 
   const refresh = useCallback(async () => {
     const [{ projects: list }, backupCfg, backups, dirInfo] = await Promise.all([
-      window.novelTrans.projects.list(),
-      window.novelTrans.portability.getAutoBackupConfig(),
-      window.novelTrans.portability.listBackups(),
-      window.novelTrans.portability.getBackupDirectory(),
+      window.khepreeNovelAI.projects.list(),
+      window.khepreeNovelAI.portability.getAutoBackupConfig(),
+      window.khepreeNovelAI.portability.listBackups(),
+      window.khepreeNovelAI.portability.getBackupDirectory(),
     ]);
     setProjects(list);
     if (routeProjectId) {
@@ -92,10 +92,10 @@ export function PortabilityPage() {
     setMessage(null);
     try {
       const project = projects.find((p) => p.id === projectId);
-      const resolved = await window.novelTrans.portability.resolveExportDirectory({ projectId });
+      const resolved = await window.khepreeNovelAI.portability.resolveExportDirectory({ projectId });
       let outputPath: string | undefined;
       if (resolved.status !== 'ok') {
-        const pick = await window.novelTrans.portability.selectExportPath({
+        const pick = await window.khepreeNovelAI.portability.selectExportPath({
           defaultName: buildNovelExportFilename(project?.title ?? 'novel', format),
           format,
           projectId,
@@ -103,7 +103,7 @@ export function PortabilityPage() {
         if (pick.canceled || !pick.filePath) return;
         outputPath = pick.filePath;
       }
-      const result = await window.novelTrans.portability.exportNovel({
+      const result = await window.khepreeNovelAI.portability.exportNovel({
         projectId,
         format,
         chapterFrom: chapterFrom ? Number(chapterFrom) : undefined,
@@ -131,7 +131,7 @@ export function PortabilityPage() {
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.portability.createBackup({
+      const result = await window.khepreeNovelAI.portability.createBackup({
         kind: 'full',
         includeCredentials: false,
       });
@@ -149,7 +149,7 @@ export function PortabilityPage() {
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.portability.createBackup({
+      const result = await window.khepreeNovelAI.portability.createBackup({
         kind: 'project',
         projectId,
       });
@@ -166,7 +166,7 @@ export function PortabilityPage() {
     if (!autoBackup) return;
     setBusy(true);
     try {
-      const next = await window.novelTrans.portability.setAutoBackupConfig({
+      const next = await window.khepreeNovelAI.portability.setAutoBackupConfig({
         enabled: autoBackup.enabled,
         intervalHours: autoBackup.intervalHours,
         retentionDaily: autoBackup.retentionDaily,
@@ -185,9 +185,9 @@ export function PortabilityPage() {
   const pickBackupDirectory = async () => {
     setError(null);
     try {
-      const pick = await window.novelTrans.portability.selectBackupDirectory();
+      const pick = await window.khepreeNovelAI.portability.selectBackupDirectory();
       if (pick.canceled || !pick.directory) return;
-      const next = await window.novelTrans.portability.setBackupDirectory({
+      const next = await window.khepreeNovelAI.portability.setBackupDirectory({
         directory: pick.directory,
       });
       setBackupDirectory(next.directory);
@@ -202,7 +202,7 @@ export function PortabilityPage() {
   const resetBackupDirectory = async () => {
     setBusy(true);
     try {
-      const next = await window.novelTrans.portability.setBackupDirectory({ directory: null });
+      const next = await window.khepreeNovelAI.portability.setBackupDirectory({ directory: null });
       setBackupDirectory(next.directory);
       setBackupDirCustom(next.isCustom);
       setMessage(t('portability.backupDirReset'));
@@ -219,10 +219,10 @@ export function PortabilityPage() {
     setMessage(null);
     setPreview(null);
     try {
-      const pick = await window.novelTrans.portability.selectBackupPath();
+      const pick = await window.khepreeNovelAI.portability.selectBackupPath();
       if (pick.canceled || !pick.filePath) return;
       setBackupPath(pick.filePath);
-      const p = await window.novelTrans.portability.previewRestore({
+      const p = await window.khepreeNovelAI.portability.previewRestore({
         archivePath: pick.filePath,
       });
       setPreview({
@@ -250,7 +250,7 @@ export function PortabilityPage() {
     setError(null);
     setMessage(null);
     try {
-      const result = await window.novelTrans.portability.restoreBackup({
+      const result = await window.khepreeNovelAI.portability.restoreBackup({
         archivePath: backupPath,
         confirmOverwrite: true,
       });
@@ -347,7 +347,7 @@ export function PortabilityPage() {
             type="button"
             disabled={busy}
             onClick={() =>
-              void window.novelTrans.portability.createManualBackup()
+              void window.khepreeNovelAI.portability.createManualBackup()
                 .then((r) => { setMessage(t('portability.manualBackupOk', { path: r.filePath })); return refresh(); })
                 .catch((err: unknown) => {
                   setError(err instanceof Error ? err.message : t('portability.manualBackupFailed'));

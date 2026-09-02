@@ -42,7 +42,7 @@ function readPlaywrightVersion(fallback: string): string {
     : fallback;
 }
 
-/** Stable Edge / Chrome install paths on Windows (dedicated NovelTrans profile still used). */
+/** Stable Edge / Chrome install paths on Windows (dedicated Khepree Novel AI profile still used). */
 export function windowsEdgeCandidates(env: NodeJS.ProcessEnv = process.env): string[] {
   const pf = env.ProgramFiles ?? 'C:\\Program Files';
   const pf86 = env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)';
@@ -152,7 +152,7 @@ function resolveChromiumAvailability(
  *
  * Windows AUTO order: Microsoft Edge Stable → Google Chrome Stable → Playwright Chromium
  * (only when Chromium executable exists on disk).
- * Always pair with NovelTrans dedicated userDataDir — never the OS default profile.
+ * Always pair with Khepree Novel AI dedicated userDataDir — never the OS default profile.
  */
 export function resolveBrowserEngine(
   preference: BrowserEnginePreference = 'AUTO',

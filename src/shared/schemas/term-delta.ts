@@ -70,7 +70,7 @@ export function parseTermDelta(raw: unknown): TermDeltaItem[] {
 
 /** JSON Schema–like descriptors for prompt/docs (offline, no network). */
 export const TERM_DELTA_JSON_SCHEMA = {
-  $id: 'noveltrans.term_delta',
+  $id: 'khepree-novel-ai.term_delta',
   type: 'array',
   items: {
     oneOf: [
@@ -114,7 +114,7 @@ export const TERM_DELTA_JSON_SCHEMA = {
 } as const;
 
 export const MEMORY_DELTA_JSON_SCHEMA = {
-  $id: 'noveltrans.memory_delta',
+  $id: 'khepree-novel-ai.memory_delta',
   type: 'array',
   items: {
     oneOf: [

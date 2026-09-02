@@ -32,7 +32,7 @@ export function VersionHistoryPanel({
       setVersions([]);
       return;
     }
-    void window.novelTrans.editor
+    void window.khepreeNovelAI.editor
       .listVersions(translationId)
       .then((result) => { setVersions(result.versions); })
       .catch((err: unknown) => {
@@ -45,14 +45,14 @@ export function VersionHistoryPanel({
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.editor.revertVersion({
+      await window.khepreeNovelAI.editor.revertVersion({
         projectId,
         chapterId,
         translationId,
         version,
       });
       onReverted();
-      const result = await window.novelTrans.editor.listVersions(translationId);
+      const result = await window.khepreeNovelAI.editor.listVersions(translationId);
       setVersions(result.versions);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('editor.revertFailed'));

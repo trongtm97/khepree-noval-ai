@@ -1,4 +1,4 @@
-# UX / UI Final Audit — NovelTrans Studio Renderer
+# UX / UI Final Audit — Khepree Novel AI Renderer
 
 > Professional Windows desktop · **dark-first** · Vietnamese default · compact but readable.  
 > Audit date: 2026-08-27 · Scope: `src/renderer` (+ shared channel labels).

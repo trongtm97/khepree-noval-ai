@@ -23,6 +23,7 @@ import { useNotificationStore } from '../stores/notification-store';
 import { AppBrand } from '../components/shell/AppBrand';
 import { IconButton, Drawer, Button } from '../components/ui';
 import { ToastViewport } from '../components/shell/ToastViewport';
+import { StatusbarContactLinks } from '../components/contact/StatusbarContactLinks';
 import { useSystemStatusPoll } from '../hooks/useSystemStatusPoll';
 import { useStartupAiReadiness } from '../hooks/useStartupAiReadiness';
 import { useSourceFolderEvents } from '../hooks/useSourceFolderEvents';
@@ -392,29 +393,32 @@ export function AppShell({ children, appInfo }: AppShellProps) {
 
       {!translationFocus ? (
         <footer className="statusbar">
-          <span>{t('app.name')}</span>
-          {showAdvancedTools ? (
-            <>
-              <span className="statusbar-sep">|</span>
-              <span>{t('statusbar.dbReady')}</span>
-            </>
-          ) : null}
-          <span className="statusbar-sep">|</span>
-          <span>
-            {status.jobsRunning > 0
-              ? t('statusbar.streamsRunning', { count: status.jobsRunning })
-              : t('statusbar.idle')}
-          </span>
-          {status.jobsRunning === 0 &&
-          status.accountsReady < status.workersTotal &&
-          status.workersTotal > 0 ? (
-            <>
-              <span className="statusbar-sep">|</span>
-              <span className="statusbar-warning">{t('statusbar.accountsIssue')}</span>
-            </>
-          ) : null}
-          <span className="statusbar-sep">|</span>
-          <span>{t('statusbar.version', { version: appInfo.version })}</span>
+          <div className="statusbar__primary">
+            <span>{t('app.name')}</span>
+            {showAdvancedTools ? (
+              <>
+                <span className="statusbar-sep">|</span>
+                <span>{t('statusbar.dbReady')}</span>
+              </>
+            ) : null}
+            <span className="statusbar-sep">|</span>
+            <span>
+              {status.jobsRunning > 0
+                ? t('statusbar.streamsRunning', { count: status.jobsRunning })
+                : t('statusbar.idle')}
+            </span>
+            {status.jobsRunning === 0 &&
+            status.accountsReady < status.workersTotal &&
+            status.workersTotal > 0 ? (
+              <>
+                <span className="statusbar-sep">|</span>
+                <span className="statusbar-warning">{t('statusbar.accountsIssue')}</span>
+              </>
+            ) : null}
+            <span className="statusbar-sep">|</span>
+            <span>{t('statusbar.version', { version: appInfo.version })}</span>
+          </div>
+          <StatusbarContactLinks />
         </footer>
       ) : null}
 

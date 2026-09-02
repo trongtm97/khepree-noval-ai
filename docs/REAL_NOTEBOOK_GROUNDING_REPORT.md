@@ -18,10 +18,10 @@
 
 | ID | Name | Result | Local ver | Notebook ver | Binding | Drive file id | Pack | Response | Notes |
 | --- | --- | --- | ---: | ---: | --- | --- | --- | --- | --- |
-| A | STATIC grounding (key → value) | **SKIP** | — | — | — | — | — | — | NOT_RUN — opt-in via Diagnostics or NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE=1 |
-| B | LIVE Drive update (no remove/re-add) | **SKIP** | — | — | — | — | — | — | NOT_RUN — opt-in via Diagnostics or NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE=1 |
-| C | SLIM translation (glossary in Notebook only) | **SKIP** | — | — | — | — | — | — | NOT_RUN — opt-in via Diagnostics or NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE=1 |
-| D | Learning loop (SQLite → Drive → Notebook) | **SKIP** | — | — | — | — | — | — | NOT_RUN — opt-in via Diagnostics or NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE=1 |
+| A | STATIC grounding (key → value) | **SKIP** | — | — | — | — | — | — | NOT_RUN — opt-in via Diagnostics or KHEPREE_NOVEL_AI_NOTEBOOK_GROUNDING_SMOKE=1 |
+| B | LIVE Drive update (no remove/re-add) | **SKIP** | — | — | — | — | — | — | NOT_RUN — opt-in via Diagnostics or KHEPREE_NOVEL_AI_NOTEBOOK_GROUNDING_SMOKE=1 |
+| C | SLIM translation (glossary in Notebook only) | **SKIP** | — | — | — | — | — | — | NOT_RUN — opt-in via Diagnostics or KHEPREE_NOVEL_AI_NOTEBOOK_GROUNDING_SMOKE=1 |
+| D | Learning loop (SQLite → Drive → Notebook) | **SKIP** | — | — | — | — | — | — | NOT_RUN — opt-in via Diagnostics or KHEPREE_NOVEL_AI_NOTEBOOK_GROUNDING_SMOKE=1 |
 
 ## Legend
 
@@ -37,7 +37,7 @@
 ```bash
 copy google-smoke.config.example.json google-smoke.config.json
 # edit profilePath + smoke notebookUrl; optionally grounding*DriveFileId
-set NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE=1
+set KHEPREE_NOVEL_AI_NOTEBOOK_GROUNDING_SMOKE=1
 npm run test:notebook-grounding-smoke
 ```
 

@@ -44,9 +44,9 @@ export function StorageSettingsPanel() {
 
   const refresh = useCallback(async () => {
     const [exportInfo, backupInfo, backupCfg] = await Promise.all([
-      window.novelTrans.portability.getDefaultExportDirectory(),
-      window.novelTrans.portability.getBackupDirectory(),
-      window.novelTrans.portability.getAutoBackupConfig(),
+      window.khepreeNovelAI.portability.getDefaultExportDirectory(),
+      window.khepreeNovelAI.portability.getBackupDirectory(),
+      window.khepreeNovelAI.portability.getAutoBackupConfig(),
     ]);
     setExportDirectory(exportInfo.directory);
     setExportConfigured(exportInfo.isConfigured);
@@ -72,9 +72,9 @@ export function StorageSettingsPanel() {
     setBusy(true);
     setError(null);
     try {
-      const pick = await window.novelTrans.portability.selectExportDirectory();
+      const pick = await window.khepreeNovelAI.portability.selectExportDirectory();
       if (pick.canceled || !pick.directory) return;
-      const next = await window.novelTrans.portability.setDefaultExportDirectory({
+      const next = await window.khepreeNovelAI.portability.setDefaultExportDirectory({
         directory: pick.directory,
       });
       setExportDirectory(next.directory);
@@ -91,9 +91,9 @@ export function StorageSettingsPanel() {
     setBusy(true);
     setError(null);
     try {
-      const pick = await window.novelTrans.portability.selectExportDirectory();
+      const pick = await window.khepreeNovelAI.portability.selectExportDirectory();
       if (pick.canceled || !pick.directory) return;
-      const result = await window.novelTrans.portability.setupStorageRoot({
+      const result = await window.khepreeNovelAI.portability.setupStorageRoot({
         root: pick.directory,
       });
       setExportDirectory(result.exportDirectory);
@@ -111,7 +111,7 @@ export function StorageSettingsPanel() {
   const openExportDirectory = async () => {
     setBusy(true);
     try {
-      await window.novelTrans.portability.openDefaultExportDirectory();
+      await window.khepreeNovelAI.portability.openDefaultExportDirectory();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('exportDirectory.openFailed'));
     } finally {
@@ -123,7 +123,7 @@ export function StorageSettingsPanel() {
     if (!autoBackup) return;
     setBusy(true);
     try {
-      const next = await window.novelTrans.portability.setAutoBackupConfig({
+      const next = await window.khepreeNovelAI.portability.setAutoBackupConfig({
         enabled,
         intervalHours: autoBackup.intervalHours,
         retentionDaily: autoBackup.retentionDaily,
@@ -143,7 +143,7 @@ export function StorageSettingsPanel() {
     if (!autoBackup) return;
     setBusy(true);
     try {
-      const next = await window.novelTrans.portability.setAutoBackupConfig({
+      const next = await window.khepreeNovelAI.portability.setAutoBackupConfig({
         enabled: autoBackup.enabled,
         intervalHours: autoBackup.intervalHours,
         retentionDaily: patch.retentionDaily ?? autoBackup.retentionDaily,
@@ -163,8 +163,8 @@ export function StorageSettingsPanel() {
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.portability.backupNow();
-      const cfg = await window.novelTrans.portability.getAutoBackupConfig();
+      await window.khepreeNovelAI.portability.backupNow();
+      const cfg = await window.khepreeNovelAI.portability.getAutoBackupConfig();
       setAutoBackup(cfg);
       showSaved(t('settings.storageBackupNowOk'));
     } catch (err: unknown) {
@@ -177,9 +177,9 @@ export function StorageSettingsPanel() {
   const pickBackupDirectory = async () => {
     setBusy(true);
     try {
-      const pick = await window.novelTrans.portability.selectBackupDirectory();
+      const pick = await window.khepreeNovelAI.portability.selectBackupDirectory();
       if (pick.canceled || !pick.directory) return;
-      const next = await window.novelTrans.portability.setBackupDirectory({
+      const next = await window.khepreeNovelAI.portability.setBackupDirectory({
         directory: pick.directory,
       });
       setBackupDirectory(next.directory);
@@ -195,7 +195,7 @@ export function StorageSettingsPanel() {
   const resetBackupDirectory = async () => {
     setBusy(true);
     try {
-      const next = await window.novelTrans.portability.setBackupDirectory({ directory: null });
+      const next = await window.khepreeNovelAI.portability.setBackupDirectory({ directory: null });
       setBackupDirectory(next.directory);
       setBackupCustom(next.isCustom);
       showSaved(t('settings.storageBackupDirReset'));
@@ -210,7 +210,7 @@ export function StorageSettingsPanel() {
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.portability.checkStorageHealth();
+      const result = await window.khepreeNovelAI.portability.checkStorageHealth();
       setHealth(result);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('settings.storageHealthFailed'));
@@ -223,10 +223,10 @@ export function StorageSettingsPanel() {
     setBusy(true);
     setRestorePreview(null);
     try {
-      const pick = await window.novelTrans.portability.selectBackupPath();
+      const pick = await window.khepreeNovelAI.portability.selectBackupPath();
       if (pick.canceled || !pick.filePath) return;
       setRestorePath(pick.filePath);
-      const preview = await window.novelTrans.portability.previewRestore({
+      const preview = await window.khepreeNovelAI.portability.previewRestore({
         archivePath: pick.filePath,
       });
       setRestorePreview({
@@ -253,7 +253,7 @@ export function StorageSettingsPanel() {
     if (!confirmDangerous(t('settings.storageRestoreConfirm'))) return;
     setBusy(true);
     try {
-      const result = await window.novelTrans.portability.restoreBackup({
+      const result = await window.khepreeNovelAI.portability.restoreBackup({
         archivePath: restorePath,
         confirmOverwrite: restorePreview.requiresOverwrite,
       });
@@ -270,7 +270,7 @@ export function StorageSettingsPanel() {
   const openAppDataFolder = async () => {
     setBusy(true);
     try {
-      await window.novelTrans.openFolder('root');
+      await window.khepreeNovelAI.openFolder('root');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('settings.storageOpenAppDataFailed'));
     } finally {

@@ -4,10 +4,14 @@ import { useKhepreeAccessState } from '../useKhepreeAccessState';
 import { useKhepreePlanCatalog } from '../useKhepreePlanCatalog';
 import { Button, Card } from '../../../components/ui';
 import { openKhepreeExternal } from '../khepree-external';
-import { formatKhepreeEntitlement, formatKhepreeRenewalLine } from '../khepree-display';
+import {
+  formatKhepreeAccessStatus,
+  formatKhepreeDevicesCount,
+  formatKhepreeEntitlement,
+  formatKhepreeRenewalLine,
+} from '../khepree-display';
 import { KhepreePlanCatalog } from '../KhepreePlanCatalog';
 import { KhepreeCheckoutWaiting } from '../KhepreeCheckoutWaiting';
-import { KHEPREE_PRODUCT_CODE } from '@shared/constants/khepree';
 
 export function KhepreePlanPage() {
   const t = useT();
@@ -27,7 +31,7 @@ export function KhepreePlanPage() {
 
   const startUpgrade = (planId: string) =>
     run(async () => {
-      await window.novelTrans.khepree.startCheckout({ planId });
+      await window.khepreeNovelAI.khepree.startCheckout({ planId });
     });
 
   const checkoutActive =
@@ -37,59 +41,96 @@ export function KhepreePlanPage() {
 
   return (
     <Card className="khepree-panel">
-      <h2>{t('khepree.plan.title')}</h2>
       {!state?.signedIn ? (
-        <p>{t('khepree.plan.signInRequired')}</p>
-      ) : checkoutActive && state ? (
+        <div className="khepree-panel__inner">
+          <h2 className="khepree-panel__section-title">{t('khepree.plan.title')}</h2>
+          <p>{t('khepree.plan.signInRequired')}</p>
+        </div>
+      ) : checkoutActive ? (
         <KhepreeCheckoutWaiting
-          state={state}
+          state={state!}
           busy={busy}
-          onCheck={() => run(() => window.novelTrans.khepree.checkCheckout())}
-          onCancel={() => run(() => window.novelTrans.khepree.cancelCheckout())}
-          onReopen={() => run(() => window.novelTrans.khepree.reopenCheckout())}
+          onCheck={() => run(() => window.khepreeNovelAI.khepree.checkCheckout())}
+          onCancel={() => run(() => window.khepreeNovelAI.khepree.cancelCheckout())}
+          onReopen={() => run(() => window.khepreeNovelAI.khepree.reopenCheckout())}
         />
       ) : (
         <>
-          <p className="setup-wizard__hint">{t('khepree.plans.productInfo', { id: KHEPREE_PRODUCT_CODE })}</p>
-          <dl className="khepree-dl">
+          <div className="khepree-plan-summary">
             <div>
-              <dt>{t('khepree.plan.current')}</dt>
-              <dd>{state.plan?.planName ?? t('khepree.menu.noPlan')}</dd>
+              <p className="khepree-eyebrow">{t('khepree.plan.current')}</p>
+              <p className="khepree-plan-summary__name">
+                {state.plan?.planName ?? formatKhepreeEntitlement(t, state.entitlement)}
+              </p>
+              <p className="khepree-plan-summary__access">
+                {formatKhepreeAccessStatus(t, state.status)}
+              </p>
+              <dl className="khepree-plan-summary__meta">
+                <div className="khepree-plan-summary__meta-row">
+                  <dt>{t('khepree.account.renewal')}</dt>
+                  <dd>{renewal ?? '—'}</dd>
+                </div>
+                <div className="khepree-plan-summary__meta-row">
+                  <dt>{t('khepree.account.devices')}</dt>
+                  <dd>
+                    {formatKhepreeDevicesCount(t, state.devicesUsed, state.devicesMax)}
+                  </dd>
+                </div>
+                {state.billing !== 'none' ? (
+                  <div className="khepree-plan-summary__meta-row">
+                    <dt>{t('khepree.plan.billingStatus')}</dt>
+                    <dd>{t(`khepree.billing.${state.billing}`)}</dd>
+                  </div>
+                ) : null}
+              </dl>
             </div>
-            <div>
-              <dt>{t('khepree.plan.status')}</dt>
-              <dd>{formatKhepreeEntitlement(t, state.entitlement)}</dd>
-            </div>
-            {state.billing !== 'none' ? (
-              <div>
-                <dt>{t('khepree.plan.billingStatus')}</dt>
-                <dd>{t(`khepree.billing.${state.billing}`)}</dd>
-              </div>
-            ) : null}
-            {renewal ? (
-              <div>
-                <dt>{t('khepree.account.renewal')}</dt>
-                <dd>{renewal}</dd>
-              </div>
-            ) : null}
-          </dl>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                openKhepreeExternal('plans');
+              }}
+            >
+              {t('khepree.plan.managePlan')}
+            </Button>
+          </div>
 
-          <h3>{t('khepree.plans.availableTitle')}</h3>
-          {loading ? <p className="setup-wizard__hint">{t('khepree.plans.loading')}</p> : null}
-          {error ? <p className="form-error">{error}</p> : null}
-          {!loading && !error ? (
-            <KhepreePlanCatalog plans={plans} busy={busy} onUpgrade={startUpgrade} />
-          ) : null}
+          <div className="khepree-panel__inner khepree-panel__section">
+            <h2 className="khepree-panel__section-title">{t('khepree.plans.availableTitle')}</h2>
+            {loading ? <p className="setup-wizard__hint">{t('khepree.plans.loading')}</p> : null}
+            {error ? <p className="form-error">{error}</p> : null}
+            {!loading && !error ? (
+              <KhepreePlanCatalog plans={plans} busy={busy} onUpgrade={startUpgrade} />
+            ) : null}
+          </div>
         </>
       )}
       <div className="khepree-gate__actions">
-        <Button type="button" variant="secondary" onClick={() => openKhepreeExternal('productHub')}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            openKhepreeExternal('productHub');
+          }}
+        >
           {t('khepree.plan.viewProductHub')}
         </Button>
-        <Button type="button" variant="secondary" onClick={() => openKhepreeExternal('plans')}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            openKhepreeExternal('plans');
+          }}
+        >
           {t('khepree.plan.viewPlans')}
         </Button>
-        <Button type="button" variant="secondary" onClick={() => void reload()}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            void reload();
+          }}
+        >
           {t('khepree.entitlement.refresh')}
         </Button>
       </div>

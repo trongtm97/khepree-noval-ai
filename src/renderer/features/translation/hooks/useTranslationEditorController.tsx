@@ -131,9 +131,9 @@ export function useTranslationEditorController() {
 
   const loadChapter = useCallback(
     async (pid: string, cid: string, cnum: number) => {
-      const result = await window.novelTrans.editor.getChapter({ projectId: pid, chapterId: cid });
+      const result = await window.khepreeNovelAI.editor.getChapter({ projectId: pid, chapterId: cid });
       setChapter(pid, cid, cnum, result.paragraphs, result.chapterTitle);
-      const ctx = await window.novelTrans.editor.getContext({
+      const ctx = await window.khepreeNovelAI.editor.getContext({
         projectId: pid,
         chapterNumber: cnum,
       });
@@ -147,15 +147,15 @@ export function useTranslationEditorController() {
   const refreshPreflight = useCallback(async () => {
     try {
       const [workersRes, accountsRes, aiRes, providersRes, routingRes, resolved] = await Promise.all([
-        window.novelTrans.jobs.workers(),
-        window.novelTrans.accounts.list(),
-        window.novelTrans.aiAccounts.list({}),
-        window.novelTrans.aiProviders.list(),
+        window.khepreeNovelAI.jobs.workers(),
+        window.khepreeNovelAI.accounts.list(),
+        window.khepreeNovelAI.aiAccounts.list({}),
+        window.khepreeNovelAI.aiProviders.list(),
         projectId
-          ? window.novelTrans.aiProviders.getRouting({ projectId })
-          : window.novelTrans.aiProviders.getRouting(),
+          ? window.khepreeNovelAI.aiProviders.getRouting({ projectId })
+          : window.khepreeNovelAI.aiProviders.getRouting(),
         projectId
-          ? window.novelTrans.projects.resolveWorker({
+          ? window.khepreeNovelAI.projects.resolveWorker({
               projectId,
               purpose: 'translation',
             })
@@ -168,7 +168,7 @@ export function useTranslationEditorController() {
       const workerAccountId = resolved?.accountId ?? null;
       let notebookStatus: string | null = null;
       if (projectId && workerAccountId) {
-        const nb = await window.novelTrans.notebook.get(projectId, workerAccountId);
+        const nb = await window.khepreeNovelAI.notebook.get(projectId, workerAccountId);
         notebookStatus = nb.mapping?.status ?? null;
       }
       const result = evaluateTranslatePreflight({
@@ -226,7 +226,7 @@ export function useTranslationEditorController() {
   }, [routeProjectId]);
 
   useEffect(() => {
-    void window.novelTrans.projects
+    void window.khepreeNovelAI.projects
       .list()
       .then((result) => {
         setProjects(result.projects);
@@ -255,7 +255,7 @@ export function useTranslationEditorController() {
       setCurrentProject(project.id, project.title);
       setLastTranslationSession(project.id);
     }
-    void window.novelTrans.pack
+    void window.khepreeNovelAI.pack
       .listChapters(projectId)
       .then((result) => {
         setChapters(result.chapters);
@@ -296,7 +296,7 @@ export function useTranslationEditorController() {
     const run = () => {
       if (cancelled) return;
       for (const ch of neighbors) {
-        void window.novelTrans.editor.getChapter({ projectId, chapterId: ch.id });
+        void window.khepreeNovelAI.editor.getChapter({ projectId, chapterId: ch.id });
       }
     };
     const usedIdle = typeof window.requestIdleCallback === 'function';
@@ -315,7 +315,7 @@ export function useTranslationEditorController() {
       const timer = setTimeout(() => {
         saveTimers.current.delete(stableId);
         markSaving();
-        void window.novelTrans.editor
+        void window.khepreeNovelAI.editor
           .saveParagraph({
             projectId,
             chapterId,
@@ -422,7 +422,7 @@ export function useTranslationEditorController() {
       });
       if (isWatchAborted()) break;
 
-      const snapshot = await window.novelTrans.jobs.get(jobId);
+      const snapshot = await window.khepreeNovelAI.jobs.get(jobId);
       const job = snapshot.job;
       setActiveJob(job);
       lastState = job.state;
@@ -527,14 +527,14 @@ export function useTranslationEditorController() {
     try {
       if (cta.action === 'check_google') {
         if (cta.accountId) {
-          await window.novelTrans.accounts.openBrowser(cta.accountId, 'gemini');
+          await window.khepreeNovelAI.accounts.openBrowser(cta.accountId, 'gemini');
         }
         navigate('/accounts');
         return;
       }
       if (cta.action === 'open_notebook') {
         if (cta.accountId) {
-          await window.novelTrans.accounts.openBrowser(cta.accountId, 'notebook');
+          await window.khepreeNovelAI.accounts.openBrowser(cta.accountId, 'notebook');
         } else if (projectId) {
           navigate(`/projects/${projectId}/ai-memory`);
         }
@@ -605,7 +605,7 @@ export function useTranslationEditorController() {
       if (!ensured.ok) return;
 
       setJobWatchMessage(t('translation.translating'));
-      const queued = await window.novelTrans.jobs.enqueue({
+      const queued = await window.khepreeNovelAI.jobs.enqueue({
         projectId,
         chapterFrom: chapterRef(chapter),
         chapterTo: chapterRef(chapter),
@@ -662,7 +662,7 @@ export function useTranslationEditorController() {
       const ensured = await ensureReadyForTranslate();
       if (!ensured.ok) return;
 
-      const result = await window.novelTrans.jobs.enqueueNovel({
+      const result = await window.khepreeNovelAI.jobs.enqueueNovel({
         projectId,
         chapterFrom: opts.chapterFrom,
         chapterTo: opts.chapterTo,
@@ -803,7 +803,7 @@ export function useTranslationEditorController() {
       try {
         let paragraphInputs: ChapterParagraphInput[] = currentParagraphInputs;
         if (chapter && chapter.id !== chapterId) {
-          const result = await window.novelTrans.editor.getChapter({
+          const result = await window.khepreeNovelAI.editor.getChapter({
             projectId,
             chapterId: chapter.id,
           });
@@ -987,7 +987,7 @@ export function useTranslationEditorController() {
     const project = projects.find((p) => p.id === projectId);
     const exportEditionId = project?.activeEditionId ?? undefined;
     try {
-      await window.novelTrans.portability.openExportDirectory({
+      await window.khepreeNovelAI.portability.openExportDirectory({
         projectId,
         editionId: exportEditionId,
       });
@@ -1056,7 +1056,7 @@ export function useTranslationEditorController() {
     setEnqueueBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.editor.clearChaptersTranslations({
+      const result = await window.khepreeNovelAI.editor.clearChaptersTranslations({
         projectId,
         chapterIds: selectedIds,
       });
@@ -1091,7 +1091,7 @@ export function useTranslationEditorController() {
     try {
       const pre = await ensureReadyForTranslate();
       if (!pre.ok) return;
-      const result = await window.novelTrans.editor.retranslateChapters({
+      const result = await window.khepreeNovelAI.editor.retranslateChapters({
         projectId,
         chapterIds: selectedIds,
       });
@@ -1126,7 +1126,7 @@ export function useTranslationEditorController() {
     setEnqueueBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.editor.clearChapterTranslations({
+      const result = await window.khepreeNovelAI.editor.clearChapterTranslations({
         projectId,
         chapterId: chapter.id,
       });
@@ -1166,7 +1166,7 @@ export function useTranslationEditorController() {
     try {
       const ensured = await ensureReadyForTranslate();
       if (!ensured.ok) return;
-      const result = await window.novelTrans.editor.retranslateChapter({
+      const result = await window.khepreeNovelAI.editor.retranslateChapter({
         projectId,
         chapterId: chapter.id,
       });
@@ -1204,7 +1204,7 @@ export function useTranslationEditorController() {
       try {
         const ensured = await ensureReadyForTranslate();
         if (!ensured.ok) return;
-        const queued = await window.novelTrans.jobs.enqueue({
+        const queued = await window.khepreeNovelAI.jobs.enqueue({
           projectId,
           chapterFrom: chapterRef(chapter),
           chapterTo: chapterRef(chapter),
@@ -1240,7 +1240,7 @@ export function useTranslationEditorController() {
     try {
       const ensured = await ensureReadyForTranslate();
       if (!ensured.ok) return;
-      const queued = await window.novelTrans.jobs.enqueue({
+      const queued = await window.khepreeNovelAI.jobs.enqueue({
         projectId,
         chapterFrom: chapterRef(chapter),
         chapterTo: chapterRef(chapter),
@@ -1278,7 +1278,7 @@ export function useTranslationEditorController() {
       if (mod && event.key === 's') {
         event.preventDefault();
         for (const [stableId, text] of Object.entries(dirty)) {
-          void window.novelTrans.editor
+          void window.khepreeNovelAI.editor
             .saveParagraph({
               projectId,
               chapterId,

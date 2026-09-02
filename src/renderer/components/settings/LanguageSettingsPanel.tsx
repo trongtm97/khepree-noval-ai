@@ -31,8 +31,8 @@ export function LanguageSettingsPanel(props: {
 
   useEffect(() => {
     void Promise.all([
-      window.novelTrans.translationSettings.get(),
-      window.novelTrans.languages.list(),
+      window.khepreeNovelAI.translationSettings.get(),
+      window.khepreeNovelAI.languages.list(),
     ])
       .then(([next, langRes]) => {
         setSettings(next);
@@ -62,7 +62,7 @@ export function LanguageSettingsPanel(props: {
   const handleUiLocaleChange = (next: UiLocalePreference) => {
     if (next === preference) return;
     setUiLocaleError(null);
-    void window.novelTrans.uiLanguage
+    void window.khepreeNovelAI.uiLanguage
       .set({ preference: next })
       .then((status) => {
         applyUiLanguageStatus(status);
@@ -77,7 +77,7 @@ export function LanguageSettingsPanel(props: {
     if (!settings || !code || code === settings.defaultTargetLanguage || targetSaving) return;
     setTargetSaving(true);
     setTargetError(null);
-    void window.novelTrans.translationSettings
+    void window.khepreeNovelAI.translationSettings
       .setDefaultTarget({ defaultTargetLanguage: code })
       .then((next) => {
         setSettings(next);

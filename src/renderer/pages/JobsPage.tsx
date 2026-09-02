@@ -208,7 +208,7 @@ export function JobsPage() {
                 onCancel={controls.requestCancel}
                 onOpenGemini={(accountId) => {
                   void controls.runControl(async () => {
-                    await window.novelTrans.accounts.openBrowser(accountId, 'gemini');
+                    await window.khepreeNovelAI.accounts.openBrowser(accountId, 'gemini');
                     return { message: t('jobs.openedGemini') };
                   });
                 }}
@@ -269,7 +269,7 @@ export function JobsPage() {
         onCancel={controls.requestCancel}
         onOpenGemini={(accountId) => {
           void controls.runControl(async () => {
-            await window.novelTrans.accounts.openBrowser(accountId, 'gemini');
+            await window.khepreeNovelAI.accounts.openBrowser(accountId, 'gemini');
             return { message: t('jobs.openedGemini') };
           });
         }}

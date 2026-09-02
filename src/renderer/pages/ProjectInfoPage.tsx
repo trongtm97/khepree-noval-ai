@@ -39,11 +39,11 @@ export function ProjectInfoPage() {
   useEffect(() => {
     if (!projectId) return;
     void Promise.all([
-      window.novelTrans.bookMetadata.get(projectId),
-      window.novelTrans.projects.get(projectId),
-      window.novelTrans.sourceFolder.getStatus(projectId).catch(() => null),
-      window.novelTrans.terms.reviewQueue().catch(() => ({ terms: [] })),
-      window.novelTrans.terms.listCandidates({ projectId }).catch(() => ({ candidates: [] })),
+      window.khepreeNovelAI.bookMetadata.get(projectId),
+      window.khepreeNovelAI.projects.get(projectId),
+      window.khepreeNovelAI.sourceFolder.getStatus(projectId).catch(() => null),
+      window.khepreeNovelAI.terms.reviewQueue().catch(() => ({ terms: [] })),
+      window.khepreeNovelAI.terms.listCandidates({ projectId }).catch(() => ({ candidates: [] })),
     ])
       .then(([metaRes, projectRes, sourceStatus, reviewRes, candidateRes]) => {
         setMetadata(metaRes.metadata);
@@ -76,7 +76,7 @@ export function ProjectInfoPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await window.novelTrans.bookMetadata.update({ projectId, metadata: next });
+      const res = await window.khepreeNovelAI.bookMetadata.update({ projectId, metadata: next });
       setMetadata(res.metadata);
       setEditOpen(false);
     } catch (err: unknown) {

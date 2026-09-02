@@ -60,15 +60,15 @@ export function CreateProjectWizard({
   const [bootstrapWarn, setBootstrapWarn] = useState<string | null>(null);
 
   useEffect(() => {
-    void window.novelTrans.accounts
+    void window.khepreeNovelAI.accounts
       .list()
       .then((res) => { setAccounts(res.accounts); })
       .catch(() => { setAccounts([]); });
-    void window.novelTrans.languages
+    void window.khepreeNovelAI.languages
       .list()
       .then((res) => { setLanguages(res.languages); })
       .catch(() => { setLanguages([]); });
-    void window.novelTrans.translationSettings
+    void window.khepreeNovelAI.translationSettings
       .get()
       .then((res) => {
         setTargetLanguage((prev) => prev ?? res.defaultTargetLanguage);
@@ -82,7 +82,7 @@ export function CreateProjectWizard({
     previewId: string,
     hint: string | null,
   ): Promise<SourceLanguageDetection> => {
-    const detection = await window.novelTrans.sourceFolder.detectLanguage({
+    const detection = await window.khepreeNovelAI.sourceFolder.detectLanguage({
       previewId,
       sourceLanguageHint: hint,
       sourceLanguageMode: hint ? 'HINTED' : 'AUTO',
@@ -93,7 +93,7 @@ export function CreateProjectWizard({
   const pickFolder = async () => {
     setBusy(true);
     try {
-      const selected = await window.novelTrans.sourceFolder.selectFolder();
+      const selected = await window.khepreeNovelAI.sourceFolder.selectFolder();
       if (selected.canceled || !selected.folderPath) return;
       setFolderPath(selected.folderPath);
       const parts = selected.folderPath.replace(/[/\\]+$/, '').split(/[/\\]/);
@@ -111,7 +111,7 @@ export function CreateProjectWizard({
     setBusy(true);
     setDetectingSource(true);
     try {
-      const { preview: next } = await window.novelTrans.sourceFolder.scanPreview({
+      const { preview: next } = await window.khepreeNovelAI.sourceFolder.scanPreview({
         folderPath,
         expectedStartChapter: expectedStart ? Number.parseInt(expectedStart, 10) : undefined,
         expectedEndChapter: expectedEnd ? Number.parseInt(expectedEnd, 10) : undefined,
@@ -152,7 +152,7 @@ export function CreateProjectWizard({
     }
     setBusy(true);
     try {
-      const result = await window.novelTrans.sourceFolder.import({
+      const result = await window.khepreeNovelAI.sourceFolder.import({
         previewId: preview.previewId,
         projectTitle: title.trim() || t('createProjectWizard.defaultTitle'),
         genre: genre.trim() || null,
@@ -187,7 +187,7 @@ export function CreateProjectWizard({
       setBootstrapPhase(t('createProjectWizard.bootstrapPhasePreparing'));
       setBootstrapPhase(t('createProjectWizard.bootstrapPhaseMatching'));
       setBootstrapPhase(t('createProjectWizard.bootstrapPhaseAnalyzing'));
-      const result = await window.novelTrans.notebook.runBootstrapAnalysis({
+      const result = await window.khepreeNovelAI.notebook.runBootstrapAnalysis({
         projectId: imported.project.id,
         mode: 'BALANCED',
         googleAccountId: accountId || null,
@@ -214,7 +214,7 @@ export function CreateProjectWizard({
     if (!imported) return;
     setBusy(true);
     try {
-      const result = await window.novelTrans.notebook.skipBootstrap(imported.project.id);
+      const result = await window.khepreeNovelAI.notebook.skipBootstrap(imported.project.id);
       setBootstrapWarn(result.warnings[0] ?? null);
       await onComplete(imported);
     } catch (err: unknown) {

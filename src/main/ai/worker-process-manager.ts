@@ -30,7 +30,7 @@ export interface WorkerRuntimeStatus {
   mode: WorkerLaunchMode;
 }
 
-export const BUNDLED_WORKER_EXE_NAME = 'NovelTransGeminiWorker.exe';
+export const BUNDLED_WORKER_EXE_NAME = 'KhepreeNovelAIGeminiWorker.exe';
 
 /**
  * Spawns / monitors the Gemini Web API worker on 127.0.0.1.
@@ -159,7 +159,7 @@ export class WorkerProcessManager {
       return {
         ok: false,
         message:
-          'Gemini Web API worker chưa có trong bản cài này. App vẫn chạy được với Gemini Browser (Playwright). Liên hệ bản phát hành có NovelTransGeminiWorker.exe nếu cần Web API.',
+          'Gemini Web API worker chưa có trong bản cài này. App vẫn chạy được với Gemini Browser (Playwright). Liên hệ bản phát hành có Gemini Web API worker nếu cần Web API.',
         pythonPath: null,
         venvPath: null,
         workerScript: null,
@@ -231,7 +231,7 @@ export class WorkerProcessManager {
       return {
         ok: false,
         message:
-          'Bản cài đặt không kèm Gemini Web API worker. Không cần (và không thể) cài Python trên máy người dùng — dùng Gemini Browser hoặc cài bản có NovelTransGeminiWorker.exe.',
+          'Bản cài đặt không kèm Gemini Web API worker. Không cần (và không thể) cài Python trên máy người dùng — dùng Gemini Browser hoặc cài bản có Gemini Web API worker.',
         pythonPath: null,
         venvPath: null,
         workerScript: null,
@@ -312,7 +312,7 @@ export class WorkerProcessManager {
       throw new Error(install.message);
     }
 
-    // Orphan NovelTransGeminiWorker after app restart keeps port + old secret → HTTP 401.
+    // Orphan KhepreeNovelAIGeminiWorker after app restart keeps port + old secret → HTTP 401.
     await this.reclaimPort('before-start');
 
     this.intentionalStop = false;
@@ -667,7 +667,7 @@ function forceKillPid(pid: number): boolean {
 
 function killBundledWorkerByImageName(keepPid: number | null): number[] {
   if (process.platform !== 'win32') return [];
-  // tasklist CSV: "NovelTransGeminiWorker.exe","1234",...
+  // tasklist CSV: "KhepreeNovelAIGeminiWorker.exe","1234",...
   const listed = spawnSyncCapture('tasklist', [
     '/FI',
     `IMAGENAME eq ${BUNDLED_WORKER_EXE_NAME}`,
@@ -691,7 +691,7 @@ function killBundledWorkerByImageName(keepPid: number | null): number[] {
 
 /**
  * Free Gemini worker port held by orphans (not the currently managed child).
- * Prefer port listeners; on Windows also sweep NovelTransGeminiWorker.exe.
+ * Prefer port listeners; on Windows also sweep KhepreeNovelAIGeminiWorker.exe.
  */
 export function killOrphanWorkersOnPort(
   port: number,

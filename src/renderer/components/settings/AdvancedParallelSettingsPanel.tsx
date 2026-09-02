@@ -22,7 +22,7 @@ export function AdvancedParallelSettingsPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const s = await window.novelTrans.jobs.schedulerStatus();
+    const s = await window.khepreeNovelAI.jobs.schedulerStatus();
     setState({
       perProjectMax: s.perProjectMax,
       perProviderMax: s.perProviderMax,
@@ -44,7 +44,7 @@ export function AdvancedParallelSettingsPanel() {
   }) => {
     setSaving(true);
     try {
-      const next = await window.novelTrans.jobs.updateSchedulerSettings(patch);
+      const next = await window.khepreeNovelAI.jobs.updateSchedulerSettings(patch);
       setState({
         perProjectMax: next.perProjectMax,
         perProviderMax: next.perProviderMax,

@@ -11,6 +11,7 @@ import {
 import { HelpArticleBody } from './components/HelpArticle';
 import { HelpChecklist, HelpRelatedArticles, HelpVersionFooter, useHelpChecklist } from './components/HelpChecklist';
 import { HelpSearch, HelpSidebar } from './components/HelpSearch';
+import { Button } from '../../components/ui';
 import { useState } from 'react';
 
 interface HelpPageProps {
@@ -68,6 +69,17 @@ export function HelpPage({ appInfo }: HelpPageProps) {
         <div>
           <h1 className="help-page-title">{t('help.title')}</h1>
           <p className="muted help-page-subtitle">{t('help.subtitle')}</p>
+          <div className="help-header-actions">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                openArticle('contact');
+              }}
+            >
+              {t('help.contactCta')}
+            </Button>
+          </div>
         </div>
         <HelpSearch
           query={searchQuery}
@@ -121,7 +133,12 @@ export function HelpPage({ appInfo }: HelpPageProps) {
           />
 
           <HelpRelatedArticles article={article} onOpen={openArticle} />
-          <HelpVersionFooter version={appInfo.version} />
+          <HelpVersionFooter
+            version={appInfo.version}
+            onOpenContact={() => {
+              openArticle('contact');
+            }}
+          />
         </main>
       </div>
     </div>

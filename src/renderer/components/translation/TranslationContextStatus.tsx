@@ -28,7 +28,7 @@ export function TranslationContextStatus({
       return;
     }
     try {
-      const boot = await window.novelTrans.notebook.getBootstrapStatus(projectId);
+      const boot = await window.khepreeNovelAI.notebook.getBootstrapStatus(projectId);
       const localReady =
         boot.characterCount > 0 ||
         boot.termCandidateCount > 0 ||

@@ -32,7 +32,7 @@ const project: ProjectDto = {
 };
 
 function stubEditions() {
-  Object.defineProperty(window, 'novelTrans', {
+  Object.defineProperty(window, 'khepreeNovelAI', {
     configurable: true,
     writable: true,
     value: {

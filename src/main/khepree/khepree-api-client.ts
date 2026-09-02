@@ -13,7 +13,10 @@ import type {
 } from '@shared/schemas/khepree-api';
 import { getDevSigningKeys } from './dev-signing-keys';
 import { deriveS256Challenge } from './pkce';
-import type { KhepreeDeviceProof } from './khepree-device-proof';
+import {
+  buildSignedDesktopRequestBody,
+  type KhepreeDeviceProof,
+} from './khepree-device-proof';
 import { getKhepreeOAuthClientId, getKhepreeProductId } from './config';
 import {
   isPlatformSignedLease,
@@ -26,7 +29,10 @@ import {
 import {
   KHEPREE_ACCESS_FEATURE,
   KHEPREE_DESKTOP_API_PATHS,
+  KHEPREE_DESKTOP_PROOF_PATHS,
 } from '@shared/constants/khepree';
+
+export type KhepreeDeviceSignFn = (message: Buffer) => Buffer;
 import { KhepreeApiResponseInvalidError, KhepreeDeviceLimitError, KhepreeNetworkError, KhepreeAccessError, mapDesktopApiErrorCode } from './errors';
 
 export type { KhepreeAuthTokenResult, KhepreeColdStartResult };
@@ -72,7 +78,7 @@ export interface KhepreeApiClient {
     refreshToken: string;
     installationId: string;
     sessionPublicId: string;
-    deviceProof: KhepreeDeviceProof;
+    sign: KhepreeDeviceSignFn;
   }): Promise<KhepreeAuthTokenResult & { sessionPublicId: string; lease?: PlatformSignedLease }>;
 
   activateDevice(input: {
@@ -90,7 +96,7 @@ export interface KhepreeApiClient {
     deviceId: string;
     sessionPublicId: string;
     refreshToken: string;
-    deviceProof: KhepreeDeviceProof;
+    sign: KhepreeDeviceSignFn;
     devicePublicKey: string;
     deviceName: string;
     platform?: string;
@@ -103,7 +109,7 @@ export interface KhepreeApiClient {
     deviceId: string;
     sessionPublicId: string;
     refreshToken: string;
-    deviceProof: KhepreeDeviceProof;
+    sign: KhepreeDeviceSignFn;
     devicePublicKey: string;
     deviceName: string;
     platform?: string;
@@ -113,7 +119,7 @@ export interface KhepreeApiClient {
   heartbeat(input: {
     accessToken: string;
     sessionPublicId: string;
-    deviceProof: KhepreeDeviceProof;
+    sign: KhepreeDeviceSignFn;
   }): Promise<{ status: KhepreeHeartbeatStatus }>;
 
   getCheckoutUrl(input: {
@@ -285,9 +291,11 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     refreshToken: string;
     installationId: string;
     sessionPublicId?: string;
+    sign?: KhepreeDeviceSignFn;
     deviceProof?: KhepreeDeviceProof;
   }): Promise<KhepreeAuthTokenResult & { sessionPublicId: string; lease?: PlatformSignedLease }> {
     void input.sessionPublicId;
+    void input.sign;
     void input.deviceProof;
     const session = this.sessions.get(input.refreshToken);
     if (!session) {
@@ -398,6 +406,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     deviceId: string;
     sessionPublicId?: string;
     refreshToken?: string;
+    sign?: KhepreeDeviceSignFn;
     deviceProof?: KhepreeDeviceProof;
     devicePublicKey?: string;
     deviceName?: string;
@@ -406,6 +415,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
   }): Promise<KhepreeColdStartResult> {
     void input.sessionPublicId;
     void input.refreshToken;
+    void input.sign;
     void input.deviceProof;
     void input.devicePublicKey;
     void input.deviceName;
@@ -429,6 +439,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     deviceId: string;
     sessionPublicId?: string;
     refreshToken?: string;
+    sign?: KhepreeDeviceSignFn;
     deviceProof?: KhepreeDeviceProof;
     devicePublicKey?: string;
     deviceName?: string;
@@ -437,6 +448,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
   }): Promise<KhepreeSignedLease> {
     void input.sessionPublicId;
     void input.refreshToken;
+    void input.sign;
     void input.deviceProof;
     void input.devicePublicKey;
     void input.deviceName;
@@ -448,15 +460,14 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
   heartbeat(input: {
     accessToken: string;
     sessionPublicId?: string;
+    sign?: KhepreeDeviceSignFn;
     deviceProof?: KhepreeDeviceProof;
   }): Promise<{ status: KhepreeHeartbeatStatus }> {
     void input.sessionPublicId;
+    void input.sign;
     void input.deviceProof;
     if (mockKhepreeHeartbeatState.networkFail || process.env.KHEPREE_MOCK_HEARTBEAT_NETWORK === '1') {
       throw new KhepreeNetworkError();
-    }
-    if (!input.deviceProof?.nonce || !input.deviceProof.signature) {
-      throw new KhepreeAccessError('HEARTBEAT_PROOF_REQUIRED', 'Device proof required.');
     }
     const envStatus = process.env.KHEPREE_MOCK_HEARTBEAT_STATUS as KhepreeHeartbeatStatus | undefined;
     const status = envStatus ?? mockKhepreeHeartbeatState.nextStatus;
@@ -684,17 +695,19 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     refreshToken: string;
     installationId: string;
     sessionPublicId: string;
-    deviceProof: KhepreeDeviceProof;
+    sign: KhepreeDeviceSignFn;
   }): Promise<KhepreeAuthTokenResult & { sessionPublicId: string; lease?: PlatformSignedLease }> {
     void input.installationId;
-    const body = JSON.stringify({
+    const { wireBody } = buildSignedDesktopRequestBody({
       sessionPublicId: input.sessionPublicId,
-      refreshToken: input.refreshToken,
-      deviceProof: input.deviceProof,
+      method: 'POST',
+      path: KHEPREE_DESKTOP_PROOF_PATHS.authRefresh,
+      extraFields: [['refreshToken', input.refreshToken]],
+      sign: input.sign,
     });
     return this.requestData(
       KHEPREE_DESKTOP_API_PATHS.authRefresh,
-      { method: 'POST', body },
+      { method: 'POST', body: wireBody },
       z.object({
         accessToken: z.string(),
         refreshToken: z.string(),
@@ -806,7 +819,7 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     deviceId: string;
     sessionPublicId: string;
     refreshToken: string;
-    deviceProof: KhepreeDeviceProof;
+    sign: KhepreeDeviceSignFn;
     devicePublicKey: string;
     deviceName: string;
     platform?: string;
@@ -819,7 +832,7 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
           refreshToken: input.refreshToken,
           installationId: input.installationId,
           sessionPublicId: input.sessionPublicId,
-          deviceProof: input.deviceProof,
+          sign: input.sign,
         });
         lease = refreshed.lease;
       } catch {
@@ -860,7 +873,7 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     deviceId: string;
     sessionPublicId: string;
     refreshToken: string;
-    deviceProof: KhepreeDeviceProof;
+    sign: KhepreeDeviceSignFn;
     devicePublicKey: string;
     deviceName: string;
     platform?: string;
@@ -872,16 +885,18 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
   heartbeat(input: {
     accessToken: string;
     sessionPublicId: string;
-    deviceProof: KhepreeDeviceProof;
+    sign: KhepreeDeviceSignFn;
   }): Promise<{ status: KhepreeHeartbeatStatus }> {
-    const body = JSON.stringify({
+    const { wireBody } = buildSignedDesktopRequestBody({
       sessionPublicId: input.sessionPublicId,
-      accessToken: input.accessToken,
-      deviceProof: input.deviceProof,
+      method: 'POST',
+      path: KHEPREE_DESKTOP_PROOF_PATHS.heartbeat,
+      extraFields: [['accessToken', input.accessToken]],
+      sign: input.sign,
     });
     return this.requestData(
       KHEPREE_DESKTOP_API_PATHS.heartbeat,
-      { method: 'POST', accessToken: input.accessToken, body },
+      { method: 'POST', accessToken: input.accessToken, body: wireBody },
       z.object({ state: z.string() }),
       'desktop/heartbeat',
     ).then((data) => ({

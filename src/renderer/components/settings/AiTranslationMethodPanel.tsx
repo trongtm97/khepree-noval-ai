@@ -25,7 +25,7 @@ export function AiTranslationMethodPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const list = await window.novelTrans.aiProviders.list();
+    const list = await window.khepreeNovelAI.aiProviders.list();
     setProviders(list.providers);
     setMode(detectTranslationMethod(list.providers));
     setError(null);
@@ -77,7 +77,7 @@ export function AiTranslationMethodPanel() {
     setBusy(true);
     setError(null);
     try {
-      const result = await window.novelTrans.aiProviders.check({
+      const result = await window.khepreeNovelAI.aiProviders.check({
         providerId: activeProvider.id,
       });
       showSaved(result.message);

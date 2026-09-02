@@ -1,3 +1,4 @@
+import { LoaderCircle } from 'lucide-react';
 import type { KhepreeAccessState } from '@shared/schemas/khepree';
 import { useT } from '../../i18n';
 import { Button } from '../../components/ui';
@@ -32,6 +33,9 @@ export function KhepreeCheckoutWaiting({
 
   return (
     <div className="khepree-checkout-waiting">
+      <div className="khepree-checkout-waiting__icon" aria-hidden="true">
+        <LoaderCircle size={22} strokeWidth={1.75} className="loading-spinner" />
+      </div>
       <h2>{title}</h2>
       <p className="setup-wizard__hint">{body}</p>
       {state.checkoutError ? <p className="form-error">{state.checkoutError.message}</p> : null}

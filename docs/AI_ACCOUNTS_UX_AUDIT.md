@@ -43,9 +43,9 @@ No DB migration — unify at ViewModel only.
 
 | Provider | Backend | IPC |
 |----------|---------|-----|
-| Gemini | `google_accounts` | `window.novelTrans.accounts.*` |
-| ChatGPT | `ai_accounts` | `window.novelTrans.aiAccounts.*` |
-| Meta AI | `ai_accounts` | `window.novelTrans.aiAccounts.*` |
+| Gemini | `google_accounts` | `window.khepreeNovelAI.accounts.*` |
+| ChatGPT | `ai_accounts` | `window.khepreeNovelAI.aiAccounts.*` |
+| Meta AI | `ai_accounts` | `window.khepreeNovelAI.aiAccounts.*` |
 
 Gemini Web API cookie accounts remain in Settings advanced (not shown on `/accounts`).
 

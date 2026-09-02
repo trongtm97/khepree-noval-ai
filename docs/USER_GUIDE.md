@@ -1,13 +1,13 @@
-# User Guide — NovelTrans Studio
+# User Guide — Khepree Novel AI
 
-NovelTrans Studio is a Windows desktop app for AI-assisted **multilingual** novel translation. You choose source (auto-detected) and target languages per project/edition. AI providers include **Gemini**, **ChatGPT**, and **Meta AI** — connect at least one; Google account is required **only for Gemini paths**, not for ChatGPT or Meta AI alone.
+Khepree Novel AI is a Windows desktop app for AI-assisted **multilingual** novel translation. You choose source (auto-detected) and target languages per project/edition. AI providers include **Gemini**, **ChatGPT**, and **Meta AI** — connect at least one; Google account is required **only for Gemini paths**, not for ChatGPT or Meta AI alone.
 
 ## First run
 
 On first launch, the setup wizard walks through:
 
 1. Welcome  
-2. App storage (`%APPDATA%\NovelTrans`)  
+2. App storage (`%APPDATA%\KhepreeNovelAI`)  
 3. **Connect AI** — pick Gemini, ChatGPT, or Meta AI (not Google-only)  
 4. Import first novel (can skip and import later)  
 5. Optional Research Notebook setup (skip allowed — local knowledge is default)  
@@ -32,7 +32,7 @@ On first launch, the setup wizard walks through:
 
 | Provider | What you need |
 |----------|----------------|
-| Gemini (browser) | Google sign-in in NovelTrans browser profile |
+| Gemini (browser) | Google sign-in in Khepree Novel AI browser profile |
 | Gemini Web API | Python worker + session cookies |
 | ChatGPT | ChatGPT sign-in in dedicated profile |
 | Meta AI | Meta sign-in in dedicated profile |
@@ -47,7 +47,7 @@ When using Playwright Gemini or optional NotebookLM research:
 2. Complete sign-in in the headed browser window (password, 2FA, CAPTCHA — you handle manually).  
 3. **Verify** when prompted.  
 
-Session persists in `%APPDATA%\NovelTrans\browser-profiles\` — not your normal Chrome profile.
+Session persists in `%APPDATA%\KhepreeNovelAI\browser-profiles\` — not your normal Chrome profile.
 
 ## Optional Research Notebook
 
@@ -57,7 +57,12 @@ Project → **Bộ nhớ AI**: bootstrap / rebuild local knowledge; optionally p
 
 ## Backups
 
-Settings → Portability: automatic daily backups, manual export, restore preview. All data stays under `%APPDATA%\NovelTrans\`.
+Settings → Portability: automatic daily backups, manual export, restore preview. All data stays under `%APPDATA%\KhepreeNovelAI\`.
+
+## Getting help / Contact Khepree Labs
+
+- **Help** (sidebar or `F1`) → **Liên hệ & cộng đồng** / **Contact & Community** (`/help/contact`) — official Facebook, YouTube, TikTok, Telegram, and Zalo links open in your default browser.
+- **Settings → General** → **Khepree Labs** → **View contact information** — same Help article.
 
 ## Troubleshooting
 

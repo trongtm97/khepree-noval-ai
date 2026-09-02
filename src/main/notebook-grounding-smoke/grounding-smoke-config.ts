@@ -16,7 +16,7 @@ export const NotebookGroundingSmokeConfigSchema = z.object({
   profilePath: z.string().min(3),
   notebookUrl: z.string().url(),
   headless: z.boolean().default(false),
-  smokeProjectLabel: z.string().min(3).default('NOVELTRANS_SMOKE'),
+  smokeProjectLabel: z.string().min(3).default('KHEPREE_NOVEL_AI_SMOKE'),
   tests: z.array(z.enum(GROUNDING_SMOKE_TESTS)).default([...GROUNDING_SMOKE_TESTS]),
   reportMarkdownPath: z.string().default('docs/REAL_NOTEBOOK_GROUNDING_REPORT.md'),
   artifactsDir: z.string().default('tmp/notebook-grounding-smoke-artifacts'),
@@ -25,10 +25,10 @@ export const NotebookGroundingSmokeConfigSchema = z.object({
   accountId: z.string().uuid().optional(),
   /** Pre-linked Drive file for smoke knowledge (preferred for B). */
   groundingKnowledgeDriveFileId: z.string().min(5).optional(),
-  /** Pre-linked Drive file for 08_SYNC_STATE / _NOVELTRANS_STATE. */
+  /** Pre-linked Drive file for 08_SYNC_STATE / _KHEPREE_NOVEL_AI_STATE. */
   groundingSyncStateDriveFileId: z.string().min(5).optional(),
   /** Drive folder name used when creating smoke docs. */
-  groundingDriveFolderName: z.string().min(3).default('NOVELTRANS_SMOKE_GROUNDING'),
+  groundingDriveFolderName: z.string().min(3).default('KHEPREE_NOVEL_AI_SMOKE_GROUNDING'),
   knowledgeSourceName: z.string().min(3).default('NT_SMOKE_KNOWLEDGE'),
   syncStateSourceName: z.string().min(3).default('08_SYNC_STATE'),
   versionProbeTimeoutMs: z.number().int().positive().default(180_000),
@@ -40,18 +40,36 @@ export type NotebookGroundingSmokeConfig = z.infer<
 >;
 
 export function isNotebookGroundingSmokeEnvEnabled(): boolean {
-  const v = process.env.NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE?.trim().toLowerCase();
-  if (v === '1' || v === 'true' || v === 'yes') return true;
-  // Shared opt-in with Real Google smoke CLI.
-  const g = process.env.NOVELTRANS_GOOGLE_SMOKE?.trim().toLowerCase();
-  return g === '1' || g === 'true' || g === 'yes';
+  const read = (...keys: string[]) => {
+    for (const key of keys) {
+      const value = process.env[key]?.trim().toLowerCase();
+      if (value === '1' || value === 'true' || value === 'yes') return true;
+    }
+    return false;
+  };
+  if (
+    read('KHEPREE_NOVEL_AI_NOTEBOOK_GROUNDING_SMOKE', 'NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE')
+  ) {
+    return true;
+  }
+  return read('KHEPREE_NOVEL_AI_GOOGLE_SMOKE', 'NOVELTRANS_GOOGLE_SMOKE');
 }
 
 export function resolveNotebookGroundingSmokeConfigPath(): string {
+  const read = (...keys: string[]) => {
+    for (const key of keys) {
+      const value = process.env[key]?.trim();
+      if (value) return value;
+    }
+    return undefined;
+  };
   return (
-    (process.env.NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE_CONFIG?.trim() ??
-    process.env.NOVELTRANS_GOOGLE_SMOKE_CONFIG?.trim()) ??
-    path.resolve(process.cwd(), 'google-smoke.config.json')
+    read(
+      'KHEPREE_NOVEL_AI_NOTEBOOK_GROUNDING_SMOKE_CONFIG',
+      'NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE_CONFIG',
+      'KHEPREE_NOVEL_AI_GOOGLE_SMOKE_CONFIG',
+      'NOVELTRANS_GOOGLE_SMOKE_CONFIG',
+    ) ?? path.resolve(process.cwd(), 'google-smoke.config.json')
   );
 }
 
@@ -78,7 +96,7 @@ export function loadNotebookGroundingSmokeConfig(
 ): NotebookGroundingSmokeConfig {
   if (!isNotebookGroundingSmokeEnvEnabled()) {
     throw new Error(
-      'Notebook grounding smoke disabled. Set NOVELTRANS_NOTEBOOK_GROUNDING_SMOKE=1 (or NOVELTRANS_GOOGLE_SMOKE=1) and provide config.',
+      'Notebook grounding smoke disabled. Set KHEPREE_NOVEL_AI_NOTEBOOK_GROUNDING_SMOKE=1 (or KHEPREE_NOVEL_AI_GOOGLE_SMOKE=1) and provide config.',
     );
   }
   const resolved = filePath ?? resolveNotebookGroundingSmokeConfigPath();

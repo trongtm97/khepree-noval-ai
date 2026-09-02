@@ -73,13 +73,13 @@ export function TermsPage() {
   const showTransliteration = columnLabels.transliterationLabel != null;
 
   const refresh = useCallback(async () => {
-    const candidateResult = await window.novelTrans.terms.listCandidates(
+    const candidateResult = await window.khepreeNovelAI.terms.listCandidates(
       projectId ? { projectId } : {},
     );
     setCandidateCount(candidateResult.candidates.length);
 
     if (tab === 'vault') {
-      const result = await window.novelTrans.terms.search({
+      const result = await window.khepreeNovelAI.terms.search({
         chinese: searchQuery || undefined,
         pinyin: filters.pinyin || undefined,
         type: filters.type || undefined,
@@ -92,7 +92,7 @@ export function TermsPage() {
       setTerms(result.terms);
       setVaultCount(result.terms.length);
     } else if (tab === 'review') {
-      const result = await window.novelTrans.terms.reviewQueue();
+      const result = await window.khepreeNovelAI.terms.reviewQueue();
       setTerms(result.terms);
     } else {
       setCandidates(candidateResult.candidates);
@@ -102,7 +102,7 @@ export function TermsPage() {
 
   useEffect(() => {
     if (!projectId) return;
-    void window.novelTrans.projects
+    void window.khepreeNovelAI.projects
       .get(projectId)
       .then((res) => setProject(res.project))
       .catch(() => setProject(null));
@@ -138,7 +138,7 @@ export function TermsPage() {
   const bulkReview = (action: 'accept' | 'reject' | 'lock' | 'promote') => {
     if (selectedIds.length === 0) return;
     void run(async () => {
-      await window.novelTrans.terms.review({
+      await window.khepreeNovelAI.terms.review({
         action,
         termIds: selectedIds,
         targetScope: action === 'promote' ? 'GLOBAL' : undefined,
@@ -152,7 +152,7 @@ export function TermsPage() {
     if (!sourceText?.trim()) return;
     const preferredTranslation = window.prompt(t('terms.promptTarget')) ?? '';
     void run(async () => {
-      await window.novelTrans.terms.upsert({
+      await window.khepreeNovelAI.terms.upsert({
         sourceText: sourceText.trim(),
         preferredTranslation: preferredTranslation.trim() || undefined,
         scope: 'GLOBAL',
@@ -175,7 +175,7 @@ export function TermsPage() {
   const candidateBulk = (action: 'accept' | 'reject') => {
     if (selectedIds.length === 0) return;
     void run(async () => {
-      await window.novelTrans.terms.candidateReview({
+      await window.khepreeNovelAI.terms.candidateReview({
         candidateIds: selectedIds,
         action,
         patch: { scope: 'GLOBAL' },

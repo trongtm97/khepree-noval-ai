@@ -44,5 +44,5 @@ export async function runEnsureTranslateReady(input: {
   projectId: string;
   accountId?: string | null;
 }): Promise<TranslateEnsureReadyResponse> {
-  return window.novelTrans.notebook.ensureForTranslate(input);
+  return window.khepreeNovelAI.notebook.ensureForTranslate(input);
 }

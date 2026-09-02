@@ -26,6 +26,7 @@ function main(): void {
   }
 
   const diagnosticsDir =
+    process.env.KHEPREE_NOVEL_AI_AUTOMATION_DIAGNOSTICS_DIR ??
     process.env.NOVELTRANS_AUTOMATION_DIAGNOSTICS_DIR ??
     path.join(os.tmpdir(), 'khepree-novel-ai-automation');
 

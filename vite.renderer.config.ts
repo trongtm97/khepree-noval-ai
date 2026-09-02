@@ -12,4 +12,11 @@ export default defineConfig({
       '@renderer': path.resolve(__dirname, 'src/renderer'),
     },
   },
+  build: {
+    // Forge loads production HTML from `.vite/renderer/<name>/` next to `.vite/build/`.
+    // With root under src/renderer, the default relative outDir would land outside the
+    // packaged asar (only `/.vite` at repo root is included).
+    outDir: path.resolve(__dirname, '.vite/renderer/main_window'),
+    emptyOutDir: true,
+  },
 });

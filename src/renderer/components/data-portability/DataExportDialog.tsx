@@ -41,13 +41,13 @@ export function DataExportDialog({
     try {
       const exportFormat =
         section.dataType === 'operational_workbook' ? 'xlsx' : format;
-      const picked = await window.novelTrans.tabular.selectExportPath({
+      const picked = await window.khepreeNovelAI.tabular.selectExportPath({
         dataType: section.dataType,
         format: exportFormat,
         defaultName: `${sectionId}-${projectId.slice(0, 8)}`,
       });
       if (picked.canceled || !picked.filePath) return;
-      const result = await window.novelTrans.tabular.export({
+      const result = await window.khepreeNovelAI.tabular.export({
         dataType: section.dataType,
         format: exportFormat,
         outputPath: picked.filePath,
@@ -71,7 +71,7 @@ export function DataExportDialog({
     if (!section.templateDownload) return;
     setBusy(true);
     try {
-      const result = await window.novelTrans.tabular.downloadTermTemplate({});
+      const result = await window.khepreeNovelAI.tabular.downloadTermTemplate({});
       onComplete(t('terms.tabularTemplateSaved', { path: result.filePath }));
     } catch (err) {
       if (err instanceof Error && err.message.includes('canceled')) return;

@@ -1,6 +1,6 @@
-# Overlay audit — NovelTrans Studio Phase 1
+# Overlay audit — Khepree Novel AI Phase 1
 
-Central overlay system: `#noveltrans-overlay-root` + `@floating-ui/react` + `createPortal`.
+Central overlay system: `#khepree-overlay-root` + `@floating-ui/react` + `createPortal`.
 
 Layer tokens (`tokens.css`):
 

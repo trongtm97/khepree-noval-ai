@@ -62,7 +62,7 @@ describe('WorkerProcessManager packaging modes', () => {
 
     const status = await mgr.install();
     expect(status.ok).toBe(false);
-    expect(status.message).toMatch(/NovelTransGeminiWorker|Browser/i);
+    expect(status.message).toMatch(/KhepreeNovelAIGeminiWorker|Browser/i);
     expect(status.message).not.toMatch(/npx/i);
   });
 });

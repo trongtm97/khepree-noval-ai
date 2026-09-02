@@ -19,7 +19,7 @@ export function PreferNotebookPackToggle() {
       setEnabled(false);
       return;
     }
-    const settings = await window.novelTrans.projects.getTranslatePackSettings(projectId);
+    const settings = await window.khepreeNovelAI.projects.getTranslatePackSettings(projectId);
     setEnabled(settings.preferNotebookPack);
     setError(null);
   }, [projectId]);
@@ -35,7 +35,7 @@ export function PreferNotebookPackToggle() {
     setBusy(true);
     setError(null);
     try {
-      await window.novelTrans.projects.setPreferNotebookPack({
+      await window.khepreeNovelAI.projects.setPreferNotebookPack({
         projectId,
         preferNotebookPack: next,
       });

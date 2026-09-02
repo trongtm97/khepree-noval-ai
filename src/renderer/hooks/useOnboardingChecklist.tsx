@@ -64,10 +64,10 @@ export function useOnboardingChecklist(): {
     setError(null);
     try {
       const [accountsRes, projectsRes, jobsRes, aiStatusRes] = await Promise.all([
-        window.novelTrans.accounts.list(),
-        window.novelTrans.projects.list(),
-        window.novelTrans.jobs.list(undefined),
-        window.novelTrans.aiProviders.autoSetupStatus(),
+        window.khepreeNovelAI.accounts.list(),
+        window.khepreeNovelAI.projects.list(),
+        window.khepreeNovelAI.jobs.list(undefined),
+        window.khepreeNovelAI.aiProviders.autoSetupStatus(),
       ]);
 
       const projects = projectsRes.projects;

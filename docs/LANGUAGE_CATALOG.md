@@ -1,6 +1,6 @@
 # World Language Catalog
 
-NovelTrans Studio uses a **World Language Catalog** — an extensible registry of BCP-47 / ISO 639-1 language profiles.
+Khepree Novel AI uses a **World Language Catalog** — an extensible registry of BCP-47 / ISO 639-1 language profiles.
 
 **Last audit:** 2026-08-29 — see `docs/LANGUAGE_SUPPORT_AUDIT_2026.md`
 
@@ -15,7 +15,7 @@ UI wording: *Ngôn ngữ có thể sử dụng* — not “Gemini dịch hoàn h
 | Field | Values | Meaning |
 |-------|--------|---------|
 | `providerSupport` | `GEMINI_WEB_OFFICIAL`, `GEMINI_API_EXTENDED`, `CATALOG_ONLY` | Google/provider UI availability |
-| `novelTransVerification` | `VERIFIED`, `UNTESTED`, `KNOWN_ISSUE` | NovelTrans workflow evidence |
+| `khepreeNovelAiVerification` | `VERIFIED`, `UNTESTED`, `KNOWN_ISSUE` | Khepree Novel AI workflow evidence |
 
 `aiSupportTier` is **deprecated** (derived from `providerSupport` for backward compatibility).
 
@@ -36,7 +36,7 @@ Each `LanguageProfile` includes:
 | `direction` | `ltr` or `rtl` — drives editor `dir` attribute |
 | `regionGroup` | Browse group in language picker |
 | `providerSupport` | Provider availability tier |
-| `novelTransVerification` | NovelTrans QA evidence |
+| `khepreeNovelAiVerification` | Khepree Novel AI QA evidence |
 | `aiSupportTier` | *(deprecated)* derived tier |
 | `segmentationStrategy` | Text adapter hint (`cjk_char`, `whitespace`, `thai`, `mixed`) |
 | `quoteStyle` / `punctuationProfile` | Typographic defaults |
@@ -49,7 +49,7 @@ Japanese
 日本語 · ja
 ```
 
-Verification: `✓ Đã xác minh` or `○ Chưa kiểm thử` (tooltip explains NovelTrans has not fully tested the workflow).
+Verification: `✓ Đã xác minh` or `○ Chưa kiểm thử` (tooltip explains Khepree Novel AI has not fully tested the workflow).
 
 ## Aliases
 
@@ -66,9 +66,9 @@ Verification: `✓ Đã xác minh` or `○ Chưa kiểm thử` (tooltip explains
 
 | Tier | Meaning |
 |------|---------|
-| `GEMINI_WEB_VERIFIED` | Listed in Google Gemini Web official language set; used in NovelTrans browser workflow |
-| `GEMINI_EXTENDED` | Broader Gemini/API capability; selectable but not browser-verified in NovelTrans |
-| `EXPERIMENTAL` | ISO catalog entry; quality not proven in NovelTrans |
+| `GEMINI_WEB_VERIFIED` | Listed in Google Gemini Web official language set; used in Khepree Novel AI browser workflow |
+| `GEMINI_EXTENDED` | Broader Gemini/API capability; selectable but not browser-verified in Khepree Novel AI |
+| `EXPERIMENTAL` | ISO catalog entry; quality not proven in Khepree Novel AI |
 
 Do **not** present `EXPERIMENTAL` or `GEMINI_EXTENDED` languages as "fully supported" in user-facing copy.
 
@@ -120,7 +120,7 @@ User can always override the detected source.
 
 ## Recent language pairs
 
-Recent source→target pairs are stored in browser `localStorage` (`noveltrans.recentLanguagePairs`) for quick project setup. Max 8 entries.
+Recent source→target pairs are stored in browser `localStorage` (`khepree-novel-ai.recentLanguagePairs`) for quick project setup. Max 8 entries.
 
 **Recent pairs do not override** the global `default_target_language` setting when creating projects or editions.
 

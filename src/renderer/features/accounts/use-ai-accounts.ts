@@ -23,9 +23,9 @@ export function useAiAccounts(fallbackGoogleTitle: string): UseAiAccountsResult 
 
   const refresh = useCallback(async () => {
     const [googleRes, chatgptRes, metaRes] = await Promise.all([
-      window.novelTrans.accounts.list(),
-      window.novelTrans.aiAccounts.list({ providerId: AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT }),
-      window.novelTrans.aiAccounts.list({ providerId: AI_PROVIDER_IDS.PLAYWRIGHT_META_AI }),
+      window.khepreeNovelAI.accounts.list(),
+      window.khepreeNovelAI.aiAccounts.list({ providerId: AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT }),
+      window.khepreeNovelAI.aiAccounts.list({ providerId: AI_PROVIDER_IDS.PLAYWRIGHT_META_AI }),
     ]);
 
     const google = googleRes.accounts.map((a: GoogleAccountDto) =>

@@ -97,7 +97,17 @@ export const IPC_CHANNEL_AUDIT: readonly IpcChannelAudit[] = [
     allowsDbQuery: false,
     allowsSecrets: noSecrets,
     notes:
-      'shell.openPath only for enum pathKey under managed NovelTrans dirs; rejects outside paths',
+      'shell.openPath only for enum pathKey under managed Khepree Novel AI dirs; rejects outside paths',
+  },
+  {
+    channel: IPC_CHANNELS.APP_OPEN_OFFICIAL_CONTACT,
+    permission: 'read_app_info',
+    allowsFilesystem: false,
+    allowsShell: true,
+    allowsDbQuery: false,
+    allowsSecrets: noSecrets,
+    notes:
+      'shell.openExternal for canonical Khepree Labs official contact channels only; channel id resolved in main',
   },
   {
     channel: IPC_CHANNELS.SECURITY_HEALTH_CHECK,

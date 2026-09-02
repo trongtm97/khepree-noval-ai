@@ -59,13 +59,13 @@ export function useJobsOverview(): JobsOverviewData {
 
   const refresh = useCallback(async () => {
     const results = await Promise.allSettled([
-      window.novelTrans.projects.list(),
-      window.novelTrans.accounts.list(),
-      window.novelTrans.jobs.list(undefined),
-      window.novelTrans.jobs.schedulerStatus(),
-      window.novelTrans.jobs.workers(),
-      window.novelTrans.aiProviders.getRouting(),
-      window.novelTrans.aiProviders.autoSetupStatus(),
+      window.khepreeNovelAI.projects.list(),
+      window.khepreeNovelAI.accounts.list(),
+      window.khepreeNovelAI.jobs.list(undefined),
+      window.khepreeNovelAI.jobs.schedulerStatus(),
+      window.khepreeNovelAI.jobs.workers(),
+      window.khepreeNovelAI.aiProviders.getRouting(),
+      window.khepreeNovelAI.aiProviders.autoSetupStatus(),
     ]);
 
     const failures = results.filter((r) => r.status === 'rejected');

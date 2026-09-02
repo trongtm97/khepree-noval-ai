@@ -10,7 +10,8 @@ export type HelpBlock =
   | { type: 'table'; headers: string[]; rows: string[][] }
   | { type: 'faq'; items: { q: string; a: string }[] }
   | { type: 'code'; text: string }
-  | { type: 'related'; articleIds: string[] };
+  | { type: 'related'; articleIds: string[] }
+  | { type: 'official-contacts' };
 
 export interface HelpArticle {
   id: string;
