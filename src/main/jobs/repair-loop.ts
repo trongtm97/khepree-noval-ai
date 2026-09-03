@@ -1,7 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseManager } from '../db/database-manager';
 import { ResponseParser } from './response-parser';
-import { runLocalQa, type LockedTermForQa, type SourceParagraphForQa } from './qa-checker';
+import { runLocalQaWithPolicy, filterQaByRepairScope } from './qa-policy';
+import { validateRepairPatch } from './repair-patch-validate';
+import { getTranslationQaFindingsService } from '../services/translation-qa-findings-service';
+import type { TranslationRecipeQaLevel, TranslationRecipeRepairScope } from '@shared/constants/translation-recipes';
+import type { LockedTermForQa, SourceParagraphForQa } from './qa-checker';
 import {
   buildRepairPlan,
   classifyRepairReason,
@@ -70,6 +74,8 @@ export interface RepairLoopInput {
   initialInputRef: string;
   maxRepairAttempts?: number;
   lockedTerms?: LockedTermForQa[];
+  qaLevel?: TranslationRecipeQaLevel;
+  repairScope?: TranslationRecipeRepairScope;
   /** Optional sender for repair rounds (mocked in tests). */
   sendRepair: RepairSender;
 }
@@ -116,6 +122,17 @@ export async function runRepairLoop(
 ): Promise<RepairLoopResult> {
   const parser = deps.parser ?? new ResponseParser();
   const maxAttempts = input.maxRepairAttempts ?? DEFAULT_MAX_REPAIR_ATTEMPTS;
+  const qaLevel = input.qaLevel ?? 'standard';
+  const repairScope = input.repairScope ?? 'targeted';
+  const findingsSvc = getTranslationQaFindingsService(deps.db);
+  const humanLockedIds = collectHumanLockedStableIds(
+    deps.db,
+    input.projectId,
+    input.sourceParagraphIds,
+  );
+  const sourceByParagraphId = new Map(
+    input.batchParagraphs.map((p) => [p.paragraphId, p.sourceText] as const),
+  );
   const sourceParagraphs: SourceParagraphForQa[] = input.batchParagraphs.map((p) => ({
     paragraphId: p.paragraphId,
     sourceText: p.sourceText,
@@ -216,13 +233,14 @@ export async function runRepairLoop(
 
       deps.db.jobs.updateState(input.jobId, 'QA');
       const qaLang = resolveQaLanguagePair(deps.db, input.jobId);
-      let qa = runLocalQa({
+      let qa = runLocalQaWithPolicy({
         parsed,
         sourceParagraphIds: input.sourceParagraphIds,
         sourceParagraphs,
         lockedTerms: input.lockedTerms,
         sourceLanguage: qaLang?.sourceLanguage,
         targetLanguage: qaLang?.targetLanguage,
+        qaLevel,
       });
 
       // Multi-chunk merges often leave duplicate/unknown IDs → MANUAL_REVIEW.
@@ -237,16 +255,29 @@ export async function runRepairLoop(
           });
           parsed = cleaned.parsed;
           lastParsed = parsed;
-          qa = runLocalQa({
+          qa = runLocalQaWithPolicy({
             parsed,
             sourceParagraphIds: input.sourceParagraphIds,
             sourceParagraphs,
             lockedTerms: input.lockedTerms,
             sourceLanguage: qaLang?.sourceLanguage,
             targetLanguage: qaLang?.targetLanguage,
+            qaLevel,
           });
         }
       }
+
+      // Dismissed false positives stay filtered while source_hash unchanged.
+      qa = findingsSvc.applyDismissFilter(input.projectId, qa);
+      const jobRowEarly = deps.db.jobs.getById(input.jobId);
+      findingsSvc.upsertFromQaResult({
+        projectId: input.projectId,
+        editionId: jobRowEarly?.edition_id ?? null,
+        jobId: input.jobId,
+        qa,
+        sourceByParagraphId,
+        humanLockedIds,
+      });
       lastQa = qa;
 
       const attemptResult = {
@@ -259,6 +290,7 @@ export async function runRepairLoop(
       };
 
       if (qa.verdict === 'PASS' || qa.verdict === 'PASS_WITH_WARNINGS') {
+        findingsSvc.resolveMatching(input.projectId, qa);
         deps.db.jobs.completeAttempt(attempt.id, {
           state: 'SUCCEEDED',
           output: truncateOutput(raw),
@@ -428,6 +460,44 @@ export async function runRepairLoop(
       const reason = classifyRepairReason(parsed, qa);
       lastReason = reason;
 
+      const scopeGate = filterQaByRepairScope(reason, repairScope);
+      if (reason && !scopeGate.allowed) {
+        deps.db.jobs.completeAttempt(attempt.id, {
+          state: 'FAILED',
+          output: truncateOutput(raw),
+          result: JSON.stringify({
+            ...attemptResult,
+            stop: 'repair_scope',
+            reason,
+            repairScope,
+          }),
+          error: `Repair reason ${reason} blocked by repairScope=${repairScope}`,
+        });
+        deps.db.jobs.markNeedsAttention(
+          input.jobId,
+          reason,
+          `Repair scope ${repairScope} does not allow ${reason}`,
+        );
+        markWaveJobFailed(deps.db, input.jobId);
+        persistProgress(deps.db, input.jobId, {
+          phase: 'needs_attention',
+          repairRound,
+          qa,
+          parsed,
+          reason,
+          repairScope,
+        });
+        return {
+          jobId: input.jobId,
+          finalState: 'NEEDS_ATTENTION',
+          repairRounds: repairRound,
+          attempts: deps.db.jobs.listAttempts(input.jobId).map(toAttemptDto),
+          qa,
+          parsed,
+          message: `NEEDS_ATTENTION — repairScope=${repairScope} blocks ${reason}`,
+        };
+      }
+
       const autoRepairable =
         reason === 'MISSING_PARAGRAPH' ||
         reason === 'EMPTY_PARAGRAPH' ||
@@ -512,7 +582,36 @@ export async function runRepairLoop(
       repairRound += 1;
       deps.db.jobs.updateState(input.jobId, 'REPAIRING');
       const repairCtx = requireRepairTranslationContext(deps.db, input.jobId);
-      const targetIdsForContext = repairTargetParagraphIds(reason, qa);
+      let targetIdsForContext = repairTargetParagraphIds(reason, qa).filter(
+        (id) => !humanLockedIds.has(id),
+      );
+      if (
+        targetIdsForContext.length === 0 &&
+        repairTargetParagraphIds(reason, qa).some((id) => humanLockedIds.has(id))
+      ) {
+        deps.db.jobs.markNeedsAttention(
+          input.jobId,
+          reason ?? 'MANUAL_REVIEW',
+          'Findings only in human_locked paragraphs — Attention Inbox',
+        );
+        persistProgress(deps.db, input.jobId, {
+          phase: 'needs_attention',
+          repairRound,
+          qa,
+          parsed,
+          reason,
+          humanLockedOnly: true,
+        });
+        return {
+          jobId: input.jobId,
+          finalState: 'NEEDS_ATTENTION',
+          repairRounds: repairRound,
+          attempts: deps.db.jobs.listAttempts(input.jobId).map(toAttemptDto),
+          qa,
+          parsed,
+          message: 'NEEDS_ATTENTION — human_locked protects targets',
+        };
+      }
       const plan = buildRepairPlan({
         reason,
         qa,
@@ -530,7 +629,7 @@ export async function runRepairLoop(
                   e.code === 'edition_term_leak'),
             )
             .map((e) => e.paragraphId)
-            .filter((id): id is string => Boolean(id)),
+            .filter((id): id is string => Boolean(id) && !humanLockedIds.has(id!)),
         })),
         sourceLanguage: repairCtx.sourceLanguage,
         targetLanguage: repairCtx.targetLanguage,
@@ -588,24 +687,51 @@ export async function runRepairLoop(
         if (shouldMergePartialRepair(plan, input.batchParagraphs.length)) {
           const repairParsed = parser.parse(sent.rawResponse);
           const baseTranslations = lastParsed.translations;
+          const allowedIds = new Set(
+            targetIdsForContext.length > 0
+              ? targetIdsForContext
+              : repairParsed.translations.map((t) => t.paragraphId),
+          );
+          // Drop out-of-scope lines from repair response before merge.
+          const scopedRepair = repairParsed.translations.filter((t) =>
+            allowedIds.has(t.paragraphId),
+          );
           const mergedTranslations = mergeRepairTranslations(
             baseTranslations,
-            repairParsed.translations,
+            scopedRepair,
             input.sourceParagraphIds,
           );
-          const termDeltas =
-            repairParsed.termDeltas.length > 0
-              ? repairParsed.termDeltas
-              : lastParsed.termDeltas;
-          const memoryDeltas =
-            repairParsed.memoryDeltas.length > 0
-              ? repairParsed.memoryDeltas
-              : lastParsed.memoryDeltas;
-          raw = buildMergedTranslationProtocol(
-            mergedTranslations,
-            termDeltas,
-            memoryDeltas,
-          );
+          const patchCheck = validateRepairPatch({
+            before: baseTranslations,
+            after: mergedTranslations,
+            allowedIds,
+          });
+          if (!patchCheck.ok) {
+            logger.warn('Repair patch touched out-of-scope paragraphs — kept base', {
+              jobId: input.jobId,
+              violatedIds: patchCheck.violatedIds,
+              unexpectedIds: patchCheck.unexpectedIds,
+            });
+            raw = buildMergedTranslationProtocol(
+              baseTranslations,
+              lastParsed.termDeltas,
+              lastParsed.memoryDeltas,
+            );
+          } else {
+            const termDeltas =
+              repairParsed.termDeltas.length > 0
+                ? repairParsed.termDeltas
+                : lastParsed.termDeltas;
+            const memoryDeltas =
+              repairParsed.memoryDeltas.length > 0
+                ? repairParsed.memoryDeltas
+                : lastParsed.memoryDeltas;
+            raw = buildMergedTranslationProtocol(
+              mergedTranslations,
+              termDeltas,
+              memoryDeltas,
+            );
+          }
         } else if (plan.mode === 'continuation') {
           const contParsed = parser.parse(sent.rawResponse);
           const baseTranslations = lastParsed.translations;
@@ -843,6 +969,23 @@ function toAttemptDto(row: {
     startedAt: row.started_at,
     completedAt: row.completed_at,
   };
+}
+
+function collectHumanLockedStableIds(
+  db: DatabaseManager,
+  projectId: string,
+  stableIds: string[],
+): Set<string> {
+  const locked = new Set<string>();
+  const project = db.projects.getById(projectId);
+  const editionId = project?.active_edition_id;
+  for (const sid of stableIds) {
+    const para = db.paragraphs.getByStableId(sid);
+    if (!para) continue;
+    const tr = db.translations.getByParagraphId(para.id, editionId);
+    if (tr?.human_locked === 1) locked.add(sid);
+  }
+  return locked;
 }
 
 function repairTargetParagraphIds(

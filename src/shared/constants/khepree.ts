@@ -37,6 +37,8 @@ export const KHEPREE_DESKTOP_API_PATHS = {
   announcements: '/desktop/announcements',
   updatesLatest: '/desktop/updates/latest',
   updatesSquirrelFeedTicket: '/desktop/updates/squirrel-feed-ticket',
+  /** Opt-in campaign status sync — default OFF. See campaign-sync-service.ts */
+  campaignSync: '/desktop/campaign-sync',
 } as const;
 
 /** Announcement sync interval when online (ms). */
@@ -106,6 +108,8 @@ export const KHEPREE_FEATURES = {
   export: 'export',
   multiProvider: 'multi_provider',
   learning: 'learning',
+  /** Phase 20: opt-in campaign status sync. Default false when absent from lease. */
+  campaignStatusSync: 'campaign_status_sync_enabled',
 } as const;
 
 export type KhepreeFeatureKey = (typeof KHEPREE_FEATURES)[keyof typeof KHEPREE_FEATURES];

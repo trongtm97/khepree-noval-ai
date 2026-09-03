@@ -30,7 +30,19 @@ import {
   type InFlightSlot,
 } from './concurrency-policy';
 import { providerKindForTarget } from './execution-target-utils';
+import {
+  orderProjectsWeightedFair,
+  pruneWeightedFairState,
+  recordProjectServed,
+  type WeightedFairState,
+} from './weighted-fair-rr';
+import {
+  claimsAllowedThisTick,
+  readCapabilityMaxConcurrentNovels,
+  resolveConcurrentNovelCap,
+} from '@shared/constants/scheduler-fairness';
 import type { AiExecutionTarget } from '../ai/execution-target';
+import { getCampaignPipelineOrchestrator } from '../campaign-pipeline/campaign-pipeline-orchestrator';
 
 export interface SchedulerOptions {
   concurrencyPolicy?: Partial<ConcurrencyPolicy>;
@@ -46,14 +58,18 @@ export interface SchedulerOptions {
   sendRepair?: RepairSender;
   /** Injected clock for tests. */
   now?: () => number;
+  /** Test override for capability max concurrent novels. */
+  capabilityMaxConcurrentNovels?: number;
 }
 
 /**
  * Durable SQLite-backed scheduler.
  * - No in-memory-only queue
- * - ConcurrencyPolicy: global / per-provider / per-account / per-project
- * - Fair project round-robin (no single novel starves queue)
+ * - ConcurrencyPolicy: global / per-provider / per-account / per-project(=1)
+ * - Weighted fair project RR (priority weight, no starvation)
+ * - Concurrent novels = min(capability, machine, READY profiles)
  * - Fair execution-target pick: priority, quota, LRU — not first DB row
+ * - Chapter N finishes (+ memory) before N+1 of same project (per-project max 1)
  */
 export class AutomationScheduler {
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -61,14 +77,15 @@ export class AutomationScheduler {
   private shuttingDown = false;
   private readonly inFlight = new Set<string>();
   private readonly inFlightMeta = new Map<string, InFlightSlot>();
-  /** Round-robin cursor over queued projects. */
-  private projectRrCursor = 0;
+  /** Weighted fair virtual-time state (not the job queue). */
+  private readonly fairState: WeightedFairState = { served: new Map() };
   private readonly pool: ExecutionTargetPool;
   private readonly executor: BatchExecutor;
   private readonly leaseOwner: string;
   private readonly tickMs: number;
   private readonly leaseMs: number;
   private readonly policyOverrides: Partial<ConcurrencyPolicy>;
+  private readonly capabilityMaxOverride?: number;
 
   constructor(
     private readonly db: DatabaseManager,
@@ -85,6 +102,7 @@ export class AutomationScheduler {
     this.tickMs = options.tickMs ?? DEFAULT_SCHEDULER_TICK_MS;
     this.leaseMs = options.leaseMs ?? DEFAULT_JOB_LEASE_MS;
     this.policyOverrides = { ...(options.concurrencyPolicy ?? {}) };
+    this.capabilityMaxOverride = options.capabilityMaxConcurrentNovels;
     if (
       options.maxConcurrentWorkers != null &&
       this.policyOverrides.globalMaxWorkers === undefined
@@ -194,20 +212,43 @@ export class AutomationScheduler {
 
     this.db.jobs.recoverExpiredLeases();
     this.db.workerStates.clearExpiredLimits();
+    // Cooldown/LIMITED workers cleared above — they never hold inFlight slots.
+    this.db.jobs.reconcileDuplicateQueued();
+    this.advanceCampaignPipelines();
 
     const policy = this.resolvePolicy();
     const busyAccountIds = this.busyAccountIds();
     const readyTargets = this.pool.listAvailable({ busyAccountIds });
-    const globalMax = resolveGlobalMaxWorkers(
+    const machineMax = resolveGlobalMaxWorkers(
       policy,
       readyTargets.length + this.countBusyWorkers(),
     );
-    let capacity = globalMax - this.inFlight.size;
+    const capabilityMax =
+      this.capabilityMaxOverride ??
+      readCapabilityMaxConcurrentNovels((k) => this.db.appMeta.get(k));
+    const novelCap = resolveConcurrentNovelCap({
+      capabilityMax,
+      machineMax,
+      readyProfiles: Math.max(readyTargets.length, 1),
+    });
+    let capacity = Math.min(machineMax, novelCap) - this.inFlight.size;
     if (capacity <= 0) return;
 
-    const projects = this.fairProjectOrder();
+    const queueDepth = this.db.jobs.countRunnableQueued();
+    capacity = Math.min(capacity, claimsAllowedThisTick({ capacity, queueDepth }));
+    if (capacity <= 0) return;
+
+    const weighted = this.db.jobs.listQueuedProjectWeights();
+    pruneWeightedFairState(
+      this.fairState,
+      weighted.map((w) => w.projectId),
+    );
+    const projects = orderProjectsWeightedFair(weighted, this.fairState);
     if (projects.length === 0) return;
 
+    const activeProjects = new Set(
+      [...this.inFlightMeta.values()].map((s) => s.projectId),
+    );
     let claimedThisTick = 0;
 
     for (let pass = 0; pass < projects.length && capacity > 0; pass += 1) {
@@ -215,6 +256,11 @@ export class AutomationScheduler {
       let snap = buildConcurrencySnapshot(this.inFlightMeta.values());
       const projectMax = DEFAULT_PER_PROJECT_MAX;
       if ((snap.byProject.get(projectId) ?? 0) >= projectMax) continue;
+
+      // Novel-level cap: do not start a new project when distinct novels at cap
+      if (!activeProjects.has(projectId) && activeProjects.size >= novelCap) {
+        continue;
+      }
 
       const targets = this.pool.listAvailableFair({ projectId, busyAccountIds });
       if (targets.length === 0) continue;
@@ -259,6 +305,7 @@ export class AutomationScheduler {
         };
         this.inFlight.add(job.id);
         this.inFlightMeta.set(job.id, slot);
+        activeProjects.add(job.project_id);
         if (target.legacyWorkerStateId) {
           this.db.workerStates.markBusy(target.legacyWorkerStateId, job.id);
         }
@@ -273,6 +320,7 @@ export class AutomationScheduler {
           }
           this.inFlight.delete(job.id);
           this.inFlightMeta.delete(job.id);
+          activeProjects.delete(job.project_id);
           continue;
         }
 
@@ -280,13 +328,22 @@ export class AutomationScheduler {
         claimedThisTick += 1;
         capacity -= 1;
         busyAccountIds.add(target.concurrencyKey);
-        this.projectRrCursor = (this.projectRrCursor + 1) % Math.max(projects.length, 1);
+        recordProjectServed(this.fairState, projectId);
         break;
       }
     }
 
-    if (claimedThisTick === 0 && projects.length > 0) {
-      this.projectRrCursor = (this.projectRrCursor + 1) % projects.length;
+    void claimedThisTick;
+  }
+
+  /** Advance durable campaign stages when chapter jobs finish (resume-safe). */
+  private advanceCampaignPipelines(): void {
+    try {
+      void getCampaignPipelineOrchestrator(this.db).resumeActive();
+    } catch (error) {
+      logger.warn('Campaign pipeline advance on scheduler tick failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -308,13 +365,6 @@ export class AutomationScheduler {
       return '';
     }
     return browserProfileManager.resolveProfilePath(target.profileDirName);
-  }
-
-  private fairProjectOrder(): string[] {
-    const ids = this.db.jobs.listQueuedProjectIds();
-    if (ids.length === 0) return [];
-    const start = this.projectRrCursor % ids.length;
-    return [...ids.slice(start), ...ids.slice(0, start)];
   }
 
   private resolvePolicy(): ConcurrencyPolicy {

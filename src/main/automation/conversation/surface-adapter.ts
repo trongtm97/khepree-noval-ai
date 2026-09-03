@@ -48,6 +48,9 @@ export interface BrowserConversationSurfaceAdapter {
 
   detectBlockedOrSecurityChallenge(): Promise<boolean>;
 
+  /** CAPTCHA / human verification interstitial — stop profile, no bypass. */
+  detectCaptchaRequired(): Promise<boolean>;
+
   /** Last winning selector keys for diagnostics. */
   getDiagnostics(): Record<string, unknown>;
 }

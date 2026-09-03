@@ -17,7 +17,9 @@ import { ProjectDataPage } from './pages/ProjectDataPage';
 import { TermsPage } from './pages/TermsPage';
 import { CharactersPage } from './pages/CharactersPage';
 import { AccountsPage } from './pages/AccountsPage';
-import { JobsPage } from './pages/JobsPage';
+import { ProductionPage } from './pages/ProductionPage';
+import { SeriesPage } from './pages/SeriesPage';
+import { LibrarySearchPage } from './pages/LibrarySearchPage';
 import { LearningPage } from './pages/LearningPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LogsPage } from './pages/LogsPage';
@@ -50,7 +52,8 @@ export function App() {
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
   const [uiLanguage, setUiLanguage] = useState<UiLanguageStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const { state: khepreeState, loading: khepreeLoading } = useKhepreeAccessState();
+  const { state: khepreeState, loading: khepreeLoading, error: khepreeError } =
+    useKhepreeAccessState();
 
   useEffect(() => {
     applyTheme(themeMode);
@@ -101,11 +104,13 @@ export function App() {
     setUiLanguage(language);
   };
 
-  if (loadError) {
+  const startupError = loadError ?? khepreeError;
+
+  if (startupError) {
     return (
       <div className="error-boundary">
         <h2>{t('app.failedStart')}</h2>
-        <p>{loadError}</p>
+        <p>{startupError}</p>
         <button
           type="button"
           onClick={() => {
@@ -156,6 +161,9 @@ export function App() {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/series" element={<SeriesPage />} />
+            <Route path="/series/:seriesId" element={<SeriesPage />} />
+            <Route path="/search" element={<LibrarySearchPage />} />
 
             <Route path="/projects/:projectId" element={<ProjectWorkspace />}>
               <Route index element={<ProjectInfoPage />} />
@@ -179,7 +187,8 @@ export function App() {
             <Route path="/export" element={<ProjectScopedRedirect tab="export" />} />
 
             <Route path="/accounts" element={<AccountsPage />} />
-            <Route path="/jobs" element={<JobsPage />} />
+            <Route path="/jobs" element={<ProductionPage />} />
+            <Route path="/jobs/campaigns/:campaignId" element={<ProductionPage />} />
             <Route path="/learning" element={<LearningPage />} />
             <Route path="/khepree" element={<KhepreeLayout />}>
               <Route index element={<Navigate to="account" replace />} />

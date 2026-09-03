@@ -13,6 +13,8 @@ import {
 
 export interface TermMatchContext {
   projectId?: string;
+  seriesId?: string | null;
+  chapterId?: string | null;
   genre?: string | null;
   userId?: string;
   sourceLanguage?: string;
@@ -65,7 +67,7 @@ export function buildTermMatchIndex(
 export function termEffectivePriority(term: TermRow): number {
   const scope = term.scope as TermScope;
   let score = TERM_SCOPE_PRIORITY[scope];
-  if (scope === 'PROJECT' && term.locked === 1) {
+  if ((scope === 'PROJECT' || scope === 'CHAPTER') && term.locked === 1) {
     score += LOCKED_PROJECT_BOOST;
   }
   if (term.status === 'LOCKED') {
@@ -82,7 +84,12 @@ export function resolveTermConflict(
   if (candidates.length === 1) return candidates[0] ?? null;
 
   const projectLocked = candidates.filter(
-    (t) => t.scope === 'PROJECT' && t.locked === 1 && t.scope_ref === context.projectId,
+    (t) =>
+      (t.scope === 'PROJECT' || t.scope === 'CHAPTER') &&
+      t.locked === 1 &&
+      (t.scope === 'CHAPTER'
+        ? t.scope_ref === context.chapterId
+        : t.scope_ref === context.projectId),
   );
   if (projectLocked.length > 0) {
     return (
@@ -118,8 +125,12 @@ function termMatchesContext(term: TermRow, context: TermMatchContext): boolean {
 
   const scope = term.scope as TermScope;
   switch (scope) {
+    case 'CHAPTER':
+      return !context.chapterId || term.scope_ref === context.chapterId;
     case 'PROJECT':
       return !context.projectId || term.scope_ref === context.projectId;
+    case 'SERIES':
+      return !context.seriesId || term.scope_ref === context.seriesId;
     case 'GENRE':
       return !context.genre || !term.genre || term.genre === context.genre;
     case 'USER':

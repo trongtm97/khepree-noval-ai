@@ -31,6 +31,18 @@ export function DiagnosticsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [failureShots, setFailureShots] = useState<
+    { name: string; path: string; sizeBytes: number; modifiedAt: string }[]
+  >([]);
+
+  const refreshFailureShots = useCallback(async () => {
+    try {
+      const res = await window.khepreeNovelAI.diagnostics.listFailureShots();
+      setFailureShots(res.files);
+    } catch {
+      setFailureShots([]);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     const [{ accounts: list }, status, overrides, report] = await Promise.all([
@@ -50,7 +62,8 @@ export function DiagnosticsPage() {
       ),
     );
     setHealth(report);
-  }, [accountId]);
+    await refreshFailureShots();
+  }, [accountId, refreshFailureShots]);
 
   useEffect(() => {
     void refresh().catch((err: unknown) => {
@@ -477,6 +490,77 @@ export function DiagnosticsPage() {
           </ul>
         ) : (
           <p className="muted">{t('diagnostics.profileLeasesEmpty')}</p>
+        )}
+      </section>
+
+      <section className="panel">
+        <h3>{t('diagnostics.failureShots')}</h3>
+        <p className="muted">{t('diagnostics.failureShotsHint')}</p>
+        <div className="btn-row">
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={busy}
+            onClick={() => {
+              void refreshFailureShots();
+            }}
+          >
+            {t('diagnostics.refreshFailureShots')}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={busy}
+            onClick={() => {
+              void (async () => {
+                setBusy(true);
+                try {
+                  const res = await window.khepreeNovelAI.diagnostics.purgeFailureShots();
+                  setMessage(
+                    t('diagnostics.purgeOk', {
+                      deleted: String(res.deleted),
+                      kept: String(res.kept),
+                    }),
+                  );
+                  await refreshFailureShots();
+                } catch (err: unknown) {
+                  setError(err instanceof Error ? err.message : String(err));
+                } finally {
+                  setBusy(false);
+                }
+              })();
+            }}
+          >
+            {t('diagnostics.purgeFailureShots')}
+          </button>
+        </div>
+        {failureShots.length === 0 ? (
+          <p className="muted">{t('diagnostics.noFailureShots')}</p>
+        ) : (
+          <ul className="diagnostics-failure-shots">
+            {failureShots.slice(0, 20).map((f) => (
+              <li key={f.path}>
+                <span>
+                  {f.name} · {Math.round(f.sizeBytes / 1024)} KB · {f.modifiedAt}
+                </span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    void (async () => {
+                      await window.khepreeNovelAI.diagnostics.deleteFailureShot({
+                        path: f.path,
+                      });
+                      await refreshFailureShots();
+                    })();
+                  }}
+                >
+                  {t('diagnostics.deleteFailureShot')}
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

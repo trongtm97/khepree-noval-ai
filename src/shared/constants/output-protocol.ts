@@ -52,6 +52,26 @@ export const QA_ISSUE_CODES = [
   'edition_term_leak',
   'address_inconsistency',
   'style_suggestion',
+  // Prompt 09 extended local checks
+  'length_anomaly',
+  'repeated_content',
+  'number_unit_mismatch',
+  'unverifiable_content',
+  'dialogue_punctuation',
+  'character_consistency',
+  'extra_paragraph',
+  // Prompt 10 whole-book audit
+  'chapter_missing_translation',
+  'chapter_truncated',
+  'chapter_duplicate_content',
+  'character_name_mismatch',
+  'pronoun_gender_inconsistency',
+  'address_form_mismatch',
+  'place_org_inconsistency',
+  'skill_rank_inconsistency',
+  'glossary_human_locked_conflict',
+  'timeline_state_conflict',
+  'style_term_drift',
 ] as const;
 
 export type QaIssueCode = (typeof QA_ISSUE_CODES)[number];

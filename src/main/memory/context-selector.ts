@@ -15,6 +15,7 @@ import type { TermCandidateRow } from '../db/repositories/term-candidate-reposit
 import { applySliceBudget, type ContextRecord } from '../knowledge/context-budget';
 import { buildContextFingerprint, type ContextFingerprint } from '../knowledge/context-fingerprint';
 import { scanRelevantKnowledge } from '../knowledge/knowledge-retriever';
+import { resolveKnowledgeScopeContext } from '../knowledge/scope-context';
 
 export interface ContextSelectorInput {
   projectId: string;
@@ -124,8 +125,16 @@ function loadTermsForPack(
   db: DatabaseManager,
   projectId: string,
   pair: { sourceLanguage: string; targetLanguage: string },
+  chapterIds: string[] = [],
 ): TermRow[] {
-  const vaultRows = db.terms.listForMatching({ projectId, ...pair });
+  const scopeCtx = resolveKnowledgeScopeContext(db, projectId, chapterIds);
+  const vaultRows = db.terms.listForMatching({
+    projectId,
+    seriesId: scopeCtx.seriesId,
+    chapterIds,
+    genre: scopeCtx.genre,
+    ...pair,
+  });
   const vaultSources = new Set(
     vaultRows.map((row) => row.source_text ?? row.source_simplified),
   );
@@ -190,12 +199,16 @@ export function buildMemoryContext(
     sourceLanguage: project?.source_language ?? 'zh-Hans',
     targetLanguage: editionRow?.target_language ?? project?.target_language ?? 'vi',
   };
-  const termRows = loadTermsForPack(db, input.projectId, editionPair);
+  const termRows = loadTermsForPack(db, input.projectId, editionPair, input.chapterIds);
+  const scopeCtx = resolveKnowledgeScopeContext(db, input.projectId, input.chapterIds);
   const termIndex = buildTermMatchIndex(termRows, {
     sourceLanguage: project?.source_language,
   });
   const allTermMatches = matchKnownTermsInText(batchText, termIndex, termRows, {
     projectId: input.projectId,
+    seriesId: scopeCtx.seriesId,
+    chapterId: scopeCtx.chapterId,
+    genre: scopeCtx.genre,
     sourceLanguage: project?.source_language,
     targetLanguage: editionRow?.target_language ?? project?.target_language,
   });

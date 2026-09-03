@@ -79,12 +79,26 @@ export class ParagraphRepository extends BaseRepository {
       .all(chapterId) as ParagraphRow[];
   }
 
-  update(id: string, sourceText: string): ParagraphRow | null {
+  update(
+    id: string,
+    sourceText: string,
+    trailingNewlines?: number,
+  ): ParagraphRow | null {
+    const existing = this.getById(id);
+    if (!existing) return null;
     const result = this.db
       .prepare(
-        `UPDATE chapter_paragraphs SET source_text = ?, source_hash = ?, updated_at = ? WHERE id = ?`,
+        `UPDATE chapter_paragraphs SET
+          source_text = ?, source_hash = ?, trailing_newlines = ?, updated_at = ?
+         WHERE id = ?`,
       )
-      .run(sourceText, hashText(sourceText), utcNow(), id);
+      .run(
+        sourceText,
+        hashText(sourceText),
+        trailingNewlines ?? existing.trailing_newlines,
+        utcNow(),
+        id,
+      );
 
     if (result.changes === 0) {
       return null;

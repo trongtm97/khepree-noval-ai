@@ -282,7 +282,36 @@ export class JobRepository extends BaseRepository {
           updated_at = ?, completed_at = ?, lease_owner = NULL, lease_expires_at = NULL WHERE id = ?`,
       )
       .run(reason, error, now, now, id);
-    return this.getById(id);
+    const row = this.getById(id);
+    if (row) {
+      try {
+        // Lazy import avoids circular init with attention-inbox-service.
+        const mod = require('../../services/attention-inbox-service') as {
+          getAttentionInboxService: (db?: unknown) => {
+            upsertFromJob: (input: {
+              jobId: string;
+              projectId: string;
+              reason?: string | null;
+              error?: string | null;
+              accountId?: string | null;
+              accountKind?: string | null;
+            }) => unknown;
+          };
+        };
+        mod.getAttentionInboxService().upsertFromJob({
+          jobId: row.id,
+          projectId: row.project_id,
+          reason,
+          error,
+          accountId:
+            row.execution_account_id ?? row.pinned_account_id ?? null,
+          accountKind: row.execution_account_kind ?? null,
+        });
+      } catch {
+        // Inbox optional during early boot / tests.
+      }
+    }
+    return row;
   }
 
   /**
@@ -365,11 +394,20 @@ export class JobRepository extends BaseRepository {
   /**
    * Projects with runnable queued jobs, oldest waiting first (fair RR base order).
    */
-  listQueuedProjectIds(): string[] {
+  /**
+   * Projects with runnable queued jobs + weight inputs for fair RR.
+   */
+  listQueuedProjectWeights(): {
+    projectId: string;
+    minPriority: number;
+    waitSince: string;
+  }[] {
     const now = utcNow();
-    const rows = this.db
+    return this.db
       .prepare(
-        `SELECT project_id AS projectId, MIN(created_at) AS waitSince
+        `SELECT project_id AS projectId,
+                MIN(priority) AS minPriority,
+                MIN(created_at) AS waitSince
          FROM jobs
          WHERE state IN ('QUEUED', 'WAITING_WORKER')
            AND (scheduled_at IS NULL OR scheduled_at <= ?)
@@ -377,8 +415,150 @@ export class JobRepository extends BaseRepository {
          GROUP BY project_id
          ORDER BY waitSince ASC`,
       )
-      .all(now, now) as { projectId: string; waitSince: string }[];
-    return rows.map((r) => r.projectId);
+      .all(now, now) as { projectId: string; minPriority: number; waitSince: string }[];
+  }
+
+  listQueuedProjectIds(): string[] {
+    return this.listQueuedProjectWeights().map((r) => r.projectId);
+  }
+
+  countRunnableQueued(): number {
+    const now = utcNow();
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) AS c FROM jobs
+         WHERE state IN ('QUEUED', 'WAITING_WORKER')
+           AND (scheduled_at IS NULL OR scheduled_at <= ?)
+           AND (lease_owner IS NULL OR lease_expires_at < ?)`,
+      )
+      .get(now, now) as { c: number };
+    return row.c;
+  }
+
+  pauseByProject(projectId: string, reason = 'project_pause'): number {
+    const result = this.db
+      .prepare(
+        `UPDATE jobs SET state = 'PAUSED', paused_reason = ?, updated_at = ?
+         WHERE project_id = ? AND state IN ('QUEUED', 'WAITING_WORKER')`,
+      )
+      .run(reason, utcNow(), projectId);
+    return result.changes;
+  }
+
+  resumeByProject(projectId: string): number {
+    const result = this.db
+      .prepare(
+        `UPDATE jobs SET state = 'QUEUED', paused_reason = NULL, updated_at = ?
+         WHERE project_id = ? AND state = 'PAUSED'`,
+      )
+      .run(utcNow(), projectId);
+    return result.changes;
+  }
+
+  /**
+   * Cancel duplicate QUEUED jobs with same chapter fingerprint; keep oldest.
+   * Safe on restart/reconcile — does not touch in-flight leases.
+   */
+  reconcileDuplicateQueued(projectId?: string): number {
+    const projectClause = projectId ? 'AND project_id = ?' : '';
+    const params: unknown[] = projectId ? [projectId] : [];
+    const dups = this.db
+      .prepare(
+        `SELECT project_id AS projectId, chapter_from AS chapterFrom, chapter_to AS chapterTo,
+                COUNT(*) AS c, MIN(created_at) AS keepCreated
+         FROM jobs
+         WHERE state IN ('QUEUED', 'WAITING_WORKER', 'PAUSED')
+           AND chapter_from IS NOT NULL AND chapter_to IS NOT NULL
+           ${projectClause}
+         GROUP BY project_id, chapter_from, chapter_to
+         HAVING c > 1`,
+      )
+      .all(...params) as {
+      projectId: string;
+      chapterFrom: number;
+      chapterTo: number;
+      c: number;
+      keepCreated: string;
+    }[];
+
+    let cancelled = 0;
+    const now = utcNow();
+    for (const d of dups) {
+      const result = this.db
+        .prepare(
+          `UPDATE jobs SET state = 'CANCELLED', error = ?, updated_at = ?,
+            completed_at = COALESCE(completed_at, ?),
+            lease_owner = NULL, lease_expires_at = NULL
+           WHERE project_id = ?
+             AND chapter_from = ? AND chapter_to = ?
+             AND state IN ('QUEUED', 'WAITING_WORKER', 'PAUSED')
+             AND created_at > ?`,
+        )
+        .run(
+          'Duplicate queued job — reconciled',
+          now,
+          now,
+          d.projectId,
+          d.chapterFrom,
+          d.chapterTo,
+          d.keepCreated,
+        );
+      cancelled += result.changes;
+    }
+    return cancelled;
+  }
+
+  findActiveJobByChapterRange(
+    projectId: string,
+    chapterFrom: number,
+    chapterTo: number,
+  ): JobRow | null {
+    return (
+      (this.db
+        .prepare(
+          `SELECT * FROM jobs
+           WHERE project_id = ?
+             AND chapter_from = ? AND chapter_to = ?
+             AND state NOT IN ('COMPLETED', 'FAILED', 'CANCELLED', 'SKIPPED', 'ACCEPTED_WITH_WARNINGS')
+           ORDER BY created_at ASC
+           LIMIT 1`,
+        )
+        .get(projectId, chapterFrom, chapterTo) as JobRow | undefined) ?? null
+    );
+  }
+
+  listPage(input: {
+    projectId?: string;
+    states?: readonly string[];
+    limit?: number;
+    offset?: number;
+  }): { rows: JobRow[]; total: number } {
+    const limit = Math.min(200, Math.max(1, input.limit ?? 50));
+    const offset = Math.max(0, input.offset ?? 0);
+    const clauses: string[] = [];
+    const params: unknown[] = [];
+    if (input.projectId) {
+      clauses.push('project_id = ?');
+      params.push(input.projectId);
+    }
+    if (input.states && input.states.length > 0) {
+      clauses.push(`state IN (${input.states.map(() => '?').join(',')})`);
+      params.push(...input.states);
+    }
+    const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+    const total = (
+      this.db.prepare(`SELECT COUNT(*) AS c FROM jobs ${where}`).get(...params) as {
+        c: number;
+      }
+    ).c;
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM jobs ${where}
+         ORDER BY created_at DESC
+         LIMIT ? OFFSET ?`,
+      )
+      .all(...params, limit, offset) as JobRow[];
+    return { rows, total };
   }
 
   renewLease(id: string, leaseOwner: string, leaseMs: number): boolean {

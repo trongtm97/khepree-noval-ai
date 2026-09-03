@@ -7,6 +7,8 @@ import { SettingsGroup } from './SettingsGroup';
 import { SettingsRow } from './SettingsRow';
 import { SettingsSection } from './SettingsSection';
 import { SettingsStatus } from './SettingsStatus';
+import { TranslationRecipePanel } from './TranslationRecipePanel';
+import { SettingsDisclosure } from './SettingsDisclosure';
 import {
   automationModeFromGlobalMax,
   CUSTOM_CONCURRENT_JOB_OPTIONS,
@@ -129,6 +131,9 @@ export function TranslationSettingsPanel(props: {
 
   return (
     <>
+      <TranslationRecipePanel onLoadError={props.onLoadError} />
+
+      <SettingsDisclosure title={t('settings.translationThroughputTitle')} defaultOpen={false}>
       <SettingsSection
         title={t('settings.translationAutomationTitle')}
         description={t('settings.translationAutomationBody')}
@@ -230,6 +235,7 @@ export function TranslationSettingsPanel(props: {
           </Button>
         </div>
       </SettingsSection>
+      </SettingsDisclosure>
 
       <SettingsSection title={t('settings.translationEditorSection')}>
         <SettingsGroup>

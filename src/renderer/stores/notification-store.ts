@@ -51,6 +51,8 @@ export interface AppNotification {
   timestamp: string;
   projectId?: string;
   projectName?: string;
+  /** In-app route (hash router path) when user opens the notification. */
+  route?: string;
   read: boolean;
   toast?: boolean;
   toastActions?: ToastAction[];
@@ -125,6 +127,7 @@ export const useNotificationStore = create<NotificationState>()(
               timestamp: new Date().toISOString(),
               projectId: n.projectId,
               projectName: n.projectName,
+              route: n.route,
               read: false,
               toast: n.toast ?? ['SUCCESS', 'ERROR', 'ACTION_REQUIRED'].includes(n.kind),
               toastActions: n.toastActions,
@@ -149,8 +152,12 @@ export const useNotificationStore = create<NotificationState>()(
                       kind: n.kind,
                       title: n.title,
                       description: n.description,
+                      projectId: n.projectId ?? i.projectId,
+                      projectName: n.projectName ?? i.projectName,
+                      route: n.route ?? i.route,
                       read: n.read ?? i.read,
                       toast: shouldToast ? true : (n.toast ?? i.toast),
+                      toastActions: n.toastActions ?? i.toastActions,
                       khepreePublicId: n.khepreePublicId ?? i.khepreePublicId,
                       khepreeCta: n.khepreeCta ?? i.khepreeCta,
                     }
@@ -166,8 +173,12 @@ export const useNotificationStore = create<NotificationState>()(
                 title: n.title,
                 description: n.description,
                 timestamp: new Date().toISOString(),
+                projectId: n.projectId,
+                projectName: n.projectName,
+                route: n.route,
                 read: n.read ?? false,
                 toast: n.toast ?? ['SUCCESS', 'ERROR', 'ACTION_REQUIRED'].includes(n.kind),
+                toastActions: n.toastActions,
                 khepreePublicId: n.khepreePublicId,
                 khepreeCta: n.khepreeCta,
               },

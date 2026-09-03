@@ -51,10 +51,13 @@ describe('i18n', () => {
   });
 
   it('en nav and settings strings are not Vietnamese leftovers', () => {
+    /** Prompt 04 requires this exact bilingual cost line in both locales. */
+    const allowIdenticalVi = new Set(['settings.recipeCostDisclaimer']);
     const prefixes = ['nav.', 'settings.'];
     const hits: string[] = [];
     for (const key of collectKeys(enMessages)) {
       if (!prefixes.some((p) => key.startsWith(p))) continue;
+      if (allowIdenticalVi.has(key)) continue;
       const value = getByPath(enMessages, key);
       if (typeof value !== 'string') continue;
       if (VIETNAMESE_DIACRITICS.test(value)) {

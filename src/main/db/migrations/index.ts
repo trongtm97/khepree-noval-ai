@@ -49,6 +49,18 @@ import { MIGRATION_040_LANGUAGE_CODE_NORMALIZATION } from './040-language-code-n
 import { MIGRATION_041_MULTI_AI_PROVIDERS } from './041-multi-ai-providers';
 import { MIGRATION_042_EXECUTION_WORKER } from './042-execution-worker';
 import { MIGRATION_043_KHEPREE_DEVICE } from './043-khepree-device';
+import { MIGRATION_044_BATCH_IMPORT } from './044-batch-import';
+import { MIGRATION_045_TRANSLATION_RECIPES } from './045-translation-recipes';
+import { MIGRATION_046_TRANSLATION_CAMPAIGN_RUN } from './046-translation-campaign-run';
+import { MIGRATION_047_USAGE_LEDGER } from './047-usage-ledger';
+import { MIGRATION_048_BROWSER_ATTENTION } from './048-browser-attention';
+import { MIGRATION_049_CAMPAIGN_PIPELINE } from './049-campaign-pipeline';
+import { MIGRATION_050_TRANSLATION_QA_FINDINGS } from './050-translation-qa-findings';
+import { MIGRATION_051_WHOLE_BOOK_AUDIT } from './051-whole-book-audit';
+import { MIGRATION_052_ATTENTION_INBOX } from './052-attention-inbox';
+import { MIGRATION_053_FICTION_SERIES } from './053-fiction-series';
+import { MIGRATION_054_WATCH_FOLDER } from './054-watch-folder';
+import { MIGRATION_055_LIBRARY_SEARCH } from './055-library-search';
 
 export const MIGRATIONS: MigrationDefinition[] = [
   {
@@ -259,6 +271,66 @@ export const MIGRATIONS: MigrationDefinition[] = [
     version: 43,
     name: 'khepree_device',
     sql: MIGRATION_043_KHEPREE_DEVICE,
+  },
+  {
+    version: 44,
+    name: 'batch_import',
+    sql: MIGRATION_044_BATCH_IMPORT,
+  },
+  {
+    version: 45,
+    name: 'translation_recipes',
+    sql: MIGRATION_045_TRANSLATION_RECIPES,
+  },
+  {
+    version: 46,
+    name: 'translation_campaign_run',
+    sql: MIGRATION_046_TRANSLATION_CAMPAIGN_RUN,
+  },
+  {
+    version: 47,
+    name: 'usage_ledger',
+    sql: MIGRATION_047_USAGE_LEDGER,
+  },
+  {
+    version: 48,
+    name: 'browser_attention',
+    sql: MIGRATION_048_BROWSER_ATTENTION,
+  },
+  {
+    version: 49,
+    name: 'campaign_pipeline',
+    sql: MIGRATION_049_CAMPAIGN_PIPELINE,
+  },
+  {
+    version: 50,
+    name: 'translation_qa_findings',
+    sql: MIGRATION_050_TRANSLATION_QA_FINDINGS,
+  },
+  {
+    version: 51,
+    name: 'whole_book_audit',
+    sql: MIGRATION_051_WHOLE_BOOK_AUDIT,
+  },
+  {
+    version: 52,
+    name: 'attention_inbox',
+    sql: MIGRATION_052_ATTENTION_INBOX,
+  },
+  {
+    version: 53,
+    name: 'fiction_series',
+    sql: MIGRATION_053_FICTION_SERIES,
+  },
+  {
+    version: 54,
+    name: 'watch_folder',
+    sql: MIGRATION_054_WATCH_FOLDER,
+  },
+  {
+    version: 55,
+    name: 'library_search',
+    sql: MIGRATION_055_LIBRARY_SEARCH,
   },
 ];
 

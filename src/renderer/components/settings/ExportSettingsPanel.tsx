@@ -11,6 +11,7 @@ export function ExportSettingsPanel() {
   const { showSaved } = useSettingsFeedback();
   const [directory, setDirectory] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
+  const [desktopNotify, setDesktopNotify] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,6 +19,8 @@ export function ExportSettingsPanel() {
     const info = await window.khepreeNovelAI.portability.getDefaultExportDirectory();
     setDirectory(info.directory);
     setIsConfigured(info.isConfigured);
+    const notify = await window.khepreeNovelAI.notify.getDesktopEnabled();
+    setDesktopNotify(notify.enabled);
   }, []);
 
   useEffect(() => {
@@ -58,6 +61,24 @@ export function ExportSettingsPanel() {
     }
   };
 
+  const toggleDesktopNotify = async (enabled: boolean) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await window.khepreeNovelAI.notify.setDesktopEnabled({ enabled });
+      setDesktopNotify(next.enabled);
+      showSaved(
+        next.enabled
+          ? t('exportDirectory.desktopNotifyOn')
+          : t('exportDirectory.desktopNotifyOff'),
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <SettingsSection
       title={t('exportDirectory.sectionTitle')}
@@ -79,6 +100,22 @@ export function ExportSettingsPanel() {
           </Button>
         ) : null}
       </div>
+      <label
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+          marginTop: '0.75rem',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={desktopNotify}
+          disabled={busy}
+          onChange={(e) => void toggleDesktopNotify(e.target.checked)}
+        />
+        <span>{t('exportDirectory.desktopNotify')}</span>
+      </label>
     </SettingsSection>
   );
 }

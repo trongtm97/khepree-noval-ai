@@ -92,6 +92,46 @@ const api: KhepreeNovelAIApi = {
     setDefaultTarget: (input) =>
       invokeChannel(IPC_CHANNELS.TRANSLATION_SETTINGS_SET_DEFAULT_TARGET, input),
   },
+  translationRecipe: {
+    list: (input) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_RECIPE_LIST, input ?? { locale: 'en' }),
+    getDefault: () => invokeChannel(IPC_CHANNELS.TRANSLATION_RECIPE_GET_DEFAULT),
+    setDefault: (input) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_RECIPE_SET_DEFAULT, input),
+    clone: (input) => invokeChannel(IPC_CHANNELS.TRANSLATION_RECIPE_CLONE, input),
+    create: (input) => invokeChannel(IPC_CHANNELS.TRANSLATION_RECIPE_CREATE, input),
+    update: (input) => invokeChannel(IPC_CHANNELS.TRANSLATION_RECIPE_UPDATE, input),
+    delete: (id) => invokeChannel(IPC_CHANNELS.TRANSLATION_RECIPE_DELETE, { id }),
+    export: (id) => invokeChannel(IPC_CHANNELS.TRANSLATION_RECIPE_EXPORT, { id }),
+    import: (input) => invokeChannel(IPC_CHANNELS.TRANSLATION_RECIPE_IMPORT, input),
+    resolveProject: (input) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_RECIPE_RESOLVE_PROJECT, input),
+    setProject: (input) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_RECIPE_SET_PROJECT, input),
+  },
+  translationCampaign: {
+    create: (input) => invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_CREATE, input),
+    get: (campaignId) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_GET, { campaignId }),
+    list: () => invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_LIST),
+    setProjectOverride: (input) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_SET_PROJECT_OVERRIDE, input),
+    addProjects: (input) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_ADD_PROJECTS, input),
+    removeProject: (input) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_REMOVE_PROJECT, input),
+    preflight: (campaignId) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_PREFLIGHT, { campaignId }),
+    start: (input) => invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_START, input),
+    pause: (campaignId) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_PAUSE, { campaignId }),
+    resume: (campaignId) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_RESUME, { campaignId }),
+    cancel: (campaignId) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_CANCEL, { campaignId }),
+    controlProject: (input) =>
+      invokeChannel(IPC_CHANNELS.TRANSLATION_CAMPAIGN_CONTROL_PROJECT, input),
+  },
   import: {
     selectFile: () => invokeChannel(IPC_CHANNELS.IMPORT_SELECT_FILE),
     preview: (filePath) =>
@@ -134,6 +174,33 @@ const api: KhepreeNovelAIApi = {
       ipcRenderer.on(IPC_CHANNELS.SOURCE_FOLDER_ON_SCAN_PROGRESS, listener);
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.SOURCE_FOLDER_ON_SCAN_PROGRESS, listener);
+      };
+    },
+  },
+  batchImport: {
+    selectSource: (input) =>
+      invokeChannel(IPC_CHANNELS.BATCH_IMPORT_SELECT_SOURCE, input ?? { preferredKind: 'folder' }),
+    scan: (input) => invokeChannel(IPC_CHANNELS.BATCH_IMPORT_SCAN, input),
+    cancel: (input) => invokeChannel(IPC_CHANNELS.BATCH_IMPORT_CANCEL, input ?? {}),
+    discard: (sessionId) =>
+      invokeChannel(IPC_CHANNELS.BATCH_IMPORT_DISCARD, { sessionId }),
+    updateCandidate: (input) =>
+      invokeChannel(IPC_CHANNELS.BATCH_IMPORT_UPDATE_CANDIDATE, input),
+    listProjects: () => invokeChannel(IPC_CHANNELS.BATCH_IMPORT_LIST_PROJECTS),
+    commit: (sessionId) =>
+      invokeChannel(IPC_CHANNELS.BATCH_IMPORT_COMMIT, { sessionId }),
+    retryCandidate: (input) =>
+      invokeChannel(IPC_CHANNELS.BATCH_IMPORT_RETRY_CANDIDATE, input),
+    getSession: (sessionId) =>
+      invokeChannel(IPC_CHANNELS.BATCH_IMPORT_GET_SESSION, { sessionId }),
+    listSessions: () => invokeChannel(IPC_CHANNELS.BATCH_IMPORT_LIST_SESSIONS),
+    onProgress: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+        callback(payload as import('@shared/schemas/batch-import').BatchImportProgressEventDto);
+      };
+      ipcRenderer.on(IPC_CHANNELS.BATCH_IMPORT_ON_PROGRESS, listener);
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.BATCH_IMPORT_ON_PROGRESS, listener);
       };
     },
   },
@@ -369,6 +436,39 @@ const api: KhepreeNovelAIApi = {
     repairCancel: (input) => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_REPAIR_CANCEL, input),
     selectExportPath: () => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_SELECT_EXPORT_PATH),
     selectOverridePath: () => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_SELECT_OVERRIDE_PATH),
+    listFailureShots: () => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_LIST_FAILURE_SHOTS),
+    deleteFailureShot: (input) =>
+      invokeChannel(IPC_CHANNELS.DIAGNOSTICS_DELETE_FAILURE_SHOT, input),
+    purgeFailureShots: () => invokeChannel(IPC_CHANNELS.DIAGNOSTICS_PURGE_FAILURE_SHOTS),
+  },
+  browserAttention: {
+    list: () => invokeChannel(IPC_CHANNELS.BROWSER_ATTENTION_LIST),
+    resolve: (input) => invokeChannel(IPC_CHANNELS.BROWSER_ATTENTION_RESOLVE, input),
+  },
+  attentionInbox: {
+    list: () => invokeChannel(IPC_CHANNELS.ATTENTION_INBOX_LIST),
+    countOpen: () => invokeChannel(IPC_CHANNELS.ATTENTION_INBOX_COUNT),
+    act: (input) => invokeChannel(IPC_CHANNELS.ATTENTION_INBOX_ACT, input),
+    bulkRetry: (input) => invokeChannel(IPC_CHANNELS.ATTENTION_INBOX_BULK_RETRY, input),
+    reconcile: () => invokeChannel(IPC_CHANNELS.ATTENTION_INBOX_RECONCILE),
+  },
+  fictionSeries: {
+    list: () => invokeChannel(IPC_CHANNELS.FICTION_SERIES_LIST),
+    get: (seriesId) => invokeChannel(IPC_CHANNELS.FICTION_SERIES_GET, { seriesId }),
+    create: (input) => invokeChannel(IPC_CHANNELS.FICTION_SERIES_CREATE, input),
+    listVolumes: (seriesId) =>
+      invokeChannel(IPC_CHANNELS.FICTION_SERIES_LIST_VOLUMES, { seriesId }),
+    addVolume: (input) => invokeChannel(IPC_CHANNELS.FICTION_SERIES_ADD_VOLUME, input),
+    removeVolume: (input) =>
+      invokeChannel(IPC_CHANNELS.FICTION_SERIES_REMOVE_VOLUME, input),
+    reorderVolumes: (input) =>
+      invokeChannel(IPC_CHANNELS.FICTION_SERIES_REORDER_VOLUMES, input),
+    previewMembership: (input) =>
+      invokeChannel(IPC_CHANNELS.FICTION_SERIES_PREVIEW_MEMBERSHIP, input),
+    assignProject: (input) =>
+      invokeChannel(IPC_CHANNELS.FICTION_SERIES_ASSIGN_PROJECT, input),
+    exportKnowledge: (input) =>
+      invokeChannel(IPC_CHANNELS.FICTION_SERIES_EXPORT_KNOWLEDGE, input),
   },
   setup: {
     getStatus: () => invokeChannel(IPC_CHANNELS.SETUP_GET_STATUS),
@@ -448,6 +548,49 @@ const api: KhepreeNovelAIApi = {
       invokeChannel(IPC_CHANNELS.UI_LANGUAGE_COMPLETE_FIRST_RUN, input),
   },
   checkForUpdates: () => invokeChannel(IPC_CHANNELS.APP_CHECK_FOR_UPDATES),
+  production: {
+    onCompletion: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+        callback(
+          payload as import('@shared/schemas/delivery-completion').ProductionCompletionEvent,
+        );
+      };
+      ipcRenderer.on(IPC_CHANNELS.PRODUCTION_ON_COMPLETION, listener);
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.PRODUCTION_ON_COMPLETION, listener);
+      };
+    },
+  },
+  notify: {
+    getDesktopEnabled: () => invokeChannel(IPC_CHANNELS.NOTIFY_GET_DESKTOP_ENABLED),
+    setDesktopEnabled: (input) =>
+      invokeChannel(IPC_CHANNELS.NOTIFY_SET_DESKTOP_ENABLED, input),
+  },
+  librarySearch: {
+    query: (input) => invokeChannel(IPC_CHANNELS.LIBRARY_SEARCH_QUERY, input),
+    cancelQuery: () => invokeChannel(IPC_CHANNELS.LIBRARY_SEARCH_CANCEL),
+    getSettings: () => invokeChannel(IPC_CHANNELS.LIBRARY_SEARCH_GET_SETTINGS),
+    updateSettings: (input) =>
+      invokeChannel(IPC_CHANNELS.LIBRARY_SEARCH_UPDATE_SETTINGS, input),
+    startReindex: (input) => invokeChannel(IPC_CHANNELS.LIBRARY_SEARCH_START_REINDEX, input),
+    cancelReindex: () => invokeChannel(IPC_CHANNELS.LIBRARY_SEARCH_CANCEL_REINDEX),
+    getReindexProgress: () =>
+      invokeChannel(IPC_CHANNELS.LIBRARY_SEARCH_GET_REINDEX_PROGRESS),
+    onReindexProgress: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+        callback(payload as import('@shared/schemas/library-search').LibrarySearchIndexProgressDto);
+      };
+      ipcRenderer.on(IPC_CHANNELS.LIBRARY_SEARCH_ON_REINDEX_PROGRESS, listener);
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.LIBRARY_SEARCH_ON_REINDEX_PROGRESS, listener);
+      };
+    },
+  },
+  featureIntro: {
+    getState: () => invokeChannel(IPC_CHANNELS.FEATURE_INTRO_GET_STATE),
+    dismiss: (input) => invokeChannel(IPC_CHANNELS.FEATURE_INTRO_DISMISS, input),
+    updateTour: (input) => invokeChannel(IPC_CHANNELS.FEATURE_INTRO_UPDATE_TOUR, input),
+  },
   updates: {
     getStatus: () => invokeChannel(IPC_CHANNELS.UPDATE_GET_STATUS),
     checkNow: () => invokeChannel(IPC_CHANNELS.UPDATE_CHECK_NOW),

@@ -14,6 +14,7 @@ import {
   BookOpen,
   CircleUser,
   Shield,
+  Search,
 } from 'lucide-react';
 import type { GetInfoResponse } from '@shared/schemas/ipc';
 import { useT } from '../i18n';
@@ -23,10 +24,12 @@ import { useNotificationStore } from '../stores/notification-store';
 import { AppBrand } from '../components/shell/AppBrand';
 import { IconButton, Drawer, Button } from '../components/ui';
 import { ToastViewport } from '../components/shell/ToastViewport';
+import { FeatureIntroCoordinator } from '../features/feature-intro/FeatureIntroCoordinator';
 import { StatusbarContactLinks } from '../components/contact/StatusbarContactLinks';
 import { useSystemStatusPoll } from '../hooks/useSystemStatusPoll';
 import { useStartupAiReadiness } from '../hooks/useStartupAiReadiness';
 import { useSourceFolderEvents } from '../hooks/useSourceFolderEvents';
+import { useProductionCompletionEvents } from '../hooks/useProductionCompletionEvents';
 import {
   isProjectWorkspacePath,
 } from './ProjectWorkspace';
@@ -48,8 +51,10 @@ interface AppShellProps {
 const PRIMARY_NAV = [
   { to: '/', key: 'nav.dashboard', icon: LayoutDashboard, end: true },
   { to: '/projects', key: 'nav.projects', icon: FolderKanban },
+  { to: '/series', key: 'nav.series', icon: BookOpen },
+  { to: '/search', key: 'nav.search', icon: Search },
   { to: '__translation__', key: 'nav.translation', icon: Languages, translation: true },
-  { to: '/jobs', key: 'nav.jobs', icon: ListTodo },
+  { to: '/jobs', key: 'nav.production', icon: ListTodo },
 ] as const;
 
 const SECONDARY_NAV = [
@@ -81,8 +86,10 @@ export function AppShell({ children, appInfo }: AppShellProps) {
   const status = useSystemStatusPoll();
   const startupAi = useStartupAiReadiness();
   useSourceFolderEvents();
+  useProductionCompletionEvents();
   const khepreeAccess = useKhepreeAccessState();
   const khepreeAnnouncements = useKhepreeAnnouncements(khepreeAccess.state?.signedIn === true);
+  const [attentionOpenCount, setAttentionOpenCount] = useState(0);
 
   const editorFocusMode = useTranslationWorkspaceStore((s) => s.focusMode);
   const translationFocus = isTranslationWorkspaceRoute(location.pathname);
@@ -90,6 +97,26 @@ export function AppShell({ children, appInfo }: AppShellProps) {
   useEffect(() => {
     applyDensity(density);
   }, [density]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const res = await window.khepreeNovelAI.attentionInbox.countOpen();
+        if (!cancelled) setAttentionOpenCount(res.openCount);
+      } catch {
+        if (!cancelled) setAttentionOpenCount(0);
+      }
+    };
+    void tick();
+    const timer = setInterval(() => {
+      void tick();
+    }, 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -215,6 +242,16 @@ export function AppShell({ children, appInfo }: AppShellProps) {
               >
                 <Icon aria-hidden />
                 <span>{t(item.key)}</span>
+                {item.to === '/jobs' && attentionOpenCount > 0 ? (
+                  <span
+                    className="nav-link-badge"
+                    aria-label={t('attentionInbox.openCount', {
+                      n: String(attentionOpenCount),
+                    })}
+                  >
+                    {attentionOpenCount > 99 ? '99+' : attentionOpenCount}
+                  </span>
+                ) : null}
               </NavLink>
             );
           })}
@@ -481,6 +518,18 @@ export function AppShell({ children, appInfo }: AppShellProps) {
                     {n.projectName ? ` · ${n.projectName}` : ''}
                   </span>
                   <div className="btn-row" style={{ marginTop: '0.35rem' }}>
+                    {n.route ? (
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          markRead(n.id);
+                          navigate(n.route!);
+                          setNotifOpen(false);
+                        }}
+                      >
+                        {t('actions.viewDetails')}
+                      </Button>
+                    ) : null}
                     {!n.read ? (
                       <Button
                         size="sm"
@@ -509,6 +558,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
       </Drawer>
 
       <ToastViewport onStartupRecheck={() => void startupAi.refresh()} />
+      <FeatureIntroCoordinator />
     </div>
   );
 }

@@ -7,19 +7,28 @@ import {
   readComposerText,
 } from '@shared/utils/notebook-composer-fill';
 import { createHash } from 'node:crypto';
+import {
+  candidatesWithinBudget,
+  type VersionedSelectorCatalog,
+} from '../../selectors/versioned-selector';
 
 const SURFACE = 'chatgpt';
 
-const COMPOSER_SELECTORS = [
-  { key: 'prompt-textarea-id', sel: '#prompt-textarea' },
-  { key: 'data-testid-prompt-textarea', sel: '[data-testid="prompt-textarea"]' },
-  {
-    key: 'composer-contenteditable',
-    sel: '[data-testid="composer"] div[contenteditable="true"]',
-  },
-  { key: 'role-textbox', sel: 'div[contenteditable="true"][role="textbox"]' },
-  { key: 'prosemirror', sel: '.ProseMirror[contenteditable="true"]' },
-] as const;
+const CHATGPT_COMPOSER_CATALOG: VersionedSelectorCatalog = {
+  id: 'chatgpt.composer',
+  version: 2,
+  candidates: [
+    { key: 'prompt-textarea-id', version: 2, css: '#prompt-textarea' },
+    { key: 'data-testid-prompt-textarea', version: 2, testId: 'prompt-textarea' },
+    {
+      key: 'composer-contenteditable',
+      version: 1,
+      css: '[data-testid="composer"] div[contenteditable="true"]',
+    },
+    { key: 'role-textbox', version: 1, css: 'div[contenteditable="true"][role="textbox"]' },
+    { key: 'prosemirror', version: 1, css: '.ProseMirror[contenteditable="true"]' },
+  ],
+};
 
 const SEND_SELECTORS = [
   { key: 'send-button', sel: 'button[data-testid="send-button"]' },
@@ -74,15 +83,19 @@ export class ChatGptSurfaceAdapter implements BrowserConversationSurfaceAdapter 
 
   async findComposer(): Promise<{ ok: true; selector: string } | { ok: false; reason: string }> {
     const page = this.requirePage();
-    for (const { key, sel } of COMPOSER_SELECTORS) {
+    for (const candidate of candidatesWithinBudget(CHATGPT_COMPOSER_CATALOG)) {
+      const sel =
+        candidate.css ??
+        (candidate.testId ? `[data-testid="${candidate.testId}"]` : null);
+      if (!sel) continue;
       const loc = page.locator(sel).first();
       if (await loc.isVisible({ timeout: 500 }).catch(() => false)) {
         this.composer = loc;
-        this.composerSelectorKey = key;
+        this.composerSelectorKey = candidate.key;
         return { ok: true, selector: sel };
       }
     }
-    return { ok: false, reason: 'ChatGPT composer not found' };
+    return { ok: false, reason: 'ChatGPT composer not found (fallback budget exhausted)' };
   }
 
   private requireComposer(): Locator {
@@ -241,15 +254,25 @@ export class ChatGptSurfaceAdapter implements BrowserConversationSurfaceAdapter 
     return /rate limit|too many requests|quota/.test(body);
   }
 
+  async detectCaptchaRequired(): Promise<boolean> {
+    const page = this.requirePage();
+    const body = (await page.locator('body').innerText().catch(() => '')).toLowerCase();
+    if (/captcha|verify you are human|i'm not a robot|recaptcha/.test(body)) return true;
+    const gate = page.locator('[data-testid="captcha"], iframe[src*="recaptcha"], iframe[src*="hcaptcha"]');
+    return gate.first().isVisible().catch(() => false);
+  }
+
   async detectBlockedOrSecurityChallenge(): Promise<boolean> {
+    if (await this.detectCaptchaRequired()) return false; // CAPTCHA handled separately
     const body = (await this.requirePage().locator('body').innerText().catch(() => '')).toLowerCase();
-    return /captcha|verify you are human|unusual traffic|security check/.test(body);
+    return /unusual traffic|security check|access denied|blocked/.test(body);
   }
 
   getDiagnostics(): Record<string, unknown> {
     return {
       composerSelectorKey: this.composerSelectorKey,
       surface: SURFACE,
+      selectorCatalogVersion: CHATGPT_COMPOSER_CATALOG.version,
     };
   }
 }

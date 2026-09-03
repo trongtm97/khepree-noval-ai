@@ -15,6 +15,7 @@ type Scenario =
   | 'success'
   | 'send_noop'
   | 'login'
+  | 'captcha'
   | 'streaming';
 
 class MockSurfaceAdapter implements BrowserConversationSurfaceAdapter {
@@ -123,6 +124,10 @@ class MockSurfaceAdapter implements BrowserConversationSurfaceAdapter {
     return Promise.resolve(this.scenario === 'login');
   }
 
+  detectCaptchaRequired(): Promise<boolean> {
+    return Promise.resolve(this.scenario === 'captcha');
+  }
+
   detectRateLimit(): Promise<boolean> {
     return Promise.resolve(false);
   }
@@ -216,6 +221,20 @@ describe('BrowserConversationHarness (mock adapter)', () => {
       expect(err).toBeInstanceOf(AutomationError);
       const ae = err as AutomationError;
       expect(['SEND_NOT_CONFIRMED', 'RESPONSE_NOT_FOUND']).toContain(ae.code);
+      return true;
+    });
+  });
+
+  it('throws CAPTCHA_REQUIRED and never bypasses', async () => {
+    const adapter = new MockSurfaceAdapter();
+    adapter.scenario = 'captcha';
+
+    const harness = new BrowserConversationHarness();
+    await expect(
+      harness.run({ page, adapter, prompt: 'hello' }),
+    ).rejects.toSatisfy((err: unknown) => {
+      expect(err).toBeInstanceOf(AutomationError);
+      expect((err as AutomationError).code).toBe('CAPTCHA');
       return true;
     });
   });

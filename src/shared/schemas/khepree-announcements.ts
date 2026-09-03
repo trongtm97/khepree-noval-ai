@@ -11,6 +11,12 @@ export const DesktopAnnouncementSeveritySchema = z.enum([
 
 export const DesktopAnnouncementCtaKindSchema = z.enum(['none', 'open_url', 'open_path']);
 
+/**
+ * Desktop rendering lane — optional (old servers omit it).
+ * Missing = treat as 'general'.
+ */
+export const DesktopAnnouncementTypeSchema = z.enum(['general', 'whats_new', 'urgent']);
+
 export const DesktopAnnouncementCtaSchema = z.object({
   kind: DesktopAnnouncementCtaKindSchema,
   payload: z.record(z.unknown()).nullable(),
@@ -19,8 +25,12 @@ export const DesktopAnnouncementCtaSchema = z.object({
 export const DesktopAnnouncementItemSchema = z.object({
   publicId: z.string().min(1),
   severity: DesktopAnnouncementSeveritySchema,
+  /** Optional — old servers don't send it; default to 'general'. */
+  type: DesktopAnnouncementTypeSchema.optional(),
   title: z.string(),
   body: z.string().nullable(),
+  /** Optional locale-specific CTA button label. */
+  ctaLabel: z.string().nullable().optional(),
   publishedAt: z.string().nullable(),
   expiresAt: z.string().nullable(),
   cta: DesktopAnnouncementCtaSchema,
@@ -79,8 +89,12 @@ export type SafeAnnouncementCta = z.infer<typeof SafeAnnouncementCtaSchema>;
 export const KhepreeAnnouncementDtoSchema = z.object({
   publicId: z.string(),
   kind: z.enum(['SUCCESS', 'INFO', 'WARNING', 'ERROR', 'ACTION_REQUIRED']),
+  /** Desktop rendering lane — defaults to 'general' when absent from server. */
+  type: DesktopAnnouncementTypeSchema.default('general'),
   title: z.string(),
   description: z.string(),
+  /** Locale-specific CTA label, if provided. */
+  ctaLabel: z.string().nullable().optional(),
   publishedAt: z.string().nullable(),
   expiresAt: z.string().nullable(),
   read: z.boolean(),

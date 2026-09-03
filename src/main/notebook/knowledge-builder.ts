@@ -44,14 +44,25 @@ function loadStyleConfig(db: DatabaseManager, projectId: string): {
   notebookInstructions?: string;
   notebookSettings?: Partial<typeof DEFAULT_NOTEBOOK_SETTINGS>;
 } {
+  const membership = db.fictionSeries.getVolumeByProject(projectId);
+  const seriesStyleRows = membership
+    ? db.fictionSeries.listStyleRules(membership.series_id)
+    : [];
+  const seriesCritical = seriesStyleRows
+    .filter((r) => r.rule_kind === 'critical')
+    .map((r) => r.content);
+  const seriesRules = seriesStyleRows
+    .filter((r) => r.rule_kind !== 'critical')
+    .map((r) => r.content);
+
   const row = db
     .getConnection()
     .prepare(`SELECT style_config FROM project_settings WHERE project_id = ?`)
     .get(projectId) as { style_config: string | null } | undefined;
 
   const result = {
-    rules: [] as string[],
-    criticalRules: [] as string[],
+    rules: [...seriesRules],
+    criticalRules: [...seriesCritical],
     notebookInstructions: undefined as string | undefined,
     notebookSettings: undefined as Partial<typeof DEFAULT_NOTEBOOK_SETTINGS> | undefined,
   };
@@ -270,14 +281,28 @@ export class NotebookKnowledgeBuilder {
     const project = this.db.projects.getById(projectId);
     if (!project) throw new Error(`Project not found: ${projectId}`);
 
-    const termRows = sortTermsForKnowledge(this.db.terms.listAllForProject(projectId));
+    const termRows = sortTermsForKnowledge(this.db.terms.listForProjectKnowledge(projectId));
     const records: KnowledgeRecord[] = [];
 
     for (const term of termRows) {
       if (term.scope === 'PROJECT' && term.scope_ref !== projectId) continue;
+      if (term.scope === 'CHAPTER' && term.scope_ref) {
+        // chapter-scoped terms included only when rebuilding full project knowledge
+      }
       const translations = this.db.terms.listTranslations(term.id);
       const primary = translations.find((t) => t.is_primary === 1)?.target_text ?? '?';
-      records.push({ id: term.id, text: termLine(term, primary) });
+      const provenance =
+        term.scope === 'SERIES'
+          ? `[series:${term.scope_ref}] `
+          : term.scope === 'GLOBAL'
+            ? '[global] '
+            : term.scope === 'GENRE'
+              ? '[genre] '
+              : '';
+      records.push({
+        id: term.id,
+        text: `${provenance}${termLine(term, primary)}`,
+      });
     }
 
     return buildBudgetedDocument(records, {

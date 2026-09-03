@@ -15,6 +15,7 @@ import { SettingsDisclosure } from './SettingsDisclosure';
 import { SettingsSection } from './SettingsSection';
 import { SettingsStatus } from './SettingsStatus';
 import { StoragePathRow } from './StoragePathRow';
+import { LibrarySearchSettingsPanel } from './LibrarySearchSettingsPanel';
 import { useSettingsFeedback } from './useSettingsFeedback';
 
 interface RestorePreview {
@@ -469,6 +470,7 @@ export function StorageSettingsPanel() {
           </div>
         ) : null}
       </SettingsDisclosure>
+      <LibrarySearchSettingsPanel />
     </>
   );
 }

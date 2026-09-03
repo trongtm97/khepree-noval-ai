@@ -32,6 +32,7 @@ import { saveConcurrencyPolicy } from '../jobs/concurrency-policy';
 import { isParallelWavesEnabled, setParallelWavesEnabled } from '../jobs/wave-service';
 import { resolveActiveEditionId } from './edition-service';
 import { resolveForProjectEdition } from './translation-language-resolver';
+import { getTranslationRecipeService } from './translation-recipe-service';
 import {
   buildRepairTranslationContext,
   repairContextSnapshot,
@@ -69,6 +70,7 @@ export interface EnqueueTranslateJobInput {
   lockedTerms?: LockedTermForQa[];
   chapterIds?: string[];
   batchDecisionId?: string | null;
+  campaignId?: string;
 }
 
 export interface EnqueueTranslateNovelInput {
@@ -86,6 +88,8 @@ export interface EnqueueTranslateNovelInput {
   pinnedAccountId?: string | null;
   maxRepairAttempts?: number;
   maxContinuationAttempts?: number;
+  /** When set, recipe limits resolve from campaign snapshot + overrides. */
+  campaignId?: string;
 }
 
 export class JobService {
@@ -98,10 +102,39 @@ export class JobService {
   }
 
   list(projectId?: string): JobDto[] {
-    const rows = projectId
-      ? this.db.jobs.listByProject(projectId)
-      : this.db.jobs.listAll();
-    return rows.map((row) => this.toJobDto(row));
+    const page = this.db.jobs.listPage({
+      projectId,
+      limit: 200,
+      offset: 0,
+    });
+    return page.rows.map((row) => this.toJobDto(row));
+  }
+
+  listPage(input: {
+    projectId?: string;
+    states?: string[];
+    limit?: number;
+    offset?: number;
+  }): { jobs: JobDto[]; total: number; limit: number; offset: number } {
+    const page = this.db.jobs.listPage(input);
+    return {
+      jobs: page.rows.map((row) => this.toJobDto(row)),
+      total: page.total,
+      limit: Math.min(200, Math.max(1, input.limit ?? 50)),
+      offset: Math.max(0, input.offset ?? 0),
+    };
+  }
+
+  pauseProject(projectId: string, reason = 'project_pause'): number {
+    return this.db.jobs.pauseByProject(projectId, reason);
+  }
+
+  resumeProject(projectId: string): number {
+    return this.db.jobs.resumeByProject(projectId);
+  }
+
+  reconcileDuplicates(projectId?: string): number {
+    return this.db.jobs.reconcileDuplicateQueued(projectId);
   }
 
   get(jobId: string): { job: JobDto; attempts: JobAttemptDto[] } {
@@ -260,6 +293,7 @@ export class JobService {
         maxContinuationAttempts: input.maxContinuationAttempts,
         chapterIds,
         batchDecisionId: decision.id,
+        campaignId: input.campaignId,
       });
       this.db.batchSize.linkDecisionToJob(decision.id, job.id);
       jobs.push(job);
@@ -284,14 +318,33 @@ export class JobService {
       throw new Error('PINNED mode requires pinnedAccountId');
     }
 
+    const existing = this.db.jobs.findActiveJobByChapterRange(
+      input.projectId,
+      input.chapterFrom,
+      input.chapterTo,
+    );
+    if (existing) {
+      return this.toJobDto(existing);
+    }
+
+    const recipeLimits = this.recipeJobLimits(input.projectId, input.campaignId);
+
     const config = {
       sourceParagraphIds: input.sourceParagraphIds,
       batchParagraphs: input.batchParagraphs,
-      maxRepairAttempts: input.maxRepairAttempts ?? DEFAULT_MAX_REPAIR_ATTEMPTS,
-      maxContinuationAttempts: input.maxContinuationAttempts,
+      maxRepairAttempts:
+        input.maxRepairAttempts ??
+        recipeLimits?.maxRepairAttempts ??
+        DEFAULT_MAX_REPAIR_ATTEMPTS,
+      maxContinuationAttempts:
+        input.maxContinuationAttempts ?? recipeLimits?.maxContinuationAttempts,
       lockedTerms: input.lockedTerms ?? [],
       chapterIds: input.chapterIds,
       batchDecisionId: input.batchDecisionId ?? null,
+      recipeId: recipeLimits?.recipeId ?? null,
+      recipeMode: recipeLimits?.mode ?? null,
+      qaLevel: recipeLimits?.qaLevel ?? 'standard',
+      repairScope: recipeLimits?.repairScope ?? 'targeted',
     };
     const job = this.db.jobs.create({
       project_id: input.projectId,
@@ -306,6 +359,34 @@ export class JobService {
       edition_id: resolveActiveEditionId(this.db, input.projectId),
     });
     return this.toJobDto(job);
+  }
+
+  private recipeJobLimits(
+    projectId: string,
+    campaignId?: string,
+  ): {
+    maxRepairAttempts: number;
+    maxContinuationAttempts: number;
+    recipeId: string;
+    mode: string;
+    qaLevel: 'basic' | 'standard' | 'strict';
+    repairScope: 'structure_only' | 'targeted' | 'bounded';
+  } | null {
+    try {
+      const resolved = getTranslationRecipeService().resolveForProject(projectId, {
+        campaignId,
+      });
+      return {
+        maxRepairAttempts: resolved.config.maxRepairAttempts,
+        maxContinuationAttempts: resolved.config.maxContinuationAttempts,
+        recipeId: resolved.recipeId,
+        mode: resolved.mode,
+        qaLevel: resolved.config.qaLevel,
+        repairScope: resolved.config.repairScope,
+      };
+    } catch {
+      return null;
+    }
   }
 
   moveJob(jobId: string, priority: number): JobDto {

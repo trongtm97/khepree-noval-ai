@@ -23,6 +23,8 @@ import { browserProfileManager } from '../automation/browser-runner/profile-mana
 import { profileLockManager } from '../automation/browser-runner/profile-lock';
 import { getBrowserRuntimeManager } from '../automation/browser-runner/browser-runtime-manager';
 import { planGeminiRequestRecovery } from '../gemini/gemini-request-recovery';
+import { applyBrowserPoolAttention } from '../automation/browser-pool/apply-attention';
+import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
 import { pathsService } from './paths-service';
 import { logger } from '../logging/logger';
 import { newId } from '../db/utils/uuid';
@@ -400,13 +402,24 @@ export class GeminiService {
 
       if (
         automationError.code === 'SESSION_EXPIRED' ||
-        automationError.code === 'LOGIN_REQUIRED'
+        automationError.code === 'LOGIN_REQUIRED' ||
+        automationError.code === 'CAPTCHA' ||
+        automationError.code === 'QUOTA_LIMIT'
       ) {
         if (workerState) {
           this.db.workerStates.setHealth(workerState.id, 'NEEDS_ATTENTION', {
             lastError: automationError.message,
           });
         }
+        applyBrowserPoolAttention(this.db, {
+          accountKind: 'GOOGLE_ACCOUNT',
+          accountId: input.accountId,
+          providerId: AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI,
+          providerType: 'PLAYWRIGHT_GEMINI',
+          errorCode: automationError.code,
+          summary: automationError.message.slice(0, 400),
+          diagnosticsPath: automationError.diagnostics?.screenshotPath ?? null,
+        });
       }
 
       let rawPath: string | null = null;

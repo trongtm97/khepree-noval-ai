@@ -12,6 +12,8 @@ export interface ProjectsPageHeaderProps {
   needsAttentionCount: number;
   activeCount: number;
   onCreate: () => void;
+  onImportMany: () => void;
+  onStartCampaign: () => void;
   onImportLegacy: () => void;
   onRestoreBackup: () => void;
 }
@@ -22,6 +24,8 @@ export function ProjectsPageHeader({
   needsAttentionCount,
   activeCount,
   onCreate,
+  onImportMany,
+  onStartCampaign,
   onImportLegacy,
   onRestoreBackup,
 }: ProjectsPageHeaderProps) {
@@ -66,6 +70,12 @@ export function ProjectsPageHeader({
         <Button variant="primary" size="sm" onClick={onCreate}>
           <Plus size={16} aria-hidden />
           {t('actions.createProject')}
+        </Button>
+        <Button size="sm" onClick={onImportMany}>
+          {t('actions.importManyNovels')}
+        </Button>
+        <Button size="sm" onClick={onStartCampaign}>
+          {t('actions.startCampaign')}
         </Button>
         <IconButton
           ref={menuRef}

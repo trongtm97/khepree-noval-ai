@@ -47,7 +47,7 @@ export function resolveBreadcrumb(
   }
 
   if (pathname === '/jobs' || pathname.startsWith('/jobs/')) {
-    return [{ labelKey: 'nav.jobs' }];
+    return [{ labelKey: 'nav.production' }];
   }
 
   const ROUTE_KEYS: Record<string, string> = {

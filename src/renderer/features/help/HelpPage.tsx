@@ -13,6 +13,7 @@ import { HelpChecklist, HelpRelatedArticles, HelpVersionFooter, useHelpChecklist
 import { HelpSearch, HelpSidebar } from './components/HelpSearch';
 import { Button } from '../../components/ui';
 import { useState } from 'react';
+import { useFeatureIntroUiStore } from '../feature-intro/feature-intro-store';
 
 interface HelpPageProps {
   appInfo: GetInfoResponse;
@@ -37,6 +38,7 @@ export function HelpPage({ appInfo }: HelpPageProps) {
   }, []);
 
   const checklist = useHelpChecklist();
+  const requestTour = useFeatureIntroUiStore((s) => s.requestTour);
 
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0 });
@@ -131,6 +133,19 @@ export function HelpPage({ appInfo }: HelpPageProps) {
             onOpenArticle={openArticle}
             searchQuery={searchQuery}
           />
+
+          {activeId === 'production-tour' ? (
+            <div className="help-actions btn-row">
+              <Button
+                onClick={() => {
+                  requestTour();
+                  navigate('/');
+                }}
+              >
+                {t('help.restartProductionTour')}
+              </Button>
+            </div>
+          ) : null}
 
           <HelpRelatedArticles article={article} onOpen={openArticle} />
           <HelpVersionFooter

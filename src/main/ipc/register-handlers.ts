@@ -51,6 +51,24 @@ import {
   ProjectUpdateLanguagesResponseSchema,
 } from '@shared/schemas/import';
 import {
+  BatchImportCancelResponseSchema,
+  BatchImportCommitRequestSchema,
+  BatchImportCommitResponseSchema,
+  BatchImportDiscardResponseSchema,
+  BatchImportGetSessionResponseSchema,
+  BatchImportListProjectsResponseSchema,
+  BatchImportListSessionsResponseSchema,
+  BatchImportRetryCandidateRequestSchema,
+  BatchImportRetryCandidateResponseSchema,
+  BatchImportScanRequestSchema,
+  BatchImportScanResponseSchema,
+  BatchImportSelectSourceRequestSchema,
+  BatchImportSelectSourceResponseSchema,
+  BatchImportSessionIdRequestSchema,
+  BatchImportUpdateCandidateRequestSchema,
+  BatchImportUpdateCandidateResponseSchema,
+} from '@shared/schemas/batch-import';
+import {
   LanguageDetectRequestSchema,
   LanguageDetectResponseSchema,
   LanguageListResponseSchema,
@@ -71,6 +89,39 @@ import {
   readDefaultTargetLanguage,
   setDefaultTargetLanguage,
 } from '../services/translation-settings-service';
+import { getTranslationRecipeService } from '../services/translation-recipe-service';
+import {
+  CampaignIdRequestSchema,
+  ProjectRecipeOverrideRequestSchema,
+  RecipeCreateRequestSchema,
+  RecipeDeleteResponseSchema,
+  RecipeExportResponseSchema,
+  RecipeIdRequestSchema,
+  RecipeImportRequestSchema,
+  RecipeItemResponseSchema,
+  RecipeListRequestSchema,
+  RecipeListResponseSchema,
+  RecipeResolveProjectRequestSchema,
+  RecipeResolveResponseSchema,
+  RecipeSetDefaultRequestSchema,
+  RecipeSetDefaultResponseSchema,
+  RecipeUpdateRequestSchema,
+} from '@shared/schemas/translation-recipe';
+import {
+  CampaignAddProjectsRequestSchema,
+  CampaignControlRequestSchema,
+  CampaignCreateWithProjectsRequestSchema,
+  CampaignDetailResponseSchema,
+  CampaignListResponseSchema as CampaignOrchestrationListResponseSchema,
+  CampaignPlanResponseSchema,
+  CampaignPreflightRequestSchema,
+  CampaignProjectControlRequestSchema,
+  CampaignRemoveProjectRequestSchema,
+  CampaignSetProjectOverrideRequestSchema as CampaignOrchestrationOverrideRequestSchema,
+  CampaignStartRequestSchema,
+  CampaignStartResponseSchema,
+} from '@shared/schemas/translation-campaign';
+import { getTranslationCampaignService } from '../services/translation-campaign-service';
 import {
   SourceLanguageRedetectRequestSchema,
   SourceLanguageRedetectResponseSchema,
@@ -116,6 +167,7 @@ import {
   EditionSwitchResponseSchema,
 } from '@shared/schemas/edition';
 import { getImportService } from '../import/import-service-singleton';
+import { getBatchImportPreflightService, getBatchImportCommitService } from '../batch-import/batch-import-singleton';
 import {
   getSourceFolderService,
   getSourceWatcherManager,
@@ -235,6 +287,23 @@ import { getJobService } from '../services/job-service-singleton';
 import { getLearningService } from '../services/learning-service-singleton';
 import { getTranslationEditorService } from '../services/translation-editor-service-singleton';
 import { getPortabilityService } from '../services/portability-service-singleton';
+import {
+  isDesktopNotifyEnabled,
+  setDesktopNotifyEnabled,
+} from '../production/completion-notify-bridge';
+import { getFictionSeriesService } from '../services/fiction-series-service';
+import {
+  AddSeriesVolumeRequestSchema,
+  CreateFictionSeriesRequestSchema,
+  ExportSeriesKnowledgeRequestSchema,
+  ExportSeriesKnowledgeResponseSchema,
+  FictionSeriesDtoSchema,
+  FictionSeriesVolumeDtoSchema,
+  PreviewSeriesMembershipRequestSchema,
+  RemoveSeriesVolumeRequestSchema,
+  ReorderSeriesVolumesRequestSchema,
+  SeriesMembershipConflictPreviewSchema,
+} from '@shared/schemas/fiction-series';
 import {
   LearningDashboardRequestSchema,
   LearningDashboardResponseSchema,
@@ -356,6 +425,37 @@ import {
   ListProviderStatusResponseSchema,
 } from '@shared/schemas/diagnostics';
 import { SystemHealthResultSchema } from '@shared/schemas/system-health';
+import {
+  BrowserAttentionListResponseSchema,
+  BrowserAttentionResolveRequestSchema,
+  BrowserAttentionResolveResponseSchema,
+  DiagnosticsDeleteFailureShotRequestSchema,
+  DiagnosticsDeleteFailureShotResponseSchema,
+  DiagnosticsListFailureShotsResponseSchema,
+  DiagnosticsPurgeFailureShotsResponseSchema,
+} from '@shared/schemas/browser-attention';
+import {
+  AttentionInboxActRequestSchema,
+  AttentionInboxBulkRetryRequestSchema,
+  AttentionInboxCountResponseSchema,
+  AttentionInboxListResponseSchema,
+} from '@shared/schemas/attention-inbox';
+import {
+  FeatureIntroDismissRequestSchema,
+  FeatureIntroStateSchema,
+  FeatureIntroTourUpdateSchema,
+} from '@shared/schemas/feature-intro';
+import {
+  LibrarySearchIndexProgressSchema,
+  LibrarySearchQueryInputSchema,
+  LibrarySearchSettingsSchema,
+} from '@shared/schemas/library-search';
+import {
+  deleteFailureDiagnostic,
+  listFailureDiagnostics,
+  purgeFailureDiagnosticsOlderThan,
+} from '../automation/diagnostics-retention';
+import { getBrowserCircuitBreaker } from '../automation/browser-pool/circuit-breaker';
 import { runSystemHealthCheck } from '../services/system-health-service';
 import {
   GetSelectorOverridesResponseSchema,
@@ -918,6 +1018,230 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_RECIPE_LIST,
+    createIpcHandler(RecipeListRequestSchema, (request) => {
+      const service = getTranslationRecipeService();
+      return RecipeListResponseSchema.parse({
+        recipes: service.list(request.locale),
+        defaultRecipeId: service.getDefaultRecipeId(),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_RECIPE_GET_DEFAULT,
+    createIpcHandlerNoArg(() => {
+      const service = getTranslationRecipeService();
+      return RecipeSetDefaultResponseSchema.parse({
+        ok: true as const,
+        id: service.getDefaultRecipeId(),
+      });
+    }, RecipeSetDefaultResponseSchema),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_RECIPE_SET_DEFAULT,
+    createIpcHandler(RecipeSetDefaultRequestSchema, (request) => {
+      return RecipeSetDefaultResponseSchema.parse(
+        getTranslationRecipeService().setDefaultRecipeId(request.id),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_RECIPE_CLONE,
+    createIpcHandler(RecipeCreateRequestSchema, (request) => {
+      const recipe = getTranslationRecipeService().clone({
+        cloneFromId: request.cloneFromId ?? getTranslationRecipeService().getDefaultRecipeId(),
+        name: request.name,
+        description: request.description,
+      });
+      return RecipeItemResponseSchema.parse({ recipe });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_RECIPE_CREATE,
+    createIpcHandler(RecipeCreateRequestSchema, (request) => {
+      const recipe = getTranslationRecipeService().create(request);
+      return RecipeItemResponseSchema.parse({ recipe });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_RECIPE_UPDATE,
+    createIpcHandler(RecipeUpdateRequestSchema, (request) => {
+      const recipe = getTranslationRecipeService().update(request);
+      return RecipeItemResponseSchema.parse({ recipe });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_RECIPE_DELETE,
+    createIpcHandler(RecipeIdRequestSchema, (request) => {
+      return RecipeDeleteResponseSchema.parse(
+        getTranslationRecipeService().delete(request.id),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_RECIPE_EXPORT,
+    createIpcHandler(RecipeIdRequestSchema, (request) => {
+      return RecipeExportResponseSchema.parse({
+        envelope: getTranslationRecipeService().exportRecipe(request.id),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_RECIPE_IMPORT,
+    createIpcHandler(RecipeImportRequestSchema, (request) => {
+      const recipe = getTranslationRecipeService().importRecipe(
+        request.payload,
+        request.name,
+      );
+      return RecipeItemResponseSchema.parse({ recipe });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_RECIPE_RESOLVE_PROJECT,
+    createIpcHandler(RecipeResolveProjectRequestSchema, (request) => {
+      return RecipeResolveResponseSchema.parse({
+        resolved: getTranslationRecipeService().resolveForProject(request.projectId, {
+          campaignId: request.campaignId,
+        }),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_RECIPE_SET_PROJECT,
+    createIpcHandler(ProjectRecipeOverrideRequestSchema, (request) => {
+      return RecipeResolveResponseSchema.parse({
+        resolved: getTranslationRecipeService().setProjectRecipe(request),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_CREATE,
+    createIpcHandler(CampaignCreateWithProjectsRequestSchema, async (request) => {
+      const plan = await getTranslationCampaignService().create(request);
+      return CampaignPlanResponseSchema.parse({ plan });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_GET,
+    createIpcHandler(CampaignIdRequestSchema, (request) => {
+      return CampaignDetailResponseSchema.parse({
+        campaign: getTranslationCampaignService().getDetail(request.campaignId),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_LIST,
+    createIpcHandlerNoArg(() => {
+      return CampaignOrchestrationListResponseSchema.parse({
+        campaigns: getTranslationCampaignService().list(),
+      });
+    }, CampaignOrchestrationListResponseSchema),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_SET_PROJECT_OVERRIDE,
+    createIpcHandler(CampaignOrchestrationOverrideRequestSchema, async (request) => {
+      const plan = await getTranslationCampaignService().setProjectOverride(
+        request.campaignId,
+        request.projectId,
+        request.override,
+      );
+      return CampaignPlanResponseSchema.parse({ plan });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_ADD_PROJECTS,
+    createIpcHandler(CampaignAddProjectsRequestSchema, async (request) => {
+      const plan = await getTranslationCampaignService().addProjects(
+        request.campaignId,
+        request.projectIds,
+      );
+      return CampaignPlanResponseSchema.parse({ plan });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_REMOVE_PROJECT,
+    createIpcHandler(CampaignRemoveProjectRequestSchema, async (request) => {
+      const plan = await getTranslationCampaignService().removeProject(
+        request.campaignId,
+        request.projectId,
+      );
+      return CampaignPlanResponseSchema.parse({ plan });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_PREFLIGHT,
+    createIpcHandler(CampaignPreflightRequestSchema, async (request) => {
+      const plan = await getTranslationCampaignService().runPreflight(request.campaignId);
+      return CampaignPlanResponseSchema.parse({ plan });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_START,
+    createIpcHandler(CampaignStartRequestSchema, async (request) => {
+      const result = await getTranslationCampaignService().start(
+        request.campaignId,
+        request.startToken,
+      );
+      return CampaignStartResponseSchema.parse({ result });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_PAUSE,
+    createIpcHandler(CampaignControlRequestSchema, (request) => {
+      const plan = getTranslationCampaignService().pause(request.campaignId);
+      return CampaignPlanResponseSchema.parse({ plan });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_RESUME,
+    createIpcHandler(CampaignControlRequestSchema, (request) => {
+      const plan = getTranslationCampaignService().resume(request.campaignId);
+      return CampaignPlanResponseSchema.parse({ plan });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_CANCEL,
+    createIpcHandler(CampaignControlRequestSchema, (request) => {
+      const plan = getTranslationCampaignService().cancel(request.campaignId);
+      return CampaignPlanResponseSchema.parse({ plan });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.TRANSLATION_CAMPAIGN_CONTROL_PROJECT,
+    createIpcHandler(CampaignProjectControlRequestSchema, (request) => {
+      const campaign = getTranslationCampaignService().controlProject({
+        campaignId: request.campaignId,
+        projectId: request.projectId,
+        action: request.action,
+        priority: request.priority,
+      });
+      return CampaignDetailResponseSchema.parse({ campaign });
+    }),
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.PROJECT_GET,
     createIpcHandler(ProjectIdRequestSchema, (request) => {
       const db = getDatabase();
@@ -1175,6 +1499,100 @@ export function registerIpcHandlers(): void {
       getImportService().discardPreview(request.previewId);
       return ImportDiscardResponseSchema.parse({ ok: true as const });
     }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BATCH_IMPORT_SELECT_SOURCE,
+    createIpcHandler(BatchImportSelectSourceRequestSchema, async (request) => {
+      const result = await getBatchImportPreflightService().selectSource(
+        request.preferredKind,
+      );
+      return BatchImportSelectSourceResponseSchema.parse(result);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BATCH_IMPORT_SCAN,
+    createIpcHandler(BatchImportScanRequestSchema, async (request) => {
+      const preflight = await getBatchImportPreflightService().scan(request);
+      return BatchImportScanResponseSchema.parse({ preflight });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BATCH_IMPORT_CANCEL,
+    createIpcHandler(BatchImportSessionIdRequestSchema.partial(), async (request) => {
+      return BatchImportCancelResponseSchema.parse(
+        await getBatchImportPreflightService().cancel(request.sessionId),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BATCH_IMPORT_DISCARD,
+    createIpcHandler(BatchImportSessionIdRequestSchema, async (request) => {
+      return BatchImportDiscardResponseSchema.parse(
+        await getBatchImportPreflightService().discard(request.sessionId),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BATCH_IMPORT_UPDATE_CANDIDATE,
+    createIpcHandler(BatchImportUpdateCandidateRequestSchema, (request) => {
+      const preflight = getBatchImportPreflightService().updateCandidate(request);
+      return BatchImportUpdateCandidateResponseSchema.parse({ preflight });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BATCH_IMPORT_LIST_PROJECTS,
+    createIpcHandlerNoArg(() => {
+      return BatchImportListProjectsResponseSchema.parse({
+        projects: getBatchImportPreflightService().listProjectOptions(),
+      });
+    }, BatchImportListProjectsResponseSchema),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BATCH_IMPORT_COMMIT,
+    createIpcHandler(BatchImportCommitRequestSchema, async (request) => {
+      const session = await getBatchImportCommitService().commitFromPreflight(
+        request.sessionId,
+      );
+      return BatchImportCommitResponseSchema.parse({ session });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BATCH_IMPORT_RETRY_CANDIDATE,
+    createIpcHandler(BatchImportRetryCandidateRequestSchema, async (request) => {
+      const session = await getBatchImportCommitService().retryCandidate(
+        request.sessionId,
+        request.candidateId,
+      );
+      return BatchImportRetryCandidateResponseSchema.parse({ session });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BATCH_IMPORT_GET_SESSION,
+    createIpcHandler(BatchImportSessionIdRequestSchema, (request) => {
+      return BatchImportGetSessionResponseSchema.parse({
+        session: getBatchImportCommitService().getSession(request.sessionId),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BATCH_IMPORT_LIST_SESSIONS,
+    createIpcHandlerNoArg(() => {
+      const commit = getBatchImportCommitService();
+      return BatchImportListSessionsResponseSchema.parse({
+        sessions: commit.listSessions(),
+        incomplete: commit.listIncompleteSessions(),
+      });
+    }, BatchImportListSessionsResponseSchema),
   );
 
   ipcMain.handle(
@@ -2002,6 +2420,15 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.JOB_LIST,
     createIpcHandler(JobListRequestSchema, (request) => {
+      if (request.limit != null || request.offset != null || request.states) {
+        const page = getJobService().listPage({
+          projectId: request.projectId,
+          states: request.states,
+          limit: request.limit,
+          offset: request.offset,
+        });
+        return JobListResponseSchema.parse(page);
+      }
       const jobs = getJobService().list(request.projectId);
       return JobListResponseSchema.parse({ jobs });
     }),
@@ -2569,6 +2996,24 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.NOTIFY_GET_DESKTOP_ENABLED,
+    createIpcHandlerNoArg(() => {
+      return { enabled: isDesktopNotifyEnabled(getDatabase()) };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NOTIFY_SET_DESKTOP_ENABLED,
+    createIpcHandler(
+      z.object({ enabled: z.boolean() }),
+      (request) => {
+        setDesktopNotifyEnabled(getDatabase(), request.enabled);
+        return { enabled: isDesktopNotifyEnabled(getDatabase()) };
+      },
+    ),
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.TERM_PREVIEW_IMPORT,
     createIpcHandler(TermImportPreviewRequestSchema, (request) => {
       return TermImportPreviewResponseSchema.parse(getTermService().previewImport(request));
@@ -2681,6 +3126,324 @@ export function registerIpcHandlers(): void {
     createIpcHandlerNoArg(() => {
       return SystemHealthResultSchema.parse(runSystemHealthCheck(getDatabase()));
     }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.DIAGNOSTICS_LIST_FAILURE_SHOTS,
+    createIpcHandlerNoArg(() => {
+      return DiagnosticsListFailureShotsResponseSchema.parse({
+        files: listFailureDiagnostics(100),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.DIAGNOSTICS_DELETE_FAILURE_SHOT,
+    createIpcHandler(DiagnosticsDeleteFailureShotRequestSchema, (request) => {
+      return DiagnosticsDeleteFailureShotResponseSchema.parse({
+        ok: deleteFailureDiagnostic(request.path),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.DIAGNOSTICS_PURGE_FAILURE_SHOTS,
+    createIpcHandlerNoArg(() => {
+      return DiagnosticsPurgeFailureShotsResponseSchema.parse(
+        purgeFailureDiagnosticsOlderThan(),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BROWSER_ATTENTION_LIST,
+    createIpcHandlerNoArg(() => {
+      const rows = getDatabase().browserAttention.listOpen(50);
+      return BrowserAttentionListResponseSchema.parse({
+        items: rows.map((r) => ({
+          id: r.id,
+          accountKind: r.account_kind,
+          accountId: r.account_id,
+          providerId: r.provider_id,
+          providerType: r.provider_type,
+          kind: r.kind,
+          poolState: r.pool_state,
+          summary: r.summary,
+          suggestedAction: r.suggested_action,
+          diagnosticsPath: r.diagnostics_path,
+          status: r.status,
+          createdAt: r.created_at,
+        })),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.BROWSER_ATTENTION_RESOLVE,
+    createIpcHandler(BrowserAttentionResolveRequestSchema, (request) => {
+      const ok = getDatabase().browserAttention.resolve(request.id, request.status);
+      if (ok) {
+        const item = getDatabase().browserAttention.getById(request.id);
+        if (item?.provider_id) {
+          getBrowserCircuitBreaker().clear(item.provider_id, item.account_id);
+        }
+      }
+      return BrowserAttentionResolveResponseSchema.parse({ ok });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.ATTENTION_INBOX_LIST,
+    createIpcHandlerNoArg(() => {
+      const { getAttentionInboxService } = require('../services/attention-inbox-service') as typeof import('../services/attention-inbox-service');
+      const svc = getAttentionInboxService(getDatabase());
+      return AttentionInboxListResponseSchema.parse({
+        items: svc.listOpen(100),
+        openCount: svc.countOpen(),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.ATTENTION_INBOX_COUNT,
+    createIpcHandlerNoArg(() => {
+      const { getAttentionInboxService } = require('../services/attention-inbox-service') as typeof import('../services/attention-inbox-service');
+      return AttentionInboxCountResponseSchema.parse({
+        openCount: getAttentionInboxService(getDatabase()).countOpen(),
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.ATTENTION_INBOX_ACT,
+    createIpcHandler(
+      AttentionInboxActRequestSchema,
+      (request) => {
+        const { getAttentionInboxService } = require('../services/attention-inbox-service') as typeof import('../services/attention-inbox-service');
+        const item = getAttentionInboxService(getDatabase()).act(
+          request.itemId,
+          request.action,
+          { snoozeMinutes: request.snoozeMinutes },
+        );
+        return { item };
+      },
+    ),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_LIST,
+    createIpcHandlerNoArg(() => {
+      const series = getFictionSeriesService().listSeries();
+      return { series: FictionSeriesDtoSchema.array().parse(series) };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_GET,
+    createIpcHandler(z.object({ seriesId: z.string().uuid() }), (request) => {
+      const series = getFictionSeriesService().getSeries(request.seriesId);
+      if (!series) throw new Error('SERIES_NOT_FOUND');
+      return { series: FictionSeriesDtoSchema.parse(series) };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_CREATE,
+    createIpcHandler(CreateFictionSeriesRequestSchema, (request) => {
+      const series = getFictionSeriesService().createSeries(request);
+      return { series: FictionSeriesDtoSchema.parse(series) };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_LIST_VOLUMES,
+    createIpcHandler(z.object({ seriesId: z.string().uuid() }), (request) => {
+      const volumes = getFictionSeriesService().listVolumes(request.seriesId);
+      return { volumes: FictionSeriesVolumeDtoSchema.array().parse(volumes) };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_ADD_VOLUME,
+    createIpcHandler(AddSeriesVolumeRequestSchema, (request) => {
+      const volume = getFictionSeriesService().assignProjectToSeries({
+        projectId: request.projectId,
+        seriesId: request.seriesId,
+        volumeLabel: request.volumeLabel,
+        force: request.force,
+      });
+      return { volume: FictionSeriesVolumeDtoSchema.parse(volume) };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_REMOVE_VOLUME,
+    createIpcHandler(RemoveSeriesVolumeRequestSchema, (request) => {
+      return getFictionSeriesService().removeVolume(request.seriesId, request.projectId);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_REORDER_VOLUMES,
+    createIpcHandler(ReorderSeriesVolumesRequestSchema, (request) => {
+      return getFictionSeriesService().reorderVolumes(
+        request.seriesId,
+        request.orderedProjectIds,
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_PREVIEW_MEMBERSHIP,
+    createIpcHandler(PreviewSeriesMembershipRequestSchema, (request) => {
+      const preview = getFictionSeriesService().previewMembershipChange(request);
+      return SeriesMembershipConflictPreviewSchema.parse(preview);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_ASSIGN_PROJECT,
+    createIpcHandler(AddSeriesVolumeRequestSchema, (request) => {
+      const volume = getFictionSeriesService().assignProjectToSeries({
+        projectId: request.projectId,
+        seriesId: request.seriesId,
+        volumeLabel: request.volumeLabel,
+        force: request.force,
+      });
+      return { volume: FictionSeriesVolumeDtoSchema.parse(volume) };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_EXPORT_KNOWLEDGE,
+    createIpcHandler(ExportSeriesKnowledgeRequestSchema, (request) => {
+      return ExportSeriesKnowledgeResponseSchema.parse(
+        getFictionSeriesService().exportSeriesKnowledge(request.seriesId),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.ATTENTION_INBOX_BULK_RETRY,
+    createIpcHandler(
+      AttentionInboxBulkRetryRequestSchema,
+      (request) => {
+        const { getAttentionInboxService } = require('../services/attention-inbox-service') as typeof import('../services/attention-inbox-service');
+        return getAttentionInboxService(getDatabase()).bulkRetry({
+          itemIds: request.itemIds,
+          allRetryable: request.allRetryable,
+        });
+      },
+    ),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.ATTENTION_INBOX_RECONCILE,
+    createIpcHandlerNoArg(() => {
+      const { getAttentionInboxService } = require('../services/attention-inbox-service') as typeof import('../services/attention-inbox-service');
+      return getAttentionInboxService(getDatabase()).reconcile();
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LIBRARY_SEARCH_QUERY,
+    createIpcHandler(
+      LibrarySearchQueryInputSchema,
+      (request) => {
+        const { getLibrarySearchService } =
+          require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
+        return getLibrarySearchService(getDatabase()).query(request);
+      },
+    ),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.LIBRARY_SEARCH_CANCEL, createIpcHandlerNoArg(() => {
+    const { getLibrarySearchService } =
+      require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
+    getLibrarySearchService(getDatabase()).cancelQuery();
+    return { ok: true };
+  }));
+
+  ipcMain.handle(IPC_CHANNELS.LIBRARY_SEARCH_GET_SETTINGS, createIpcHandlerNoArg(() => {
+    const { getLibrarySearchService } =
+      require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
+    return LibrarySearchSettingsSchema.parse(
+      getLibrarySearchService(getDatabase()).getSettings(),
+    );
+  }));
+
+  ipcMain.handle(
+    IPC_CHANNELS.LIBRARY_SEARCH_UPDATE_SETTINGS,
+    createIpcHandler(
+      LibrarySearchSettingsSchema.partial(),
+      (request) => {
+        const { getLibrarySearchService } =
+          require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
+        return LibrarySearchSettingsSchema.parse(
+          getLibrarySearchService(getDatabase()).updateSettings(request),
+        );
+      },
+    ),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.LIBRARY_SEARCH_START_REINDEX,
+    createIpcHandler(z.object({ force: z.boolean().optional() }).optional(), async (request) => {
+      const { getLibrarySearchService } =
+        require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
+      const progress = await getLibrarySearchService(getDatabase()).startReindex(
+        request?.force ?? false,
+      );
+      return LibrarySearchIndexProgressSchema.parse(progress);
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.LIBRARY_SEARCH_CANCEL_REINDEX, createIpcHandlerNoArg(() => {
+    const { getLibrarySearchService } =
+      require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
+    const progress = getLibrarySearchService(getDatabase()).cancelReindex();
+    return progress ? LibrarySearchIndexProgressSchema.parse(progress) : null;
+  }));
+
+  ipcMain.handle(IPC_CHANNELS.LIBRARY_SEARCH_GET_REINDEX_PROGRESS, createIpcHandlerNoArg(() => {
+    const { getLibrarySearchService } =
+      require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
+    const progress = getLibrarySearchService(getDatabase()).getReindexProgress();
+    return progress ? LibrarySearchIndexProgressSchema.parse(progress) : null;
+  }));
+
+  ipcMain.handle(IPC_CHANNELS.FEATURE_INTRO_GET_STATE, createIpcHandlerNoArg(() => {
+    const { getFeatureIntroService } =
+      require('../services/feature-intro-service') as typeof import('../services/feature-intro-service');
+    return FeatureIntroStateSchema.parse(getFeatureIntroService(getDatabase()).getState());
+  }));
+
+  ipcMain.handle(
+    IPC_CHANNELS.FEATURE_INTRO_DISMISS,
+    createIpcHandler(
+      FeatureIntroDismissRequestSchema,
+      (request) => {
+        const { getFeatureIntroService } =
+          require('../services/feature-intro-service') as typeof import('../services/feature-intro-service');
+        return FeatureIntroStateSchema.parse(
+          getFeatureIntroService(getDatabase()).dismissWhatsNew(request.mode),
+        );
+      },
+    ),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FEATURE_INTRO_UPDATE_TOUR,
+    createIpcHandler(
+      FeatureIntroTourUpdateSchema,
+      (request) => {
+        const { getFeatureIntroService } =
+          require('../services/feature-intro-service') as typeof import('../services/feature-intro-service');
+        return FeatureIntroStateSchema.parse(
+          getFeatureIntroService(getDatabase()).updateTour(request),
+        );
+      },
+    ),
   );
 
   ipcMain.handle(

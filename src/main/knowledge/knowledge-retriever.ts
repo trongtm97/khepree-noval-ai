@@ -7,6 +7,7 @@ import { buildTermMatchIndex, matchKnownTermsInText } from '../terms/term-matche
 import { filterRelevantEntities } from '../memory/relevant-memory';
 import { getSemanticRetriever } from './semantic-retriever';
 import type { TermScope } from '@shared/constants/term';
+import { resolveKnowledgeScopeContext } from './scope-context';
 
 export interface KnowledgeScanInput {
   projectId: string;
@@ -78,6 +79,35 @@ function filterTemporalCharacters(chars: CharacterRow[], anchor: number): Charac
 
 function filterTemporalMemory(events: MemoryEventRow[], anchor: number): MemoryEventRow[] {
   return events.filter((e) => e.chapter_number == null || e.chapter_number <= anchor);
+}
+
+function parseSeriesWorldKnowledge(
+  db: DatabaseManager,
+  seriesId: string | null,
+  anchorChapter: number,
+): { key: string; value: string }[] {
+  if (!seriesId) return [];
+  const row = db.fictionSeries.getWorldState(seriesId);
+  if (!row?.world_knowledge_json) return [];
+  try {
+    const world = JSON.parse(row.world_knowledge_json) as Record<string, unknown>;
+    const entries: { key: string; value: string }[] = [];
+    for (const [key, value] of Object.entries(world)) {
+      if (value == null) continue;
+      const chapter =
+        typeof value === 'object' && 'chapter' in value
+          ? Number((value as { chapter?: number }).chapter)
+          : null;
+      if (chapter != null && chapter > anchorChapter) continue;
+      entries.push({
+        key,
+        value: typeof value === 'string' ? value : JSON.stringify(value),
+      });
+    }
+    return entries;
+  } catch {
+    return [];
+  }
 }
 
 function parseWorldKnowledge(
@@ -171,9 +201,12 @@ export function scanRelevantKnowledge(
   const editionRow = input.editionId
     ? db.translationEditions.getById(input.editionId)
     : null;
+  const scopeCtx = resolveKnowledgeScopeContext(db, projectId);
   const termRows = filterTemporalTerms(
     db.terms.listForMatching({
       projectId,
+      seriesId: scopeCtx.seriesId,
+      genre: scopeCtx.genre,
       sourceLanguage: input.sourceLanguage ?? project?.source_language,
       targetLanguage:
         input.targetLanguage ?? editionRow?.target_language ?? project?.target_language,
@@ -186,6 +219,8 @@ export function scanRelevantKnowledge(
   });
   const termMatches = matchKnownTermsInText(batchText, termIndex, termRows, {
     projectId,
+    seriesId: scopeCtx.seriesId,
+    genre: scopeCtx.genre,
     sourceLanguage: project?.source_language,
     targetLanguage: editionRow?.target_language ?? project?.target_language,
   });
@@ -208,7 +243,10 @@ export function scanRelevantKnowledge(
     }
   }
 
-  const worldKnowledge = parseWorldKnowledge(db, projectId, anchorChapter).filter(
+  const worldKnowledge = [
+    ...parseSeriesWorldKnowledge(db, scopeCtx.seriesId, anchorChapter),
+    ...parseWorldKnowledge(db, projectId, anchorChapter),
+  ].filter(
     (entry) =>
       batchText.includes(entry.key) ||
       (entry.value.length > 0 && batchText.includes(entry.value.slice(0, 20))),

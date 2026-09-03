@@ -72,6 +72,32 @@ describe('help center content', () => {
     );
   });
 
+  it('has production feature help articles', () => {
+    expect(HELP_ARTICLE_MAP.has('production-center')).toBe(true);
+    expect(HELP_ARTICLE_MAP.has('translation-campaign')).toBe(true);
+    expect(HELP_ARTICLE_MAP.has('batch-import')).toBe(true);
+    expect(HELP_ARTICLE_MAP.has('attention-inbox')).toBe(true);
+    expect(HELP_ARTICLE_MAP.has('translation-recipes')).toBe(true);
+    expect(HELP_ARTICLE_MAP.has('whole-book-audit')).toBe(true);
+    expect(HELP_ARTICLE_MAP.has('series-universe')).toBe(true);
+    expect(HELP_ARTICLE_MAP.has('production-tour')).toBe(true);
+    expect(HELP_ARTICLE_MAP.has('data-security-local')).toBe(true);
+    expect(HELP_ARTICLE_MAP.has('browser-provider-login')).toBe(true);
+    expect(HELP_ARTICLE_MAP.has('app-updates-help')).toBe(true);
+  });
+
+  it('maps production routes to help articles', () => {
+    expect(helpArticleForRoute('/jobs')).toBe('production-center');
+    expect(helpArticleForRoute('/series')).toBe('series-universe');
+  });
+
+  it('searches production keywords locally', () => {
+    const hits = searchHelpArticles('chiến dịch');
+    expect(hits.some((h) => h.article.id === 'translation-campaign')).toBe(true);
+    const inbox = searchHelpArticles('Attention Inbox');
+    expect(inbox.some((h) => h.article.id === 'attention-inbox')).toBe(true);
+  });
+
   it('searches missing paragraph topic', () => {
     const hits = searchHelpArticles('thiếu đoạn');
     expect(hits.some((h) => h.article.id === 'auto-qa' || h.article.id === 'troubleshooting-missing')).toBe(

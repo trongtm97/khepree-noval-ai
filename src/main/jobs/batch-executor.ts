@@ -60,6 +60,8 @@ export class BatchExecutor {
     const ownerId = `job:${job.id}:${leaseOwner}`;
     const leaseMs = this.options.leaseMs ?? DEFAULT_JOB_LEASE_MS;
     const heartbeatMs = this.options.leaseHeartbeatMs ?? DEFAULT_LEASE_HEARTBEAT_MS;
+    const startedAt = Date.now();
+    let finalStateForLedger = 'ERROR';
 
     if (profilePath) {
       profileLockManager.acquireLease({
@@ -118,6 +120,7 @@ export class BatchExecutor {
           this.db.workerStates.markLimited(legacyWorkerId, until, message);
           this.db.jobs.updateState(job.id, 'QUEUED', 'Worker LIMITED — requeued');
           this.db.jobs.releaseLease(job.id);
+          finalStateForLedger = 'QUOTA_REQUEUE';
           return { finalState: 'QUEUED' };
         }
         throw error;
@@ -142,12 +145,15 @@ export class BatchExecutor {
           initialInputRef: initial.inputRef,
           maxRepairAttempts: config.maxRepairAttempts ?? DEFAULT_MAX_REPAIR_ATTEMPTS,
           lockedTerms: config.lockedTerms,
+          qaLevel: config.qaLevel,
+          repairScope: config.repairScope,
           sendRepair,
         },
         { db: this.db },
       );
 
       this.db.jobs.releaseLease(job.id);
+      finalStateForLedger = loop.finalState;
       return { finalState: loop.finalState };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -187,10 +193,12 @@ export class BatchExecutor {
           lastError: message,
         });
       }
+      finalStateForLedger = 'NEEDS_ATTENTION';
       return { finalState: 'NEEDS_ATTENTION' };
     } finally {
       clearInterval(heartbeat);
       stopProfileHeartbeat();
+      this.recordUsageLedger(ctx, job, startedAt, finalStateForLedger);
       if (profilePath) {
         try {
           profileLockManager.releaseLease(profilePath, ownerId);
@@ -220,6 +228,50 @@ export class BatchExecutor {
           this.db.workerStates.markReady(releaseWorkerId);
         }
       }
+      try {
+        const { getSourceFolderService } = await import(
+          '../source-folder/source-folder-singleton'
+        );
+        await getSourceFolderService().flushPendingRevisionsForProject(job.project_id);
+      } catch (pendingError) {
+        logger.warn('pending source revision flush failed', {
+          jobId: job.id,
+          projectId: job.project_id,
+          message:
+            pendingError instanceof Error ? pendingError.message : String(pendingError),
+        });
+      }
+    }
+  }
+
+  private recordUsageLedger(
+    ctx: JobExecuteContext,
+    job: JobRow,
+    startedAt: number,
+    outcome: string,
+  ): void {
+    try {
+      const config = parseJobConfig(job.config);
+      const charCount = (config.batchParagraphs ?? []).reduce(
+        (sum, p) => sum + (p.sourceText?.length ?? 0),
+        0,
+      );
+      const requestCount = Math.max(1, this.db.jobs.listAttempts(job.id).length || 1);
+      this.db.usageLedger.append({
+        projectId: job.project_id,
+        jobId: job.id,
+        accountId: ctx.executionTarget.accountId,
+        providerType: ctx.executionTarget.providerType,
+        requestCount,
+        charCount,
+        durationMs: Date.now() - startedAt,
+        outcome,
+      });
+    } catch (error) {
+      logger.warn('usage_ledger append failed', {
+        jobId: job.id,
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 }
@@ -232,6 +284,8 @@ export interface TranslateJobConfig {
   lockedTerms?: LockedTermForQa[];
   chapterIds?: string[];
   batchDecisionId?: string | null;
+  qaLevel?: 'basic' | 'standard' | 'strict';
+  repairScope?: 'structure_only' | 'targeted' | 'bounded';
 }
 
 export function parseJobConfig(raw: string | null): TranslateJobConfig {

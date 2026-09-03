@@ -134,10 +134,16 @@ export type JobDto = z.infer<typeof JobDtoSchema>;
 
 export const JobListRequestSchema = z.object({
   projectId: z.string().uuid().optional(),
+  limit: z.number().int().positive().max(200).optional(),
+  offset: z.number().int().nonnegative().optional(),
+  states: z.array(z.string().min(1).max(40)).max(20).optional(),
 });
 
 export const JobListResponseSchema = z.object({
   jobs: z.array(JobDtoSchema),
+  total: z.number().int().nonnegative().optional(),
+  limit: z.number().int().positive().optional(),
+  offset: z.number().int().nonnegative().optional(),
 });
 
 export const JobGetRequestSchema = z.object({

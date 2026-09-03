@@ -1,67 +1,91 @@
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isJobActive } from '@shared/utils/job-progress';
-import { EmptyState, ErrorPanel, Skeleton, Card, Button } from '../components/ui';
+import { ErrorPanel, Skeleton } from '../components/ui';
 import { useT } from '../i18n';
-import { useUiShellStore } from '../stores/ui-shell-store';
+import { useNotificationStore } from '../stores/notification-store';
+import { useUpdateStatus } from '../hooks/useUpdateStatus';
+import { ModalPortal } from '../components/overlay/ModalPortal';
+import { CreateProjectWizard } from '../components/CreateProjectWizard';
+import { BatchImportPreflightWizard } from '../components/BatchImportPreflightWizard';
 import { DashboardHeader } from '../features/dashboard/DashboardHeader';
-import { ContinueProjectCard } from '../features/dashboard/ContinueProjectCard';
-import { ActionRequiredSection } from '../features/dashboard/ActionRequiredSection';
-import { RunningJobsSection } from '../features/dashboard/RunningJobsSection';
-import { RecentActivitySection } from '../features/dashboard/RecentActivitySection';
-import { DashboardOnboarding } from '../features/dashboard/DashboardOnboarding';
-import { DashboardSummaryStrip } from '../features/dashboard/DashboardSummaryStrip';
-import { useDashboardData } from '../features/dashboard/useDashboardData';
+import { DashboardPrimaryActions } from '../features/dashboard/DashboardPrimaryActions';
+import { DashboardNewbieOnboarding } from '../features/dashboard/DashboardNewbieOnboarding';
+import { DashboardActiveCampaign } from '../features/dashboard/DashboardActiveCampaign';
+import { DashboardAttentionCard } from '../features/dashboard/DashboardAttentionCard';
+import { DashboardAccountStatus } from '../features/dashboard/DashboardAccountStatus';
+import { DashboardRecentCompletions } from '../features/dashboard/DashboardRecentCompletions';
+import { DashboardSystemNoticeBanner } from '../features/dashboard/DashboardSystemNotice';
+import { useDashboardHome } from '../features/dashboard/useDashboardHome';
+import { resolveDashboardSystemNotice } from '../features/dashboard/resolve-dashboard-home';
 
 export function DashboardPage() {
   const t = useT();
   const navigate = useNavigate();
-  const dashboardReadyShown = useUiShellStore((s) => s.dashboardReadyShown);
-  const setDashboardReadyShown = useUiShellStore((s) => s.setDashboardReadyShown);
+  const home = useDashboardHome();
+  const update = useUpdateStatus();
+  const notifications = useNotificationStore((s) => s.items);
 
-  const {
-    projects,
-    priorityProject,
-    priorityNewChapterCount,
-    runningJobs,
-    actions,
-    activity,
-    readiness,
-    onboardingSteps,
-    loading,
-    essentialError,
-    refresh,
-    jobs,
-  } = useDashboardData();
+  const [showImportOne, setShowImportOne] = useState(false);
+  const [showImportMany, setShowImportMany] = useState(false);
+  const [wizardError, setWizardError] = useState<string | null>(null);
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
 
-  const activeProjects = projects.filter((p) => p.status !== 'archived');
-  const showReadyBanner = readiness.onboardingComplete && !dashboardReadyShown && !loading;
-  const showOnboarding = !readiness.onboardingComplete && !loading;
-  const totalRunning = jobs.filter((j) => isJobActive(j.state)).length;
-
-  if (loading) {
+  const topAnnouncement = useMemo(() => {
     return (
-      <div className="dashboard-page">
+      notifications.find(
+        (n) =>
+          n.khepreePublicId &&
+          !n.read &&
+          (n.kind === 'ERROR' ||
+            n.kind === 'ACTION_REQUIRED' ||
+            n.kind === 'WARNING'),
+      ) ?? null
+    );
+  }, [notifications]);
+
+  const systemNotice = useMemo(() => {
+    if (noticeDismissed) return null;
+    return resolveDashboardSystemNotice({
+      online: home.online,
+      updatePhase: update.status?.phase ?? null,
+      updateVersion: update.status?.latestVersion ?? null,
+      announcementTitle: topAnnouncement?.title ?? null,
+    });
+  }, [
+    noticeDismissed,
+    home.online,
+    update.status?.phase,
+    update.status?.latestVersion,
+    topAnnouncement?.title,
+  ]);
+
+  const showNewbie =
+    !home.loading && home.activeProjects.length === 0;
+
+  if (home.loading) {
+    return (
+      <div className="dashboard-page dashboard-page--home">
         <DashboardHeader />
-        <Skeleton className="dashboard-skeleton-card" height={180} />
-        <Skeleton className="dashboard-skeleton-row" height={48} />
-        <Skeleton className="dashboard-skeleton-row" height={48} />
+        <Skeleton className="dashboard-skeleton-card" height={72} />
+        <Skeleton className="dashboard-skeleton-row" height={120} />
+        <Skeleton className="dashboard-skeleton-row" height={120} />
       </div>
     );
   }
 
-  if (essentialError) {
+  if (home.essentialError) {
     return (
-      <div className="dashboard-page">
+      <div className="dashboard-page dashboard-page--home">
         <DashboardHeader />
         <ErrorPanel
           title={t('dashboard.loadErrorTitle')}
           description={t('dashboard.loadErrorDesc')}
-          technical={essentialError}
+          technical={home.essentialError}
           actions={[
             {
               label: t('app.tryAgain'),
               onClick: () => {
-                refresh();
+                home.refresh();
               },
               primary: true,
             },
@@ -71,76 +95,85 @@ export function DashboardPage() {
     );
   }
 
-  if (activeProjects.length === 0) {
-    return (
-      <div className="dashboard-page">
-        <DashboardHeader />
-        <EmptyState
-          title={t('dashboard.noProjects')}
-          description={t('dashboard.noProjectsHint')}
-          actionLabel={t('actions.createProject')}
-          onAction={() => {
-            navigate('/projects');
-          }}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="dashboard-page">
+    <div className="dashboard-page dashboard-page--home">
       <DashboardHeader />
 
-      {showReadyBanner ? (
-        <DashboardOnboarding
-          steps={onboardingSteps}
-          showReadyBanner
-          onDismissReady={() => {
-            setDashboardReadyShown(true);
-          }}
+      {systemNotice ? (
+        <DashboardSystemNoticeBanner
+          notice={systemNotice}
+          onDismiss={
+            systemNotice.kind === 'offline'
+              ? undefined
+              : () => setNoticeDismissed(true)
+          }
         />
       ) : null}
 
-      {showOnboarding ? <DashboardOnboarding steps={onboardingSteps} /> : null}
-
-      {!readiness.aiReady && activeProjects.length > 0 ? (
-        <div className="dashboard-connect-ai" role="status">
-        <Card className="dashboard-connect-ai-card">
-          <p>{t('dashboard.connectAiTitle')}</p>
-          <p className="muted">{t('dashboard.connectAiHint')}</p>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => {
-              navigate('/accounts');
-            }}
-          >
-            {t('dashboard.connectAiAction')}
-          </Button>
-        </Card>
+      {wizardError ? (
+        <div className="banner banner-warning" style={{ marginBottom: '0.75rem' }}>
+          {wizardError}
         </div>
       ) : null}
 
-      <DashboardSummaryStrip projects={projects} actions={actions} />
-
-      {priorityProject ? (
-        <section className="dashboard-section dashboard-section--priority">
-          <ContinueProjectCard
-            project={priorityProject}
-            newChapterCount={priorityNewChapterCount}
-          />
-        </section>
-      ) : null}
-
-      <ActionRequiredSection actions={actions} />
-
-      <RunningJobsSection
-        jobs={runningJobs}
-        projects={projects}
-        totalRunning={totalRunning}
+      <DashboardPrimaryActions
+        onImportOne={() => setShowImportOne(true)}
+        onImportMany={() => setShowImportMany(true)}
       />
 
-      {runningJobs.length === 0 ? <RecentActivitySection events={activity} /> : null}
+      {showNewbie ? (
+        <DashboardNewbieOnboarding
+          steps={home.newbieSteps}
+          onImportOne={() => setShowImportOne(true)}
+          onConnectAccount={() => {
+            navigate('/accounts');
+          }}
+          onStartTranslate={() => {
+            navigate('/jobs?tab=campaigns');
+          }}
+        />
+      ) : null}
+
+      {home.activeCampaign ? (
+        <DashboardActiveCampaign campaign={home.activeCampaign} />
+      ) : null}
+
+      <DashboardAttentionCard attention={home.attention} />
+
+      <DashboardAccountStatus
+        lanes={home.accountLanes}
+        hasReady={home.readyAccount}
+      />
+
+      {!showNewbie ? (
+        <DashboardRecentCompletions items={home.recentCompletions} />
+      ) : null}
+
+      <ModalPortal
+        open={showImportOne}
+        onBackdropClick={() => setShowImportOne(false)}
+        contentClassName="projects-wizard-modal"
+      >
+        <CreateProjectWizard
+          onCancel={() => setShowImportOne(false)}
+          onComplete={async () => {
+            setShowImportOne(false);
+            home.refresh();
+          }}
+          onError={(message) => setWizardError(message)}
+        />
+      </ModalPortal>
+
+      <ModalPortal
+        open={showImportMany}
+        onBackdropClick={() => setShowImportMany(false)}
+        contentClassName="projects-wizard-modal"
+      >
+        <BatchImportPreflightWizard
+          onClose={() => setShowImportMany(false)}
+          onError={(message) => setWizardError(message)}
+        />
+      </ModalPortal>
     </div>
   );
 }

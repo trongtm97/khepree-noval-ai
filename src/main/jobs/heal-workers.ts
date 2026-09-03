@@ -53,6 +53,13 @@ export function healIdleWorkers(db: DatabaseManager): number {
         }
       }
     }
+    try {
+      const { getAttentionInboxService } =
+        require('../services/attention-inbox-service') as typeof import('../services/attention-inbox-service');
+      getAttentionInboxService(db).reconcile();
+    } catch {
+      // optional
+    }
   } catch (error) {
     // Deferred scheduler kick after tests close SQLite — do not crash the process.
     if (isDbClosedError(error)) return healed;

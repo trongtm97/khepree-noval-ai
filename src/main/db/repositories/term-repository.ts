@@ -1,5 +1,5 @@
 import type { TermScope, TermStatus, TermType } from '@shared/constants/term';
-import { normalizeTermType } from '@shared/constants/term';
+import { normalizeTermType, TERM_SCOPE_PRIORITY } from '@shared/constants/term';
 import {
   DEFAULT_SOURCE_LANGUAGE,
   DEFAULT_TARGET_LANGUAGE,
@@ -415,9 +415,11 @@ export class TermRepository extends BaseRepository {
       .all(scope) as TermRow[];
   }
 
-  /** All active terms for matcher (optionally filtered by project/genre/language pair). */
+  /** All active terms for matcher (optionally filtered by project/series/genre/language pair). */
   listForMatching(context: {
     projectId?: string;
+    seriesId?: string | null;
+    chapterIds?: string[];
     genre?: string | null;
     userId?: string;
     sourceLanguage?: string;
@@ -427,10 +429,26 @@ export class TermRepository extends BaseRepository {
     const params: unknown[] = [];
 
     if (context.projectId) {
-      clauses.push(
-        `(scope = 'GLOBAL' OR scope = 'GENRE' OR scope = 'USER' OR scope = 'CONTEXT' OR (scope = 'PROJECT' AND scope_ref = ?))`,
-      );
+      const scopeParts = [
+        `scope = 'GLOBAL'`,
+        `scope = 'GENRE'`,
+        `scope = 'USER'`,
+        `scope = 'CONTEXT'`,
+        `(scope = 'PROJECT' AND scope_ref = ?)`,
+      ];
       params.push(context.projectId);
+      if (context.seriesId) {
+        scopeParts.push(`(scope = 'SERIES' AND scope_ref = ?)`);
+        params.push(context.seriesId);
+      }
+      const chapterIds = context.chapterIds?.filter(Boolean) ?? [];
+      if (chapterIds.length > 0) {
+        scopeParts.push(
+          `(scope = 'CHAPTER' AND scope_ref IN (${chapterIds.map(() => '?').join(',')}))`,
+        );
+        params.push(...chapterIds);
+      }
+      clauses.push(`(${scopeParts.join(' OR ')})`);
     } else {
       clauses.push(`scope IN ('GLOBAL', 'GENRE', 'USER')`);
     }
@@ -446,9 +464,37 @@ export class TermRepository extends BaseRepository {
 
     return this.db
       .prepare(
-        `SELECT * FROM terms WHERE ${clauses.join(' AND ')} ORDER BY COALESCE(source_text, source_simplified)`,
+        `SELECT * FROM terms WHERE ${clauses.join(' AND ')} ORDER BY COALESCE(source_text, source_simplified), id`,
       )
       .all(...params) as TermRow[];
+  }
+
+  /** Inherited + project terms for knowledge rebuild (deterministic order). */
+  listForProjectKnowledge(
+    projectId: string,
+    options?: { seriesId?: string | null; chapterIds?: string[] },
+  ): TermRow[] {
+    const seriesId =
+      options?.seriesId ??
+      (this.db
+        .prepare(`SELECT series_id FROM fiction_series_volumes WHERE project_id = ? LIMIT 1`)
+        .get(projectId) as { series_id: string } | undefined)?.series_id ??
+      null;
+
+    const rows = this.listForMatching({
+      projectId,
+      seriesId,
+      chapterIds: options?.chapterIds,
+    });
+    return [...rows].sort((a, b) => {
+      const pa = TERM_SCOPE_PRIORITY[a.scope as TermScope] ?? 0;
+      const pb = TERM_SCOPE_PRIORITY[b.scope as TermScope] ?? 0;
+      if (pa !== pb) return pb - pa;
+      const sa = a.source_text ?? a.source_simplified ?? '';
+      const sb = b.source_text ?? b.source_simplified ?? '';
+      if (sa !== sb) return sa.localeCompare(sb);
+      return a.id.localeCompare(b.id);
+    });
   }
 
   /** All project-linked terms — no arbitrary limit (semantic budget ranks downstream). */
@@ -701,6 +747,8 @@ export class TermRepository extends BaseRepository {
   promote(id: string, targetScope: TermScope, scopeRef?: string | null): TermRow | null {
     const statusMap: Partial<Record<TermScope, TermStatus>> = {
       PROJECT: 'PROJECT_VERIFIED',
+      SERIES: 'PROJECT_VERIFIED',
+      CHAPTER: 'PROJECT_VERIFIED',
       GENRE: 'GENRE_VERIFIED',
       GLOBAL: 'GLOBAL_VERIFIED',
     };

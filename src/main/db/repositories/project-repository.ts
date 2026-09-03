@@ -60,6 +60,8 @@ export interface ProjectRow {
   bootstrap_chapter_count: number;
   active_edition_id: string | null;
   export_directory: string | null;
+  source_content_fingerprint: string | null;
+  source_identity_key: string | null;
 }
 
 export interface ProjectMetadataPatch {
@@ -518,6 +520,85 @@ export class ProjectRepository extends BaseRepository {
     this.db
       .prepare(`UPDATE projects SET export_directory = ?, updated_at = ? WHERE id = ?`)
       .run(normalized, utcNow(), id);
+    return this.getById(id);
+  }
+
+  findBySourceIdentityKey(identityKey: string): ProjectRow | null {
+    return (
+      (this.db
+        .prepare(
+          `SELECT * FROM projects
+           WHERE deleted_at IS NULL AND source_identity_key = ?
+           ORDER BY updated_at DESC
+           LIMIT 1`,
+        )
+        .get(identityKey) as ProjectRow | undefined) ?? null
+    );
+  }
+
+  findByContentFingerprint(fingerprint: string): ProjectRow | null {
+    return (
+      (this.db
+        .prepare(
+          `SELECT * FROM projects
+           WHERE deleted_at IS NULL AND source_content_fingerprint = ?
+           ORDER BY updated_at DESC
+           LIMIT 1`,
+        )
+        .get(fingerprint) as ProjectRow | undefined) ?? null
+    );
+  }
+
+  updateSourceIdentity(
+    id: string,
+    patch: {
+      sourceIdentityKey?: string | null;
+      sourceContentFingerprint?: string | null;
+      sourceFolderPath?: string | null;
+      sourceMode?: SourceMode;
+      watchFolderEnabled?: boolean;
+      sourceFolderStatus?: SourceFolderStatus | null;
+      title?: string;
+    },
+  ): ProjectRow | null {
+    const existing = this.getById(id);
+    if (!existing) return null;
+    this.db
+      .prepare(
+        `UPDATE projects SET
+          source_identity_key = ?,
+          source_content_fingerprint = ?,
+          source_folder_path = ?,
+          source_mode = ?,
+          watch_folder_enabled = ?,
+          source_folder_status = ?,
+          title = ?,
+          updated_at = ?
+         WHERE id = ?`,
+      )
+      .run(
+        patch.sourceIdentityKey !== undefined
+          ? patch.sourceIdentityKey
+          : existing.source_identity_key,
+        patch.sourceContentFingerprint !== undefined
+          ? patch.sourceContentFingerprint
+          : existing.source_content_fingerprint,
+        patch.sourceFolderPath !== undefined
+          ? patch.sourceFolderPath
+          : existing.source_folder_path,
+        patch.sourceMode ?? existing.source_mode,
+        patch.watchFolderEnabled !== undefined
+          ? patch.watchFolderEnabled
+            ? 1
+            : 0
+          : existing.watch_folder_enabled,
+        patch.sourceFolderStatus !== undefined
+          ? patch.sourceFolderStatus
+          : existing.source_folder_status,
+        patch.title ?? existing.title,
+        utcNow(),
+        id,
+      );
     return this.getById(id);
   }
 

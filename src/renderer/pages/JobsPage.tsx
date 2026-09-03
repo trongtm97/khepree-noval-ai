@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   PageHeader,
@@ -13,6 +13,7 @@ import { friendlyError } from '../i18n/errors';
 import { helpArticleForErrorCode } from '../features/help/content';
 import { useT } from '../i18n';
 import { ActionRequiredJobs } from '../features/jobs/ActionRequiredJobs';
+import { AttentionInboxPanel } from '../features/jobs/AttentionInboxPanel';
 import { AiAccountSection } from '../features/jobs/AiAccountSection';
 import { JobDetailDrawer } from '../features/jobs/JobDetailDrawer';
 import { JobsBulkBar } from '../features/jobs/JobsBulkBar';
@@ -30,6 +31,7 @@ export function JobsPage() {
   const navigate = useNavigate();
   const overview = useJobsOverview();
   const controls = useJobsControls(overview.refresh);
+  const [inboxOpenCount, setInboxOpenCount] = useState(0);
 
   const accountOrder = useMemo(
     () => new Map(overview.accounts.map((a, i) => [a.id, i])),
@@ -61,6 +63,7 @@ export function JobsPage() {
     overview.runningCount === 0 &&
     overview.waitingCount === 0 &&
     overview.attentionJobs.length === 0 &&
+    inboxOpenCount === 0 &&
     overview.pausedCount === 0;
 
   if (overview.loading) {
@@ -139,7 +142,7 @@ export function JobsPage() {
       <JobsSummaryStrip
         runningCount={overview.runningCount}
         waitingCount={overview.waitingCount}
-        attentionCount={overview.attentionJobs.length}
+        attentionCount={Math.max(overview.attentionJobs.length, inboxOpenCount)}
         usableWorkers={overview.usableWorkers}
         pausedCount={overview.pausedCount}
         inFlight={overview.scheduler?.inFlight}
@@ -170,6 +173,19 @@ export function JobsPage() {
           </Button>
         </div>
       ) : null}
+
+      <AttentionInboxPanel
+        onOpenCountChange={setInboxOpenCount}
+        onNavigateLogin={(accountId) => {
+          navigate(accountId ? `/accounts?focus=${accountId}` : '/accounts');
+        }}
+        onOpenProject={(projectId) => {
+          navigate(`/projects/${projectId}`);
+        }}
+        onRefreshJobs={() => {
+          void overview.refresh();
+        }}
+      />
 
       <ActionRequiredJobs
         jobs={overview.attentionJobs}

@@ -225,9 +225,21 @@ export class MetaAiSurfaceAdapter implements BrowserConversationSurfaceAdapter {
     return /rate limit|too many|slow down/.test(body);
   }
 
+  async detectCaptchaRequired(): Promise<boolean> {
+    const page = this.requirePage();
+    const body = (await page.locator('body').innerText().catch(() => '')).toLowerCase();
+    if (/captcha|verify you are human|i'm not a robot/.test(body)) return true;
+    return page
+      .locator('[data-testid="captcha"], iframe[src*="recaptcha"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+  }
+
   async detectBlockedOrSecurityChallenge(): Promise<boolean> {
+    if (await this.detectCaptchaRequired()) return false;
     const body = (await this.requirePage().locator('body').innerText().catch(() => '')).toLowerCase();
-    return /captcha|security|blocked/.test(body);
+    return /security|blocked|access denied/.test(body);
   }
 
   getDiagnostics(): Record<string, unknown> {

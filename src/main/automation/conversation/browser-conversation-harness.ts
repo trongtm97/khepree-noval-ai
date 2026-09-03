@@ -61,6 +61,14 @@ export class BrowserConversationHarness {
     if (await adapter.detectLoginRequired()) {
       throw this.fail('LOGIN_REQUIRED', 'Session requires login', adapter, options);
     }
+    if (await adapter.detectCaptchaRequired()) {
+      throw this.fail(
+        'CAPTCHA',
+        'CAPTCHA / verification required — user must complete it; automation will not bypass',
+        adapter,
+        options,
+      );
+    }
     if (await adapter.detectRateLimit()) {
       throw this.fail('QUOTA_LIMIT', 'Provider rate limit detected', adapter, options);
     }

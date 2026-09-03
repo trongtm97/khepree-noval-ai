@@ -138,4 +138,33 @@ export class AiRequestRepository extends BaseRepository {
       );
     return this.getById(id);
   }
+
+  listNonTerminal(): AiRequestRow[] {
+    return this.db
+      .prepare(
+        `SELECT * FROM ai_requests
+         WHERE completed_at IS NULL
+           AND status NOT IN ('COMPLETED', 'FAILED', 'CANCELLED', 'ABANDONED')
+         ORDER BY created_at ASC`,
+      )
+      .all() as AiRequestRow[];
+  }
+
+  markAbandonedBeforeSend(id: string): AiRequestRow | null {
+    return this.updateStatus(id, 'ABANDONED', {
+      lifecycle: 'abandoned_before_send',
+      errorCode: 'PROCESS_CRASH',
+      errorMessage: 'Process crashed before send confirmed',
+      completed: true,
+    });
+  }
+
+  markUnknownAfterCrash(id: string): AiRequestRow | null {
+    return this.updateStatus(id, 'UNKNOWN', {
+      lifecycle: 'unknown_after_crash',
+      errorCode: 'PROCESS_CRASH',
+      errorMessage: 'Process crashed after send — response may exist on provider',
+      completed: true,
+    });
+  }
 }

@@ -2,23 +2,27 @@
 export const TERM_SCOPES = [
   'GLOBAL',
   'GENRE',
+  'SERIES',
   'USER',
   'PROJECT',
+  'CHAPTER',
   'CONTEXT',
 ] as const;
 
 export type TermScope = (typeof TERM_SCOPES)[number];
 
-/** Numeric priority for resolution (higher = preferred). */
+/** Numeric priority for resolution (higher = preferred). Nearest scope wins. */
 export const TERM_SCOPE_PRIORITY: Record<TermScope, number> = {
+  CHAPTER: 600,
   PROJECT: 500,
+  SERIES: 450,
   CONTEXT: 400,
   USER: 300,
   GENRE: 200,
   GLOBAL: 100,
 };
 
-/** Locked PROJECT terms beat all non-locked scopes. */
+/** Locked terms at PROJECT or CHAPTER beat inherited series/genre/global. */
 export const LOCKED_PROJECT_BOOST = 1000;
 
 export const TERM_STATUSES = [

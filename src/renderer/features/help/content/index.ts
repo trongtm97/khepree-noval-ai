@@ -8,6 +8,7 @@ import { translationArticles } from './translation';
 import { termsMemoryArticles } from './terms-memory';
 import { operationsArticles } from './operations';
 import { troubleshootingArticles, metaArticles } from './troubleshooting';
+import { productionFeatureArticles } from './production-features';
 import type { HelpArticle, HelpCategory } from '../types';
 
 export const HELP_CATEGORIES: HelpCategory[] = [
@@ -39,6 +40,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   ...translationArticles,
   ...termsMemoryArticles,
   ...operationsArticles,
+  ...productionFeatureArticles,
   ...troubleshootingArticles,
   ...metaArticles,
   ...contactArticles,
@@ -64,7 +66,8 @@ export const ROUTE_HELP_ARTICLE: Record<string, string> = {
   '/editor': 'start-translate',
   '/terms': 'term-vault',
   '/characters': 'characters',
-  '/jobs': 'jobs-monitor',
+  '/jobs': 'production-center',
+  '/series': 'series-universe',
   '/logs': 'logs',
   '/settings': 'ai-providers',
   '/export': 'export-novel',

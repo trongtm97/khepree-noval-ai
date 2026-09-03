@@ -28,8 +28,19 @@ export type SourceFolderLogEvent = (typeof SOURCE_FOLDER_LOG_EVENTS)[number];
 
 export const DEFAULT_SCAN_CONCURRENCY = 8;
 export const DEFAULT_WATCH_DEBOUNCE_MS = 1500;
+export const DEFAULT_WATCH_BATCH_COALESCE_MS = 500;
 export const DEFAULT_STABILITY_POLL_MS = 300;
 export const DEFAULT_STABILITY_MAX_WAIT_MS = 30_000;
+export const DEFAULT_WATCH_MAX_JOBS_PER_BURST = 5;
+export const WATCH_RENAME_PAIR_WINDOW_MS = 10_000;
+
+export const WATCH_POLICY_META_KEYS = {
+  autoRunEnabled: 'watch.auto_run_enabled',
+  quietHoursEnabled: 'watch.quiet_hours_enabled',
+  quietHoursStart: 'watch.quiet_hours_start',
+  quietHoursEnd: 'watch.quiet_hours_end',
+  maxJobsPerBurst: 'watch.max_jobs_per_burst',
+} as const;
 export const FOLDER_PREVIEW_SESSION_TTL_MS = 60 * 60 * 1000;
 
 export const CHAPTER_SOURCE_STATUS_LABELS: Record<ChapterSourceStatus, string> = {

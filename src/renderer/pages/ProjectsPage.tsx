@@ -5,6 +5,8 @@ import type { JobDto } from '@shared/schemas/job';
 import type { ProjectDto } from '@shared/schemas/import';
 import { isJobActive } from '@shared/utils/job-progress';
 import { CreateProjectWizard } from '../components/CreateProjectWizard';
+import { BatchImportPreflightWizard } from '../components/BatchImportPreflightWizard';
+import { TranslationCampaignWizard } from '../components/TranslationCampaignWizard';
 import { ImportWizard } from '../components/ImportWizard';
 import { ModalPortal } from '../components/overlay';
 import { useT } from '../i18n';
@@ -31,6 +33,8 @@ export function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showBatchImport, setShowBatchImport] = useState(false);
+  const [showCampaign, setShowCampaign] = useState(false);
   const [showLegacyImport, setShowLegacyImport] = useState(false);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<'updated' | 'name' | 'progress'>('updated');
@@ -187,6 +191,12 @@ export function ProjectsPage() {
           onCreate={() => {
             setShowCreate(true);
           }}
+          onImportMany={() => {
+            setShowBatchImport(true);
+          }}
+          onStartCampaign={() => {
+            setShowCampaign(true);
+          }}
           onImportLegacy={() => {
             setShowLegacyImport(true);
           }}
@@ -211,6 +221,12 @@ export function ProjectsPage() {
         onCreate={() => {
           setShowCreate(true);
         }}
+        onImportMany={() => {
+          setShowBatchImport(true);
+        }}
+        onStartCampaign={() => {
+          setShowCampaign(true);
+        }}
         onImportLegacy={() => {
           setShowLegacyImport(true);
         }}
@@ -233,6 +249,44 @@ export function ProjectsPage() {
           onComplete={async () => {
             setShowCreate(false);
             await refresh();
+          }}
+          onError={(message) => {
+            setError(message);
+          }}
+        />
+      </ModalPortal>
+
+      <ModalPortal
+        open={showBatchImport}
+        onBackdropClick={() => {
+          setShowBatchImport(false);
+        }}
+        contentClassName="projects-wizard-modal"
+      >
+        <BatchImportPreflightWizard
+          onClose={() => {
+            setShowBatchImport(false);
+          }}
+          onError={(message) => {
+            setError(message);
+          }}
+        />
+      </ModalPortal>
+
+      <ModalPortal
+        open={showCampaign}
+        onBackdropClick={() => {
+          setShowCampaign(false);
+        }}
+        contentClassName="projects-wizard-modal"
+      >
+        <TranslationCampaignWizard
+          projects={projects.map((p) => ({ id: p.id, title: p.title }))}
+          onClose={() => {
+            setShowCampaign(false);
+          }}
+          onStarted={() => {
+            void refresh();
           }}
           onError={(message) => {
             setError(message);

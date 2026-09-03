@@ -63,7 +63,7 @@ describe('resolveBreadcrumb', () => {
 
   it('does not append project on /jobs', () => {
     expect(resolveBreadcrumb('/jobs', { id: 'p1', name: 'Truyện 1' })).toEqual([
-      { labelKey: 'nav.jobs' },
+      { labelKey: 'nav.production' },
     ]);
   });
 });

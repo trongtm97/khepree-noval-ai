@@ -178,7 +178,7 @@ export class KhepreeAccessService {
   private canStartTranslation(): boolean {
     return (
       this.canUseWorkspace() &&
-      this.features[KHEPREE_ACCESS_FEATURE] &&
+      this.features[KHEPREE_ACCESS_FEATURE] === true &&
       this.entitlement === 'active'
     );
   }

@@ -41,6 +41,12 @@ import {
   DesktopLatestUpdateResponseSchema,
   DesktopSquirrelFeedTicketResponseSchema,
 } from '@shared/schemas/khepree-updates-api';
+import {
+  CampaignSyncPayloadSchema,
+  CampaignSyncResponseSchema,
+  type CampaignSyncPayload,
+  type CampaignSyncResponse,
+} from '@shared/schemas/khepree-campaign-sync';
 
 export type KhepreeDeviceSignFn = (message: Buffer) => Buffer;
 import { KhepreeApiResponseInvalidError, KhepreeDeviceLimitError, KhepreeNetworkError, KhepreeAccessError, mapDesktopApiErrorCode } from './errors';
@@ -191,6 +197,21 @@ export interface KhepreeApiClient {
     architecture?: string;
     channel?: string;
   }): Promise<import('@shared/schemas/khepree-updates-api').DesktopSquirrelFeedTicketResponse>;
+
+  /**
+   * Push opt-in campaign progress snapshot. Capability-gated server-side.
+   * Only aggregate counts + stage — never story content.
+   */
+  pushCampaignSync(input: {
+    accessToken: string;
+    payload: CampaignSyncPayload;
+  }): Promise<CampaignSyncResponse>;
+
+  /** Delete a campaign's synced status from the server. */
+  deleteCampaignSync(input: {
+    accessToken: string;
+    campaignPublicId: string;
+  }): Promise<{ deleted: boolean }>;
 }
 
 function canonicalPayload(payload: KhepreeSignedLeasePayload): Buffer {
@@ -643,6 +664,25 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
 
   revokeSession(): Promise<{ ok: true }> {
     return Promise.resolve({ ok: true });
+  }
+
+  pushCampaignSync(input: {
+    accessToken: string;
+    payload: CampaignSyncPayload;
+  }): Promise<CampaignSyncResponse> {
+    void input.accessToken;
+    // Validate shape in mock too — same contract as server
+    CampaignSyncPayloadSchema.parse(input.payload);
+    return Promise.resolve({ syncedAt: new Date().toISOString() });
+  }
+
+  deleteCampaignSync(input: {
+    accessToken: string;
+    campaignPublicId: string;
+  }): Promise<{ deleted: boolean }> {
+    void input.accessToken;
+    void input.campaignPublicId;
+    return Promise.resolve({ deleted: true });
   }
 
   listAnnouncements(input: {
@@ -1254,6 +1294,34 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
       z.object({ ok: z.literal(true).optional() }).or(z.object({})),
       'desktop/auth/logout',
     ).then(() => ({ ok: true as const }));
+  }
+
+  pushCampaignSync(input: {
+    accessToken: string;
+    payload: CampaignSyncPayload;
+  }): Promise<CampaignSyncResponse> {
+    return this.requestData(
+      KHEPREE_DESKTOP_API_PATHS.campaignSync,
+      {
+        method: 'POST',
+        accessToken: input.accessToken,
+        body: JSON.stringify(input.payload),
+      },
+      CampaignSyncResponseSchema,
+      'desktop/campaign-sync',
+    );
+  }
+
+  deleteCampaignSync(input: {
+    accessToken: string;
+    campaignPublicId: string;
+  }): Promise<{ deleted: boolean }> {
+    return this.requestData(
+      `${KHEPREE_DESKTOP_API_PATHS.campaignSync}/${encodeURIComponent(input.campaignPublicId)}`,
+      { method: 'DELETE', accessToken: input.accessToken },
+      z.object({ deleted: z.boolean().optional() }).transform((v) => ({ deleted: v.deleted ?? true })),
+      'desktop/campaign-sync/delete',
+    );
   }
 }
 

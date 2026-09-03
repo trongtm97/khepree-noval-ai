@@ -243,9 +243,17 @@ export class GeminiSurfaceAdapter implements BrowserConversationSurfaceAdapter {
     return /quota|rate limit|too many requests/.test(body);
   }
 
+  async detectCaptchaRequired(): Promise<boolean> {
+    const page = this.requirePage();
+    const body = (await page.locator('body').innerText().catch(() => '')).toLowerCase();
+    if (/captcha|verify you are human|recaptcha/.test(body)) return true;
+    return page.locator('[data-testid="captcha"]').first().isVisible().catch(() => false);
+  }
+
   async detectBlockedOrSecurityChallenge(): Promise<boolean> {
+    if (await this.detectCaptchaRequired()) return false;
     const body = (await this.requirePage().locator('body').innerText().catch(() => '')).toLowerCase();
-    return /captcha|unusual traffic|verify/.test(body);
+    return /unusual traffic|access denied|blocked/.test(body);
   }
 
   getDiagnostics(): Record<string, unknown> {

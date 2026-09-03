@@ -121,6 +121,60 @@ export type {
 } from './relationship-translation-repository';
 export { ImportHistoryRepository } from './import-history-repository';
 export type { ImportHistoryRow, CreateImportHistoryInput } from './import-history-repository';
+export { BatchImportRepository } from './batch-import-repository';
+export type {
+  BatchImportSessionRow,
+  BatchImportCandidateRow,
+  BatchImportSummary,
+} from './batch-import-repository';
+export {
+  TranslationRecipeRepository,
+  TranslationCampaignRepository,
+} from './translation-recipe-repository';
+export type {
+  TranslationRecipeRow,
+  TranslationCampaignRow,
+  TranslationCampaignProjectRow,
+} from './translation-recipe-repository';
+export { UsageLedgerRepository } from './usage-ledger-repository';
+export type {
+  UsageLedgerRow,
+  UsageLedgerOutcome,
+  AppendUsageLedgerInput,
+} from './usage-ledger-repository';
+export { BrowserAttentionRepository } from './browser-attention-repository';
+export type {
+  BrowserAttentionItemRow,
+  CreateBrowserAttentionInput,
+} from './browser-attention-repository';
+export { CampaignPipelineRepository } from './campaign-pipeline-repository';
+export type {
+  CampaignPipelineRunRow,
+  CampaignPipelineStageRow,
+} from './campaign-pipeline-repository';
+export { TranslationQaFindingsRepository } from './translation-qa-findings-repository';
+export type { TranslationQaFindingRow } from './translation-qa-findings-repository';
+export { WholeBookAuditRepository } from './whole-book-audit-repository';
+export type { WholeBookAuditRunRow } from './whole-book-audit-repository';
+export { AttentionInboxRepository } from './attention-inbox-repository';
+export type { AttentionInboxItemRow } from './attention-inbox-repository';
+export { FictionSeriesRepository } from './fiction-series-repository';
+export type {
+  FictionSeriesRow,
+  FictionSeriesVolumeRow,
+  SeriesStyleRuleRow,
+  SeriesWorldStateRow,
+} from './fiction-series-repository';
+export { WatchRootRepository } from './watch-root-repository';
+export type { WatchRootRow, WatchRootBindingRow } from './watch-root-repository';
+export { SourcePendingRevisionRepository } from './source-pending-revision-repository';
+export type { SourcePendingRevisionRow } from './source-pending-revision-repository';
+export { LibrarySearchRepository } from './library-search-repository';
+export type {
+  LibrarySearchFtsRow,
+  LibrarySearchDirtyRow,
+  LibrarySearchIndexRunRow,
+} from './library-search-repository';
 export type {
   FullNovelPreprocessRunRow,
   FullNovelPreprocessPartRow,

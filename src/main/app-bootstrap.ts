@@ -14,7 +14,17 @@ import {
   shutdownSourceFolderSubsystem,
   startupSourceFolderSubsystem,
 } from './source-folder/source-folder-singleton';
+import { getLibrarySearchService } from './library-search/library-search-service';
 import { setSourceFolderMainWindow } from './source-folder/source-folder-event-bridge';
+import { setLibrarySearchMainWindow } from './library-search/library-search-event-bridge';
+import {
+  setCompletionNotifyMainWindow,
+  setCompletionNotifyDb,
+} from './production/completion-notify-bridge';
+import {
+  initializeBatchImportPreflightService,
+  bindBatchImportMainWindow,
+} from './batch-import/batch-import-singleton';
 import { initializeTermService } from './services/term-service-singleton';
 import { initializeMemoryService } from './services/memory-service-singleton';
 import { initializeTranslationPackService } from './services/translation-pack-service-singleton';
@@ -37,6 +47,7 @@ import {
 } from './automation/browser-runner/browser-runtime-manager';
 import { profileLockManager } from './automation/browser-runner/profile-lock';
 import { recoverJobsGeminiAndProfilesOnStartup } from './gemini/startup-recovery';
+import { getCampaignPipelineOrchestrator } from './campaign-pipeline/campaign-pipeline-orchestrator';
 import {
   initializeKhepreeAccessService,
   startupKhepreeAccess,
@@ -178,6 +189,7 @@ function bootApplication(): void {
   initializeAccountWorkerService();
   initializeImportService();
   initializeSourceFolderService();
+  initializeBatchImportPreflightService();
   initializeTermService();
   initializeMemoryService();
   initializeTranslationPackService();
@@ -233,7 +245,30 @@ function bootApplication(): void {
   const mainWindow = createMainWindow();
   setKhepreeMainWindow(mainWindow);
   setSourceFolderMainWindow(mainWindow);
+  setLibrarySearchMainWindow(mainWindow);
+  setCompletionNotifyMainWindow(mainWindow);
+  setCompletionNotifyDb(db);
+  bindBatchImportMainWindow(mainWindow);
   startupSourceFolderSubsystem();
+  getLibrarySearchService(db).startDirtyProcessor();
+  if (db.librarySearch.countFtsRows() === 0) {
+    setImmediate(() => {
+      void getLibrarySearchService(db).startReindex(false);
+    });
+  }
+  // Resume durable campaign pipelines from last checkpoint (no full-novel re-run).
+  void getCampaignPipelineOrchestrator(db, { skipBrowser: false })
+    .resumeActive()
+    .then((r) => {
+      if (r.advanced > 0 || r.errors > 0) {
+        logger.info('Campaign pipeline resume on startup', r);
+      }
+    })
+    .catch((error: unknown) => {
+      logger.warn('Campaign pipeline resume failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    });
   logger.info('Application started', {
     version: app.getVersion(),
     userData: paths.root,

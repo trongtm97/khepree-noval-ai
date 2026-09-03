@@ -45,6 +45,19 @@ import {
   CharacterTranslationRepository,
   RelationshipTranslationRepository,
   ImportHistoryRepository,
+  BatchImportRepository,
+  TranslationRecipeRepository,
+  TranslationCampaignRepository,
+  UsageLedgerRepository,
+  BrowserAttentionRepository,
+  CampaignPipelineRepository,
+  TranslationQaFindingsRepository,
+  WholeBookAuditRepository,
+  AttentionInboxRepository,
+  FictionSeriesRepository,
+  WatchRootRepository,
+  SourcePendingRevisionRepository,
+  LibrarySearchRepository,
 } from './repositories';
 
 export interface DatabaseOptions {
@@ -101,6 +114,19 @@ export class DatabaseManager {
   readonly characterTranslations: CharacterTranslationRepository;
   readonly relationshipTranslations: RelationshipTranslationRepository;
   readonly importHistory: ImportHistoryRepository;
+  readonly batchImport: BatchImportRepository;
+  readonly translationRecipes: TranslationRecipeRepository;
+  readonly translationCampaigns: TranslationCampaignRepository;
+  readonly usageLedger: UsageLedgerRepository;
+  readonly browserAttention: BrowserAttentionRepository;
+  readonly campaignPipeline: CampaignPipelineRepository;
+  readonly translationQaFindings: TranslationQaFindingsRepository;
+  readonly wholeBookAudit: WholeBookAuditRepository;
+  readonly attentionInbox: AttentionInboxRepository;
+  readonly fictionSeries: FictionSeriesRepository;
+  readonly watchRoots: WatchRootRepository;
+  readonly sourcePendingRevisions: SourcePendingRevisionRepository;
+  readonly librarySearch: LibrarySearchRepository;
 
   constructor(options: DatabaseOptions) {
     fs.mkdirSync(options.dataDir, { recursive: true });
@@ -165,6 +191,19 @@ export class DatabaseManager {
     this.characterTranslations = new CharacterTranslationRepository(this.db);
     this.relationshipTranslations = new RelationshipTranslationRepository(this.db);
     this.importHistory = new ImportHistoryRepository(this.db);
+    this.batchImport = new BatchImportRepository(this.db);
+    this.translationRecipes = new TranslationRecipeRepository(this.db);
+    this.translationCampaigns = new TranslationCampaignRepository(this.db);
+    this.usageLedger = new UsageLedgerRepository(this.db);
+    this.browserAttention = new BrowserAttentionRepository(this.db);
+    this.campaignPipeline = new CampaignPipelineRepository(this.db);
+    this.translationQaFindings = new TranslationQaFindingsRepository(this.db);
+    this.wholeBookAudit = new WholeBookAuditRepository(this.db);
+    this.attentionInbox = new AttentionInboxRepository(this.db);
+    this.fictionSeries = new FictionSeriesRepository(this.db);
+    this.watchRoots = new WatchRootRepository(this.db);
+    this.sourcePendingRevisions = new SourcePendingRevisionRepository(this.db);
+    this.librarySearch = new LibrarySearchRepository(this.db);
 
     this.appMeta.set('schema_version', String(getCurrentSchemaVersion(this.db)));
   }

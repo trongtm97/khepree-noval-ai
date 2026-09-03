@@ -32,6 +32,15 @@ import {
 } from './source-folder-event-bridge';
 import { getJobService } from '../services/job-service-singleton';
 import { logger } from '../logging/logger';
+import { applyChapterSourceUpdateRespectingLocks } from '../batch-import/chapter-source-update';
+import { classifyWatchEvents, type WatchRawEvent } from './watch-event-classifier';
+import {
+  isQuietHoursNow,
+  readMaxJobsPerBurst,
+  shouldAutoRunWatchPipeline,
+} from './watch-folder-policy';
+import type { WatchRootRow } from '../db/repositories/watch-root-repository';
+import { getAttentionInboxService } from '../services/attention-inbox-service';
 import {
   assertSourceTargetDiffer,
   defaultImportTargetLanguage,
@@ -770,6 +779,339 @@ export class SourceFolderService {
       message: `Không tìm thấy file nguồn của chương ${chapter.chapter_number}.`,
       detail: { chapterNumber: chapter.chapter_number },
     });
+    try {
+      getAttentionInboxService(db).upsert({
+        type: 'SOURCE_MISSING',
+        projectId,
+        chapterId: chapter.id,
+        causeCode: 'WATCH_FILE_MISSING',
+        descriptionOverrideVi: `File nguồn chương ${chapter.chapter_number} không tìm thấy.`,
+        descriptionOverrideEn: `Source file for chapter ${chapter.chapter_number} is missing.`,
+      });
+    } catch (err: unknown) {
+      logger.warn('attention inbox SOURCE_MISSING upsert failed', {
+        projectId,
+        chapterId: chapter.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  /**
+   * Coalesced watch batch — classify by hash/path mapping, apply policy, enqueue with limits.
+   */
+  async processWatchEvents(
+    projectId: string,
+    rawEvents: WatchRawEvent[],
+    options?: { watchRoot?: WatchRootRow | null },
+  ): Promise<void> {
+    if (rawEvents.length === 0) return;
+
+    const db = getDatabase();
+    const project = db.projects.getById(projectId);
+    if (!project) return;
+
+    const classified = classifyWatchEvents({
+      events: rawEvents,
+      getChapterByPath: (pid, fp) =>
+        db.chapters.listByProject(pid).find((c) => c.source_file_path === fp) ?? null,
+      getChapterByNumber: (pid, num) => db.chapters.getByProjectAndNumber(pid, num),
+      readDetected: (fp) => this.readDetectedForWatch(project, fp),
+    });
+
+    const meta = db.appMeta;
+    const quiet = isQuietHoursNow(meta);
+    const maxJobs = quiet ? 0 : readMaxJobsPerBurst(meta);
+    const budget = { remaining: maxJobs };
+    const autoRun = !quiet && shouldAutoRunWatchPipeline({
+      meta,
+      project,
+      watchRoot: options?.watchRoot,
+    });
+
+    for (const event of classified) {
+      try {
+        await this.applyClassifiedWatchEvent(event, {
+          project,
+          autoRun,
+          budget,
+          watchRoot: options?.watchRoot,
+        });
+      } catch (err: unknown) {
+        logger.warn('watch classified event failed', {
+          projectId: event.projectId,
+          kind: event.kind,
+          filePath: event.filePath,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    db.jobs.reconcileDuplicateQueued(projectId);
+  }
+
+  async flushPendingRevisionsForProject(projectId: string): Promise<number> {
+    const db = getDatabase();
+    const project = db.projects.getById(projectId);
+    if (!project) return 0;
+
+    const pending = db.sourcePendingRevisions.listPendingForProject(projectId);
+    let applied = 0;
+    const meta = db.appMeta;
+    const quiet = isQuietHoursNow(meta);
+    const budget = { remaining: quiet ? 0 : readMaxJobsPerBurst(meta) };
+    const autoRun =
+      !quiet &&
+      shouldAutoRunWatchPipeline({ meta, project, watchRoot: null });
+
+    for (const row of pending) {
+      if (this.isChapterActivelyTranslating(projectId, row.chapter_number)) {
+        continue;
+      }
+      try {
+        const detected = JSON.parse(row.detected_json) as Awaited<
+          ReturnType<typeof detectChapterFile>
+        >;
+        applyChapterSourceUpdateRespectingLocks({
+          projectId,
+          chapterNumber: row.chapter_number,
+          detected: {
+            chapterTitle: detected.chapterTitle,
+            normalizedText: detected.normalizedText,
+            sourceFilePath: detected.sourceFilePath,
+            sourceFileName: detected.sourceFileName,
+            sourceFileSize: detected.sourceFileSize,
+            fileModifiedAt: detected.fileModifiedAt,
+            sourceFileHash: detected.sourceFileHash,
+            contentHash: detected.contentHash,
+            encoding: detected.encoding,
+            readError: detected.readError,
+          },
+        });
+        db.sourcePendingRevisions.markApplied(row.id);
+        applied += 1;
+
+        if (autoRun && budget.remaining > 0) {
+          const queued = this.enqueueRetranslateChapter(projectId, row.chapter_id);
+          if (queued) budget.remaining -= 1;
+        }
+      } catch (err: unknown) {
+        logger.warn('pending source revision apply failed', {
+          projectId,
+          revisionId: row.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    db.jobs.reconcileDuplicateQueued(projectId);
+    return applied;
+  }
+
+  registerWatchRoot(input: {
+    rootPath: string;
+    label?: string | null;
+    campaignId?: string | null;
+    bindings: Array<{ projectId: string; relativeSubpath?: string | null }>;
+  }): { watchRootId: string } {
+    const db = getDatabase();
+    const normalizedRoot = path.resolve(input.rootPath);
+    const existing = db.watchRoots.getRootByPath(normalizedRoot);
+    const root =
+      existing ??
+      db.watchRoots.createRoot({
+        rootPath: normalizedRoot,
+        label: input.label,
+        campaignId: input.campaignId,
+      });
+
+    for (const binding of input.bindings) {
+      db.watchRoots.bindProject({
+        watchRootId: root.id,
+        projectId: binding.projectId,
+        relativeSubpath: binding.relativeSubpath,
+      });
+    }
+
+    return { watchRootId: root.id };
+  }
+
+  private async applyClassifiedWatchEvent(
+    event: Awaited<ReturnType<typeof classifyWatchEvents>>[number],
+    ctx: {
+      project: ProjectRow;
+      autoRun: boolean;
+      budget: { remaining: number };
+      watchRoot?: WatchRootRow | null;
+    },
+  ): Promise<void> {
+    const db = getDatabase();
+    const projectId = event.projectId;
+    const now = utcNow();
+
+    if (event.kind === 'unchanged' && event.chapterId && event.detected) {
+      db.chapters.updateSourceMetadata(event.chapterId, {
+        source_file_path: event.detected.sourceFilePath,
+        source_file_name: event.detected.sourceFileName,
+        source_status: 'SOURCE_READY',
+        last_source_scan_at: now,
+      });
+      return;
+    }
+
+    if (event.kind === 'deleted') {
+      this.handleFileMissing(projectId, event.filePath);
+      return;
+    }
+
+    if (event.kind === 'new') {
+      const chapterNumber = event.chapterNumber!;
+      if (ctx.project.auto_import_new_chapters === 1) {
+        await this.importChaptersFromScan(projectId, [chapterNumber]);
+        if (ctx.autoRun && ctx.budget.remaining > 0) {
+          const queued = this.runAutoPipeline(projectId, [chapterNumber], ctx.budget.remaining);
+          ctx.budget.remaining -= queued;
+        }
+      } else {
+        emitSourceFolderEvent({
+          type: 'new_chapters',
+          projectId,
+          message: `Phát hiện chương mới ${chapterNumber}.`,
+          detail: { chapterNumbers: [chapterNumber] },
+        });
+      }
+      return;
+    }
+
+    if (event.kind === 'modified' || event.kind === 'renamed') {
+      if (!event.detected || !event.chapterNumber) return;
+
+      if (this.isChapterActivelyTranslating(projectId, event.chapterNumber)) {
+        if (event.chapterId) {
+          this.storePendingRevision(projectId, event.chapterId, event.chapterNumber, event.detected);
+        }
+        return;
+      }
+
+      const diff = applyChapterSourceUpdateRespectingLocks({
+        projectId,
+        chapterNumber: event.chapterNumber,
+        detected: {
+          chapterTitle: event.detected.chapterTitle,
+          normalizedText: event.detected.normalizedText,
+          sourceFilePath: event.detected.sourceFilePath,
+          sourceFileName: event.detected.sourceFileName,
+          sourceFileSize: event.detected.sourceFileSize,
+          fileModifiedAt: event.detected.fileModifiedAt,
+          sourceFileHash: event.detected.sourceFileHash,
+          contentHash: event.detected.contentHash,
+          encoding: event.detected.encoding,
+          readError: event.detected.readError,
+        },
+      });
+
+      if (event.kind === 'renamed' && event.previousPath) {
+        logger.info('source-folder chapter renamed', {
+          projectId,
+          previousPath: event.previousPath,
+          filePath: event.filePath,
+          chapterNumber: event.chapterNumber,
+        });
+      }
+
+      emitSourceFolderEvent({
+        type: 'modified_chapter',
+        projectId,
+        message: `Nguồn chương ${event.chapterNumber} đã thay đổi.`,
+        detail: {
+          chapterNumber: event.chapterNumber,
+          outcome: diff.outcome,
+          preservedLockedParagraphs: diff.preservedLockedParagraphs,
+        },
+      });
+
+      if (ctx.autoRun && ctx.budget.remaining > 0 && event.chapterId) {
+        const queued = this.enqueueRetranslateChapter(projectId, event.chapterId);
+        if (queued) ctx.budget.remaining -= 1;
+      }
+    }
+  }
+
+  private storePendingRevision(
+    projectId: string,
+    chapterId: string,
+    chapterNumber: number,
+    detected: Awaited<ReturnType<typeof detectChapterFile>>,
+  ): void {
+    const db = getDatabase();
+    const fingerprint = `${chapterNumber}:${detected.contentHash}`;
+    db.sourcePendingRevisions.upsertPending({
+      projectId,
+      chapterId,
+      chapterNumber,
+      contentHash: detected.contentHash,
+      detectedJson: JSON.stringify(detected),
+      enqueueFingerprint: fingerprint,
+    });
+    logger.info('source revision deferred until safe boundary', {
+      projectId,
+      chapterId,
+      chapterNumber,
+    });
+  }
+
+  private isChapterActivelyTranslating(projectId: string, chapterNumber: number): boolean {
+    const db = getDatabase();
+    const active = db.jobs.findActiveJobByChapterRange(projectId, chapterNumber, chapterNumber);
+    return Boolean(active);
+  }
+
+  private enqueueRetranslateChapter(projectId: string, chapterId: string): boolean {
+    const db = getDatabase();
+    const chapter = db.chapters.getById(chapterId);
+    if (!chapter) return false;
+
+    const from = chapter.chapter_number ?? chapter.sequence_order;
+    const active = db.jobs.findActiveJobByChapterRange(projectId, from, from);
+    if (active) return false;
+
+    const editionId = db.projects.getById(projectId)?.active_edition_id ?? null;
+    const paragraphs = db.paragraphs.listByChapter(chapterId);
+    const eligible = paragraphs.filter((p) => {
+      const tr = db.translations.getByParagraphId(p.id, editionId);
+      return !(tr?.human_locked === 1 && tr.translated_text?.trim());
+    });
+    if (eligible.length === 0) return false;
+
+    getJobService().enqueueTranslate({
+      projectId,
+      chapterFrom: from,
+      chapterTo: from,
+      sourceParagraphIds: eligible.map((p) => p.paragraph_id),
+      batchParagraphs: eligible.map((p) => ({
+        paragraphId: p.paragraph_id,
+        sourceText: p.source_text,
+      })),
+    });
+    return true;
+  }
+
+  private readDetectedForWatch(
+    project: ProjectRow,
+    filePath: string,
+  ): Awaited<ReturnType<typeof detectChapterFile>> | null {
+    try {
+      const buffer = fsSync.readFileSync(filePath);
+      const stat = fsSync.statSync(filePath);
+      return detectChapterFile({
+        filePath,
+        buffer,
+        stat,
+        sourceLanguage: project.source_language,
+      });
+    } catch {
+      return null;
+    }
   }
 
   private importSpecialChapterEntries(
@@ -985,14 +1327,18 @@ export class SourceFolderService {
     });
   }
 
-  private runAutoPipeline(projectId: string, chapterNumbers: number[]): void {
+  private runAutoPipeline(
+    projectId: string,
+    chapterNumbers: number[],
+    maxJobs?: number,
+  ): number {
     const db = getDatabase();
     const project = db.projects.getById(projectId);
-    if (!project) return;
+    if (!project) return 0;
 
     const shouldQueue =
       project.auto_queue_new_chapters === 1 || project.auto_translate_new_chapters === 1;
-    if (!shouldQueue) return;
+    if (!shouldQueue) return 0;
 
     const chapters = db.chapters
       .listByProject(projectId)
@@ -1004,11 +1350,17 @@ export class SourceFolderService {
       )
       .sort((a, b) => a.sequence_order - b.sequence_order);
 
+    let queued = 0;
     for (const chapter of chapters) {
+      if (maxJobs != null && queued >= maxJobs) break;
+
       const paragraphs = db.paragraphs.listByChapter(chapter.id);
       if (paragraphs.length === 0) continue;
 
       const from = chapter.chapter_number ?? chapter.sequence_order;
+      const active = db.jobs.findActiveJobByChapterRange(projectId, from, from);
+      if (active) continue;
+
       getJobService().enqueueTranslate({
         projectId,
         chapterFrom: from,
@@ -1019,6 +1371,7 @@ export class SourceFolderService {
           sourceText: p.source_text,
         })),
       });
+      queued += 1;
 
       logger.info('source-folder auto queued chapter', {
         projectId,
@@ -1026,6 +1379,7 @@ export class SourceFolderService {
         chapterType: chapter.chapter_type,
       });
     }
+    return queued;
   }
 
   private buildSnapshots(projectId: string): DbChapterSnapshot[] {

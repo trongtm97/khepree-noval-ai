@@ -9,6 +9,20 @@ export function writeFileAtomic(filePath: string, data: string | Buffer): void {
     dir,
     `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`,
   );
-  fs.writeFileSync(tmp, data);
-  fs.renameSync(tmp, filePath);
+  try {
+    fs.writeFileSync(tmp, data);
+    const expected = typeof data === 'string' ? Buffer.byteLength(data) : data.length;
+    const actual = fs.statSync(tmp).size;
+    if (actual !== expected) {
+      throw new Error(`ATOMIC_WRITE_SIZE_MISMATCH:${actual}!=${expected}`);
+    }
+    fs.renameSync(tmp, filePath);
+  } catch (error) {
+    try {
+      if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+    } catch {
+      /* best-effort cleanup */
+    }
+    throw error;
+  }
 }

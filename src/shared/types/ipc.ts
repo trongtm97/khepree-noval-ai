@@ -6,9 +6,8 @@ import type {
   PingResponse,
   SecurityHealthCheckResponse,
 } from '../schemas/ipc';
-import type {
-  GoogleAccountDto,
-} from '../schemas/account';
+import type { GoogleAccountDto } from '../schemas/account';
+import type { AttentionInboxItemDto } from '../schemas/attention-inbox';
 import type {
   ImportPreviewDto,
   ProjectDto,
@@ -379,6 +378,108 @@ export interface KhepreeNovelAIApi {
       import('../schemas/translation-settings').DefaultTargetLanguageSettings
     >;
   };
+  translationRecipe: {
+    list: (input?: {
+      locale?: 'en' | 'vi';
+    }) => Promise<{
+      recipes: import('../schemas/translation-recipe').RecipeListItemDto[];
+      defaultRecipeId: string;
+    }>;
+    getDefault: () => Promise<{ ok: true; id: string }>;
+    setDefault: (input: { id: string }) => Promise<{ ok: true; id: string }>;
+    clone: (input: {
+      name: string;
+      description?: string;
+      cloneFromId?: string;
+    }) => Promise<{ recipe: import('../schemas/translation-recipe').RecipeListItemDto }>;
+    create: (input: {
+      name: string;
+      description?: string;
+      cloneFromId?: string;
+      config?: import('../schemas/translation-recipe').TranslationRecipeConfigDto;
+    }) => Promise<{ recipe: import('../schemas/translation-recipe').RecipeListItemDto }>;
+    update: (input: {
+      id: string;
+      name?: string;
+      description?: string | null;
+      config?: import('../schemas/translation-recipe').TranslationRecipeConfigDto;
+    }) => Promise<{ recipe: import('../schemas/translation-recipe').RecipeListItemDto }>;
+    delete: (id: string) => Promise<{ ok: true }>;
+    export: (id: string) => Promise<{
+      envelope: import('../schemas/translation-recipe').RecipeExportEnvelope;
+    }>;
+    import: (input: {
+      payload: unknown;
+      name?: string;
+    }) => Promise<{ recipe: import('../schemas/translation-recipe').RecipeListItemDto }>;
+    resolveProject: (input: {
+      projectId: string;
+      campaignId?: string;
+    }) => Promise<{
+      resolved: import('../schemas/translation-recipe').RecipeResolveResultDto;
+    }>;
+    setProject: (input: {
+      projectId: string;
+      recipeId?: string | null;
+      override?: import('../schemas/translation-recipe').TranslationRecipeOverrideDto | null;
+    }) => Promise<{
+      resolved: import('../schemas/translation-recipe').RecipeResolveResultDto;
+    }>;
+  };
+  translationCampaign: {
+    create: (input: {
+      title: string;
+      recipeId: string;
+      projectIds?: string[];
+    }) => Promise<{ plan: import('../schemas/translation-campaign').CampaignPlanDto }>;
+    get: (campaignId: string) => Promise<{
+      campaign: import('zod').infer<
+        typeof import('../schemas/translation-campaign').CampaignDetailSchema
+      >;
+    }>;
+    list: () => Promise<{
+      campaigns: import('zod').infer<
+        typeof import('../schemas/translation-campaign').CampaignListItemSchema
+      >[];
+    }>;
+    setProjectOverride: (input: {
+      campaignId: string;
+      projectId: string;
+      override: import('../schemas/translation-recipe').TranslationRecipeOverrideDto | null;
+    }) => Promise<{ plan: import('../schemas/translation-campaign').CampaignPlanDto }>;
+    addProjects: (input: {
+      campaignId: string;
+      projectIds: string[];
+    }) => Promise<{ plan: import('../schemas/translation-campaign').CampaignPlanDto }>;
+    removeProject: (input: {
+      campaignId: string;
+      projectId: string;
+    }) => Promise<{ plan: import('../schemas/translation-campaign').CampaignPlanDto }>;
+    preflight: (
+      campaignId: string,
+    ) => Promise<{ plan: import('../schemas/translation-campaign').CampaignPlanDto }>;
+    start: (input: {
+      campaignId: string;
+      startToken: string;
+    }) => Promise<{ result: import('../schemas/translation-campaign').CampaignStartResultDto }>;
+    pause: (
+      campaignId: string,
+    ) => Promise<{ plan: import('../schemas/translation-campaign').CampaignPlanDto }>;
+    resume: (
+      campaignId: string,
+    ) => Promise<{ plan: import('../schemas/translation-campaign').CampaignPlanDto }>;
+    cancel: (
+      campaignId: string,
+    ) => Promise<{ plan: import('../schemas/translation-campaign').CampaignPlanDto }>;
+    controlProject: (input: {
+      campaignId: string;
+      projectId: string;
+      action: 'pause' | 'resume' | 'retry' | 'setPriority';
+      priority?: number;
+    }) => Promise<{
+      campaign: import('../schemas/translation-campaign').CampaignDetailDto;
+    }>;
+  };
   import: {
     selectFile: () => Promise<{ canceled: boolean; filePath: string | null }>;
     preview: (filePath: string) => Promise<{ preview: ImportPreviewDto }>;
@@ -483,6 +584,45 @@ export interface KhepreeNovelAIApi {
     openFolder: (projectId: string) => Promise<{ ok: true }>;
     cancelScan: (projectId: string) => Promise<{ ok: true }>;
     onEvent: (callback: (event: SourceFolderEventDto) => void) => () => void;
+  };
+  batchImport: {
+    selectSource: (input?: {
+      preferredKind?: 'folder' | 'zip';
+    }) => Promise<import('../schemas/batch-import').BatchImportSelectSourceResponse>;
+    scan: (input: {
+      sourceKind: 'folder' | 'zip';
+      sourcePath: string;
+    }) => Promise<{ preflight: import('../schemas/batch-import').BatchImportPreflightDto }>;
+    cancel: (input?: { sessionId?: string }) => Promise<{ ok: true; cancelled: boolean }>;
+    discard: (sessionId: string) => Promise<{ ok: true }>;
+    updateCandidate: (input: {
+      sessionId: string;
+      candidateId: string;
+      selected?: boolean;
+      predictedTitle?: string;
+      proposedAction?: import('../constants/batch-import').BatchImportProposedAction;
+      targetProjectId?: string | null;
+    }) => Promise<{ preflight: import('../schemas/batch-import').BatchImportPreflightDto }>;
+    listProjects: () => Promise<{
+      projects: { id: string; title: string }[];
+    }>;
+    commit: (
+      sessionId: string,
+    ) => Promise<{ session: import('../schemas/batch-import').BatchImportSessionDetailDto }>;
+    retryCandidate: (input: {
+      sessionId: string;
+      candidateId: string;
+    }) => Promise<{ session: import('../schemas/batch-import').BatchImportSessionDetailDto }>;
+    getSession: (
+      sessionId: string,
+    ) => Promise<{ session: import('../schemas/batch-import').BatchImportSessionDetailDto }>;
+    listSessions: () => Promise<{
+      sessions: import('../schemas/batch-import').BatchImportSessionDetailDto[];
+      incomplete: import('../schemas/batch-import').BatchImportSessionDetailDto[];
+    }>;
+    onProgress: (
+      callback: (event: import('../schemas/batch-import').BatchImportProgressEventDto) => void,
+    ) => () => void;
   };
   bookMetadata: {
     get: (projectId: string) => Promise<{ metadata: ProjectMetadataDto }>;
@@ -1247,6 +1387,116 @@ export interface KhepreeNovelAIApi {
     repairCancel: (input: { sessionId: string }) => Promise<{ ok: boolean }>;
     selectExportPath: () => Promise<{ canceled: boolean; filePath: string | null }>;
     selectOverridePath: () => Promise<{ canceled: boolean; filePath: string | null }>;
+    listFailureShots: () => Promise<{
+      files: {
+        name: string;
+        path: string;
+        sizeBytes: number;
+        modifiedAt: string;
+      }[];
+    }>;
+    deleteFailureShot: (input: { path: string }) => Promise<{ ok: boolean }>;
+    purgeFailureShots: () => Promise<{ deleted: number; kept: number }>;
+  };
+  browserAttention: {
+    list: () => Promise<{
+      items: {
+        id: string;
+        accountKind: string;
+        accountId: string;
+        providerId: string | null;
+        providerType: string | null;
+        kind: string;
+        poolState: string;
+        summary: string;
+        suggestedAction: string;
+        diagnosticsPath: string | null;
+        status: string;
+        createdAt: string;
+      }[];
+    }>;
+    resolve: (input: {
+      id: string;
+      status?: 'RESOLVED' | 'DISMISSED';
+    }) => Promise<{ ok: boolean }>;
+  };
+  attentionInbox: {
+    list: () => Promise<{
+      items: AttentionInboxItemDto[];
+      openCount: number;
+    }>;
+    countOpen: () => Promise<{ openCount: number }>;
+    act: (input: {
+      itemId: string;
+      action:
+        | 'RESOLVE'
+        | 'DISMISS'
+        | 'SNOOZE'
+        | 'RETRY'
+        | 'SKIP'
+        | 'OPEN_LOGIN'
+        | 'VIEW_ERROR'
+        | 'CHOOSE_SOURCE'
+        | 'SWITCH_PROVIDER'
+        | 'OPEN_FOLDER';
+      snoozeMinutes?: number;
+    }) => Promise<{ item: AttentionInboxItemDto | null }>;
+    bulkRetry: (input: {
+      itemIds?: string[];
+      allRetryable?: boolean;
+    }) => Promise<{
+      attempted: number;
+      skippedProactive: number;
+      retriedJobIds: string[];
+    }>;
+    reconcile: () => Promise<{ resolved: number }>;
+  };
+  fictionSeries: {
+    list: () => Promise<{
+      series: z.infer<typeof import('../schemas/fiction-series').FictionSeriesDtoSchema>[];
+    }>;
+    get: (seriesId: string) => Promise<{
+      series: z.infer<typeof import('../schemas/fiction-series').FictionSeriesDtoSchema>;
+    }>;
+    create: (input: {
+      title: string;
+      description?: string | null;
+      genre?: string | null;
+    }) => Promise<{
+      series: z.infer<typeof import('../schemas/fiction-series').FictionSeriesDtoSchema>;
+    }>;
+    listVolumes: (seriesId: string) => Promise<{
+      volumes: z.infer<typeof import('../schemas/fiction-series').FictionSeriesVolumeDtoSchema>[];
+    }>;
+    addVolume: (input: {
+      seriesId: string;
+      projectId: string;
+      volumeOrder?: number;
+      volumeLabel?: string | null;
+      force?: boolean;
+    }) => Promise<{
+      volume: z.infer<typeof import('../schemas/fiction-series').FictionSeriesVolumeDtoSchema>;
+    }>;
+    removeVolume: (input: { seriesId: string; projectId: string }) => Promise<{ ok: true }>;
+    reorderVolumes: (input: {
+      seriesId: string;
+      orderedProjectIds: string[];
+    }) => Promise<{ ok: true }>;
+    previewMembership: (input: {
+      projectId: string;
+      toSeriesId: string;
+    }) => Promise<z.infer<typeof import('../schemas/fiction-series').SeriesMembershipConflictPreviewSchema>>;
+    assignProject: (input: {
+      seriesId: string;
+      projectId: string;
+      volumeLabel?: string | null;
+      force?: boolean;
+    }) => Promise<{
+      volume: z.infer<typeof import('../schemas/fiction-series').FictionSeriesVolumeDtoSchema>;
+    }>;
+    exportKnowledge: (input: { seriesId: string }) => Promise<
+      z.infer<typeof import('../schemas/fiction-series').ExportSeriesKnowledgeResponseSchema>
+    >;
   };
   aiProviders: {
     list: () => Promise<z.infer<typeof AiProviderListResponseSchema>>;
@@ -1357,6 +1607,50 @@ export interface KhepreeNovelAIApi {
     onAccessState: (
       callback: (state: import('../schemas/khepree').KhepreeAccessState) => void,
     ) => () => void;
+  };
+  production: {
+    onCompletion: (
+      callback: (
+        event: import('../schemas/delivery-completion').ProductionCompletionEvent,
+      ) => void,
+    ) => () => void;
+  };
+  notify: {
+    getDesktopEnabled: () => Promise<{ enabled: boolean }>;
+    setDesktopEnabled: (input: { enabled: boolean }) => Promise<{ enabled: boolean }>;
+  };
+  librarySearch: {
+    query: (
+      input: import('../schemas/library-search').LibrarySearchQueryInput,
+    ) => Promise<import('../schemas/library-search').LibrarySearchQueryResultDto>;
+    cancelQuery: () => Promise<{ ok: boolean }>;
+    getSettings: () => Promise<import('../schemas/library-search').LibrarySearchSettingsDto>;
+    updateSettings: (
+      input: Partial<import('../schemas/library-search').LibrarySearchSettingsDto>,
+    ) => Promise<import('../schemas/library-search').LibrarySearchSettingsDto>;
+    startReindex: (input?: { force?: boolean }) => Promise<
+      import('../schemas/library-search').LibrarySearchIndexProgressDto
+    >;
+    cancelReindex: () => Promise<
+      import('../schemas/library-search').LibrarySearchIndexProgressDto | null
+    >;
+    getReindexProgress: () => Promise<
+      import('../schemas/library-search').LibrarySearchIndexProgressDto | null
+    >;
+    onReindexProgress: (
+      callback: (
+        progress: import('../schemas/library-search').LibrarySearchIndexProgressDto,
+      ) => void,
+    ) => () => void;
+  };
+  featureIntro: {
+    getState: () => Promise<import('../schemas/feature-intro').FeatureIntroStateDto>;
+    dismiss: (
+      input: import('../schemas/feature-intro').FeatureIntroDismissRequest,
+    ) => Promise<import('../schemas/feature-intro').FeatureIntroStateDto>;
+    updateTour: (
+      input: import('../schemas/feature-intro').FeatureIntroTourUpdate,
+    ) => Promise<import('../schemas/feature-intro').FeatureIntroStateDto>;
   };
   uiLanguage: {
     get: () => Promise<import('../schemas/ui-language').UiLanguageStatus>;

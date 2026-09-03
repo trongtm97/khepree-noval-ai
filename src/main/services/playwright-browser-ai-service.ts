@@ -14,6 +14,8 @@ import { profileLockManager, startLeaseHeartbeat } from '../automation/browser-r
 import { getBrowserRuntimeManager } from '../automation/browser-runner/browser-runtime-manager';
 import { launchKhepreeNovelAIPersistentContext } from '../automation/browser-runner/launch-persistent-context';
 import { AutomationError } from '../automation/errors/automation-errors';
+import { getBrowserCircuitBreaker } from '../automation/browser-pool/circuit-breaker';
+import { applyBrowserPoolAttention } from '../automation/browser-pool/apply-attention';
 import { pathsService } from './paths-service';
 import { logger } from '../logging/logger';
 import { newId } from '../db/utils/uuid';
@@ -98,6 +100,22 @@ export class PlaywrightBrowserAiService {
       site,
     );
 
+    const providerId =
+      input.providerType === 'PLAYWRIGHT_CHATGPT'
+        ? AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT
+        : AI_PROVIDER_IDS.PLAYWRIGHT_META_AI;
+    const breaker = getBrowserCircuitBreaker();
+    if (!breaker.canAttempt(providerId, input.aiAccountId)) {
+      const waitMs = breaker.backoffMs(providerId, input.aiAccountId);
+      return {
+        correlationId: input.correlationId ?? newId(),
+        status: 'failed',
+        rawResponse: '',
+        errorCode: 'CIRCUIT_OPEN',
+        errorMessage: `Circuit open for this account — retry after ~${Math.ceil(waitMs / 1000)}s (no CAPTCHA bypass)`,
+      };
+    }
+
     const provider =
       site === 'chatgpt' ? new ChatGptBrowserProvider() : new MetaAiBrowserProvider();
 
@@ -123,6 +141,7 @@ export class PlaywrightBrowserAiService {
         },
       );
 
+      breaker.recordSuccess(providerId, input.aiAccountId);
       this.db.aiAccounts.markUsed(input.aiAccountId);
       return {
         correlationId,
@@ -137,8 +156,23 @@ export class PlaywrightBrowserAiService {
         providerType: input.providerType,
         aiAccountId: input.aiAccountId,
         code,
-        message,
+        // never log prompt / cookies / novel text
       });
+      const attentionCodes = ['CAPTCHA', 'LOGIN_REQUIRED', 'QUOTA_LIMIT', 'SESSION_EXPIRED'];
+      if (attentionCodes.some((c) => code === c || code.includes(c))) {
+        breaker.tripForAttention(providerId, input.aiAccountId);
+        applyBrowserPoolAttention(this.db, {
+          accountKind: 'AI_ACCOUNT',
+          accountId: input.aiAccountId,
+          providerId,
+          providerType: input.providerType,
+          errorCode: code,
+          summary: message.slice(0, 400),
+          diagnosticsPath: diagnosticsDir,
+        });
+      } else {
+        breaker.recordFailure(providerId, input.aiAccountId);
+      }
       return {
         correlationId,
         status: 'failed',
