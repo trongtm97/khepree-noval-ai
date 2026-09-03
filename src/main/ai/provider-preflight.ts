@@ -91,13 +91,6 @@ function resolveAccountRef(input: CheckProviderForJobInput): ProviderAccountRef 
     };
   }
   if (input.accountRef) return input.accountRef;
-  if (input.accountId) {
-    return {
-      accountKind: 'GOOGLE_ACCOUNT',
-      accountId: input.accountId,
-      profileDirName: null,
-    };
-  }
   throw new Error('checkProviderForJob requires executionTarget or accountRef');
 }
 
@@ -480,6 +473,7 @@ async function checkPlaywrightBrowserAi(
   providerId: string,
   accountRef: ProviderAccountRef,
 ): Promise<ProviderPreflightReport> {
+  await Promise.resolve();
   const checks: Record<string, boolean | string | null> = {
     browserEngineUsable: false,
     aiAccountReady: false,
@@ -517,7 +511,7 @@ async function checkPlaywrightBrowserAi(
         db.aiAccounts.getById(accountRef.accountId)
       : null;
 
-  if (!account || account.status !== 'READY') {
+  if (account?.status !== 'READY') {
     return {
       providerId,
       result: 'UNAVAILABLE',

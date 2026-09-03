@@ -7,7 +7,7 @@ import {
 } from '@shared/constants/translation-prompt-policy';
 
 /** Phase 8 golden matrix — production language pairs. */
-export const GOLDEN_LANGUAGE_PAIRS: ReadonlyArray<[string, string]> = [
+export const GOLDEN_LANGUAGE_PAIRS: readonly [string, string][] = [
   ['zh-Hans', 'vi'],
   ['zh-Hant', 'en'],
   ['ja', 'vi'],
@@ -52,17 +52,17 @@ export function assertGoldenPairLabels(
   const sourceRules = resolveSourceLanguageRules(sourceLanguage);
   const targetRules = resolveTargetLanguageRules(targetLanguage);
   if (requirePolicyTokens && sourceRules.length > 0) {
-    const token = sourceRules[0]!.split(/\s+/).find((w) => w.length > 5) ?? '';
+    const token = sourceRules[0].split(/\s+/).find((w) => w.length > 5) ?? '';
     if (token) expect(prompt.toLowerCase()).toContain(token.slice(0, 6).toLowerCase());
   }
   if (requirePolicyTokens && targetRules.length > 0) {
-    const token = targetRules[0]!.split(/\s+/).find((w) => w.length > 5) ?? '';
+    const token = targetRules[0].split(/\s+/).find((w) => w.length > 5) ?? '';
     if (token) expect(prompt.toLowerCase()).toContain(token.slice(0, 6).toLowerCase());
   }
 
   const pairRules = resolvePairOverrideRules(sourceLanguage, targetLanguage);
   if (requirePolicyTokens && pairRules.length > 0 && prompt.includes('## Critical Rules')) {
-    expect(prompt).toContain(pairRules[0]!.slice(0, 12));
+    expect(prompt).toContain(pairRules[0].slice(0, 12));
   }
 
   assertNoUnrelatedLanguagePolicy(prompt, sourceLanguage, targetLanguage);
@@ -98,12 +98,12 @@ export function assertNoUnrelatedLanguagePolicy(
 
 export function pairFingerprint(prompt: string): string {
   const source =
-    prompt.match(/Source language:\s*\n\s*[^\n]*\(([^)]+)\)/)?.[1] ??
-    prompt.match(/Source language:[\s\S]*?\(([^)]+)\)/)?.[1] ??
+    (/Source language:\s*\n\s*[^\n]*\(([^)]+)\)/.exec(prompt))?.[1] ??
+    (/Source language:[\s\S]*?\(([^)]+)\)/.exec(prompt))?.[1] ??
     '';
   const target =
-    prompt.match(/Target language:\s*\n\s*[^\n]*\(([^)]+)\)/)?.[1] ??
-    prompt.match(/Target language:[\s\S]*?\(([^)]+)\)/)?.[1] ??
+    (/Target language:\s*\n\s*[^\n]*\(([^)]+)\)/.exec(prompt))?.[1] ??
+    (/Target language:[\s\S]*?\(([^)]+)\)/.exec(prompt))?.[1] ??
     '';
   return `${source}→${target}`;
 }

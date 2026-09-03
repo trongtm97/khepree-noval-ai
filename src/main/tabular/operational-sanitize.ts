@@ -28,7 +28,7 @@ export function sanitizeOperationalText(
   options: OperationalSanitizeOptions = {},
 ): string {
   if (value == null) return '';
-  let text = String(value);
+  let text = value;
   text = text.replace(TOKEN_LIKE, '[REDACTED_TOKEN]');
   if (options.sanitizeEmail !== false) {
     text = text.replace(EMAIL_RE, (email) => maskEmail(email));
@@ -54,7 +54,9 @@ export function sanitizeOperationalJson(
     const redacted = redactUnknown(value, options, '');
     return sanitizeOperationalText(JSON.stringify(redacted), options);
   } catch {
-    return sanitizeOperationalText(String(value), options);
+    return typeof value === 'string'
+      ? sanitizeOperationalText(value, options)
+      : '';
   }
 }
 

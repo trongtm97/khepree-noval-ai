@@ -257,9 +257,8 @@ function detectPunctuationMismatch(text: string, targetProfile: LanguageProfile)
   if (targetProfile.punctuationProfile === 'arabic') {
     return cjkPeriods >= 2;
   }
-  if (targetProfile.punctuationProfile === 'thai') {
-    return cjkPeriods >= 2;
-  }
+
+  return cjkPeriods >= 2;
 
   return arabicComma >= 3 && targetProfile.script !== 'Arab';
 }

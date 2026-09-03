@@ -193,7 +193,7 @@ export function ProjectDataPage() {
 
       <ModalPortal
         open={!!reportEntry}
-        onBackdropClick={() => setReportEntry(null)}
+        onBackdropClick={() => { setReportEntry(null); }}
         contentClassName="nt-dialog"
         role="dialog"
         ariaModal
@@ -210,7 +210,7 @@ export function ProjectDataPage() {
               <li>{t('dataHub.reportSkipped', { n: reportEntry.skippedCount })}</li>
               <li>{t('dataHub.reportErrors', { n: reportEntry.errorCount })}</li>
             </ul>
-            <Button variant="primary" onClick={() => setReportEntry(null)}>
+            <Button variant="primary" onClick={() => { setReportEntry(null); }}>
               {t('actions.close')}
             </Button>
           </>

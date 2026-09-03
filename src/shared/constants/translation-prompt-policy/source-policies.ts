@@ -123,12 +123,11 @@ export function resolveSourcePolicyFamily(code: string): SourcePolicyFamily {
 
 export function resolveSourceLanguageRules(sourceLanguage: string): string[] {
   const code = normalizeLanguageCode(sourceLanguage);
-  const exact = LANGUAGE_SOURCE_RULES[code];
-  if (exact) return [...exact];
   const base = code.split('-')[0];
-  const baseRules = LANGUAGE_SOURCE_RULES[base];
   const family = resolveSourcePolicyFamily(code);
-  const familyRules = FAMILY_RULES[family];
-  if (baseRules) return [...baseRules, ...familyRules];
-  return [...familyRules];
+  const rules =
+    (code in LANGUAGE_SOURCE_RULES ? LANGUAGE_SOURCE_RULES[code] : undefined) ??
+    (base in LANGUAGE_SOURCE_RULES ? LANGUAGE_SOURCE_RULES[base] : undefined) ??
+    [];
+  return [...rules, ...FAMILY_RULES[family]];
 }

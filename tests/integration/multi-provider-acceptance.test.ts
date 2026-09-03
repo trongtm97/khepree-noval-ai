@@ -38,7 +38,7 @@ vi.mock('@main/ai/provider-preflight', async (importOriginal) => {
   return { ...actual, checkProviderForJob: vi.fn() };
 });
 
-const ACCEPTANCE_PAIRS: Array<[string, string]> = [
+const ACCEPTANCE_PAIRS: [string, string][] = [
   ['zh-Hans', 'vi'],
   ['ja', 'en'],
   ['en', 'es'],
@@ -54,10 +54,10 @@ const threeParagraphBatch = [
 const parser = new ResponseParser();
 
 describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () => {
-  let harness: PipelineHarness;
+  let harness!: PipelineHarness;
 
   afterEach(async () => {
-    if (harness) await harness.dispose();
+    await harness.dispose();
     vi.clearAllMocks();
   });
 
@@ -65,7 +65,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
     it(
       'captures execution target and TranslationPack through scheduler→manager',
       async () => {
-      harness = await createPipelineHarness({
+      harness = createPipelineHarness({
         buildProviders: (captures) => [
           mockProvider(
             AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
@@ -110,10 +110,10 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
 
       const pack = harness.captures.packs[0];
       expect(pack).toBeDefined();
-      expect(pack!.operationType).toBe('TRANSLATE');
-      expect(pack!.prompt).toContain(formatAiLanguageIdentity('ja'));
-      expect(pack!.prompt).toContain(formatAiLanguageIdentity('en'));
-      expect(pack!.promptHash).toBeTruthy();
+      expect(pack.operationType).toBe('TRANSLATE');
+      expect(pack.prompt).toContain(formatAiLanguageIdentity('ja'));
+      expect(pack.prompt).toContain(formatAiLanguageIdentity('en'));
+      expect(pack.promptHash).toBeTruthy();
 
       const job = harness.db.jobs.getById(jobId);
       expect(job?.execution_provider_id).toBe(AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT);
@@ -159,7 +159,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
 
     for (const c of cases) {
       it(`${c.label} completes through shared pipeline`, async () => {
-        harness = await createPipelineHarness({
+        harness = createPipelineHarness({
           buildProviders: (captures) => [
             mockProvider(c.providerId, c.providerType, () =>
               Promise.resolve({
@@ -191,7 +191,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
     }
 
     it('Gemini + ChatGPT + Meta — each pinned project uses its provider', async () => {
-      harness = await createPipelineHarness({
+      harness = createPipelineHarness({
         maxConcurrentWorkers: 3,
         buildProviders: (captures) => [
           mockProvider(AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, 'PLAYWRIGHT_GEMINI', () =>
@@ -242,7 +242,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
 
   describe('III. Zero Google', () => {
     it('ChatGPT READY, zero Google → synthetic chapter PASS', async () => {
-      harness = await createPipelineHarness({
+      harness = createPipelineHarness({
         buildProviders: (captures) => [
           mockProvider(AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT, 'PLAYWRIGHT_CHATGPT', () =>
             Promise.resolve({ requestId: 'z1', status: 'SUCCESS', text: okTranslateResponse([P1, P2, P3]) }), captures),
@@ -266,7 +266,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
     });
 
     it('Meta READY, zero Google → synthetic chapter PASS', async () => {
-      harness = await createPipelineHarness({
+      harness = createPipelineHarness({
         buildProviders: (captures) => [
           mockProvider(AI_PROVIDER_IDS.PLAYWRIGHT_META_AI, 'PLAYWRIGHT_META_AI', () =>
             Promise.resolve({ requestId: 'z2', status: 'SUCCESS', text: okTranslateResponse([P1, P2, P3]) }), captures),
@@ -290,7 +290,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
 
   describe('IV–V. Multi-account and cross-provider concurrency', () => {
     it('2 ChatGPT accounts → 2 parallel jobs on different projects', async () => {
-      harness = await createPipelineHarness({
+      harness = createPipelineHarness({
         maxConcurrentWorkers: 2,
         buildProviders: (captures) => [
           mockProvider(AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT, 'PLAYWRIGHT_CHATGPT', async () => {
@@ -316,7 +316,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
     });
 
     it('Gemini + ChatGPT + Meta run concurrently without profile lock leak', async () => {
-      harness = await createPipelineHarness({
+      harness = createPipelineHarness({
         maxConcurrentWorkers: 3,
         buildProviders: (captures) => [
           mockProvider(AI_PROVIDER_IDS.PLAYWRIGHT_GEMINI, 'PLAYWRIGHT_GEMINI', async () => {
@@ -361,7 +361,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
 
   describe('VII. Translation protocol', () => {
     it('3 paragraphs, stable IDs, locked term — parser PASS + QA PASS', async () => {
-      harness = await createPipelineHarness({
+      harness = createPipelineHarness({
         buildProviders: (captures) => [
           mockProvider(AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT, 'PLAYWRIGHT_CHATGPT', () =>
             Promise.resolve({
@@ -408,7 +408,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
   describe('VIII. Multilingual — provider does not change language policy', () => {
     for (const [source, target] of ACCEPTANCE_PAIRS) {
       it(`${source}→${target} on ChatGPT path`, async () => {
-        harness = await createPipelineHarness({
+        harness = createPipelineHarness({
           buildProviders: (captures) => [
             mockProvider(AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT, 'PLAYWRIGHT_CHATGPT', () =>
               Promise.resolve({ requestId: 'ml', status: 'SUCCESS', text: okTranslateResponse([P1]) }), captures),
@@ -426,7 +426,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
           sourceParagraphIds: [P1],
         });
 
-        const pack = harness.captures.packs[0]!;
+        const pack = harness.captures.packs[0];
         assertGoldenPairLabels(pack.prompt, source, target);
         expect(pairFingerprint(pack.sections.taskHeader)).toBe(`${source}→${target}`);
       });
@@ -441,7 +441,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
         '[C000001:P000002]',
         '[C000001:P000003]',
       ];
-      harness = await createPipelineHarness({
+      harness = createPipelineHarness({
         buildProviders: (captures) => [
           mockProvider(AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT, 'PLAYWRIGHT_CHATGPT', (_pack, _opts) => {
             const n = (captures.sendCounts.get(AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT) ?? 0) + 1;
@@ -480,7 +480,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
   describe('X. Repair', () => {
     it('missing paragraph repaired through same provider; language pair preserved', async () => {
       let call = 0;
-      harness = await createPipelineHarness({
+      harness = createPipelineHarness({
         buildProviders: (captures) => [
           mockProvider(AI_PROVIDER_IDS.PLAYWRIGHT_META_AI, 'PLAYWRIGHT_META_AI', () => {
             call += 1;
@@ -531,7 +531,7 @@ describe('Multi-provider acceptance — full pipeline', { timeout: 30_000 }, () 
 
   describe('XI. Fallback', () => {
     it('ChatGPT TIMEOUT → Meta SUCCESS', async () => {
-      harness = await createPipelineHarness({
+      harness = createPipelineHarness({
         routingMode: 'AUTO',
         buildProviders: (captures) => [
           mockProvider(AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT, 'PLAYWRIGHT_CHATGPT', () =>

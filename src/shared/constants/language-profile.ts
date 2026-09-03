@@ -17,7 +17,6 @@ export {
   GEMINI_WEB_OFFICIAL_AUDIT_DATE,
   GEMINI_WEB_OFFICIAL_SOURCE_URL,
   KHEPREE_NOVEL_AI_VERIFIED_CODES,
-  GEMINI_WEB_VERIFIED_CODES,
   GEMINI_EXTENDED_CODES,
 } from './world-language-catalog';
 export { LANGUAGE_CODE_ALIASES, LANGUAGE_SEARCH_ALIASES, resolveLanguageSearchAlias } from './language-code-aliases';
@@ -41,7 +40,7 @@ export const LANGUAGE_SCRIPTS = [
   'Sinh', 'Khmr', 'Laoo', 'Mymr', 'Ethi', 'Geor', 'Armn', 'Grek', 'Tibt',
 ] as const;
 
-export type LanguageScript = (typeof LANGUAGE_SCRIPTS)[number] | string;
+export type LanguageScript = (typeof LANGUAGE_SCRIPTS)[number];
 
 export const TEXT_DIRECTIONS = ['ltr', 'rtl'] as const;
 export type TextDirection = (typeof TEXT_DIRECTIONS)[number];
@@ -150,11 +149,11 @@ export function registerLanguageProfile(profile: LanguageProfile): void {
   registry.set(code, {
     ...profile,
     code,
-    displayNameNative: profile.nativeName ?? profile.displayNameNative,
-    nativeName: profile.nativeName ?? profile.displayNameNative,
-    internationalName: profile.internationalName ?? profile.displayNameNative,
-    providerSupport: profile.providerSupport ?? 'CATALOG_ONLY',
-    khepreeNovelAiVerification: profile.khepreeNovelAiVerification ?? 'UNTESTED',
+    displayNameNative: profile.nativeName,
+    nativeName: profile.nativeName,
+    internationalName: profile.internationalName,
+    providerSupport: profile.providerSupport,
+    khepreeNovelAiVerification: profile.khepreeNovelAiVerification,
   });
 }
 

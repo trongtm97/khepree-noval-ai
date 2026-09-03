@@ -62,11 +62,11 @@ export function ActionRequiredJobs({
                 </div>
                 <div className="jobs-card-actions btn-row">
                   {partial ? (
-                    <Button size="sm" disabled={busy} onClick={() => void onRetry(job.id)}>
+                    <Button size="sm" disabled={busy} onClick={() => { onRetry(job.id); }}>
                       {t('jobs.continueFromError')}
                     </Button>
                   ) : (
-                    <Button size="sm" disabled={busy} onClick={() => void onRetry(job.id)}>
+                    <Button size="sm" disabled={busy} onClick={() => { onRetry(job.id); }}>
                       {t('actions.retry')}
                     </Button>
                   )}
@@ -74,7 +74,7 @@ export function ActionRequiredJobs({
                     size="sm"
                     variant="secondary"
                     onClick={() => {
-                      void onOpen(job.id);
+                      onOpen(job.id);
                     }}
                   >
                     {t('jobs.detail')}

@@ -22,7 +22,7 @@ import { logger } from '../logging/logger';
 import {
   buildConcurrencySnapshot,
   canAdmitJob,
-  effectivePerProjectMax,
+  DEFAULT_PER_PROJECT_MAX,
   loadConcurrencyPolicy,
   resolveGlobalMaxWorkers,
   saveConcurrencyPolicy,
@@ -213,7 +213,7 @@ export class AutomationScheduler {
     for (let pass = 0; pass < projects.length && capacity > 0; pass += 1) {
       const projectId = projects[pass];
       let snap = buildConcurrencySnapshot(this.inFlightMeta.values());
-      const projectMax = effectivePerProjectMax(policy);
+      const projectMax = DEFAULT_PER_PROJECT_MAX;
       if ((snap.byProject.get(projectId) ?? 0) >= projectMax) continue;
 
       const targets = this.pool.listAvailableFair({ projectId, busyAccountIds });

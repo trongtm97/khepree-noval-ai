@@ -171,7 +171,7 @@ export function OverlayPlaygroundPage() {
         >
           Open drawer
         </Button>
-        <Drawer open={drawerOpen} title="Notification drawer" onClose={() => setDrawerOpen(false)}>
+        <Drawer open={drawerOpen} title="Notification drawer" onClose={() => { setDrawerOpen(false); }}>
           <p>Drawer body — portaled above shell.</p>
         </Drawer>
       </section>

@@ -11,6 +11,7 @@ export function sanitizeUrlForLog(url: string): string {
       'session',
       'checkout',
       'code_verifier',
+      'ft',
     ];
     for (const key of [...parsed.searchParams.keys()]) {
       if (sensitiveParams.some((s) => key.toLowerCase().includes(s))) {

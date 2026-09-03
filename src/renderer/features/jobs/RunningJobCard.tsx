@@ -54,13 +54,15 @@ export function RunningJobCard({
   const accountId = job.progress?.accountId ?? job.pinnedAccountId;
   const account = accountId ? accountById.get(accountId) : undefined;
   const channel = friendlyChannel(job);
+  const progress = job.progress;
   const progressHint =
-    typeof job.progress?.paragraphsDone === 'number' &&
-    typeof job.progress?.paragraphsTotal === 'number' &&
-    job.progress.paragraphsTotal > 0
+    progress &&
+    typeof progress.paragraphsDone === 'number' &&
+    typeof progress.paragraphsTotal === 'number' &&
+    progress.paragraphsTotal > 0
       ? t('jobs.paragraphsProgress', {
-          done: String(job.progress.paragraphsDone),
-          total: String(job.progress.paragraphsTotal),
+          done: String(progress.paragraphsDone),
+          total: String(progress.paragraphsTotal),
         })
       : measure.labelParts.length > 0
         ? measure.labelParts.join(' · ')
@@ -118,7 +120,7 @@ export function RunningJobCard({
           <Button size="sm" variant="primary" onClick={openTranslator}>
             {t('jobs.openTranslator')}
           </Button>
-          <Button size="sm" variant="secondary" disabled={busy} onClick={() => void onPauseAll()}>
+          <Button size="sm" variant="secondary" disabled={busy} onClick={() => { onPauseAll(); }}>
             {t('actions.pause')}
           </Button>
           <IconButton
@@ -145,7 +147,7 @@ export function RunningJobCard({
               role="menuitem"
               onClick={() => {
                 setMenuOpen(false);
-                void onOpen(job.id);
+                onOpen(job.id);
               }}
             >
               {t('jobs.detail')}
@@ -166,7 +168,7 @@ export function RunningJobCard({
                 role="menuitem"
                 onClick={() => {
                   setMenuOpen(false);
-                  void onOpenGemini(accountId);
+                  onOpenGemini(accountId);
                 }}
               >
                 {t('jobs.openGemini')}

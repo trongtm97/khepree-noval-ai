@@ -10,7 +10,7 @@ export function isUuid(value: string): boolean {
 export function pick(row: Record<string, string>, ...keys: string[]): string {
   for (const key of keys) {
     const v = row[key];
-    if (v?.trim()) return v.trim();
+    if (typeof v === 'string' && v.trim()) return v.trim();
   }
   return '';
 }
@@ -72,7 +72,7 @@ export function chapterHasTranslations(db: DatabaseManager, chapterId: string): 
 export function rebuildChapterSourceText(db: DatabaseManager, chapterId: string): void {
   const paras = db.paragraphs.listByChapter(chapterId);
   const text = paras
-    .map((p) => p.source_text + '\n'.repeat(Math.max(0, p.trailing_newlines ?? 2)))
+    .map((p) => p.source_text + '\n'.repeat(Math.max(0, p.trailing_newlines)))
     .join('')
     .trimEnd();
   db.chapters.updateSourceMetadata(chapterId, { source_text: text });

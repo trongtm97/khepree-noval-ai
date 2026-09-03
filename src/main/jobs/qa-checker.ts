@@ -154,12 +154,12 @@ export function runLocalQa(input: QaCheckerInput): QaResult {
     input.targetLanguage &&
     (input.sourceParagraphs?.length ?? 0) > 0;
 
-  if (languageAwareEnabled) {
+  if (languageAwareEnabled && input.sourceParagraphs && input.sourceLanguage && input.targetLanguage) {
     const langQa = runLanguageAwareQa({
       parsed: input.parsed,
-      sourceParagraphs: input.sourceParagraphs!,
-      sourceLanguage: input.sourceLanguage!,
-      targetLanguage: input.targetLanguage!,
+      sourceParagraphs: input.sourceParagraphs,
+      sourceLanguage: input.sourceLanguage,
+      targetLanguage: input.targetLanguage,
       lockedTerms: input.lockedTerms,
       lockedAddressTerms: input.lockedAddressTerms,
     });

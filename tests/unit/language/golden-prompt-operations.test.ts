@@ -12,7 +12,7 @@ import {
   pairFingerprint,
 } from '../../helpers/golden-prompt-assertions';
 
-const REPRESENTATIVE_PAIRS: Array<[string, string, string]> = [
+const REPRESENTATIVE_PAIRS: [string, string, string][] = [
   ['ja', 'en', 'REPRESENTATIVE'],
   ['zh-Hans', 'vi', 'REPRESENTATIVE'],
   ['ar', 'fr', 'REPRESENTATIVE'],

@@ -83,10 +83,26 @@ export class AccountAvailabilityService {
   preflightMessage(now = Date.now()): string | null {
     const accounts = this.db.googleAccounts.list();
     const availabilityById = this.resolveAll(now);
-    const items = accounts.map((a) => ({
-      label: a.label,
-      availability: availabilityById.get(a.id)!,
-    }));
+    const items = accounts.map((a) => {
+      const availability =
+        availabilityById.get(a.id) ??
+        resolveAccountAvailability({
+          accountId: a.id,
+          accountStatus: 'DISABLED',
+          workerEnabled: false,
+          workerHealth: null,
+          workerCurrentJobId: null,
+          limitedUntil: null,
+          hasProfile: false,
+          profileLease: null,
+          runtimeHealth: null,
+          profileLockBlocked: false,
+          schedulerEligible: false,
+          activeJob: null,
+          now,
+        });
+      return { label: a.label, availability };
+    });
     return formatAvailabilityPreflightMessage(items);
   }
 
@@ -205,7 +221,7 @@ export class AccountAvailabilityService {
 let singleton: AccountAvailabilityService | null = null;
 
 export function getAccountAvailabilityService(db: DatabaseManager): AccountAvailabilityService {
-  if (!singleton) singleton = new AccountAvailabilityService(db);
+  singleton ??= new AccountAvailabilityService(db);
   return singleton;
 }
 

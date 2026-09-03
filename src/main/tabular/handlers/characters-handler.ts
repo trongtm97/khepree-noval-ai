@@ -64,15 +64,14 @@ function validateLegacyRow(
 
 function commitLegacyRow(row: Record<string, string>, ctx: TabularCommitContext) {
   const db = ctx.db;
-  const projectId = ctx.projectId!;
-  const editionId = ctx.editionId!;
+  const projectId = ctx.projectId;
+  const editionId = ctx.editionId;
+  if (!projectId || !editionId) return { action: 'skip' as const };
   const edition = db.translationEditions.getById(editionId);
   if (!edition) throw new Error(`Edition not found: ${editionId}`);
 
   let character = row.id ? db.characters.getById(row.id) : null;
-  if (!character) {
-    character = db.characters.getByName(projectId, row.canonical_name);
-  }
+  character ??= db.characters.getByName(projectId, row.canonical_name);
   if (character?.locked === 1 && row.locked !== '1') {
     return { action: 'skip' as const };
   }
@@ -170,7 +169,7 @@ export const charactersTabularHandler: TabularDataTypeHandler = {
   naturalKey(row, ctx) {
     const name = pick(row, 'canonical_source_name', 'canonical_name', 'name');
     const id = pick(row, 'character_id', 'id');
-    const sheet = row._sheet ?? 'CHARACTERS';
+    const sheet = row._sheet || 'CHARACTERS';
     return `${sheet}|${ctx.projectId ?? ''}|${id || name}`;
   },
 

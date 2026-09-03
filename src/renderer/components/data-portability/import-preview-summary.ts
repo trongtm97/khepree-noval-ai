@@ -22,11 +22,7 @@ export function summarizeImportPreview(preview: TabularPreviewResponse): {
       willSkip += 1;
       continue;
     }
-    if (row.status === 'valid' || row.status === 'warning') {
-      willAdd += 1;
-    } else {
-      willSkip += 1;
-    }
+    willAdd += 1;
   }
 
   return { willAdd, willUpdate, willSkip };

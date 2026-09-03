@@ -72,10 +72,8 @@ export function useJobsOverview(): JobsOverviewData {
     if (failures.length === results.length) {
       const first = failures[0];
       const msg =
-        first.status === 'rejected'
-          ? first.reason instanceof Error
-            ? first.reason.message
-            : t('errors.UNKNOWN.title')
+        first.reason instanceof Error
+          ? first.reason.message
           : t('errors.UNKNOWN.title');
       setRefreshError(msg);
       return;
@@ -110,7 +108,7 @@ export function useJobsOverview(): JobsOverviewData {
       });
     }
     if (workerResult.status === 'fulfilled') {
-      setWorkers(workerResult.value.workers as WorkerRow[]);
+      setWorkers(workerResult.value.workers);
     }
     if (routingResult.status === 'fulfilled') {
       setAiPreference(routingResult.value.aiPreference);

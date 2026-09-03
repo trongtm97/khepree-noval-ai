@@ -103,7 +103,7 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
       status: 'active',
       driveFileId: 'drive-sync',
     });
-    db.driveSyncState.patch(projectId, {
+    db.knowledgeSyncState.patch(projectId, {
       pendingKnowledgeVersion: 47,
       pendingSyncNonce: '8F7A2C19',
       versionProbeStatus: 'pending',
@@ -150,7 +150,7 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
     expect(result.status).toBe('verified');
     expect(db.notebookHotDeltas.listActive(projectId)).toHaveLength(0);
 
-    const state = db.driveSyncState.ensure(projectId);
+    const state = db.knowledgeSyncState.ensure(projectId);
     expect(state.version_probe_status).toBe('verified');
     expect(state.verified_knowledge_version).toBe(47);
 
@@ -169,7 +169,7 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
 
   it('fake source same name but old content → verification fail; pack notebook_assisted when explicit', async () => {
     // Pending is 48/NEW — Notebook still answers with old 47/OLD (filename present, content stale).
-    db.driveSyncState.patch(projectId, {
+    db.knowledgeSyncState.patch(projectId, {
       pendingKnowledgeVersion: 48,
       pendingSyncNonce: 'AABBCCDD',
       versionProbeStatus: 'pending',
@@ -181,7 +181,7 @@ describe('CONTENT_CURRENT vs SOURCE_PRESENT', () => {
       capture: () => Promise.resolve('NT_VERSION=47\nNT_NONCE=8F7A2C19'),
     });
     expect(result.status).toBe('mismatch');
-    expect(db.driveSyncState.ensure(projectId).version_probe_status).toBe('mismatch');
+    expect(db.knowledgeSyncState.ensure(projectId).version_probe_status).toBe('mismatch');
 
     const mode = resolveTranslationPackMode(db, {
       projectId,

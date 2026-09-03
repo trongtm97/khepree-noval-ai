@@ -110,7 +110,7 @@ export interface TabularPreviewSession {
   characterWorkbook?: boolean;
   sourceWorkbook?: boolean;
   projectDataWorkbook?: boolean;
-  rows: Array<{
+  rows: {
     rowIndex: number;
     status: TabularRowStatus;
     messages: string[];
@@ -118,7 +118,7 @@ export interface TabularPreviewSession {
     duplicateOfTermId?: string | null;
     duplicateAction?: string;
     hasConflict?: boolean;
-  }>;
+  }[];
   stats: {
     total: number;
     valid: number;

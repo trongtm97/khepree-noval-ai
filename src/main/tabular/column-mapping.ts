@@ -9,9 +9,8 @@ export function applyColumnMapping(
   if (!mapping || Object.keys(mapping).length === 0) return row;
   const out = { ...row };
   for (const [sourceHeader, targetKey] of Object.entries(mapping)) {
-    if (!targetKey?.trim()) continue;
-    const value = row[sourceHeader];
-    if (value !== undefined) out[targetKey] = value;
+    if (!targetKey.trim()) continue;
+    out[targetKey] = row[sourceHeader];
   }
   return out;
 }

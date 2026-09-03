@@ -59,7 +59,7 @@ export function DataPortabilityCard({
         <p className="data-hub-card-desc muted">{t(`dataHub.sectionDesc.${sectionId}`)}</p>
         <div className="data-hub-card-actions">
           {section.importable ? (
-            <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
+            <Button variant="secondary" size="sm" onClick={() => { setImportOpen(true); }}>
               {t('dataHub.importShort')}
             </Button>
           ) : null}
@@ -81,7 +81,7 @@ export function DataPortabilityCard({
           sectionId={sectionId}
           projectId={projectId}
           editionId={editionId}
-          onClose={() => setImportOpen(false)}
+          onClose={() => { setImportOpen(false); }}
           onComplete={onImportComplete}
         />
       ) : null}

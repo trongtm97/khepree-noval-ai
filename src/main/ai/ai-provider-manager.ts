@@ -856,7 +856,7 @@ export class AiProviderManager {
         });
 
         const chunkSourceChars = chunk.reduce(
-          (sum, p) => sum + (p.sourceText?.length ?? 0),
+          (sum, p) => sum + p.sourceText.length,
           0,
         );
         const response = await this.sendWithFallback(pack, {
@@ -1074,7 +1074,7 @@ export class AiProviderManager {
   ): (SendPromptOptions & { requestId: string }) | null {
     const requestId = base?.requestId ?? newId();
 
-    if (executionTarget && provider.providerId === executionTarget.providerId) {
+    if (executionTarget?.providerId === provider.providerId) {
       return {
         ...buildSendPromptOptions(executionTarget, base),
         requestId,
@@ -1085,7 +1085,7 @@ export class AiProviderManager {
 
     if (sendCaps.transport === 'LOCAL_WORKER') {
       const googleId =
-        executionTarget && executionTarget.accountKind === 'GOOGLE_ACCOUNT'
+        executionTarget?.accountKind === 'GOOGLE_ACCOUNT'
           ? executionTarget.accountId
           : base?.googleAccountId;
       const linked = googleId
@@ -1094,7 +1094,7 @@ export class AiProviderManager {
             executionTarget.providerType === 'GEMINI_WEB_API'
           ? this.db.aiAccounts.getById(executionTarget.accountId)
           : null;
-      if (!linked || linked.status !== 'READY') return null;
+      if (linked?.status !== 'READY') return null;
       return {
         ...base,
         requestId,
@@ -1105,7 +1105,7 @@ export class AiProviderManager {
 
     if (sendCaps.transport === 'BROWSER' && sendCaps.accountKind === 'GOOGLE_ACCOUNT') {
       const googleId =
-        executionTarget && executionTarget.accountKind === 'GOOGLE_ACCOUNT'
+        executionTarget?.accountKind === 'GOOGLE_ACCOUNT'
           ? executionTarget.accountId
           : base?.googleAccountId;
       if (!googleId) return null;
@@ -1114,12 +1114,11 @@ export class AiProviderManager {
 
     if (isBrowserAiAccountProvider(provider.providerType)) {
       const account =
-        executionTarget &&
-        executionTarget.accountKind === 'AI_ACCOUNT' &&
+        executionTarget?.accountKind === 'AI_ACCOUNT' &&
         executionTarget.providerId === provider.providerId
           ? this.db.aiAccounts.getById(executionTarget.accountId)
           : this.db.aiAccounts.pickLeastRecentlyUsedReady(provider.providerId);
-      if (!account || account.status !== 'READY') return null;
+      if (account?.status !== 'READY') return null;
       return {
         ...base,
         requestId,

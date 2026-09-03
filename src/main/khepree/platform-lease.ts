@@ -100,7 +100,7 @@ export function verifyPlatformSignedLease(
 }
 
 export function mapPlatformFeatures(
-  features: PlatformSignedLease['payload']['features'] | Array<{ key: string; value: { valueType: string; booleanValue?: boolean } }>,
+  features: PlatformSignedLease['payload']['features'] | { key: string; value: { valueType: string; booleanValue?: boolean } }[],
 ): Record<string, boolean> {
   const out: Record<string, boolean> = {};
   if (Array.isArray(features)) {
@@ -160,13 +160,13 @@ export function computeSigningKeyId(publicKeySpkiBase64: string): string {
 
 export function isPlatformSignedLease(raw: unknown): raw is PlatformSignedLease {
   if (!raw || typeof raw !== 'object') return false;
-  const lease = raw as PlatformSignedLease;
+  const lease = raw as { signature?: unknown; keyId?: unknown; payload?: unknown };
   return (
     typeof lease.signature === 'string' &&
     typeof lease.keyId === 'string' &&
     lease.payload != null &&
     typeof lease.payload === 'object' &&
-    typeof lease.payload.version === 'number'
+    typeof (lease.payload as { version?: unknown }).version === 'number'
   );
 }
 

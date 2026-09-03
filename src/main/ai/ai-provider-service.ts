@@ -166,7 +166,7 @@ export class AiProviderService {
           : groupReady[kind] && row?.status === 'READY';
       return {
         preference: kind,
-        ok: Boolean(ok && row?.enabled !== false),
+        ok: ok && row?.enabled !== false,
         status: row?.status ?? 'UNKNOWN',
       };
     });
@@ -306,7 +306,11 @@ export class AiProviderService {
     if (context?.accountId && context.projectId) {
       const { checkProviderForJob } = await import('./provider-preflight');
       const report = await checkProviderForJob(this.db, {
-        accountId: context.accountId,
+        accountRef: {
+          accountKind: 'GOOGLE_ACCOUNT',
+          accountId: context.accountId,
+          profileDirName: null,
+        },
         projectId: context.projectId,
         providerId,
         notebookRole: 'RESEARCH',
@@ -545,7 +549,7 @@ export class AiProviderService {
       return this.deleteBrowserAccount(accountId);
     }
     await getSecretStorage().delete(geminiWebSessionSecretKey(accountId));
-    if (account?.session_location) {
+    if (account.session_location) {
       try {
         fs.rmSync(account.session_location, { recursive: true, force: true });
       } catch {
@@ -616,7 +620,7 @@ export class AiProviderService {
     const label = provider.type === 'PLAYWRIGHT_CHATGPT' ? 'ChatGPT' : 'Meta AI';
     const existing = this.db.aiAccounts.listByProvider(input.providerId);
     const displayName =
-      input.displayName?.trim() ||
+      input.displayName?.trim() ??
       nextSequentialDisplayName(label, existing.length);
     const accountId = newId();
     const { profileDirName, profilePath } = browserProfileManager.createProfileDirectory(
@@ -649,7 +653,7 @@ export class AiProviderService {
     );
     return getPlaywrightBrowserAiService().openLoginBrowser({
       aiAccountId: input.accountId,
-      providerType: provider.type as 'PLAYWRIGHT_CHATGPT' | 'PLAYWRIGHT_META_AI',
+      providerType: provider.type,
     });
   }
 
@@ -668,7 +672,7 @@ export class AiProviderService {
     );
     const result = await getPlaywrightBrowserAiService().verifyLogin({
       aiAccountId: input.accountId,
-      providerType: provider.type as 'PLAYWRIGHT_CHATGPT' | 'PLAYWRIGHT_META_AI',
+      providerType: provider.type,
     });
     const account = this.listAccounts().find((a) => a.id === input.accountId);
     if (!account) throw new Error('Account not found after verify');

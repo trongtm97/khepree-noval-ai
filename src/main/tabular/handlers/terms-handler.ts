@@ -37,10 +37,7 @@ function parseBool(raw: string): boolean {
 
 function exportTermRow(db: DatabaseManager, term: TermRow): Record<string, string> {
   const translations = db.terms.listTranslations(term.id);
-  const primary =
-    translations.find((t) => t.is_primary === 1)?.target_text ??
-    translations[0]?.target_text ??
-    '';
+  const primary = (translations.find((t) => t.is_primary === 1) ?? translations[0]).target_text;
   const altTargets = translations
     .filter((t) => t.is_primary !== 1)
     .map((t) => t.target_text)
@@ -64,7 +61,7 @@ function exportTermRow(db: DatabaseManager, term: TermRow): Record<string, strin
     status: term.status,
     locked: boolToCell(term.locked),
     confidence: term.confidence != null ? String(term.confidence) : '',
-    occurrence_count: String(term.occurrence_count ?? 0),
+    occurrence_count: String(term.occurrence_count),
     notes: term.notes ?? '',
     simplified: term.source_simplified,
     traditional: term.source_traditional ?? '',
@@ -149,17 +146,19 @@ export const termsTabularHandler: TabularDataTypeHandler = {
 
     const rawStatus = (
       pickRow(row, 'status') ||
-      ctx.termImport?.defaultImportStatus ||
-      (ctx.projectId ? 'PROJECT_VERIFIED' : 'CANDIDATE')
+      (ctx.termImport?.defaultImportStatus ??
+        (ctx.projectId ? 'PROJECT_VERIFIED' : 'CANDIDATE'))
     ).toUpperCase();
 
     const normalized: Record<string, string> = {
       term_id: pickRow(row, 'term_id', 'id'),
       source_language: normalizeLanguageCode(
-        pickRow(row, 'source_language') || ctx.meta?.source_language || DEFAULT_SOURCE_LANGUAGE,
+        pickRow(row, 'source_language') ||
+          (ctx.meta?.source_language ?? DEFAULT_SOURCE_LANGUAGE),
       ),
       target_language: normalizeLanguageCode(
-        pickRow(row, 'target_language') || ctx.meta?.target_language || DEFAULT_TARGET_LANGUAGE,
+        pickRow(row, 'target_language') ||
+          (ctx.meta?.target_language ?? DEFAULT_TARGET_LANGUAGE),
       ),
       source_text: sourceText,
       target_text: pickRow(row, 'target_text', 'preferred_translation', 'vietnamese'),
@@ -226,10 +225,12 @@ export const termsTabularHandler: TabularDataTypeHandler = {
   naturalKey(row, ctx) {
     const source = pickRow(row, 'source_text', 'simplified', 'chinese');
     const srcLang = normalizeLanguageCode(
-      pickRow(row, 'source_language') || ctx.meta?.source_language || DEFAULT_SOURCE_LANGUAGE,
+      pickRow(row, 'source_language') ||
+        (ctx.meta?.source_language ?? DEFAULT_SOURCE_LANGUAGE),
     );
     const tgtLang = normalizeLanguageCode(
-      pickRow(row, 'target_language') || ctx.meta?.target_language || DEFAULT_TARGET_LANGUAGE,
+      pickRow(row, 'target_language') ||
+        (ctx.meta?.target_language ?? DEFAULT_TARGET_LANGUAGE),
     );
     const scope = (pickRow(row, 'scope') || 'GLOBAL').toUpperCase();
     const scopeRef = resolveScopeRef(scope, pickRow(row, 'scope_ref'), ctx.projectId) ?? '';
@@ -330,8 +331,8 @@ export const termsTabularHandler: TabularDataTypeHandler = {
     const scope = (row.scope || (ctx.projectId ? 'PROJECT' : 'GLOBAL')) as TermScope;
     const { status } = clampImportedStatus(
       row.status ||
-        ctx.termImport?.defaultImportStatus ||
-        (ctx.projectId ? 'PROJECT_VERIFIED' : 'CANDIDATE'),
+        (ctx.termImport?.defaultImportStatus ??
+          (ctx.projectId ? 'PROJECT_VERIFIED' : 'CANDIDATE')),
       ctx,
     );
 

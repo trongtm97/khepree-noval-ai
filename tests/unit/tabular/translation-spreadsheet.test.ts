@@ -111,9 +111,11 @@ describe('translation spreadsheet', () => {
     const db = getDatabase();
     const para = db.paragraphs.getByStableId(stableId);
     expect(para?.paragraph_id).toBe(stableId);
-    const tr = db.translations.getByParagraphId(para!.id, editionId);
+    if (!para) throw new Error('expected paragraph');
+    const tr = db.translations.getByParagraphId(para.id, editionId);
     expect(tr?.translated_text).toBe(translated);
-    const versions = db.translations.listVersions(tr!.id);
+    if (!tr) throw new Error('expected translation');
+    const versions = db.translations.listVersions(tr.id);
     expect(versions.length).toBeGreaterThanOrEqual(2);
     expect(versions[0]?.version_source).toBe('HUMAN_EDIT');
 
@@ -144,8 +146,10 @@ describe('translation spreadsheet', () => {
   it('flags CONFLICT_APP_NEWER when app text changed after export', () => {
     const { projectId, editionId, stableId } = seedProjectWithParagraph('原文', 'app newer');
     const db = getDatabase();
-    const para = db.paragraphs.getByStableId(stableId)!;
-    const tr = db.translations.getByParagraphId(para.id, editionId)!;
+    const para = db.paragraphs.getByStableId(stableId);
+    if (!para) throw new Error('expected paragraph');
+    const tr = db.translations.getByParagraphId(para.id, editionId);
+    if (!tr) throw new Error('expected translation');
     db.getConnection()
       .prepare(`UPDATE translations SET updated_at = ?, translated_text = ? WHERE id = ?`)
       .run('2025-06-01T00:00:00.000Z', 'app newer', tr.id);
@@ -264,7 +268,8 @@ describe.skipIf(!RUN_PERF)('translation spreadsheet performance', () => {
     expect(db.paragraphs.getByStableId('[C000001:P050000]')?.paragraph_id).toBe(
       '[C000001:P050000]',
     );
-    const firstPara = db.paragraphs.getByStableId('[C000001:P000001]')!;
+    const firstPara = db.paragraphs.getByStableId('[C000001:P000001]');
+    if (!firstPara) throw new Error('expected first paragraph');
     expect(db.translations.getByParagraphId(firstPara.id, edition.id)?.translated_text).toBe(
       'edited vi 1',
     );

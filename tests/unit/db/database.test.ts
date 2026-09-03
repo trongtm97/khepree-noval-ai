@@ -46,7 +46,9 @@ describe('DatabaseManager', () => {
     const dbPath = path.join(dataDir, DB_FILENAME);
 
     expect(fs.existsSync(dbPath)).toBe(true);
-    expect(db.getSchemaVersion()).toBe(MIGRATIONS.at(-1)!.version);
+    const latestMigration = MIGRATIONS.at(-1);
+    if (!latestMigration) throw new Error('expected migrations');
+    expect(db.getSchemaVersion()).toBe(latestMigration.version);
 
     const tables = db
       .getConnection()
@@ -187,7 +189,9 @@ describe('DatabaseManager', () => {
       const db = createDatabaseManager({ dataDir, backupsDir });
       const project = db.projects.getById(projectId);
       expect(project?.title).toBe('Persistent Novel');
-      expect(db.getSchemaVersion()).toBe(MIGRATIONS.at(-1)!.version);
+      const latestMigration = MIGRATIONS.at(-1);
+    if (!latestMigration) throw new Error('expected migrations');
+    expect(db.getSchemaVersion()).toBe(latestMigration.version);
       db.close();
     }
   });

@@ -12,6 +12,23 @@ import { importCommitService } from '@main/tabular/import-commit-service';
 import { tabularExportService } from '@main/tabular/tabular-export-service';
 import { validateWorkbookRow } from '@main/tabular/handlers/character-workbook-handler';
 
+function excelCellText(value: ExcelJS.CellValue): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object' && 'result' in value) {
+    const result = value.result;
+    if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
+      return String(result);
+    }
+  }
+  if (typeof value === 'object' && 'richText' in value && Array.isArray(value.richText)) {
+    return value.richText.map((part) => part.text).join('');
+  }
+  return '';
+}
+
 describe('character workbook tabular', () => {
   let tempRoot: string;
 
@@ -70,10 +87,10 @@ describe('character workbook tabular', () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(xlsxPath);
     const chars = workbook.getWorksheet('CHARACTERS');
-    expect(chars).toBeTruthy();
-    const row = chars!.getRow(2);
-    expect(String(row.getCell(1).value)).toBe(characterId);
-    expect(String(row.getCell(2).value)).toBe('李逍遥');
+    if (!chars) throw new Error('expected CHARACTERS worksheet');
+    const row = chars.getRow(2);
+    expect(excelCellText(row.getCell(1).value)).toBe(characterId);
+    expect(excelCellText(row.getCell(2).value)).toBe('李逍遥');
 
     const preview = await importPreviewService.preview({
       filePath: xlsxPath,

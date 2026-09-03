@@ -5,8 +5,6 @@ import {
   KHEPREE_NOVEL_AI_VERIFIED_CODES,
 } from '@shared/constants/gemini-web-official-2026';
 import {
-  AI_SUPPORT_TIERS,
-  GEMINI_WEB_VERIFIED_CODES,
   LANGUAGE_CODE_ALIASES,
   TEXT_DIRECTIONS,
   formatLanguagePickerLabel,
@@ -51,7 +49,6 @@ describe('World Language Catalog', () => {
       expect(p.displayNameVi.trim().length).toBeGreaterThan(0);
       expect(p.script.trim().length).toBeGreaterThan(0);
       expect(TEXT_DIRECTIONS).toContain(p.direction);
-      expect(AI_SUPPORT_TIERS).toContain(p.aiSupportTier);
       expect(['GEMINI_WEB_OFFICIAL', 'GEMINI_API_EXTENDED', 'CATALOG_ONLY']).toContain(
         p.providerSupport,
       );
@@ -124,8 +121,9 @@ describe('World Language Catalog', () => {
     expect(normalizeLanguageCode('zh-hk')).toBe('zh-HK');
   });
 
-  it('deprecated GEMINI_WEB_VERIFIED_CODES export matches official set', () => {
-    expect(GEMINI_WEB_VERIFIED_CODES).toEqual(GEMINI_WEB_OFFICIAL_CODES);
+  it('official Gemini Web language codes are published', () => {
+    expect(GEMINI_WEB_OFFICIAL_CODES.size).toBeGreaterThan(0);
+    expect(GEMINI_WEB_OFFICIAL_AUDIT_DATE).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
 

@@ -4,6 +4,7 @@
  */
 
 import type { AiProviderType } from '@shared/constants/ai-provider';
+import { parseAiProviderType } from '@shared/constants/ai-provider';
 import { isGeminiSoftErrorText, geminiSoftErrorSnippet } from './gemini-soft-error';
 
 export type ClassifiedResponseError =
@@ -113,10 +114,11 @@ const GENERIC_CLASSIFIER: ProviderResponseClassifier = {
 };
 
 export function getResponseClassifier(
-  providerType: AiProviderType | string | null | undefined,
+  providerType: string | null | undefined,
 ): ProviderResponseClassifier {
-  if (providerType && providerType in CLASSIFIERS) {
-    return CLASSIFIERS[providerType as AiProviderType]!;
+  const parsed = parseAiProviderType(providerType);
+  if (parsed && parsed in CLASSIFIERS) {
+    return CLASSIFIERS[parsed] ?? GENERIC_CLASSIFIER;
   }
   return GENERIC_CLASSIFIER;
 }
@@ -124,22 +126,23 @@ export function getResponseClassifier(
 /** Classify soft-error text from any provider — prefer provider-specific classifier. */
 export function classifyAiResponseText(
   raw: string | null | undefined,
-  providerType?: AiProviderType | string | null,
+  providerType?: string | null,
 ): ClassifiedSoftError | null {
-  const classifier = getResponseClassifier(providerType ?? null);
+  const parsed = parseAiProviderType(providerType);
+  const classifier = getResponseClassifier(providerType);
   const kind = classifier.classifyResponseText(raw);
   if (!kind) return null;
   return {
     kind,
     snippet: classifier.snippet(raw),
-    providerType: (providerType as AiProviderType) ?? null,
+    providerType: parsed,
   };
 }
 
 /** Back-compat wrapper — true when response text is a provider soft error, not translation. */
 export function isAiSoftErrorText(
   raw: string | null | undefined,
-  providerType?: AiProviderType | string | null,
+  providerType?: string | null,
 ): boolean {
   return classifyAiResponseText(raw, providerType) !== null;
 }

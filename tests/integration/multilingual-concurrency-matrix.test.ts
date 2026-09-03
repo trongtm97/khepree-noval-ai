@@ -411,7 +411,7 @@ describe('MATRIX / MULTILINGUAL — terms / characters / export / notebook', () 
       translatedOnly: true,
     });
     expect(enExport.targetLanguage).toBe('en');
-    expect(enExport.targetLanguageLabel).toBe(getLanguageProfile('en').displayNameNative);
+    expect(enExport.targetLanguageLabel).toBe(getLanguageProfile('en').nativeName);
     expect(enExport.chapters[0]?.paragraphs[0]?.translatedText).toBe('Hello');
     expect(enExport.chapters[0]?.paragraphs[0]?.translatedText).not.toBe('Xin chào');
   });

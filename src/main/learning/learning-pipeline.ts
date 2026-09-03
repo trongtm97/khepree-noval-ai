@@ -129,7 +129,8 @@ export async function runLearningPipeline(
     return { terms, memory, knowledgeVersionAtCommit };
   });
 
-  let { terms, memory, knowledgeVersionAtCommit } = applied;
+  const { terms, memory } = applied;
+  let { knowledgeVersionAtCommit } = applied;
 
   if (memory.applied > 0) {
     db.learningEvents.create({

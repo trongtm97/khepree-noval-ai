@@ -71,8 +71,7 @@ export class DatabaseManager {
   readonly memoryConflicts: MemoryConflictRepository;
   readonly memoryArchives: MemoryArchiveRepository;
   readonly learningEvents: LearningEventRepository;
-  /** @deprecated Legacy Drive table — no production reads. */
-  readonly driveResources: DriveResourceRepository;
+  private readonly driveResourceRepository: DriveResourceRepository;
   readonly knowledgeSyncState: KnowledgeSyncStateRepository;
   /** @deprecated Use knowledgeSyncState. */
   get driveSyncState(): KnowledgeSyncStateRepository {
@@ -140,7 +139,7 @@ export class DatabaseManager {
     this.memoryConflicts = new MemoryConflictRepository(this.db);
     this.memoryArchives = new MemoryArchiveRepository(this.db);
     this.learningEvents = new LearningEventRepository(this.db);
-    this.driveResources = new DriveResourceRepository(this.db);
+    this.driveResourceRepository = new DriveResourceRepository(this.db);
     this.knowledgeSyncState = new KnowledgeSyncStateRepository(this.db);
     this.notebooks = new NotebookRepository(this.db);
     this.geminiRequests = new GeminiRequestRepository(this.db);
@@ -176,6 +175,10 @@ export class DatabaseManager {
 
   getSchemaVersion(): number {
     return getCurrentSchemaVersion(this.db);
+  }
+
+  hasLegacyDriveResourceRows(projectId: string): boolean {
+    return this.driveResourceRepository.listByProject(projectId).length > 0;
   }
 
   close(): void {

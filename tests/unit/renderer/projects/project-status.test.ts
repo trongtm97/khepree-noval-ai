@@ -35,9 +35,22 @@ describe('project-status', () => {
   });
 
   it('maps missing source to needs_setup', () => {
+    const health = baseProject.health ?? {
+      notebook: 'ok' as const,
+      google: 'ok' as const,
+      source: 'ok' as const,
+      memoryVersion: null,
+      memoryVerified: false,
+    };
     const state = resolveProjectDisplayState({
       ...baseProject,
-      health: { ...baseProject.health!, source: 'missing' },
+      health: {
+        notebook: health.notebook,
+        google: health.google,
+        memoryVersion: health.memoryVersion,
+        memoryVerified: health.memoryVerified,
+        source: 'missing',
+      },
     });
     expect(state.status).toBe('needs_setup');
     expect(state.hintKey).toBe('projects.hintNoSourceFolder');

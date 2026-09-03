@@ -1,17 +1,17 @@
 /**
- * Post-install hook: rebuild native modules for Electron.
- * Runs `@electron/rebuild` if available; logs warning otherwise.
+ * Post-install: ensure better-sqlite3 native binary for Electron (prebuild or rebuild).
  */
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-try {
-  execSync('npx @electron/rebuild -f -w better-sqlite3', {
-    stdio: 'inherit',
-    env: process.env,
-  });
-  console.log('[postinstall] better-sqlite3 rebuilt for Electron');
-} catch {
-  console.warn(
-    '[postinstall] @electron/rebuild skipped or failed — run manually before packaging',
-  );
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const result = spawnSync(process.execPath, ['scripts/ensure-electron-native.mjs'], {
+  cwd: root,
+  stdio: 'inherit',
+  env: process.env,
+});
+
+if (result.status !== 0) {
+  process.exit(result.status ?? 1);
 }

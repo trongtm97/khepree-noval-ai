@@ -8,7 +8,7 @@ import type { TabularDataTypeHandler } from '../types';
 function pick(row: Record<string, string>, ...keys: string[]): string {
   for (const key of keys) {
     const v = row[key];
-    if (v?.trim()) return v.trim();
+    if (typeof v === 'string' && v.trim()) return v.trim();
   }
   return '';
 }
@@ -59,8 +59,8 @@ export const translationsTabularHandler: TabularDataTypeHandler = {
       return { status: 'error', messages: ['paragraph_id is required'], normalized: {} };
     }
 
-    const projectId = pick(row, 'project_id') || ctx.projectId || '';
-    const editionId = pick(row, 'edition_id') || ctx.editionId || '';
+    const projectId = pick(row, 'project_id') || (ctx.projectId ?? '');
+    const editionId = pick(row, 'edition_id') || (ctx.editionId ?? '');
     if (!projectId || !editionId) {
       messages.push('project_id and edition_id required');
     }
@@ -113,13 +113,13 @@ export const translationsTabularHandler: TabularDataTypeHandler = {
       project_id: projectId,
       edition_id: editionId,
       chapter_number: String(chapter?.chapter_number ?? pick(row, 'chapter_number')),
-      chapter_title: pick(row, 'chapter_title') || chapter?.chapter_title || chapter?.display_title || '',
+      chapter_title: pick(row, 'chapter_title') || (chapter?.chapter_title ?? chapter?.display_title ?? ''),
       paragraph_id: stableParagraphId,
       paragraph_uuid: para.id,
       source_text: para.source_text,
       translated_text: fileTranslated,
       translation_status:
-        pick(row, 'translation_status', 'status') || translation?.status || 'translated',
+        pick(row, 'translation_status', 'status') || (translation?.status ?? 'translated'),
       human_locked: parseBool(pick(row, 'human_locked')) ? '1' : '0',
       qa_status: pick(row, 'qa_status'),
       notes: pick(row, 'notes'),
@@ -141,7 +141,7 @@ export const translationsTabularHandler: TabularDataTypeHandler = {
   },
 
   naturalKey(row, ctx) {
-    const editionId = pick(row, 'edition_id') || ctx.editionId || '';
+    const editionId = pick(row, 'edition_id') || (ctx.editionId ?? '');
     const paragraphId = pick(row, 'paragraph_id');
     return `${editionId}|${paragraphId}`;
   },

@@ -104,11 +104,12 @@ export function accountDisplayName(
   stableIndex: number,
   fallbackLabel: string,
 ): string {
-  const label = account?.label?.trim();
+  if (!account) return fallbackLabel;
+  const label = account.label.trim();
   if (label) return label;
-  const display = account?.displayName?.trim();
+  const display = account.displayName.trim();
   if (display) return display;
-  const email = account?.email?.trim();
+  const email = (account.email ?? '').trim();
   if (email) return email;
   return fallbackLabel.replace('{n}', String(stableIndex + 1));
 }

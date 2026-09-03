@@ -95,7 +95,7 @@ function parseWorldKnowledge(
   for (const [key, value] of Object.entries(world)) {
     if (value == null) continue;
     const chapter =
-      typeof value === 'object' && value !== null && 'chapter' in value
+      typeof value === 'object' && 'chapter' in value
         ? Number((value as { chapter?: number }).chapter)
         : null;
     if (chapter != null && chapter > anchorChapter) continue;

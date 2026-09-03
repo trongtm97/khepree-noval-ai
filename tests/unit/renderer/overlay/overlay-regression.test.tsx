@@ -100,7 +100,7 @@ describe('overlay regression matrix', () => {
       if (!menu) return;
 
       const result = assertOverlayVisible(menu, { viewport: { width: vp.width, height: vp.height } });
-      expect(result.hasSize || menu.textContent?.includes('Copy')).toBe(true);
+      expect(result.hasSize || menu.textContent.includes('Copy')).toBe(true);
       expect(menu.closest('#khepree-overlay-root')).toBeTruthy();
     });
   }

@@ -87,7 +87,7 @@ export function BilingualEditor({
 
   const titleParagraph = titleIndex >= 0 ? paragraphs[titleIndex] : null;
   const titleSource =
-    chapterTitle?.trim() || titleParagraph?.sourceText || '';
+    chapterTitle?.trim() ?? titleParagraph?.sourceText ?? '';
   const titleTarget = titleParagraph
     ? resolveDraftText(dirty, titleParagraph.stableParagraphId, titleParagraph.translatedText)
     : '';

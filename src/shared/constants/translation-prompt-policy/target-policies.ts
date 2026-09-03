@@ -1,10 +1,4 @@
-import { formatAiLanguageIdentity, normalizeLanguageCode } from '../language-profile';
-
-const GENERIC_TARGET_RULES: string[] = [
-  'Write fluent, idiomatic prose in the target language.',
-  'Dialogue should sound spoken in the target language, not like a word-for-word calque.',
-  'Match punctuation and quotation conventions of the target language.',
-];
+import { normalizeLanguageCode } from '../language-profile';
 
 /** Target writing policies — reused across any source→target pair. */
 const TARGET_LANGUAGE_RULES: Record<string, string[]> = {
@@ -74,13 +68,10 @@ const TARGET_LANGUAGE_RULES: Record<string, string[]> = {
 
 export function resolveTargetLanguageRules(targetLanguage: string): string[] {
   const code = normalizeLanguageCode(targetLanguage);
-  const specific = TARGET_LANGUAGE_RULES[code];
-  if (specific) return [...specific];
   const base = code.split('-')[0];
-  const baseRules = TARGET_LANGUAGE_RULES[base];
-  if (baseRules) return [...baseRules];
-  return [
-    ...GENERIC_TARGET_RULES,
-    `Target language: ${formatAiLanguageIdentity(code)}.`,
-  ];
+  const rules =
+    (code in TARGET_LANGUAGE_RULES ? TARGET_LANGUAGE_RULES[code] : undefined) ??
+    (base in TARGET_LANGUAGE_RULES ? TARGET_LANGUAGE_RULES[base] : undefined) ??
+    [];
+  return [...rules];
 }

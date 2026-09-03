@@ -121,7 +121,7 @@ function validateCharacterTranslationRow(
 ): TabularRowValidation {
   const messages: string[] = [];
   const projectId = ctx.projectId;
-  const editionId = pick(row, 'edition_id') || ctx.editionId || '';
+  const editionId = pick(row, 'edition_id') || (ctx.editionId ?? '');
   if (!projectId) messages.push('projectId required');
   if (!editionId) messages.push('edition_id required');
 
@@ -211,9 +211,9 @@ function validateRelationshipRow(
     _sheet: 'RELATIONSHIPS',
     relationship_id: relationshipId,
     character_a_id: charA?.id ?? charAId,
-    character_a_source: charASource || charA?.canonical_name || '',
+    character_a_source: charASource || (charA?.canonical_name ?? ''),
     character_b_id: charB?.id ?? charBId,
-    character_b_source: charBSource || charB?.canonical_name || '',
+    character_b_source: charBSource || (charB?.canonical_name ?? ''),
     relationship_type: pick(row, 'relationship_type') || 'other',
     valid_from: pick(row, 'valid_from', 'valid_from_chapter'),
     valid_to: pick(row, 'valid_to', 'valid_to_chapter'),
@@ -229,7 +229,7 @@ function validateRelationshipRenderingRow(
   ctx: TabularCommitContext,
 ): TabularRowValidation {
   const messages: string[] = [];
-  const editionId = pick(row, 'edition_id') || ctx.editionId || '';
+  const editionId = pick(row, 'edition_id') || (ctx.editionId ?? '');
   const relationshipId = pick(row, 'relationship_id');
   if (!editionId) messages.push('edition_id required');
   if (!relationshipId) messages.push('relationship_id required');
@@ -260,14 +260,15 @@ function commitCharacterRow(
   ctx: TabularCommitContext,
 ): { action: 'insert' | 'update' | 'skip'; undo?: TabularUndoEntry } {
   const database = db(ctx);
-  const projectId = ctx.projectId!;
+  const projectId = ctx.projectId;
+  if (!projectId) return { action: 'skip' };
   const characterId = row.character_id;
   const canonicalSourceName = row.canonical_source_name;
 
   let character = characterId ? database.characters.getById(characterId) : null;
   if (!character && canonicalSourceName) {
     const matches = findByCanonicalSourceName(database, projectId, canonicalSourceName);
-    if (matches.length === 1) character = matches[0]!;
+    if (matches.length === 1) character = matches[0];
     if (matches.length > 1) return { action: 'skip' };
   }
 
@@ -330,7 +331,8 @@ function commitCharacterTranslationRow(
   ctx: TabularCommitContext,
 ): { action: 'insert' | 'update' | 'skip'; undo?: TabularUndoEntry } {
   const database = db(ctx);
-  const editionId = row.edition_id || ctx.editionId!;
+  const editionId = row.edition_id || ctx.editionId;
+  if (!editionId) return { action: 'skip' };
   const edition = database.translationEditions.getById(editionId);
   if (!edition) throw new Error(`Edition not found: ${editionId}`);
 
@@ -370,7 +372,8 @@ function commitRelationshipRow(
   ctx: TabularCommitContext,
 ): { action: 'insert' | 'update' | 'skip'; undo?: TabularUndoEntry } {
   const database = db(ctx);
-  const projectId = ctx.projectId!;
+  const projectId = ctx.projectId;
+  if (!projectId) return { action: 'skip' };
   const charA = database.characters.getById(row.character_a_id);
   const charB = database.characters.getById(row.character_b_id);
   if (!charA || !charB) return { action: 'skip' };
@@ -387,7 +390,7 @@ function commitRelationshipRow(
       charA.id,
       charB.id,
     );
-    if (matches.length === 1) relationship = matches[0]!;
+    if (matches.length === 1) relationship = matches[0];
     if (matches.length > 1) return { action: 'skip' };
   }
 
@@ -433,7 +436,8 @@ function commitRelationshipRenderingRow(
   ctx: TabularCommitContext,
 ): { action: 'insert' | 'update' | 'skip'; undo?: TabularUndoEntry } {
   const database = db(ctx);
-  const editionId = row.edition_id || ctx.editionId!;
+  const editionId = row.edition_id || ctx.editionId;
+  if (!editionId) return { action: 'skip' };
   const edition = database.translationEditions.getById(editionId);
   if (!edition) throw new Error(`Edition not found: ${editionId}`);
 

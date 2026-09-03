@@ -42,6 +42,14 @@ import {
   startupKhepreeAccess,
   shutdownKhepreeAccess,
 } from './khepree/khepree-access-singleton';
+import {
+  startupAnnouncementSync,
+  shutdownAnnouncementSync,
+} from './khepree/announcement-sync-singleton';
+import {
+  startupUpdateService,
+  shutdownUpdateService,
+} from './updates/update-singleton';
 import { installKhepreeHeartbeatResumeHandlers } from './khepree/heartbeat-resume-bootstrap';
 import {
   flushQueuedKhepreeAuthCallback,
@@ -122,6 +130,8 @@ export function startApplication(): void {
     void (async () => {
       try {
         shutdownSourceFolderSubsystem();
+        shutdownAnnouncementSync();
+        shutdownUpdateService();
         await shutdownKhepreeAccess();
         await shutdownAutomationScheduler();
         await shutdownBrowserRuntimeManager();
@@ -205,6 +215,8 @@ function bootApplication(): void {
       message: error instanceof Error ? error.message : String(error),
     });
   });
+  startupAnnouncementSync();
+  startupUpdateService();
   installKhepreeHeartbeatResumeHandlers();
   // Profile leases already recovered in recoverJobsGeminiAndProfilesOnStartup;
   // keep a second pass for leases created after DB init.

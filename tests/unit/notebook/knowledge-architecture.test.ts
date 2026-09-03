@@ -175,7 +175,7 @@ describe('NotebookSyncService hot memory', () => {
       status: 'ready',
       instructions_hash: 'abc123',
     });
-    db.driveSyncState.patch(projectId, {
+    db.knowledgeSyncState.patch(projectId, {
       pendingKnowledgeVersion: 1,
       pendingSyncNonce: 'A11CE001',
       versionProbeStatus: 'pending',
@@ -217,7 +217,7 @@ describe('NotebookSyncService hot memory', () => {
       status: 'sync_pending',
       instructions_hash: 'abc123',
     });
-    db.driveSyncState.patch(projectId, {
+    db.knowledgeSyncState.patch(projectId, {
       pendingKnowledgeVersion: 1,
       pendingSyncNonce: 'A11CE002',
       versionProbeStatus: 'pending',
@@ -260,7 +260,7 @@ describe('NotebookSyncService hot memory', () => {
     ).markNotebookVerified(projectId, accountId);
     expect(sync.buildActiveHotMemoryText(projectId)).toContain('锁词');
 
-    db.driveSyncState.patch(projectId, {
+    db.knowledgeSyncState.patch(projectId, {
       pendingKnowledgeVersion: 2,
       pendingSyncNonce: 'A11CE003',
       versionProbeStatus: 'pending',

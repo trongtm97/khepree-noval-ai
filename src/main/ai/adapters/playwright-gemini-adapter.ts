@@ -158,7 +158,11 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
 
     if (projectId) {
       const preflight = await checkProviderForJob(getDatabase(), {
-        accountId: googleAccountId,
+        accountRef: {
+          accountKind: 'GOOGLE_ACCOUNT',
+          accountId: googleAccountId,
+          profileDirName: null,
+        },
         projectId,
         notebookRole: 'RESEARCH',
         requireNotebook: false,
@@ -218,7 +222,7 @@ export class PlaywrightGeminiAdapter implements IAIProvider {
         headless: options.headless,
         maxTimeoutMs: options.maxTimeoutMs,
         correlationId,
-        packMode: options?.packMode,
+        packMode: options.packMode,
       });
 
       const corr = sent.correlationId || correlationId;

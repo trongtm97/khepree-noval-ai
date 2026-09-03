@@ -101,10 +101,10 @@ describe('Golden prompt matrix — policy layers', () => {
       expect(policy.sourceLanguage).toBe(source);
       expect(policy.targetLanguage).toBe(target);
       expect(policy.layers.source.join(' ')).toContain(
-        resolveSourceLanguageRules(source)[0]!.slice(0, 8),
+        resolveSourceLanguageRules(source)[0].slice(0, 8),
       );
       expect(policy.layers.target.join(' ')).toContain(
-        resolveTargetLanguageRules(target)[0]!.slice(0, 8),
+        resolveTargetLanguageRules(target)[0].slice(0, 8),
       );
       if (source === 'ja' && target === 'en') {
         expect(policy.layers.pairOverrides.join(' ')).toMatch(/Honorific/i);
@@ -163,7 +163,7 @@ describe('Negative static assertions', () => {
     assertNoUnrelatedLanguagePolicy(prompt, 'ja', 'en');
     expect(prompt).not.toMatch(/Hán-Việt/i);
     expect(prompt).not.toMatch(/Vietnamese-specific/i);
-    expect(prompt).not.toMatch(/Chinese\s*[→\-]\s*Vietnamese/i);
+    expect(prompt).not.toMatch(/Chinese\s*[→-]\s*Vietnamese/i);
   });
 
   it('ar → fr: no English/Vietnamese target instructions', () => {

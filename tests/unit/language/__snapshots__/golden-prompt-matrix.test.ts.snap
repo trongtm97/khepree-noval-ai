@@ -1720,6 +1720,9 @@ Do not let general knowledge override locked project terms.
 - Keep tone consistent with previous chapters.
 - Arabic source: gender and number agreement in the source should inform target wording.
 - Religious or cultural formulas: translate faithfully; do not omit or modernize without source support.
+- Preserve gender/number agreement and register (formal vs colloquial) from the source.
+- Handle embedded religious or cultural expressions faithfully; do not secularize unless the source does.
+- Keep personal names and titles consistent with locked terms.
 - Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
 - Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
 - Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
@@ -1941,6 +1944,8 @@ Do not let general knowledge override locked project terms.
 - Preserve proper nouns via locked/active terms.
 - Keep tone consistent with previous chapters.
 - English source: preserve tense, modality, and explicit references as written.
+- Preserve explicit subjects and tense/aspect as stated in the source.
+- Keep proper nouns and titles exact unless a locked target form exists.
 - Spanish target: natural spoken dialogue; preserve gender agreement in target grammar.
 - Target typography (quoteStyle=curly): use curly quotation marks for dialogue.
 - Target punctuation (punctuationProfile=western): follow Western punctuation conventions for Español.
@@ -2049,6 +2054,8 @@ Do not let general knowledge override locked project terms.
 - Preserve proper nouns via locked/active terms.
 - Keep tone consistent with previous chapters.
 - English source: preserve tense, modality, and explicit references as written.
+- Preserve explicit subjects and tense/aspect as stated in the source.
+- Keep proper nouns and titles exact unless a locked target form exists.
 - Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
 - Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
 - Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
@@ -2160,6 +2167,9 @@ Do not let general knowledge override locked project terms.
 - Preserve proper nouns via locked/active terms.
 - Keep tone consistent with previous chapters.
 - Persian source: register and politeness markers matter; preserve distance between speakers.
+- Preserve gender/number agreement and register (formal vs colloquial) from the source.
+- Handle embedded religious or cultural expressions faithfully; do not secularize unless the source does.
+- Keep personal names and titles consistent with locked terms.
 - English target: use natural contemporary prose unless the genre demands archaic register.
 - Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
 - Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
@@ -2380,6 +2390,8 @@ Do not let general knowledge override locked project terms.
 - Preserve proper nouns via locked/active terms.
 - Keep tone consistent with previous chapters.
 - Hindi source: respect honorifics and respectful address in dialogue.
+- Respect honorifics and respectful address forms present in the source.
+- Do not flatten register or social distance implied by the source.
 - English target: use natural contemporary prose unless the genre demands archaic register.
 - Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
 - Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
@@ -2604,6 +2616,9 @@ Do not let general knowledge override locked project terms.
 - Honorifics and speech level (-san, -sama, -kun, -chan, keigo) carry social meaning — preserve nuance.
 - Preserve name order policy from locked terms (family/given).
 - Onomatopoeia and affect particles: convey tone in the target without inventing plot.
+- Source may omit subjects and rely on context; do not invent pronouns when identity is ambiguous.
+- Preserve honorifics, speech level, and social distance cues implied in the source.
+- Keep name order and segmentation consistent with locked Project Terms.
 - English target: use natural contemporary prose unless the genre demands archaic register.
 - Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
 - Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
@@ -2720,6 +2735,9 @@ Do not let general knowledge override locked project terms.
 - Honorifics and speech level (-san, -sama, -kun, -chan, keigo) carry social meaning — preserve nuance.
 - Preserve name order policy from locked terms (family/given).
 - Onomatopoeia and affect particles: convey tone in the target without inventing plot.
+- Source may omit subjects and rely on context; do not invent pronouns when identity is ambiguous.
+- Preserve honorifics, speech level, and social distance cues implied in the source.
+- Keep name order and segmentation consistent with locked Project Terms.
 - Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
 - Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
 - Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
@@ -2834,6 +2852,9 @@ Do not let general knowledge override locked project terms.
 - Korean source: speech levels and honorifics encode social distance — preserve relative status.
 - Subjects may be omitted; do not invent pronouns when identity is ambiguous.
 - Name and address forms must follow locked Project Terms and relationship memory.
+- Source may omit subjects and rely on context; do not invent pronouns when identity is ambiguous.
+- Preserve honorifics, speech level, and social distance cues implied in the source.
+- Keep name order and segmentation consistent with locked Project Terms.
 - English target: use natural contemporary prose unless the genre demands archaic register.
 - Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
 - Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
@@ -2947,6 +2968,9 @@ Do not let general knowledge override locked project terms.
 - Korean source: speech levels and honorifics encode social distance — preserve relative status.
 - Subjects may be omitted; do not invent pronouns when identity is ambiguous.
 - Name and address forms must follow locked Project Terms and relationship memory.
+- Source may omit subjects and rely on context; do not invent pronouns when identity is ambiguous.
+- Preserve honorifics, speech level, and social distance cues implied in the source.
+- Keep name order and segmentation consistent with locked Project Terms.
 - Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
 - Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
 - Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
@@ -3060,6 +3084,8 @@ Do not let general knowledge override locked project terms.
 - Keep tone consistent with previous chapters.
 - Russian source: aspect and case information should inform target phrasing where relevant.
 - Patronymics and name variants: follow locked Project Terms.
+- Preserve aspect and case information where the source encodes it.
+- Keep name variants and patronymic forms per locked Project Terms.
 - Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
 - Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
 - Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
@@ -3171,6 +3197,8 @@ Do not let general knowledge override locked project terms.
 - Preserve proper nouns via locked/active terms.
 - Keep tone consistent with previous chapters.
 - Thai source: particles and politeness markers carry social meaning — preserve register.
+- Read the source for what it states; do not add unstated facts or clarifications.
+- Preserve semantic ambiguity when the source leaves identity or reference unclear.
 - Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
 - Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
 - Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
@@ -3283,6 +3311,8 @@ Do not let general knowledge override locked project terms.
 - Keep tone consistent with previous chapters.
 - Ukrainian source: aspect and case cues should inform target phrasing where relevant.
 - Name variants: follow locked Project Terms.
+- Preserve aspect and case information where the source encodes it.
+- Keep name variants and patronymic forms per locked Project Terms.
 - English target: use natural contemporary prose unless the genre demands archaic register.
 - Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
 - Prefer clear subjects in English when the source omits them only if identity is recoverable from context.
@@ -3510,6 +3540,9 @@ Do not let general knowledge override locked project terms.
 - Treat idioms and chengyu by meaning; avoid literal calques unless locked terms require a form.
 - Classical or cultivation titles: use locked Project Terms; do not freestyle readings.
 - Segment names and titles per locked terms; do not merge or split han compounds arbitrarily.
+- Source may omit subjects and rely on context; do not invent pronouns when identity is ambiguous.
+- Preserve honorifics, speech level, and social distance cues implied in the source.
+- Keep name order and segmentation consistent with locked Project Terms.
 - Vietnamese target: dialogue must sound natural Vietnamese, not stiff source-syntax calques.
 - Pronouns and forms of address should follow relationship memory (a_calls_b / b_calls_a).
 - Prefer established Sino-Vietnamese (Hán-Việt) readings for names/terms when locked terms allow.
@@ -3626,6 +3659,9 @@ Do not let general knowledge override locked project terms.
 - Keep tone consistent with previous chapters.
 - Traditional Chinese source: same interpretation discipline as Simplified; script is Traditional.
 - Preserve classical register when the source uses it; do not modernize diction unless the source does.
+- Source may omit subjects and rely on context; do not invent pronouns when identity is ambiguous.
+- Preserve honorifics, speech level, and social distance cues implied in the source.
+- Keep name order and segmentation consistent with locked Project Terms.
 - English target: use natural contemporary prose unless the genre demands archaic register.
 - Honorifics from CJK sources: keep, gloss, or transliterate consistently per Project Terms.
 - Prefer clear subjects in English when the source omits them only if identity is recoverable from context.

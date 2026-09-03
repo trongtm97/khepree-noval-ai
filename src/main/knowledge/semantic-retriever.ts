@@ -26,6 +26,7 @@ export class NoOpSemanticRetriever implements SemanticRetriever {
   readonly enabled = false;
 
   async retrieve(): Promise<SemanticMatch[]> {
+    await Promise.resolve();
     return [];
   }
 }

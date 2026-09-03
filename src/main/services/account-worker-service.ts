@@ -77,7 +77,7 @@ export class AccountWorkerService {
     const { profileDirName } = this.profiles.createProfileDirectory(workerId);
     const existingCount = this.accounts.list().length;
     const label =
-      input?.label?.trim() ||
+      input?.label?.trim() ??
       nextSequentialDisplayName('Tài khoản Google', existingCount);
 
     const account = this.accounts.create({

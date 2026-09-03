@@ -70,7 +70,7 @@ describe('KhepreeSessionStore', () => {
     return new KhepreeSessionStore(secretStorage);
   }
 
-  it('keeps access token in memory only', async () => {
+  it('keeps access token in memory only', () => {
     const store = createStore(createXorBackend(true));
     store.setAccessToken('access-secret', 3600, 'user-1');
     expect(store.getAccessToken()).toBe('access-secret');

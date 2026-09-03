@@ -425,6 +425,12 @@ const api: KhepreeNovelAIApi = {
     getPlanCatalog: () => invokeChannel(IPC_CHANNELS.KHEPREE_GET_PLAN_CATALOG),
     signOut: () => invokeChannel(IPC_CHANNELS.KHEPREE_SIGN_OUT),
     openExternal: (input) => invokeChannel(IPC_CHANNELS.KHEPREE_OPEN_EXTERNAL, input),
+    listAnnouncements: () => invokeChannel(IPC_CHANNELS.KHEPREE_ANNOUNCEMENTS_LIST),
+    syncAnnouncements: () => invokeChannel(IPC_CHANNELS.KHEPREE_ANNOUNCEMENTS_SYNC),
+    markAnnouncementRead: (input) =>
+      invokeChannel(IPC_CHANNELS.KHEPREE_ANNOUNCEMENT_MARK_READ, input),
+    dismissAnnouncement: (input) =>
+      invokeChannel(IPC_CHANNELS.KHEPREE_ANNOUNCEMENT_DISMISS, input),
     onAccessState: (callback) => {
       const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => {
         callback(payload as import('@shared/schemas/khepree').KhepreeAccessState);
@@ -442,6 +448,22 @@ const api: KhepreeNovelAIApi = {
       invokeChannel(IPC_CHANNELS.UI_LANGUAGE_COMPLETE_FIRST_RUN, input),
   },
   checkForUpdates: () => invokeChannel(IPC_CHANNELS.APP_CHECK_FOR_UPDATES),
+  updates: {
+    getStatus: () => invokeChannel(IPC_CHANNELS.UPDATE_GET_STATUS),
+    checkNow: () => invokeChannel(IPC_CHANNELS.UPDATE_CHECK_NOW),
+    installAndRestart: () => invokeChannel(IPC_CHANNELS.UPDATE_INSTALL_AND_RESTART),
+    postpone: (input?: { untilMs?: number }) =>
+      invokeChannel(IPC_CHANNELS.UPDATE_POSTPONE, input ?? {}),
+    onStatus: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+        callback(payload as import('@shared/schemas/updates').UpdateStatus);
+      };
+      ipcRenderer.on(IPC_CHANNELS.UPDATE_STATUS, listener);
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.UPDATE_STATUS, listener);
+      };
+    },
+  },
 };
 
 contextBridge.exposeInMainWorld('khepreeNovelAI', api);

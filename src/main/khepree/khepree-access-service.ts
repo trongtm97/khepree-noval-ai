@@ -32,6 +32,7 @@ import {
   createKhepreeApiClient,
   type KhepreeApiClient,
 } from './khepree-api-client';
+import type { PlatformSignedLease } from './platform-lease';
 import {
   OAuthAuthTransactionManager,
   buildPendingOAuthState,
@@ -177,7 +178,7 @@ export class KhepreeAccessService {
   private canStartTranslation(): boolean {
     return (
       this.canUseWorkspace() &&
-      this.features[KHEPREE_ACCESS_FEATURE] === true &&
+      this.features[KHEPREE_ACCESS_FEATURE] &&
       this.entitlement === 'active'
     );
   }
@@ -212,21 +213,27 @@ export class KhepreeAccessService {
     return this.getPublicState();
   }
 
-  private async performColdStartValidation(): Promise<void> {
-    const refreshToken = await this.sessionStore.loadRefreshToken();
-    if (!refreshToken) {
-      this.status = 'AUTH_REQUIRED';
-      this.loginPhase = 'idle';
-      return;
-    }
-
+  private async performColdStartValidation(options?: {
+    lease?: PlatformSignedLease;
+    forceRefresh?: boolean;
+  }): Promise<void> {
     const identity = await this.deviceIdentity.getIdentity();
-    let accessToken = this.sessionStore.getAccessToken();
+    const sign = await this.getDeviceSign();
 
-    if (!accessToken) {
+    let accessToken = this.sessionStore.getAccessToken();
+    let leaseFromSession = options?.lease;
+
+    const needsRefresh = options?.forceRefresh === true || accessToken == null;
+    if (needsRefresh) {
+      const refreshToken = await this.sessionStore.loadRefreshToken();
+      if (!refreshToken) {
+        this.status = 'AUTH_REQUIRED';
+        this.loginPhase = 'idle';
+        return;
+      }
+
       try {
         const sessionPublicId = this.requireSessionPublicId();
-        const sign = await this.getDeviceSign();
         const refreshed = await this.api.refreshSession({
           refreshToken,
           installationId: identity.installationId,
@@ -242,6 +249,9 @@ export class KhepreeAccessService {
         );
         this.user = refreshed.user;
         accessToken = refreshed.accessToken;
+        if (refreshed.lease) {
+          leaseFromSession = refreshed.lease;
+        }
       } catch (error) {
         if (isInvalidRefreshError(error)) {
           await this.sessionStore.clearRefreshToken();
@@ -269,6 +279,9 @@ export class KhepreeAccessService {
         const activation = await this.activateCurrentDevice(accessToken, identity);
         this.deviceIdentity.setDeviceId(activation.deviceId);
         deviceId = activation.deviceId;
+        if (!leaseFromSession && activation.lease) {
+          leaseFromSession = activation.lease;
+        }
       } catch (error) {
         if (isEntitlementAbsentError(error)) {
           await this.enterFreeTier(accessToken);
@@ -279,15 +292,14 @@ export class KhepreeAccessService {
     }
 
     const sessionPublicId = this.requireSessionPublicId();
-    const sign = await this.getDeviceSign();
     try {
       const result = await this.api.coldStartValidate({
         accessToken,
         installationId: identity.installationId,
-        deviceId,
+        deviceId: deviceId,
         sessionPublicId,
-        refreshToken,
         sign,
+        lease: leaseFromSession,
         devicePublicKey: identity.publicKeySpki,
         deviceName: this.deviceIdentity.getDeviceName(),
         platform: process.platform,
@@ -326,7 +338,7 @@ export class KhepreeAccessService {
   private async activateCurrentDevice(
     accessToken: string,
     identity: { installationId: string },
-  ): Promise<{ deviceId: string; devicesUsed: number; devicesMax: number }> {
+  ): Promise<{ deviceId: string; devicesUsed: number; devicesMax: number; lease?: PlatformSignedLease }> {
     try {
       return await this.api.activateDevice({
         accessToken,
@@ -730,7 +742,7 @@ export class KhepreeAccessService {
     this.status = 'VALIDATING_SESSION';
     this.emit();
     try {
-      await this.performColdStartValidation();
+      await this.performColdStartValidation({ forceRefresh: true });
     } catch (error) {
       await this.handleColdStartFailure(error);
     }
@@ -817,6 +829,7 @@ export class KhepreeAccessService {
   }
 
   async cancelCheckout(): Promise<KhepreeAccessState> {
+    await Promise.resolve();
     this.stopCheckoutPolling();
     this.checkoutSessionId = null;
     this.lastValidatedCheckoutUrl = null;
@@ -869,7 +882,7 @@ export class KhepreeAccessService {
     this.stopCheckoutPolling();
     this.checkoutPoller = new KhepreeCheckoutPoller(
       async () => this.pollCheckoutOnce(),
-      () => this.handleCheckoutTimeout(),
+      () => { this.handleCheckoutTimeout(); },
     );
     this.checkoutPoller.start();
   }
@@ -962,7 +975,7 @@ export class KhepreeAccessService {
     this.checkoutError = null;
 
     try {
-      await this.performColdStartValidation();
+      await this.performColdStartValidation({ forceRefresh: true });
     } catch (error) {
       await this.handleColdStartFailure(error);
     }
@@ -1117,6 +1130,11 @@ export class KhepreeAccessService {
     return fromLease ?? KHEPREE_DEFAULT_HEARTBEAT_MS;
   }
 
+  /** For main-process API calls (announcements, updates) — never expose to renderer. */
+  async getAccessTokenForApi(): Promise<string | null> {
+    return this.ensureAccessToken();
+  }
+
   private async ensureAccessToken(): Promise<string | null> {
     const token = this.sessionStore.getAccessToken();
     if (token) return token;
@@ -1151,6 +1169,7 @@ export class KhepreeAccessService {
   }
 
   async shutdown(): Promise<void> {
+    await Promise.resolve();
     this.clearCheckoutState();
     this.oauthTransaction.clearTransaction();
   }

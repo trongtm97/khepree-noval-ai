@@ -31,7 +31,14 @@ export const KHEPREE_GATE_PHASES = [
   'workspace',
 ] as const;
 
-export type KhepreeGatePhase = (typeof KHEPREE_GATE_PHASES)[number];
+export type KhepreeGatePhase =
+  | 'login'
+  | 'validating'
+  | 'offline'
+  | 'entitlement'
+  | 'device_limit'
+  | 'revoked'
+  | 'workspace';
 
 export function isKhepreeActive(status: KhepreeAccessStatus): boolean {
   return status === 'ACTIVE';

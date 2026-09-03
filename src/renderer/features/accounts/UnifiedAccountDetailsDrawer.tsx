@@ -74,7 +74,7 @@ export function UnifiedAccountDetailsDrawer({
                         size="sm"
                         variant="secondary"
                         onClick={() => {
-                          onCopyPath(account.profileDir!);
+                          if (account.profileDir) onCopyPath(account.profileDir);
                         }}
                       >
                         {t('actions.copy')}

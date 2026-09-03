@@ -1,4 +1,3 @@
-import type { AiProviderType } from '@shared/constants/ai-provider';
 import {
   DEFAULT_TRANSLATE_BATCH_PARAGRAPHS,
   PLAYWRIGHT_MAX_SOURCE_CHARS_PER_CHUNK,
@@ -21,7 +20,7 @@ export interface ChunkingPolicy {
 }
 
 export function resolveChunkingPolicy(
-  providerType: AiProviderType | string | null | undefined,
+  providerType: string | null | undefined,
 ): ChunkingPolicy {
   const caps = getProviderCapabilities(providerType);
   return {
@@ -34,14 +33,14 @@ export function resolveChunkingPolicy(
 
 /** Max paragraphs per translate batch — capability-driven, not Gemini-named. */
 export function resolveTranslateBatchParagraphs(
-  providerType: AiProviderType | string | null | undefined,
+  providerType: string | null | undefined,
 ): number {
   return resolveChunkingPolicy(providerType).maxParagraphs;
 }
 
 /** Char budget for batch sizer — adapts to provider capability + optional history shrink. */
 export function resolveProviderCharBudget(
-  providerType: AiProviderType | string | null | undefined,
+  providerType: string | null | undefined,
   history?: ThroughputHistory,
 ): { maxSourceChars: number; maxParagraphs: number } {
   const auto = resolveAutoChunkBudget(providerType, history);

@@ -158,7 +158,8 @@ export const SourceFolderDetectLanguageRequestSchema = z.object({
   sourceLanguageMode: z.enum(['AUTO', 'HINTED']).optional(),
 });
 
-export const SourceFolderImportRequestSchema = z.object({
+export const SourceFolderImportRequestSchema = z
+  .object({
   previewId: z.string().uuid().optional(),
   projectId: z.string().uuid().optional(),
   projectTitle: z.string().min(1).max(500),
@@ -175,7 +176,18 @@ export const SourceFolderImportRequestSchema = z.object({
   expectedStartChapter: z.number().int().positive().nullable().optional(),
   expectedEndChapter: z.number().int().positive().nullable().optional(),
   chapterNumbers: z.array(z.number().int().positive()).optional(),
-});
+})
+  .transform((data) => {
+    const legacyHint = (data as Record<string, unknown>).sourceLanguage;
+    const rest = { ...data };
+    delete (rest as Record<string, unknown>).sourceLanguage;
+    return {
+      ...rest,
+      sourceLanguageHint:
+        rest.sourceLanguageHint ??
+        (typeof legacyHint === 'string' ? legacyHint : null),
+    };
+  });
 
 export const SourceFolderUpdateSettingsRequestSchema = z.object({
   projectId: z.string().uuid(),

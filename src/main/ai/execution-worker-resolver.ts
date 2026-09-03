@@ -16,7 +16,7 @@ import { workerProcessManager } from './worker-process-manager';
 import {
   type AiExecutionTarget,
   buildExecutionWorkerId,
-  defaultCapabilitiesForProviderType,
+  executionTargetCapabilitiesFrom,
   GOOGLE_GEMINI_PROVIDER_ID,
 } from './execution-target';
 import { logger } from '../logging/logger';
@@ -73,7 +73,7 @@ export class AiExecutionWorkerResolver {
     }
 
     const aiAccount = this.db.aiAccounts.getById(parsed.accountId);
-    if (aiAccount && aiAccount.provider_id === parsed.providerId) {
+    if (aiAccount?.provider_id === parsed.providerId) {
       const row = this.db.aiProviders.getById(parsed.providerId);
       if (row) {
         return this.aiAccountTarget(aiAccount, row.type as AiProviderType);
@@ -132,7 +132,7 @@ export class AiExecutionWorkerResolver {
       profileDirName,
       concurrencyKey: w.google_account_id,
       status,
-      capabilities: defaultCapabilitiesForProviderType('PLAYWRIGHT_GEMINI'),
+      capabilities: executionTargetCapabilitiesFrom('PLAYWRIGHT_GEMINI'),
       legacyWorkerStateId: w.id,
     };
   }
@@ -190,7 +190,7 @@ export class AiExecutionWorkerResolver {
       profileDirName: account.profile_dir_name,
       concurrencyKey: account.id,
       status: mapAccountStatus(account.status, 'READY'),
-      capabilities: defaultCapabilitiesForProviderType(providerType),
+      capabilities: executionTargetCapabilitiesFrom(providerType),
       legacyWorkerStateId: null,
     };
   }

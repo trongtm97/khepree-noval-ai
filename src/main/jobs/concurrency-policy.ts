@@ -7,7 +7,7 @@ import {
   type ConcurrencyPolicy,
   type GlobalMaxWorkersMode,
   type ProviderConcurrencyKind,
-  effectivePerProjectMax,
+  DEFAULT_PER_PROJECT_MAX,
   normalizeProviderConcurrencyKind,
   perAccountLimitFor,
   resolveGlobalMaxWorkers,
@@ -211,7 +211,7 @@ export function canAdmitJob(
   snap: ConcurrencySnapshot,
   candidate: AdmitCandidate,
 ): boolean {
-  const projectMax = effectivePerProjectMax(policy);
+  const projectMax = DEFAULT_PER_PROJECT_MAX;
   const projectCount = snap.byProject.get(candidate.projectId) ?? 0;
   if (projectCount >= projectMax) return false;
 
@@ -226,7 +226,7 @@ export function canAdmitJob(
 }
 
 export {
+  DEFAULT_PER_PROJECT_MAX,
   resolveGlobalMaxWorkers,
-  effectivePerProjectMax,
   loadConcurrencyPolicy as loadPolicy,
 };

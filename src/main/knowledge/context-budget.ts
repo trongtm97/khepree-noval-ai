@@ -32,7 +32,7 @@ function allocateSliceBudgets(
 ): Map<ContextBudgetSlice, number> {
   const budgets = new Map<ContextBudgetSlice, number>();
   for (const slice of CONTEXT_BUDGET_SLICES) {
-    const pct = allocation[slice] ?? 0;
+    const pct = allocation[slice];
     budgets.set(slice, Math.floor((totalBudget * pct) / 100));
   }
   return budgets;

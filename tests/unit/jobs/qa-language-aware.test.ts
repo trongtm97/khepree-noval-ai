@@ -53,7 +53,7 @@ const THAI_HEAVY =
   'นี่คือข้อความภาษาไทยที่ยาวสำหรับการทดสอบ อีกหนึ่งประโยคที่นี่';
 
 describe('language-aware QA — wrong target language', () => {
-  const latinTargetCases: Array<[string, string, string]> = [
+  const latinTargetCases: [string, string, string][] = [
     ['zh-Hans', 'vi', KANA_HEAVY],
     ['ja', 'en', KANA_HEAVY],
     ['ko', 'vi', '한국어로만쓴문장입니다.테스트를위한긴문장입니다.또한번더씁니다.'],

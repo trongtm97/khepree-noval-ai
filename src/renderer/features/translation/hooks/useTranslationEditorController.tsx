@@ -737,7 +737,7 @@ export function useTranslationEditorController() {
     if (nextIdx == null) return;
     qaJumpRef.current = nextIdx;
     const para = paragraphs[nextIdx];
-    if (para) setActiveParagraph(para.stableParagraphId);
+    setActiveParagraph(para.stableParagraphId);
   }, [paragraphs, activeParagraphId, setActiveParagraph]);
 
   const chapterTranslated = useMemo(

@@ -24,8 +24,8 @@ export function appendRequestMarker(prompt: string, marker: string): string {
 }
 
 export function extractMarkerFromText(text: string): string | null {
-  const inline = text.match(/NTS_REQUEST_REF:\s*([0-9a-f-]{36})/i);
-  if (inline) return inline[1] ?? null;
-  const comment = text.match(/<!--\s*NTS_REQUEST_REF:\s*([0-9a-f-]{36})\s*-->/i);
+  const inline = /NTS_REQUEST_REF:\s*([0-9a-f-]{36})/i.exec(text);
+  if (inline) return inline[1];
+  const comment = /<!--\s*NTS_REQUEST_REF:\s*([0-9a-f-]{36})\s*-->/i.exec(text);
   return comment?.[1] ?? null;
 }

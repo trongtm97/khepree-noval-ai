@@ -11,7 +11,7 @@ export function isUuid(value: string): boolean {
 export function pick(row: Record<string, string>, ...keys: string[]): string {
   for (const key of keys) {
     const v = row[key];
-    if (v?.trim()) return v.trim();
+    if (typeof v === 'string' && v.trim()) return v.trim();
   }
   return '';
 }
@@ -100,7 +100,7 @@ export function resolveCharacterRef(
     messages.push(CHARACTER_TABULAR_WARNINGS.AMBIGUOUS_CHARACTER);
     return { character: null, messages };
   }
-  return { character: matches[0]!, messages };
+  return { character: matches[0], messages };
 }
 
 /** Source name for relationship endpoints — canonical exact match only. */
@@ -129,7 +129,7 @@ export function resolveCharacterBySourceName(
     messages.push(CHARACTER_TABULAR_WARNINGS.AMBIGUOUS_CHARACTER);
     return { character: null, messages };
   }
-  return { character: matches[0]!, messages };
+  return { character: matches[0], messages };
 }
 
 /** Warn when preferred_name collides with another character in same edition. */

@@ -147,6 +147,17 @@ export interface KhepreeNovelAIApi {
   ) => Promise<import('../schemas/ipc').OpenOfficialContactResponse>;
   securityHealthCheck: () => Promise<SecurityHealthCheckResponse>;
   checkForUpdates: () => Promise<z.infer<typeof CheckForUpdatesResponseSchema>>;
+  updates: {
+    getStatus: () => Promise<import('../schemas/updates').UpdateStatus>;
+    checkNow: () => Promise<import('../schemas/updates').UpdateStatus>;
+    installAndRestart: () => Promise<{ ok: boolean; reason?: string }>;
+    postpone: (input?: {
+      untilMs?: number;
+    }) => Promise<import('../schemas/updates').UpdatePostponeResponse>;
+    onStatus: (
+      callback: (status: import('../schemas/updates').UpdateStatus) => void,
+    ) => () => void;
+  };
   setup: {
     getStatus: () => Promise<z.infer<typeof SetupStatusSchema>>;
     setStep: (input: { step: SetupWizardStep }) => Promise<z.infer<typeof SetupStatusSchema>>;
@@ -1335,6 +1346,14 @@ export interface KhepreeNovelAIApi {
     openExternal: (input: {
       target: import('../constants/khepree').KhepreeExternalLinkTarget;
     }) => Promise<{ ok: boolean }>;
+    listAnnouncements: () => Promise<import('../schemas/khepree-announcements').KhepreeAnnouncementsListResponse>;
+    syncAnnouncements: () => Promise<import('../schemas/khepree-announcements').KhepreeAnnouncementsListResponse>;
+    markAnnouncementRead: (input: {
+      publicId: string;
+    }) => Promise<import('../schemas/khepree-announcements').KhepreeAnnouncementsListResponse>;
+    dismissAnnouncement: (input: {
+      publicId: string;
+    }) => Promise<import('../schemas/khepree-announcements').KhepreeAnnouncementsListResponse>;
     onAccessState: (
       callback: (state: import('../schemas/khepree').KhepreeAccessState) => void,
     ) => () => void;

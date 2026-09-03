@@ -133,8 +133,6 @@ export function AccountsPage() {
     [accounts, providerParam, statusFilter, searchQuery],
   );
 
-  const showProviderFilter = accounts.length > 0 || true;
-
   const startAddAccount = () => {
     setAddPickerOpen(true);
   };
@@ -394,8 +392,7 @@ export function AccountsPage() {
         <>
           <AccountsSummary counts={summary} />
 
-          {showProviderFilter ? (
-            <div className="accounts-provider-filter btn-row" role="tablist">
+          <div className="accounts-provider-filter btn-row" role="tablist">
               {(
                 [
                   ['all', 'accounts.filterAll'],
@@ -418,7 +415,6 @@ export function AccountsPage() {
                 </button>
               ))}
             </div>
-          ) : null}
 
           {accounts.length > 5 ? (
             <div className="accounts-toolbar btn-row">
@@ -580,7 +576,7 @@ export function AccountsPage() {
         busy={busyId !== null}
         onConfirm={(displayName) => {
           const target = editBrowserTarget;
-          if (!target || target.source.kind !== 'ai') return;
+          if (target?.source.kind !== 'ai') return;
           setEditBrowserTarget(null);
           void run(target.id, async () => {
             await window.khepreeNovelAI.aiAccounts.updateDisplayName({

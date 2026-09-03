@@ -538,11 +538,11 @@ export async function runRepairLoop(
         neighborTargetTranslations: collectNeighborTargetTranslations(
           input.batchParagraphs,
           targetIdsForContext,
-          lastParsed?.translations ?? [],
+          lastParsed.translations,
         ),
         continuationTargetContext: lastAcceptedTargetParagraphs(
           input.sourceParagraphIds,
-          lastParsed?.translations ?? [],
+          lastParsed.translations,
           2,
         ),
         repairContext: repairCtx,
@@ -587,7 +587,7 @@ export async function runRepairLoop(
         const usedChannel = sent.channel ?? inherited;
         if (shouldMergePartialRepair(plan, input.batchParagraphs.length)) {
           const repairParsed = parser.parse(sent.rawResponse);
-          const baseTranslations = (lastParsed ?? parsed).translations;
+          const baseTranslations = lastParsed.translations;
           const mergedTranslations = mergeRepairTranslations(
             baseTranslations,
             repairParsed.translations,
@@ -608,7 +608,7 @@ export async function runRepairLoop(
           );
         } else if (plan.mode === 'continuation') {
           const contParsed = parser.parse(sent.rawResponse);
-          const baseTranslations = (lastParsed ?? parsed).translations;
+          const baseTranslations = lastParsed.translations;
           const mergedTranslations = mergeTranslationsByParagraphId(
             baseTranslations,
             contParsed.translations,
@@ -616,8 +616,8 @@ export async function runRepairLoop(
           );
           raw = buildMergedTranslationProtocol(
             mergedTranslations,
-            [...(lastParsed ?? parsed).termDeltas, ...contParsed.termDeltas],
-            [...(lastParsed ?? parsed).memoryDeltas, ...contParsed.memoryDeltas],
+            [...lastParsed.termDeltas, ...contParsed.termDeltas],
+            [...lastParsed.memoryDeltas, ...contParsed.memoryDeltas],
           );
         }
         if (isGeminiSoftErrorText(raw)) {

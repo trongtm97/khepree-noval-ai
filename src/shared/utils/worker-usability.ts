@@ -25,7 +25,7 @@ export function isUsableWorker(
     return account.availability.usableForNewJob;
   }
   // Legacy fallback when availability missing (tests/mocks).
-  if (!account || account.workerEnabled === false) return false;
+  if (!account?.workerEnabled) return false;
 
   const health = worker.health.toUpperCase();
   if (
@@ -64,7 +64,7 @@ export function getUsableWorkerCount(
 }
 
 export function countUsableAccounts(
-  accounts: Array<{ availability: AccountAvailabilityDto }>,
+  accounts: { availability: AccountAvailabilityDto }[],
 ): number {
   return accounts.filter((a) => a.availability.usableForNewJob).length;
 }

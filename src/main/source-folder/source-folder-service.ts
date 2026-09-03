@@ -190,8 +190,6 @@ export class SourceFolderService {
     chineseTitle?: string | null;
     sourceLanguageHint?: string | null;
     sourceLanguageMode?: 'AUTO' | 'HINTED';
-    /** @deprecated Use sourceLanguageHint — ignored for truth. */
-    sourceLanguage?: string | null;
     targetLanguage?: string | null;
     accountId?: string | null;
     styleConfig?: Record<string, unknown> | null;
@@ -206,10 +204,10 @@ export class SourceFolderService {
     );
 
     const hint =
-      input.sourceLanguageHint ??
-      (input.sourceLanguage && input.sourceLanguage.toUpperCase() !== 'AUTO'
-        ? input.sourceLanguage
-        : null);
+      input.sourceLanguageHint &&
+      input.sourceLanguageHint.toUpperCase() !== 'AUTO'
+        ? input.sourceLanguageHint
+        : null;
     const mode =
       input.sourceLanguageMode ?? (hint ? 'HINTED' : 'AUTO');
 

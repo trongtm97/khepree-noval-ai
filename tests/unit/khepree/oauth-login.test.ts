@@ -10,6 +10,7 @@ import { KhepreeAccessService } from '@main/khepree/khepree-access-service';
 import { resetMockKhepreeApiStateForTests } from '@main/khepree/khepree-api-client';
 import { KHEPREE_OAUTH_REDIRECT_URI, KHEPREE_PRODUCT_SLUG, KHEPREE_SECRET_KEYS } from '@shared/constants/khepree';
 import { getKhepreeOAuthClientId } from '@main/khepree/config';
+import { khepreeAccessInternals } from '../../helpers/khepree-service-internals';
 
 process.env.KHEPREE_DEV_MOCK = '1';
 
@@ -67,7 +68,7 @@ describe('KhepreeAccessService OAuth login', () => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nts-khepree-oauth-'));
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     vi.useRealTimers();
     closeDatabase();
     try {
@@ -123,7 +124,7 @@ describe('KhepreeAccessService OAuth login', () => {
     await vi.runAllTimersAsync();
     await loginPromise;
 
-    service['sessionStore'].clearAccessToken();
+    khepreeAccessInternals(service).sessionStore.clearAccessToken();
     const secretStorage = new SecretStorageService({
       backend: createXorBackend(),
       repository: db.secrets,
@@ -144,8 +145,8 @@ describe('KhepreeAccessService OAuth login', () => {
 
   it('mock exchange rejects PKCE mismatch', async () => {
     const { service } = createService(tempRoot);
-    const identity = await service['deviceIdentity'].getIdentity();
-    const api = service['api'];
+    const identity = await khepreeAccessInternals(service).deviceIdentity.getIdentity();
+    const api = khepreeAccessInternals(service).api;
     await api.startDeviceAuth({
       state: 'state-pkce',
       codeChallenge: 'valid-challenge-placeholder-0123456789012345678901234567890',

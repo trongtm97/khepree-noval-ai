@@ -1,4 +1,5 @@
 import type { AiProviderType } from '@shared/constants/ai-provider';
+import { parseAiProviderType } from '@shared/constants/ai-provider';
 import { AI_PROVIDER_IDS } from '@shared/constants/ai-provider';
 import {
   DEFAULT_TRANSLATE_BATCH_PARAGRAPHS,
@@ -148,10 +149,11 @@ export const PROVIDER_CAPABILITY_REGISTRY: Record<AiProviderType, ProviderCapabi
 };
 
 export function getProviderCapabilities(
-  providerType: AiProviderType | string | null | undefined,
+  providerType: string | null | undefined,
 ): ProviderCapabilities {
-  if (providerType && providerType in PROVIDER_CAPABILITY_REGISTRY) {
-    return PROVIDER_CAPABILITY_REGISTRY[providerType as AiProviderType];
+  const parsed = parseAiProviderType(providerType);
+  if (parsed && parsed in PROVIDER_CAPABILITY_REGISTRY) {
+    return PROVIDER_CAPABILITY_REGISTRY[parsed];
   }
   return PROVIDER_CAPABILITY_REGISTRY.GEMINI_WEB_API;
 }
@@ -159,7 +161,7 @@ export function getProviderCapabilities(
 export function getProviderCapabilitiesById(providerId: string): ProviderCapabilities {
   const entry = Object.entries(AI_PROVIDER_IDS).find(([, id]) => id === providerId);
   if (entry) {
-    return getProviderCapabilities(entry[0] as AiProviderType);
+    return getProviderCapabilities(parseAiProviderType(entry[0]));
   }
   return PROVIDER_CAPABILITY_REGISTRY.GEMINI_WEB_API;
 }
@@ -171,7 +173,7 @@ export function isBrowserTransport(
 }
 
 export function isBrowserTransportType(
-  providerType: AiProviderType | string | null | undefined,
+  providerType: string | null | undefined,
 ): boolean {
   return isBrowserTransport(getProviderCapabilities(providerType));
 }

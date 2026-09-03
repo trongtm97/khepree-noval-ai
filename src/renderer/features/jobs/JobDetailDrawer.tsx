@@ -178,7 +178,7 @@ export function JobDetailDrawer({
               size="sm"
               disabled={busy}
               onClick={() => {
-                void onRetry(job.id);
+                onRetry(job.id);
               }}
             >
               {partial ? t('jobs.continueFromError') : t('actions.retry')}
@@ -190,7 +190,7 @@ export function JobDetailDrawer({
               variant="ghost"
               disabled={busy}
               onClick={() => {
-                void onOpenGemini(accountId);
+                onOpenGemini(accountId);
               }}
             >
               {t('jobs.openGemini')}

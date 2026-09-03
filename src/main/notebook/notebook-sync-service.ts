@@ -158,6 +158,7 @@ export class NotebookSyncService {
    * No Google Drive — SQLite + local cache only.
    */
   async syncLocalKnowledge(projectId: string): Promise<{ updated: boolean }> {
+    await Promise.resolve();
     this.db.knowledgeSyncEvents.insert({
       projectId,
       eventType: 'KNOWLEDGE_BUILD_STARTED',

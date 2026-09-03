@@ -16,7 +16,7 @@ export function assertKhepreeProductAccess(feature?: string): void {
     assertProductAccessImpl(feature);
     return;
   }
-  if (app?.isPackaged) {
+  if (app.isPackaged) {
     throw new KhepreeProductAccessDeniedError(feature ?? KHEPREE_ACCESS_FEATURE);
   }
 }

@@ -37,7 +37,7 @@ export function SourceLanguageCompact({
             <div>{stacked.nativeLine}</div>
             <div>{detection.detectedLanguage}</div>
             <div>{t('createProjectWizard.sourceConfidence', { pct: String(confidencePct) })}</div>
-            {detection.method ? <div>{detection.method}</div> : null}
+            <div>{detection.method}</div>
           </div>
         }
       />

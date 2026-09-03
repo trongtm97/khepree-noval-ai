@@ -31,7 +31,7 @@ export function isUuid(value: string): boolean {
 export function pick(row: Record<string, string>, ...keys: string[]): string {
   for (const key of keys) {
     const v = row[key];
-    if (v?.trim()) return v.trim();
+    if (typeof v === 'string' && v.trim()) return v.trim();
   }
   return '';
 }
@@ -60,8 +60,9 @@ export function loadWorkbookRules(db: DatabaseManager, projectId: string): Workb
       return parsed.workbookRules;
     }
     const rows: WorkbookRuleRow[] = [];
-    for (let i = 0; i < (parsed.criticalRules ?? []).length; i += 1) {
-      const text = parsed.criticalRules![i]!;
+    const criticalRules = parsed.criticalRules ?? [];
+    for (let i = 0; i < criticalRules.length; i += 1) {
+      const text = criticalRules[i];
       rows.push({
         rule_id: `critical-${i + 1}`,
         priority: i + 1,
@@ -71,8 +72,9 @@ export function loadWorkbookRules(db: DatabaseManager, projectId: string): Workb
         locked: false,
       });
     }
-    for (let i = 0; i < (parsed.rules ?? []).length; i += 1) {
-      const text = parsed.rules![i]!;
+    const rules = parsed.rules ?? [];
+    for (let i = 0; i < rules.length; i += 1) {
+      const text = rules[i];
       rows.push({
         rule_id: `rule-${i + 1}`,
         priority: 100 + i,
@@ -114,7 +116,7 @@ export function saveWorkbookRules(
   base.workbookRules = rules;
   base.rules = normalRules;
   base.criticalRules = criticalRules;
-  if (!base.notebook) base.notebook = { ...DEFAULT_NOTEBOOK_SETTINGS };
+  base.notebook ??= { ...DEFAULT_NOTEBOOK_SETTINGS };
   db.projects.setStyleConfig(projectId, JSON.stringify(base));
 }
 

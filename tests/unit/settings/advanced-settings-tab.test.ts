@@ -15,8 +15,9 @@ describe('Advanced settings tab (Phase 6)', () => {
     expect(advanced).toContain('advancedAiSection');
     expect(advanced).toContain('AiProvidersSettingsPanel');
     expect(advanced).toContain('SystemHealthPanel');
+    expect(advanced).toContain('UpdatesSettingsPanel');
     expect(advanced).toContain('SettingsDisclosure');
-    expect(advanced).toContain('currentVersion');
+    expect(advanced).not.toContain('currentVersion');
     expect(advanced).not.toContain('developerTools');
     expect(advanced).not.toContain('settings.backup');
   });

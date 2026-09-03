@@ -6,10 +6,9 @@ export function projectHasLegacyDriveArtifacts(
   db: DatabaseManager,
   projectId: string,
 ): boolean {
-  const sync = db.knowledgeSyncState.getByProject(projectId);
-  if (sync?.root_folder_id) return true;
+  if (db.knowledgeSyncState.hasLegacyDriveRootFolder(projectId)) return true;
 
-  if (db.driveResources.listByProject(projectId).length > 0) return true;
+  if (db.hasLegacyDriveResourceRows(projectId)) return true;
 
   if (db.knowledgeFiles.listByProject(projectId).some((row) => row.drive_file_id)) {
     return true;

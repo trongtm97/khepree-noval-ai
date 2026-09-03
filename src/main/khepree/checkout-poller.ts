@@ -5,7 +5,7 @@ import {
 
 export function computeCheckoutPollDelayMs(attempt: number): number {
   const index = Math.min(Math.max(attempt, 0), KHEPREE_CHECKOUT_POLL_DELAYS_MS.length - 1);
-  return KHEPREE_CHECKOUT_POLL_DELAYS_MS[index]!;
+  return KHEPREE_CHECKOUT_POLL_DELAYS_MS[index];
 }
 
 export { KHEPREE_CHECKOUT_POLL_TIMEOUT_MS };
@@ -62,7 +62,7 @@ export class KhepreeCheckoutPoller {
   private async runPoll(): Promise<void> {
     if (this.cancelled) return;
     const done = await this.onPoll();
-    if (done || this.cancelled) return;
+    if (done) return;
     this.scheduleNext();
   }
 }

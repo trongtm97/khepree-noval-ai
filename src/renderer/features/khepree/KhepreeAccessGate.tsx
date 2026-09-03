@@ -326,10 +326,10 @@ export function KhepreeAccessGate({
     return <>{children}</>;
   }
 
-  const run = async (fn: () => Promise<unknown>) => {
+  const run = async (fn: () => unknown) => {
     setBusy(true);
     try {
-      await fn();
+      await Promise.resolve(fn());
     } finally {
       setBusy(false);
     }
@@ -378,7 +378,7 @@ export function KhepreeAccessGate({
           busy={busy}
           onUpgrade={(planId) => run(() => window.khepreeNovelAI.khepree.startCheckout({ planId }))}
           onRefresh={() => run(() => window.khepreeNovelAI.khepree.checkCheckout())}
-          onVisit={() => run(async () => { await openKhepreeExternal('website'); })}
+          onVisit={() => run(() => { openKhepreeExternal('website'); })}
           onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );
@@ -391,7 +391,7 @@ export function KhepreeAccessGate({
           busy={busy}
           onUpgrade={(planId) => run(() => window.khepreeNovelAI.khepree.startCheckout({ planId }))}
           onRefresh={() => run(() => window.khepreeNovelAI.khepree.checkCheckout())}
-          onVisit={() => run(async () => { await openKhepreeExternal('website'); })}
+          onVisit={() => run(() => { openKhepreeExternal('website'); })}
           onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );
@@ -404,7 +404,7 @@ export function KhepreeAccessGate({
           busy={busy}
           onUpgrade={(planId) => run(() => window.khepreeNovelAI.khepree.startCheckout({ planId }))}
           onRefresh={() => run(() => window.khepreeNovelAI.khepree.checkCheckout())}
-          onVisit={() => run(async () => { await openKhepreeExternal('website'); })}
+          onVisit={() => run(() => { openKhepreeExternal('website'); })}
           onSignOut={() => run(() => window.khepreeNovelAI.khepree.signOut())}
         />
       );

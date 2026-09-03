@@ -42,7 +42,7 @@ export function TermFilterDrawer({
           <span className="form-field__label">{t('terms.type')}</span>
           <Select
             value={filters.type}
-            onChange={(e) => onChange({ ...filters, type: e.target.value as TermType | '' })}
+            onChange={(e) => { onChange({ ...filters, type: e.target.value as TermType | '' }); }}
           >
             <option value="">{t('terms.allTypes')}</option>
             {TERM_TYPES.map((ty) => (
@@ -56,7 +56,7 @@ export function TermFilterDrawer({
           <span className="form-field__label">{t('terms.scope')}</span>
           <Select
             value={filters.scope}
-            onChange={(e) => onChange({ ...filters, scope: e.target.value as TermScope | '' })}
+            onChange={(e) => { onChange({ ...filters, scope: e.target.value as TermScope | '' }); }}
           >
             <option value="">{t('terms.allScopes')}</option>
             {TERM_SCOPES.map((s) => (
@@ -70,7 +70,7 @@ export function TermFilterDrawer({
           <span className="form-field__label">{t('terms.status')}</span>
           <Select
             value={filters.status}
-            onChange={(e) => onChange({ ...filters, status: e.target.value as TermStatus | '' })}
+            onChange={(e) => { onChange({ ...filters, status: e.target.value as TermStatus | '' }); }}
           >
             <option value="">{t('terms.allStatuses')}</option>
             {TERM_STATUSES.map((s) => (
@@ -84,7 +84,7 @@ export function TermFilterDrawer({
           <span className="form-field__label">{t('terms.genre')}</span>
           <Input
             value={filters.genre}
-            onChange={(e) => onChange({ ...filters, genre: e.target.value })}
+            onChange={(e) => { onChange({ ...filters, genre: e.target.value }); }}
           />
         </label>
         {showTransliteration && transliterationLabel ? (
@@ -92,7 +92,7 @@ export function TermFilterDrawer({
             <span className="form-field__label">{transliterationLabel}</span>
             <Input
               value={filters.pinyin}
-              onChange={(e) => onChange({ ...filters, pinyin: e.target.value })}
+              onChange={(e) => { onChange({ ...filters, pinyin: e.target.value }); }}
             />
           </label>
         ) : null}

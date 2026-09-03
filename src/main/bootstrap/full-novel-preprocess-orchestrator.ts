@@ -307,6 +307,7 @@ export class FullNovelPreprocessOrchestrator {
       snap?: FullNovelPreprocessProgressSnapshot | null,
     ) => void,
   ): Promise<AutoPreprocessResult> {
+    await Promise.resolve();
     const repo = this.db.fullNovelPreprocess;
     let run = repo.getRunById(runId);
     if (!run) throw new Error(`Preprocess run not found: ${runId}`);

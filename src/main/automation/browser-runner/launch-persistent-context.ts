@@ -14,7 +14,6 @@ export {
   BrowserCompatibilityPatch,
   activeBrowserCompatibilityPatches,
   buildPlaywrightLaunchPatchOptions,
-  playwrightLaunchAutomationOptions,
 } from './browser-compatibility-patch';
 
 export interface LaunchPersistentContextInput {

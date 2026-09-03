@@ -50,7 +50,7 @@ describe('source language detection truth model', () => {
     expect(r.detectedLanguage).toBe('zh-Hant');
   });
 
-  it('TEST 6: Japanese with kanji does not become Chinese when kana present', async () => {
+  it('TEST 6: Japanese with kanji does not become Chinese when kana present', () => {
     const h = detectLanguageHeuristic(JA);
     expect(h.code).toBe('ja');
     expect(h.code).not.toBe('zh-Hans');
@@ -72,12 +72,14 @@ describe('source language detection truth model', () => {
   });
 
   it('TEST 10: low confidence local triggers AI fallback', async () => {
-    const aiDetect = vi.fn(async () => ({
-      code: 'ja',
-      confidence: 0.95,
-      mixedLanguage: false,
-      secondaryLanguages: [] as string[],
-    }));
+    const aiDetect = vi.fn(() =>
+      Promise.resolve({
+        code: 'ja',
+        confidence: 0.95,
+        mixedLanguage: false,
+        secondaryLanguages: [] as string[],
+      }),
+    );
     const r = await detectSourceLanguage({
       sampleText: 'x',
       aiDetect,

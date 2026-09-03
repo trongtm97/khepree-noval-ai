@@ -8,21 +8,23 @@ function mockProvider(id: string, type: IAIProvider['providerType']): IAIProvide
   return {
     providerId: id,
     providerType: type,
-    initialize: async () => undefined,
-    healthCheck: async () => ({ ok: true, status: 'READY' as const, message: 'ok' }),
-    sendPrompt: async () => ({
-      requestId: '1',
-      status: 'SUCCESS' as const,
-      text: 'ok',
-    }),
-    cancelRequest: async () => undefined,
-    getStatus: async () => ({
-      providerId: id,
-      type,
-      ready: true,
-      message: 'ok',
-    }),
-    close: async () => undefined,
+    initialize: () => Promise.resolve(undefined),
+    healthCheck: () => Promise.resolve({ ok: true, status: 'READY' as const, message: 'ok' }),
+    sendPrompt: () =>
+      Promise.resolve({
+        requestId: '1',
+        status: 'SUCCESS' as const,
+        text: 'ok',
+      }),
+    cancelRequest: () => Promise.resolve(undefined),
+    getStatus: () =>
+      Promise.resolve({
+        providerId: id,
+        type,
+        ready: true,
+        message: 'ok',
+      }),
+    close: () => Promise.resolve(undefined),
   };
 }
 

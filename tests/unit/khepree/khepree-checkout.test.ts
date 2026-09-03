@@ -2,7 +2,6 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { shell } from 'electron';
 import { createDatabaseManager, closeDatabase, type DatabaseManager } from '@main/db/connection';
 import { resolveAppPaths } from '@main/services/paths-service';
 import { SecretStorageService } from '@main/security/secret-storage-service';
@@ -18,6 +17,10 @@ import { isAllowedKhepreeUrl } from '@main/khepree/external-links';
 
 process.env.KHEPREE_DEV_MOCK = '1';
 
+const openExternalMock = vi.hoisted(() =>
+  vi.fn<(url: string) => Promise<void>>().mockResolvedValue(undefined),
+);
+
 vi.mock('electron', () => ({
   app: {
     isPackaged: false,
@@ -25,7 +28,7 @@ vi.mock('electron', () => ({
     getLocale: () => 'en-US',
   },
   shell: {
-    openExternal: vi.fn().mockResolvedValue(undefined),
+    openExternal: openExternalMock,
   },
 }));
 
@@ -61,7 +64,7 @@ function createService(tempRoot: string): { service: KhepreeAccessService; db: D
     repository: db.secrets,
   });
   const service = new KhepreeAccessService(() => db, secretStorage);
-  setKhepreeProductAccessEnforcer((feature) => service.assertProductAccess(feature));
+  setKhepreeProductAccessEnforcer((feature) => { service.assertProductAccess(feature); });
   return { service, db };
 }
 
@@ -72,9 +75,12 @@ async function loginActive(service: KhepreeAccessService): Promise<void> {
 }
 
 function checkoutOpenCalls(): string[] {
-  return vi.mocked(shell.openExternal).mock.calls
-    .map((call) => String(call[0]))
-    .filter((url) => url.includes('/checkout') || url.includes('checkout?'));
+  return openExternalMock.mock.calls
+    .map((call) => call[0])
+    .filter(
+      (url): url is string =>
+        typeof url === 'string' && (url.includes('/checkout') || url.includes('checkout?')),
+    );
 }
 
 describe('Khepree checkout flow (N07)', () => {
@@ -84,21 +90,21 @@ describe('Khepree checkout flow (N07)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     resetMockKhepreeApiStateForTests();
-    vi.mocked(shell.openExternal).mockClear();
+    openExternalMock.mockClear();
     for (const key of [
       'KHEPREE_MOCK_NO_ENTITLEMENT',
       'KHEPREE_MOCK_CHECKOUT_STATUS',
     ]) {
       envBackup[key] = process.env[key];
-      delete process.env[key];
+      Reflect.deleteProperty(process.env, key);
     }
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nts-khepree-n07-'));
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     setKhepreeProductAccessEnforcer(null);
     for (const [key, value] of Object.entries(envBackup)) {
-      if (value === undefined) delete process.env[key];
+      if (value === undefined) Reflect.deleteProperty(process.env, key);
       else process.env[key] = value;
     }
     vi.useRealTimers();
@@ -120,7 +126,7 @@ describe('Khepree checkout flow (N07)', () => {
     expect(state.billing).toBe('checkout_pending');
     expect(state.checkoutCanReopen).toBe(true);
     expect(checkoutOpenCalls()).toHaveLength(1);
-    const opened = checkoutOpenCalls()[0]!;
+    const opened = checkoutOpenCalls()[0];
     expect(isAllowedKhepreeUrl(opened)).toBe(true);
     expect(opened).not.toContain('evil.example');
     await service.shutdown();

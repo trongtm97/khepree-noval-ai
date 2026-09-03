@@ -5,7 +5,7 @@ import {
   BACKUP_ARCHIVE_EXTENSION,
   DEFAULT_AUTO_BACKUP_ENABLED,
   DEFAULT_AUTO_BACKUP_INTERVAL_HOURS,
-  DEFAULT_AUTO_BACKUP_RETENTION,
+  DEFAULT_RETENTION_DAILY,
   DEFAULT_RETENTION_MONTHLY,
   DEFAULT_RETENTION_WEEKLY,
 } from '@shared/constants/portability';
@@ -30,6 +30,8 @@ function parsePositiveInt(raw: string | null | undefined, fallback: number): num
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+const LEGACY_RETENTION_COUNT_META_KEY = 'backup.auto.retentionCount';
+
 export function getAutoBackupConfig(db: DatabaseManager): AutoBackupConfig {
   const enabledRaw = db.appMeta.get(AUTO_BACKUP_META_KEYS.enabled);
   const enabled =
@@ -39,8 +41,8 @@ export function getAutoBackupConfig(db: DatabaseManager): AutoBackupConfig {
     DEFAULT_AUTO_BACKUP_INTERVAL_HOURS,
   );
   const legacyDaily = parsePositiveInt(
-    db.appMeta.get(AUTO_BACKUP_META_KEYS.retentionCount),
-    DEFAULT_AUTO_BACKUP_RETENTION,
+    db.appMeta.get(LEGACY_RETENTION_COUNT_META_KEY),
+    DEFAULT_RETENTION_DAILY,
   );
   const retentionDaily = parsePositiveInt(
     db.appMeta.get(AUTO_BACKUP_META_KEYS.retentionDaily),
@@ -80,7 +82,7 @@ export function setAutoBackupConfig(
   db.appMeta.set(AUTO_BACKUP_META_KEYS.retentionDaily, String(patch.retentionDaily));
   db.appMeta.set(AUTO_BACKUP_META_KEYS.retentionWeekly, String(patch.retentionWeekly));
   db.appMeta.set(AUTO_BACKUP_META_KEYS.retentionMonthly, String(patch.retentionMonthly));
-  db.appMeta.set(AUTO_BACKUP_META_KEYS.retentionCount, String(patch.retentionDaily));
+  db.appMeta.set(LEGACY_RETENTION_COUNT_META_KEY, String(patch.retentionDaily));
   return getAutoBackupConfig(db);
 }
 
@@ -260,7 +262,7 @@ export function startAutoBackupScheduler(input: {
       db: input.db,
       dbPath: input.dbPath,
       backupsDir: resolveDir(),
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       logger.warn('Auto backup tick failed', {
         message: error instanceof Error ? error.message : String(error),
       });

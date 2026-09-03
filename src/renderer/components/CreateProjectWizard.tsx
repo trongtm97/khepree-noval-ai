@@ -143,10 +143,7 @@ export function CreateProjectWizard({
 
   const commit = async () => {
     if (!preview || !targetLanguage) return;
-    if (
-      sourceDetection &&
-      sourceDetection.detectedLanguage === targetLanguage
-    ) {
+    if (sourceDetection?.detectedLanguage === targetLanguage) {
       onError(t('createProjectWizard.sourceTargetSame'));
       return;
     }

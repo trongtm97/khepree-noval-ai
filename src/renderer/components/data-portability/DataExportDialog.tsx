@@ -97,7 +97,7 @@ export function DataExportDialog({
         {section.dataType !== 'operational_workbook' ? (
           <label className="data-export-field">
             <span>{t('dataHub.exportFormat')}</span>
-            <Select value={format} onChange={(e) => setFormat(e.target.value as TabularFormat)}>
+            <Select value={format} onChange={(e) => { setFormat(e.target.value as TabularFormat); }}>
               <option value="xlsx">{t('dataHub.formatXlsx')}</option>
               <option value="csv">{t('dataHub.formatCsv')}</option>
             </Select>
@@ -108,7 +108,7 @@ export function DataExportDialog({
             <span>{t('dataHub.exportScope')}</span>
             <Select
               value={scope}
-              onChange={(e) => setScope(e.target.value as TermTabularExportScope)}
+              onChange={(e) => { setScope(e.target.value as TermTabularExportScope); }}
             >
               {TERM_TABULAR_EXPORT_SCOPES.filter((s) => s !== 'all_terms').map((s) => (
                 <option key={s} value={s} disabled={scopeDisabled(s, projectId, editionId)}>

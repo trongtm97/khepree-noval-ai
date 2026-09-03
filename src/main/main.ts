@@ -4,6 +4,7 @@
  */
 import { app } from 'electron';
 import started from 'electron-squirrel-startup';
+import { WINDOWS_SQUIRREL_APP_USER_MODEL_ID } from '@shared/constants/app';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,6 +32,10 @@ try {
   );
 } catch {
   // ignore
+}
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId(WINDOWS_SQUIRREL_APP_USER_MODEL_ID);
 }
 
 if (started && !smokeRequested) {

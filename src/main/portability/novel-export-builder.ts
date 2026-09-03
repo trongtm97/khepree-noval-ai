@@ -94,8 +94,8 @@ export function loadNovelExportData(
     projectTitle: project.title,
     sourceLanguage: normalizeLanguageCode(project.source_language),
     targetLanguage: normalizeLanguageCode(project.target_language),
-    sourceLanguageLabel: getLanguageProfile(project.source_language).displayNameNative,
-    targetLanguageLabel: getLanguageProfile(project.target_language).displayNameNative,
+    sourceLanguageLabel: getLanguageProfile(project.source_language).nativeName,
+    targetLanguageLabel: getLanguageProfile(project.target_language).nativeName,
     chapters: exportChapters,
   };
 }

@@ -102,9 +102,9 @@ export function resolvePlaywrightSendTarget(
   }
 
   const mapping = pickNotebookAssistedMapping(rows);
-  if (mapping) {
+  if (mapping?.resource_url) {
     return {
-      notebookUrl: mapping.resource_url!,
+      notebookUrl: mapping.resource_url,
       notebookRowId: mapping.id,
       mapping,
       usedWebChatFallback: false,

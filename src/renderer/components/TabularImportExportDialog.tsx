@@ -201,7 +201,7 @@ export function TabularImportExportDialog({
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Select
               value={rowFilter}
-              onChange={(e) => setRowFilter(e.target.value as RowFilter)}
+              onChange={(e) => { setRowFilter(e.target.value as RowFilter); }}
               aria-label={t('tabular.filterRows')}
             >
               <option value="all">{t('tabular.filterAll')}</option>
@@ -211,7 +211,7 @@ export function TabularImportExportDialog({
             </Select>
             <Select
               value={importMode}
-              onChange={(e) => setImportMode(e.target.value as TabularImportMode)}
+              onChange={(e) => { setImportMode(e.target.value as TabularImportMode); }}
               aria-label={t('tabular.importMode')}
             >
               <option value="IMPORT_VALID_ONLY">{t('tabular.modeValidOnly')}</option>

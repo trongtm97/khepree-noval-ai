@@ -18,7 +18,7 @@ export interface DataSectionDef {
   exportable: boolean;
   templateDownload?: boolean;
   /** Expected canonical columns for external file mapping (subset). */
-  mappingFields: Array<{ key: string; required?: boolean }>;
+  mappingFields: { key: string; required?: boolean }[];
 }
 
 export const DATA_SECTIONS: Record<DataSectionId, DataSectionDef> = {

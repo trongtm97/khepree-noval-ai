@@ -93,12 +93,14 @@ describe('multilingual production acceptance', () => {
   let db: DatabaseManager;
 
   beforeEach(() => {
-    vi.mocked(checkProviderForJob).mockImplementation(async (_db, input) => ({
-      providerId: input.providerId,
-      result: 'READY',
-      message: 'ok',
-      checks: {},
-    }));
+    vi.mocked(checkProviderForJob).mockImplementation((_db, input) =>
+      Promise.resolve({
+        providerId: input.providerId,
+        result: 'READY',
+        message: 'ok',
+        checks: {},
+      }),
+    );
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nts-accept-'));
     pathsService.initializeAt(tempRoot);
     const paths = resolveAppPaths(tempRoot);
@@ -194,11 +196,12 @@ describe('multilingual production acceptance', () => {
 
     expect(result.rawResponse).toContain('<TRANSLATION>');
     expect(captured).not.toBeNull();
-    expect(captured!.operationType).toBe('TRANSLATE');
-    expect(captured!.prompt).toContain(formatAiLanguageIdentity('ja'));
-    expect(captured!.prompt).toContain(formatAiLanguageIdentity('en'));
-    expect(pairFingerprint(captured!.sections.taskHeader)).toBe('ja→en');
-    expect(captured!.promptHash).toBeTruthy();
+    const capturedPack = captured as unknown as TranslationPackDto;
+    expect(capturedPack.operationType).toBe('TRANSLATE');
+    expect(capturedPack.prompt).toContain(formatAiLanguageIdentity('ja'));
+    expect(capturedPack.prompt).toContain(formatAiLanguageIdentity('en'));
+    expect(pairFingerprint(capturedPack.sections.taskHeader)).toBe('ja→en');
+    expect(capturedPack.promptHash).toBeTruthy();
   });
 
   it('source detection: hint ru but project source uk → Ukrainian in prompt', () => {

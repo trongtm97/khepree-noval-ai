@@ -115,7 +115,7 @@ export function extractOperationPrompt(pack: {
 }): string {
   if (pack.operationPrompt?.trim()) return pack.operationPrompt.trim();
   const marker = /^## (?:Repair task|Continuation task|Repair \/ continuation task)\s*/im;
-  const match = pack.prompt.match(marker);
+  const match = marker.exec(pack.prompt);
   if (match?.index != null) {
     return pack.prompt.slice(match.index).trim();
   }

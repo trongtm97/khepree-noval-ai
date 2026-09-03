@@ -24,14 +24,14 @@ const EMPTY_CONTEXT: MemoryContextDto = {
 
 const parser = new ResponseParser();
 
-const SMOKE_PAIRS: Array<{
+const SMOKE_PAIRS: {
   source: string;
   target: string;
   sourceText: string;
   goodTarget: string;
   lockedSource: string;
   lockedPreferred: string;
-}> = [
+}[] = [
   {
     source: 'ja',
     target: 'en',

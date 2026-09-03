@@ -17,14 +17,14 @@ import { SettingsStatus } from './SettingsStatus';
 import { StoragePathRow } from './StoragePathRow';
 import { useSettingsFeedback } from './useSettingsFeedback';
 
-type RestorePreview = {
+interface RestorePreview {
   kind: string;
   projectTitle: string | null;
   compatible: boolean;
   warnings: string[];
   requiresOverwrite: boolean;
   backupDate: string;
-};
+}
 
 export function StorageSettingsPanel() {
   const t = useT();

@@ -18,7 +18,7 @@ import {
   launchKhepreeNovelAIPersistentContext,
   writeBrowserEngineDiagnostics,
   toBrowserEngineDiagnosticsSnapshot,
-  playwrightLaunchAutomationOptions,
+  buildPlaywrightLaunchPatchOptions,
 } from '@main/automation/browser-runner/launch-persistent-context';
 import {
   looksLikeInsecureBrowserInterstitial,
@@ -175,7 +175,7 @@ describe('BrowserEngineResolver', () => {
 
   it('loginCompat launch options ignore --enable-automation and disable AutomationControlled', () => {
     expect(
-      playwrightLaunchAutomationOptions({
+      buildPlaywrightLaunchPatchOptions({
         loginCompat: true,
         disableAutomationControlled: true,
       }),
@@ -184,7 +184,7 @@ describe('BrowserEngineResolver', () => {
       ignoreDefaultArgs: ['--enable-automation'],
     });
     expect(
-      playwrightLaunchAutomationOptions({
+      buildPlaywrightLaunchPatchOptions({
         loginCompat: false,
         disableAutomationControlled: false,
       }),

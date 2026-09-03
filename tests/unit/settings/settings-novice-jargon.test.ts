@@ -44,7 +44,7 @@ const FORBIDDEN_VISIBLE = [
 function extractI18nKeys(source: string): string[] {
   const keys = new Set<string>();
   for (const match of source.matchAll(/t\(\s*['"]([^'"]+)['"]/g)) {
-    keys.add(match[1]!);
+    keys.add(match[1]);
   }
   return [...keys];
 }
@@ -56,7 +56,8 @@ function loadLocale(keyPrefix: string): Record<string, string> {
   const out: Record<string, string> = {};
   const re = new RegExp(`(${keyPrefix.replace(/\./g, '\\.')}[\\w.]*)\\s*:\\s*'([^']*)'`, 'g');
   for (const match of text.matchAll(re)) {
-    out[match[1]!] = match[2]!;
+    const [, key, value] = match;
+    if (key) out[key] = value;
   }
   return out;
 }

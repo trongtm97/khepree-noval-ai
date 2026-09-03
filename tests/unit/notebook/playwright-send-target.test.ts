@@ -9,28 +9,35 @@ import {
 const PROJECT = '11111111-1111-1111-1111-111111111111';
 const ACCOUNT = '22222222-2222-2222-2222-222222222222';
 
-function mockDb(rows: Record<string, unknown>[] = []): DatabaseManager {
+function mockDb(rows: Record<string, unknown>[] = []): {
+  db: DatabaseManager;
+  markDeprecated: ReturnType<typeof vi.fn>;
+  insertKnowledgeSyncEvent: ReturnType<typeof vi.fn>;
+} {
   const projectRows = [...rows];
-  return {
+  const markDeprecated = vi.fn((id: string) => {
+    const row = projectRows.find((r) => r.id === id);
+    if (row) row.deprecated_at = '2026-01-01T00:00:00.000Z';
+  });
+  const insertKnowledgeSyncEvent = vi.fn();
+  const db = {
     notebooks: {
       listByProject: vi.fn(() => projectRows.filter((r) => r.notebook_role === 'TRANSLATION')),
       listByProjectAndWorker: vi.fn(() => projectRows),
-      markDeprecated: vi.fn((id: string) => {
-        const row = projectRows.find((r) => r.id === id);
-        if (row) row.deprecated_at = '2026-01-01T00:00:00.000Z';
-      }),
+      markDeprecated,
       upsert: vi.fn(),
     },
     knowledgeSyncEvents: {
-      insert: vi.fn(),
+      insert: insertKnowledgeSyncEvent,
       listRecent: vi.fn(() => []),
     },
   } as unknown as DatabaseManager;
+  return { db, markDeprecated, insertKnowledgeSyncEvent };
 }
 
 describe('playwright-send-target', () => {
   it('local_context ignores legacy TRANSLATION pending — web chat URL', () => {
-    const db = mockDb([
+    const { db } = mockDb([
       {
         id: 'legacy-1',
         notebook_role: 'TRANSLATION',
@@ -46,7 +53,7 @@ describe('playwright-send-target', () => {
   });
 
   it('healLegacyTranslationNotebookMappings deprecates stuck TRANSLATION rows', () => {
-    const db = mockDb([
+    const { db, markDeprecated, insertKnowledgeSyncEvent } = mockDb([
       {
         id: 'legacy-1',
         notebook_role: 'TRANSLATION',
@@ -55,14 +62,14 @@ describe('playwright-send-target', () => {
       },
     ]);
     expect(healLegacyTranslationNotebookMappings(db, PROJECT)).toBe(1);
-    expect(db.notebooks.markDeprecated).toHaveBeenCalledWith('legacy-1');
-    expect(db.knowledgeSyncEvents.insert).toHaveBeenCalledWith(
+    expect(markDeprecated).toHaveBeenCalledWith('legacy-1');
+    expect(insertKnowledgeSyncEvent).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: 'NOTEBOOK_LEGACY_DEPRECATED' }),
     );
   });
 
   it('notebook_assisted uses ready SINGLE mapping', () => {
-    const db = mockDb([
+    const { db } = mockDb([
       {
         id: 'single-1',
         notebook_role: 'SINGLE',

@@ -1,4 +1,3 @@
-import type { AiProviderType } from '@shared/constants/ai-provider';
 import {
   DEFAULT_MAX_CHAPTERS_PER_JOB,
   DEFAULT_TRANSLATE_BATCH_PARAGRAPHS,
@@ -64,7 +63,7 @@ function isRiskyHistory(history: ThroughputHistory): boolean {
 
 /** Paragraph + char budget for translate chunks (adapts to provider + project stats). */
 export function resolveAutoChunkBudget(
-  providerType: AiProviderType | string | null | undefined,
+  providerType: string | null | undefined,
   history?: ThroughputHistory,
 ): AutoChunkBudget {
   const caps = getProviderCapabilities(providerType);
@@ -108,7 +107,7 @@ export function resolveAutoChunkBudget(
 
 /** Pause between Web API chunks — shorter when project history is clean. */
 export function resolveInterChunkDelayMs(
-  providerType: AiProviderType | string | null | undefined,
+  providerType: string | null | undefined,
   history?: ThroughputHistory,
 ): number {
   const transport = getProviderCapabilities(providerType).transport;
@@ -122,7 +121,7 @@ export function resolveInterChunkDelayMs(
 
 /** Chapters bundled per translate job (upper bound — batch sizer may shrink). */
 export function resolveAutoMaxChaptersPerJob(
-  providerType: AiProviderType | string | null | undefined,
+  providerType: string | null | undefined,
   history?: ThroughputHistory,
 ): number {
   const caps = getProviderCapabilities(providerType);

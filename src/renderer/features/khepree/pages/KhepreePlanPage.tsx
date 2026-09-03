@@ -48,7 +48,7 @@ export function KhepreePlanPage() {
         </div>
       ) : checkoutActive ? (
         <KhepreeCheckoutWaiting
-          state={state!}
+          state={state}
           busy={busy}
           onCheck={() => run(() => window.khepreeNovelAI.khepree.checkCheckout())}
           onCancel={() => run(() => window.khepreeNovelAI.khepree.cancelCheckout())}
@@ -100,7 +100,7 @@ export function KhepreePlanPage() {
             {loading ? <p className="setup-wizard__hint">{t('khepree.plans.loading')}</p> : null}
             {error ? <p className="form-error">{error}</p> : null}
             {!loading && !error ? (
-              <KhepreePlanCatalog plans={plans} busy={busy} onUpgrade={startUpgrade} />
+              <KhepreePlanCatalog plans={plans} busy={busy} onUpgrade={(planId) => { void startUpgrade(planId); }} />
             ) : null}
           </div>
         </>

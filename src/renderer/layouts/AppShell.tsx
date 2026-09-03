@@ -37,6 +37,8 @@ import {
 } from './translation-shell-mode';
 import { useTranslationWorkspaceStore } from '../stores/translation-workspace-store';
 import { resolveBreadcrumb } from '../features/dashboard/resolve-breadcrumb';
+import { useKhepreeAccessState } from '../features/khepree/useKhepreeAccessState';
+import { useKhepreeAnnouncements } from '../hooks/useKhepreeAnnouncements';
 
 interface AppShellProps {
   children: ReactNode;
@@ -79,6 +81,8 @@ export function AppShell({ children, appInfo }: AppShellProps) {
   const status = useSystemStatusPoll();
   const startupAi = useStartupAiReadiness();
   useSourceFolderEvents();
+  const khepreeAccess = useKhepreeAccessState();
+  const khepreeAnnouncements = useKhepreeAnnouncements(khepreeAccess.state?.signedIn === true);
 
   const editorFocusMode = useTranslationWorkspaceStore((s) => s.focusMode);
   const translationFocus = isTranslationWorkspaceRoute(location.pathname);
@@ -433,6 +437,16 @@ export function AppShell({ children, appInfo }: AppShellProps) {
         <div className="btn-row" style={{ marginBottom: '0.75rem' }}>
           <Button size="sm" onClick={markAllRead}>
             {t('actions.markAllRead')}
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            aria-label={t('announcements.refresh')}
+            onClick={() => {
+              void khepreeAnnouncements.refresh();
+            }}
+          >
+            {t('announcements.refresh')}
           </Button>
         </div>
         {notifications.length === 0 ? (

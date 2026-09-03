@@ -67,7 +67,7 @@ function isReady(value: string | null | undefined): boolean {
 function enabledTranslationProviderIds(input: TranslatePreflightInput): string[] {
   if (input.providerRows?.length) {
     return TRANSLATION_AI_PROVIDER_IDS.filter((id) =>
-      input.providerRows!.some((row) => row.id === id && row.enabled),
+      input.providerRows?.some((row) => row.id === id && row.enabled) ?? false,
     );
   }
   const enabled = input.enabledProviderIds ?? [];

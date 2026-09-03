@@ -1,6 +1,8 @@
 import { powerMonitor } from 'electron';
 import { KHEPREE_RESUME_HEARTBEAT_DEBOUNCE_MS } from '@shared/constants/khepree';
 import { triggerKhepreeHeartbeatNow } from './khepree-access-singleton';
+import { triggerAnnouncementSync } from './announcement-sync-singleton';
+import { triggerUpdateCheckOnResume } from '../updates/update-singleton';
 import { logger } from '../logging/logger';
 
 let installed = false;
@@ -14,14 +16,16 @@ function onSystemResume(source: string): void {
   lastResumeTriggerAt = now;
   logger.info('Khepree heartbeat triggered after system resume', { source });
   triggerKhepreeHeartbeatNow();
+  triggerAnnouncementSync(source);
+  triggerUpdateCheckOnResume();
 }
 
 /** Windows sleep/resume — validate license promptly instead of waiting full interval. */
 export function installKhepreeHeartbeatResumeHandlers(): void {
   if (installed) return;
   installed = true;
-  powerMonitor.on('resume', () => onSystemResume('powerMonitor.resume'));
-  powerMonitor.on('unlock-screen', () => onSystemResume('powerMonitor.unlock-screen'));
+  powerMonitor.on('resume', () => { onSystemResume('powerMonitor.resume'); });
+  powerMonitor.on('unlock-screen', () => { onSystemResume('powerMonitor.unlock-screen'); });
 }
 
 export function resetKhepreeHeartbeatResumeHandlersForTests(): void {

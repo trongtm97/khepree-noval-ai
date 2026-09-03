@@ -5,7 +5,7 @@ import type { TabularCommitContext } from '../types';
 export function pickRow(row: Record<string, string>, ...keys: string[]): string {
   for (const key of keys) {
     const v = row[key];
-    if (v?.trim()) return v.trim();
+    if (typeof v === 'string' && v.trim()) return v.trim();
   }
   return '';
 }
@@ -33,7 +33,7 @@ export function resolveScopeRef(
   scopeRef: string,
   projectId?: string,
 ): string | null {
-  if (scope === 'PROJECT') return scopeRef || projectId || null;
+  if (scope === 'PROJECT') return scopeRef || (projectId ?? null);
   return scopeRef || null;
 }
 

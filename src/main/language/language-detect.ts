@@ -296,7 +296,7 @@ export async function detectSourceLanguage(
   });
 }
 
-function toLegacyResponse(
+export function toLegacyLanguageDetectResponse(
   detection: SourceLanguageDetection,
 ): LanguageDetectResponse {
   return {
@@ -327,7 +327,7 @@ export async function detectLanguage(
   input: DetectLanguageInput,
 ): Promise<LanguageDetectResponse> {
   const result = await detectSourceLanguage(input);
-  return toLegacyResponse(result);
+  return toLegacyLanguageDetectResponse(result);
 }
 
 /**

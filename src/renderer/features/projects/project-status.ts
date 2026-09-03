@@ -106,7 +106,7 @@ export function resolveProjectDisplayState(
     };
   }
 
-  const raw = (project.status ?? '').toLowerCase();
+  const raw = project.status.toLowerCase();
   if (raw === 'paused') {
     return {
       status: 'paused',

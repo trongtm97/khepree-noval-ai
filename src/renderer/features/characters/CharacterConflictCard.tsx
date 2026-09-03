@@ -50,7 +50,7 @@ export function CharacterConflictCard({
       <button
         type="button"
         className="conflict-card__tech-toggle"
-        onClick={() => setShowTechnical((v) => !v)}
+        onClick={() => { setShowTechnical((v) => !v); }}
       >
         {showTechnical ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         {t('characters.conflictDetails')}

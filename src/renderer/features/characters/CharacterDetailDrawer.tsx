@@ -83,7 +83,7 @@ export function CharacterDetailDrawer({
           <ReadRow label={t('characters.status')} value={characterStatusLabel(draft.status)} />
           <ReadRow label={t('characters.locked')} value={draft.locked ? t('common.yes') : t('common.no')} />
           <div className="btn-row">
-            <Button variant="primary" onClick={() => setEditing(true)}>
+            <Button variant="primary" onClick={() => { setEditing(true); }}>
               {t('actions.edit')}
             </Button>
           </div>
@@ -95,7 +95,7 @@ export function CharacterDetailDrawer({
             <Input
               value={draft.canonicalName}
               disabled={busy}
-              onChange={(e) => setDraft({ ...draft, canonicalName: e.target.value })}
+              onChange={(e) => { setDraft({ ...draft, canonicalName: e.target.value }); }}
             />
           </label>
           <label className="form-field">
@@ -103,7 +103,7 @@ export function CharacterDetailDrawer({
             <Input
               value={draft.translatedName ?? ''}
               disabled={busy}
-              onChange={(e) => setDraft({ ...draft, translatedName: e.target.value || null })}
+              onChange={(e) => { setDraft({ ...draft, translatedName: e.target.value || null }); }}
             />
           </label>
           <label className="form-field">
@@ -112,10 +112,10 @@ export function CharacterDetailDrawer({
               value={draft.aliases.join(', ')}
               disabled={busy}
               onChange={(e) =>
-                setDraft({
+                { setDraft({
                   ...draft,
                   aliases: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
-                })
+                }); }
               }
             />
           </label>
@@ -124,7 +124,7 @@ export function CharacterDetailDrawer({
             <Input
               value={draft.role ?? ''}
               disabled={busy}
-              onChange={(e) => setDraft({ ...draft, role: e.target.value || null })}
+              onChange={(e) => { setDraft({ ...draft, role: e.target.value || null }); }}
             />
           </label>
           <label className="form-field">
@@ -134,7 +134,7 @@ export function CharacterDetailDrawer({
               rows={4}
               value={draft.description ?? ''}
               disabled={busy}
-              onChange={(e) => setDraft({ ...draft, description: e.target.value || null })}
+              onChange={(e) => { setDraft({ ...draft, description: e.target.value || null }); }}
             />
           </label>
           <label className="checkbox-row">
@@ -142,7 +142,7 @@ export function CharacterDetailDrawer({
               type="checkbox"
               checked={draft.locked}
               disabled={busy}
-              onChange={(e) => setDraft({ ...draft, locked: e.target.checked })}
+              onChange={(e) => { setDraft({ ...draft, locked: e.target.checked }); }}
             />
             {t('characters.lock')}
           </label>
@@ -150,7 +150,7 @@ export function CharacterDetailDrawer({
             <Button variant="primary" disabled={busy} onClick={() => void save()}>
               {t('actions.save')}
             </Button>
-            <Button disabled={busy} onClick={() => setEditing(false)}>
+            <Button disabled={busy} onClick={() => { setEditing(false); }}>
               {t('actions.cancel')}
             </Button>
           </div>

@@ -112,7 +112,7 @@ export function EditorContextPanel({
             }}
           >
             {t(TAB_KEYS[item])}
-            {counts?.[item] != null && counts[item]! > 0 ? ` ${counts[item]}` : ''}
+            {counts?.[item] != null && counts[item] > 0 ? ` ${counts[item]}` : ''}
           </button>
         ))}
         {hiddenCount > 0 ? (

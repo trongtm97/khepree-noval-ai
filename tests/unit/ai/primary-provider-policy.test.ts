@@ -97,28 +97,33 @@ describe('resolvePrimaryProviderId', () => {
 describe('applyPrimaryProvider', () => {
   it('sets AUTO routing, fallback, and priority order', () => {
     const db = mockDb();
+    const setEnabled = vi.fn();
+    const setFallback = vi.fn();
+    const setPriority = vi.fn();
+    const setRoutingMode = vi.fn();
+    const setPrimaryProviderId = vi.fn();
     const service = {
-      setEnabled: vi.fn(),
-      setFallback: vi.fn(),
-      setPriority: vi.fn(),
+      setEnabled,
+      setFallback,
+      setPriority,
       manager: {
-        setRoutingMode: vi.fn(),
-        setPrimaryProviderId: vi.fn(),
+        setRoutingMode,
+        setPrimaryProviderId,
       },
     } as unknown as AiProviderService;
 
     applyPrimaryProvider(db, service, AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT);
 
-    expect(service.setEnabled).toHaveBeenCalledWith(
+    expect(setEnabled).toHaveBeenCalledWith(
       AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
       true,
     );
-    expect(service.manager.setRoutingMode).toHaveBeenCalledWith('AUTO');
-    expect(service.manager.setPrimaryProviderId).toHaveBeenCalledWith(
+    expect(setRoutingMode).toHaveBeenCalledWith('AUTO');
+    expect(setPrimaryProviderId).toHaveBeenCalledWith(
       AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
     );
-    expect(service.setFallback).toHaveBeenCalledWith(true);
-    expect(service.setPriority).toHaveBeenCalledWith(
+    expect(setFallback).toHaveBeenCalledWith(true);
+    expect(setPriority).toHaveBeenCalledWith(
       AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT,
       1,
     );
@@ -127,7 +132,7 @@ describe('applyPrimaryProvider', () => {
   it('rejects non-translation provider ids', () => {
     const db = mockDb();
     const service = {} as AiProviderService;
-    expect(() => applyPrimaryProvider(db, service, 'notebooklm')).toThrow(
+    expect(() => { applyPrimaryProvider(db, service, 'notebooklm'); }).toThrow(
       /không hỗ trợ/,
     );
   });

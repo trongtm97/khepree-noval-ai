@@ -172,9 +172,10 @@ export class TabularExportService {
     rows: Record<string, string>[],
     options: { meta: TabularMeta; utf8Bom: boolean },
   ): Promise<void> {
+    await Promise.resolve();
     const lines: string[] = [];
     for (const [k, v] of Object.entries(options.meta)) {
-      if (v != null && v !== '') lines.push(`# ${k}: ${v}`);
+      if (v !== '') lines.push(`# ${k}: ${v}`);
     }
     lines.push(serializeCsvRow(headers));
     for (const row of rows) {

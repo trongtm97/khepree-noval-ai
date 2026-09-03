@@ -30,35 +30,37 @@ class MockSurfaceAdapter implements BrowserConversationSurfaceAdapter {
   sendClicked = false;
   markerInComposer = false;
 
-  attach(_page: Page): void {}
-
-  async detectSurface(): Promise<{ ok: true } | { ok: false; reason: string }> {
-    if (this.scenario === 'login') return { ok: false, reason: 'login' };
-    return { ok: true };
+  attach(_page: Page): void {
+    void _page;
   }
 
-  async findComposer(): Promise<{ ok: true; selector: string } | { ok: false; reason: string }> {
-    return { ok: true, selector: '#composer' };
+  detectSurface(): Promise<{ ok: true } | { ok: false; reason: string }> {
+    if (this.scenario === 'login') return Promise.resolve({ ok: false, reason: 'login' });
+    return Promise.resolve({ ok: true });
   }
 
-  async fillComposer(text: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+  findComposer(): Promise<{ ok: true; selector: string } | { ok: false; reason: string }> {
+    return Promise.resolve({ ok: true, selector: '#composer' });
+  }
+
+  fillComposer(text: string): Promise<{ ok: true } | { ok: false; reason: string }> {
     this.composerText = text;
     this.markerInComposer = text.includes('NTS_REQUEST_REF:');
-    return { ok: true };
+    return Promise.resolve({ ok: true });
   }
 
-  async readComposerText(): Promise<string> {
-    return this.composerText;
+  readComposerText(): Promise<string> {
+    return Promise.resolve(this.composerText);
   }
 
-  async readComposerHash(): Promise<string> {
-    return 'mock-hash';
+  readComposerHash(): Promise<string> {
+    return Promise.resolve('mock-hash');
   }
 
-  async clickSend(): Promise<{ ok: true; method: 'button' | 'enter' } | { ok: false; reason: string }> {
+  clickSend(): Promise<{ ok: true; method: 'button' | 'enter' } | { ok: false; reason: string }> {
     this.sendClicked = true;
     if (this.scenario === 'send_noop') {
-      return { ok: true, method: 'button' };
+      return Promise.resolve({ ok: true, method: 'button' });
     }
     this.composerText = '';
     this.markerInComposer = false;
@@ -68,62 +70,65 @@ class MockSurfaceAdapter implements BrowserConversationSurfaceAdapter {
       this.assistantTurns += 1;
       this.assistantTexts.push('');
     }
-    return { ok: true, method: 'button' };
+    return Promise.resolve({ ok: true, method: 'button' });
   }
 
-  async detectSendConfirmation(before: TurnCounts, marker: string): Promise<SendConfirmEvidence | null> {
-    if (this.scenario === 'send_noop') return null;
-    if (!this.composerText.includes(marker)) return 'composer_cleared';
-    if (this.userTurns > before.userTurns) return 'user_turn_with_marker';
-    if (this.generating) return 'generating_control_visible';
-    return null;
+  detectSendConfirmation(before: TurnCounts, marker: string): Promise<SendConfirmEvidence | null> {
+    if (this.scenario === 'send_noop') return Promise.resolve(null);
+    if (!this.composerText.includes(marker)) return Promise.resolve('composer_cleared');
+    if (this.userTurns > before.userTurns) return Promise.resolve('user_turn_with_marker');
+    if (this.generating) return Promise.resolve('generating_control_visible');
+    return Promise.resolve(null);
   }
 
-  async countUserTurns(): Promise<number> {
-    return this.userTurns;
+  countUserTurns(): Promise<number> {
+    return Promise.resolve(this.userTurns);
   }
 
-  async countAssistantTurns(): Promise<number> {
-    return this.assistantTurns;
+  countAssistantTurns(): Promise<number> {
+    return Promise.resolve(this.assistantTurns);
   }
 
-  async findUserTurnIndexByMarker(_marker: string): Promise<number> {
-    return this.markerInComposer || this.scenario !== 'send_noop' ? this.userTurns - 1 : -1;
+  findUserTurnIndexByMarker(_marker: string): Promise<number> {
+    return Promise.resolve(
+      this.markerInComposer || this.scenario !== 'send_noop' ? this.userTurns - 1 : -1,
+    );
   }
 
-  async findAssistantIndexForUserTurn(userTurnIndex: number): Promise<number> {
-    if (userTurnIndex < 0) return -1;
-    if (userTurnIndex < this.assistantTexts.length) return userTurnIndex;
-    return -1;
+  findAssistantIndexForUserTurn(userTurnIndex: number): Promise<number> {
+    if (userTurnIndex < 0) return Promise.resolve(-1);
+    if (userTurnIndex < this.assistantTexts.length) return Promise.resolve(userTurnIndex);
+    return Promise.resolve(-1);
   }
 
-  async readAssistantText(assistantIndex: number): Promise<string> {
-    return this.assistantTexts[assistantIndex] ?? '';
+  readAssistantText(assistantIndex: number): Promise<string> {
+    return Promise.resolve(this.assistantTexts[assistantIndex] ?? '');
   }
 
-  async isGenerating(): Promise<boolean> {
-    return this.generating;
+  isGenerating(): Promise<boolean> {
+    return Promise.resolve(this.generating);
   }
 
-  async hashAssistantText(assistantIndex: number): Promise<string | null> {
+  hashAssistantText(assistantIndex: number): Promise<string | null> {
     const t = this.assistantTexts[assistantIndex];
-    return t ? `hash-${t}` : null;
+    return Promise.resolve(t ? `hash-${t}` : null);
   }
 
-  async cancelGeneration(): Promise<void> {
+  cancelGeneration(): Promise<void> {
     this.generating = false;
+    return Promise.resolve();
   }
 
-  async detectLoginRequired(): Promise<boolean> {
-    return this.scenario === 'login';
+  detectLoginRequired(): Promise<boolean> {
+    return Promise.resolve(this.scenario === 'login');
   }
 
-  async detectRateLimit(): Promise<boolean> {
-    return false;
+  detectRateLimit(): Promise<boolean> {
+    return Promise.resolve(false);
   }
 
-  async detectBlockedOrSecurityChallenge(): Promise<boolean> {
-    return false;
+  detectBlockedOrSecurityChallenge(): Promise<boolean> {
+    return Promise.resolve(false);
   }
 
   getDiagnostics(): Record<string, unknown> {
@@ -148,7 +153,7 @@ describe('BrowserConversationHarness (mock adapter)', () => {
   });
 
   afterAll(async () => {
-    await browser?.close();
+    await browser.close();
   });
 
   beforeEach(async () => {
@@ -156,7 +161,7 @@ describe('BrowserConversationHarness (mock adapter)', () => {
   });
 
   afterEach(async () => {
-    await page?.close();
+    await page.close();
   });
 
   it('returns new response after confirmed send', async () => {
@@ -245,8 +250,8 @@ describe('BrowserConversationHarness (fixture DOM)', () => {
   });
 
   afterAll(async () => {
-    await browser?.close();
-    await closeServer?.();
+    await browser.close();
+    await closeServer();
   });
 
   beforeEach(async () => {
@@ -254,7 +259,7 @@ describe('BrowserConversationHarness (fixture DOM)', () => {
   });
 
   afterEach(async () => {
-    await page?.close();
+    await page.close();
   });
 
   it('ChatGPT fixture: send → confirm → capture new response', async () => {

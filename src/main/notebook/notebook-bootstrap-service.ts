@@ -246,6 +246,7 @@ export class NotebookBootstrapService {
     _options?: { accountId?: string | null },
     _deps?: PrepareForTranslateDeps,
   ): Promise<PrepareForTranslateResult> {
+    await Promise.resolve();
     const project = this.db.projects.getById(projectId);
     if (!project) throw new Error(`Project not found: ${projectId}`);
 

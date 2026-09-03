@@ -59,7 +59,7 @@ function parseCsvHeaderComments(text: string): TabularMeta | undefined {
   const lines = text.split(/\r?\n/).slice(0, 20);
   const meta: Record<string, string> = {};
   for (const line of lines) {
-    const m = line.match(/^#\s*([a-z_]+)\s*[:=]\s*(.+)$/i);
+    const m = /^#\s*([a-z_]+)\s*[:=]\s*(.+)$/i.exec(line);
     if (!m) continue;
     meta[normalizeHeader(m[1])] = m[2].trim();
   }
@@ -119,13 +119,11 @@ function parseDataSheet(sheet: ExcelJS.Worksheet): {
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     const data: Record<string, string> = {};
-    let hasValue = false;
     headers.forEach((h, idx) => {
       const value = cellToString(row.getCell(idx + 1)).trim();
-      if (value) hasValue = true;
       data[h] = value;
     });
-    if (hasValue) rows.push(data);
+    if (Object.values(data).some((v) => v.length > 0)) rows.push(data);
   });
 
   return { headers, rows };
@@ -141,7 +139,7 @@ export function cellToString(cell: ExcelJS.Cell): string {
     }
     if ('text' in value && typeof value.text === 'string') return value.text;
     if ('richText' in value && Array.isArray(value.richText)) {
-      return value.richText.map((p) => p.text ?? '').join('');
+      return value.richText.map((p) => p.text).join('');
     }
     if (value instanceof Date) return value.toISOString();
     return '';
@@ -152,18 +150,28 @@ export function cellToString(cell: ExcelJS.Cell): string {
 function stringifyPrimitive(value: unknown): string {
   if (value == null) return '';
   if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'object') return '';
-  return String(value);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+  if (typeof value === 'symbol') return value.toString();
+  return '';
 }
 
 export function buildMetaSheetRows(meta: TabularMeta): [string, string][] {
-  return Object.entries(meta).map(([k, v]) => [k, v == null ? '' : String(v)]);
+  return Object.entries(meta).map(([k, v]) => [
+    k,
+    typeof v === 'number' ? String(v) : v,
+  ]);
 }
 
 export function assertKhepreeTabularMeta(meta: TabularMeta | undefined): void {
   if (!meta) return;
+  const legacy = meta as Record<string, string | number | undefined>;
   const format =
-    meta.khepree_format ?? meta.khepree_novel_ai_format ?? meta.noveltrans_format;
+    meta.khepree_format ??
+    legacy.khepree_novel_ai_format ??
+    legacy.noveltrans_format;
   if (format && format !== NTS_TABULAR_FORMAT) {
     throw new Error(`Unsupported khepree_format: ${format}`);
   }

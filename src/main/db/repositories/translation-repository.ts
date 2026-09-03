@@ -319,7 +319,7 @@ export class TranslationRepository extends BaseRepository {
   listSpreadsheetRows(
     projectId: string,
     editionId: string,
-  ): Array<{
+  ): {
     project_id: string;
     edition_id: string;
     chapter_number: number | null;
@@ -333,7 +333,7 @@ export class TranslationRepository extends BaseRepository {
     human_locked: number | null;
     updated_at: string | null;
     editor_note: string | null;
-  }> {
+  }[] {
     return this.db
       .prepare(
         `SELECT
@@ -360,7 +360,7 @@ export class TranslationRepository extends BaseRepository {
         WHERE c.project_id = ?
         ORDER BY c.sequence_order ASC, p.sequence ASC`,
       )
-      .all(editionId, editionId, projectId) as Array<{
+      .all(editionId, editionId, projectId) as {
       project_id: string;
       edition_id: string;
       chapter_number: number | null;
@@ -374,7 +374,7 @@ export class TranslationRepository extends BaseRepository {
       human_locked: number | null;
       updated_at: string | null;
       editor_note: string | null;
-    }>;
+    }[];
   }
 
   /**

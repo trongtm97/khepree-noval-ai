@@ -530,7 +530,7 @@ export function AiMemoryPage() {
           />
         </div>
 
-        <Button variant="secondary" onClick={() => setDetailOpen(true)}>
+        <Button variant="secondary" onClick={() => { setDetailOpen(true); }}>
           {t('aiMemory.viewMemoryDetail')}
         </Button>
       </section>
@@ -678,7 +678,7 @@ export function AiMemoryPage() {
 
       <MemoryDetailDrawer
         open={detailOpen}
-        onClose={() => setDetailOpen(false)}
+        onClose={() => { setDetailOpen(false); }}
         characters={charactersList}
         terms={termsList}
         relationships={relationshipsList}

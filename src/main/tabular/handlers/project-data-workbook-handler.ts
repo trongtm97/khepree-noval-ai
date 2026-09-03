@@ -75,7 +75,7 @@ function validateProjectRow(row: Record<string, string>, ctx: TabularCommitConte
   }
   const normalized: Record<string, string> = {
     _sheet: 'PROJECT',
-    project_id: projectId || ctx.projectId || '',
+    project_id: pick(row, 'project_id') || (ctx.projectId ?? ''),
     source_title: pick(row, 'source_title'),
     edition_title: pick(row, 'edition_title'),
     source_language: pick(row, 'source_language'),
@@ -170,7 +170,8 @@ function validateStoryFactRow(row: Record<string, string>, ctx: TabularCommitCon
 }
 
 function commitProjectRow(row: Record<string, string>, ctx: TabularCommitContext) {
-  const projectId = ctx.projectId!;
+  const projectId = ctx.projectId;
+  if (!projectId) return { action: 'skip' as const };
   const db = ctx.db;
   const prior = db.projects.getById(projectId);
   if (!prior) throw new Error(`Project not found: ${projectId}`);
@@ -213,7 +214,8 @@ function commitProjectRow(row: Record<string, string>, ctx: TabularCommitContext
 }
 
 function commitRuleRow(row: Record<string, string>, ctx: TabularCommitContext) {
-  const projectId = ctx.projectId!;
+  const projectId = ctx.projectId;
+  if (!projectId) return { action: 'skip' as const };
   const priorRules = loadWorkbookRules(ctx.db, projectId);
   const rule: WorkbookRuleRow = {
     rule_id: row.rule_id,
@@ -226,7 +228,7 @@ function commitRuleRow(row: Record<string, string>, ctx: TabularCommitContext) {
   const existingIdx = priorRules.findIndex((r) => r.rule_id === rule.rule_id);
   const next = [...priorRules];
   if (existingIdx >= 0) {
-    if (priorRules[existingIdx]!.locked && !rule.locked) {
+    if (priorRules[existingIdx].locked && !rule.locked) {
       return { action: 'skip' as const };
     }
     next[existingIdx] = rule;
@@ -246,7 +248,8 @@ function commitRuleRow(row: Record<string, string>, ctx: TabularCommitContext) {
 }
 
 function commitWorldRow(row: Record<string, string>, ctx: TabularCommitContext) {
-  const projectId = ctx.projectId!;
+  const projectId = ctx.projectId;
+  if (!projectId) return { action: 'skip' as const };
   const db = ctx.db;
   const story = db.storyStates.ensure(projectId);
   const priorFacts = loadWorldFacts(db, projectId);
@@ -266,7 +269,7 @@ function commitWorldRow(row: Record<string, string>, ctx: TabularCommitContext) 
   );
   const next = [...priorFacts];
   if (idx >= 0) {
-    if (priorFacts[idx]!.locked && !fact.locked) return { action: 'skip' as const };
+    if (priorFacts[idx].locked && !fact.locked) return { action: 'skip' as const };
     next[idx] = fact;
   } else {
     next.push(fact);
@@ -287,7 +290,8 @@ function commitWorldRow(row: Record<string, string>, ctx: TabularCommitContext) 
 }
 
 function commitStoryFactRow(row: Record<string, string>, ctx: TabularCommitContext) {
-  const projectId = ctx.projectId!;
+  const projectId = ctx.projectId;
+  if (!projectId) return { action: 'skip' as const };
   const db = ctx.db;
   const category = row.category as MemoryEventCategory;
   const key = row.key;

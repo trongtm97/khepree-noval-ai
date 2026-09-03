@@ -200,13 +200,13 @@ export function buildMemoryContext(
     targetLanguage: editionRow?.target_language ?? project?.target_language,
   });
 
-  type TermPackItem = {
+  interface TermPackItem {
     sourceText: string;
     preferredTranslation: string | null;
     type: string;
     locked: boolean;
     termId: string;
-  };
+  }
 
   const termItems: ContextRecord<TermPackItem>[] = allTermMatches.map((match) => {
     const preferred =
@@ -257,12 +257,12 @@ export function buildMemoryContext(
     },
   );
 
-  type RecentMemoryItem = {
+  interface RecentMemoryItem {
     category: string;
     key: string;
     value: string | null;
     chapterNumber: number | null;
-  };
+  }
 
   const recentMemoryRecords: ContextRecord<RecentMemoryItem & { memoryKey: string }>[] =
     recentSlice.events
@@ -331,7 +331,7 @@ export function buildMemoryContext(
     : [];
 
   const pct = (slice: ContextBudgetSlice) =>
-    Math.floor(budget * (DEFAULT_CONTEXT_BUDGET_ALLOCATION[slice] ?? 0) / 100);
+    Math.floor(budget * DEFAULT_CONTEXT_BUDGET_ALLOCATION[slice] / 100);
 
   const lockedTermResult = applySliceBudget(lockedTerms, pct('lockedTerms'), 'lockedTerms');
   const otherTermResult = applySliceBudget(otherTerms, pct('otherTerms'), 'otherTerms');

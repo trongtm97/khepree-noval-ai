@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { BookOpen, Lock } from 'lucide-react';
 import type { TermCandidateDto, TermDto } from '@shared/schemas/term';
 import type { ProjectDto } from '@shared/schemas/import';
-import type { TermStatus, TermType } from '@shared/constants/term';
 import { DEFAULT_SOURCE_LANGUAGE, DEFAULT_TARGET_LANGUAGE } from '@shared/constants/language-profile';
 import { useT } from '../i18n';
 import { friendlyError } from '../i18n/errors';
@@ -104,8 +103,8 @@ export function TermsPage() {
     if (!projectId) return;
     void window.khepreeNovelAI.projects
       .get(projectId)
-      .then((res) => setProject(res.project))
-      .catch(() => setProject(null));
+      .then((res) => { setProject(res.project); })
+      .catch(() => { setProject(null); });
   }, [projectId]);
 
   useEffect(() => {
@@ -204,8 +203,8 @@ export function TermsPage() {
         <input
           type="checkbox"
           checked={selected.has(term.id)}
-          onChange={() => toggleSelect(term.id)}
-          onClick={(e) => e.stopPropagation()}
+          onChange={() => { toggleSelect(term.id); }}
+          onClick={(e) => { e.stopPropagation(); }}
         />
       ),
     },
@@ -252,8 +251,8 @@ export function TermsPage() {
         <input
           type="checkbox"
           checked={selected.has(c.id)}
-          onChange={() => toggleSelect(c.id)}
-          onClick={(e) => e.stopPropagation()}
+          onChange={() => { toggleSelect(c.id); }}
+          onClick={(e) => { e.stopPropagation(); }}
         />
       ),
     },
@@ -309,7 +308,7 @@ export function TermsPage() {
               variant="dropdown"
               projectId={projectId || undefined}
               editionId={project?.activeEditionId ?? undefined}
-              onComplete={(msg) => setMessage(msg)}
+              onComplete={(msg) => { setMessage(msg); }}
             />
           ),
         }}
@@ -343,11 +342,11 @@ export function TermsPage() {
           <SearchInput
             placeholder={t('terms.searchPlaceholder')}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); }}
           />
           <Button
             variant={activeFilterCount > 0 ? 'primary' : 'secondary'}
-            onClick={() => setFilterOpen(true)}
+            onClick={() => { setFilterOpen(true); }}
           >
             {t('terms.filterButton')}
             {activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
@@ -363,13 +362,13 @@ export function TermsPage() {
         {activeFilterCount > 0 ? (
           <div className="filter-chips">
             {filters.type ? (
-              <span className="filter-chip">{termTypeLabel(filters.type as TermType)}</span>
+              <span className="filter-chip">{termTypeLabel(filters.type)}</span>
             ) : null}
             {filters.scope ? (
               <span className="filter-chip">{filters.scope}</span>
             ) : null}
             {filters.status ? (
-              <span className="filter-chip">{termStatusLabel(filters.status as TermStatus)}</span>
+              <span className="filter-chip">{termStatusLabel(filters.status)}</span>
             ) : null}
             {filters.genre ? <span className="filter-chip">{filters.genre}</span> : null}
           </div>
@@ -379,17 +378,17 @@ export function TermsPage() {
       {(tab === 'vault' || tab === 'review') && selected.size > 0 ? (
         <div className="bulk-actions-bar">
           <span className="muted">{t('terms.selectedCount', { count: selected.size })}</span>
-          <Button variant="secondary" disabled={busy} onClick={() => bulkReview('accept')}>
+          <Button variant="secondary" disabled={busy} onClick={() => { bulkReview('accept'); }}>
             {t('terms.accept')}
           </Button>
-          <Button variant="secondary" disabled={busy} onClick={() => bulkReview('reject')}>
+          <Button variant="secondary" disabled={busy} onClick={() => { bulkReview('reject'); }}>
             {t('terms.reject')}
           </Button>
-          <Button variant="secondary" disabled={busy} onClick={() => bulkReview('lock')}>
+          <Button variant="secondary" disabled={busy} onClick={() => { bulkReview('lock'); }}>
             {t('terms.lock')}
           </Button>
           {showAdvancedTools ? (
-            <Button variant="secondary" disabled={busy} onClick={() => bulkReview('promote')}>
+            <Button variant="secondary" disabled={busy} onClick={() => { bulkReview('promote'); }}>
               {t('terms.promoteGlobal')}
             </Button>
           ) : null}
@@ -430,7 +429,7 @@ export function TermsPage() {
             columns={termColumns}
             rows={terms}
             rowKey={(row) => row.id}
-            onRowClick={(row) => setDetailTerm(row)}
+            onRowClick={(row) => { setDetailTerm(row); }}
           />
         )
       )}
@@ -439,10 +438,10 @@ export function TermsPage() {
         {selected.size > 0 ? (
           <div className="bulk-actions-bar">
             <span className="muted">{t('terms.selectedCount', { count: selected.size })}</span>
-            <Button variant="secondary" disabled={busy} onClick={() => candidateBulk('accept')}>
+            <Button variant="secondary" disabled={busy} onClick={() => { candidateBulk('accept'); }}>
               {t('terms.accept')}
             </Button>
-            <Button variant="secondary" disabled={busy} onClick={() => candidateBulk('reject')}>
+            <Button variant="secondary" disabled={busy} onClick={() => { candidateBulk('reject'); }}>
               {t('terms.reject')}
             </Button>
           </div>
@@ -463,7 +462,7 @@ export function TermsPage() {
         filters={filters}
         showTransliteration={showTransliteration}
         transliterationLabel={columnLabels.transliterationLabel}
-        onClose={() => setFilterOpen(false)}
+        onClose={() => { setFilterOpen(false); }}
         onChange={setFilters}
         onApply={() => {
           setFilterOpen(false);
@@ -479,7 +478,7 @@ export function TermsPage() {
         open={detailTerm != null}
         busy={busy}
         term={detailTerm}
-        onClose={() => setDetailTerm(null)}
+        onClose={() => { setDetailTerm(null); }}
         onSaved={() => {
           setDetailTerm(null);
           void refresh();

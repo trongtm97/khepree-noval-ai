@@ -106,7 +106,7 @@ export function DataExportMenu({
         variant="secondary"
         size="sm"
         disabled={disabled || busy}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { setOpen((v) => !v); }}
       >
         {t('dataHub.exportMenu')}
         <ChevronDown size={14} style={{ marginLeft: 4 }} aria-hidden />

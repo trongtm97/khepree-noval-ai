@@ -163,10 +163,7 @@ export class NotebookSendReadinessService {
           ok: false,
           needsAssisted: true,
           message: provisionResult.message || viMessageAssistedSetup(),
-          notebookUrl:
-            afterAssisted.notebookUrl ||
-            provisionResult.mapping.resourceUrl ||
-            target.notebookUrl,
+          notebookUrl: afterAssisted.notebookUrl,
           notebookRowId: afterAssisted.notebookRowId,
           mapping: afterAssisted.mapping,
           usedWebChatFallback: afterAssisted.usedWebChatFallback,

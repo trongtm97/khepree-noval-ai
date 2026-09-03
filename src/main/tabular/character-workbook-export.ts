@@ -141,7 +141,7 @@ export async function writeCharacterWorkbookXlsx(input: {
     metaSheet.addRow([key, value]);
   }
 
-  const sheetDefs: Array<{ name: string; headers: readonly string[]; rows: Record<string, string>[] }> = [
+  const sheetDefs: { name: string; headers: readonly string[]; rows: Record<string, string>[] }[] = [
     { name: 'CHARACTERS', headers: CHARACTER_TABULAR_COLUMNS, rows: input.data.characters },
     {
       name: 'CHARACTER_TRANSLATIONS',

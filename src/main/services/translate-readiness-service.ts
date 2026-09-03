@@ -242,7 +242,11 @@ export class TranslateReadinessService {
     for (const row of enabled) {
       try {
         const report = await checkProviderForJob(this.db, {
-          accountId,
+          accountRef: {
+            accountKind: 'GOOGLE_ACCOUNT',
+            accountId,
+            profileDirName: null,
+          },
           projectId,
           providerId: row.id,
           requireNotebook: false,

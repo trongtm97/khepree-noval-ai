@@ -39,7 +39,7 @@ export function LanguageFirstRunPage({ onComplete }: { onComplete: () => void })
             type="button"
             variant={selected === 'vi' ? 'primary' : 'secondary'}
             aria-pressed={selected === 'vi'}
-            onClick={() => setSelected('vi')}
+            onClick={() => { setSelected('vi'); }}
           >
             Tiếng Việt
           </Button>
@@ -47,7 +47,7 @@ export function LanguageFirstRunPage({ onComplete }: { onComplete: () => void })
             type="button"
             variant={selected === 'en' ? 'primary' : 'secondary'}
             aria-pressed={selected === 'en'}
-            onClick={() => setSelected('en')}
+            onClick={() => { setSelected('en'); }}
           >
             English
           </Button>

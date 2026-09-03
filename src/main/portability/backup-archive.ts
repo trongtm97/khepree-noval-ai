@@ -412,10 +412,10 @@ function importProjectBundle(db: DatabaseManager, bundle: ProjectBundle, overwri
     insertRows(conn, 'terms', bundle.terms);
     insertRows(conn, 'characters', bundle.characters);
     insertRows(conn, 'relationships', bundle.relationships);
-    if (bundle.editions?.length) {
+    if (bundle.editions.length) {
       insertRows(conn, 'translation_editions', bundle.editions);
     }
-    if (bundle.memoryEvents?.length) {
+    if (bundle.memoryEvents.length) {
       insertRows(conn, 'memory_events', bundle.memoryEvents);
     }
     if (bundle.storyState) {

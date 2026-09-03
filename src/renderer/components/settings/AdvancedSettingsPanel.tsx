@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
 import { useUiShellStore } from '../../stores/ui-shell-store';
 import { useT } from '../../i18n';
 import { friendlyError } from '../../i18n/errors';
 import { helpArticleForErrorCode } from '../../features/help/content';
 import { Button, ErrorPanel, Switch } from '../ui';
 import { AiDiagnosticsSettingsPanel } from './AiDiagnosticsSettingsPanel';
+import { UpdatesSettingsPanel } from './UpdatesSettingsPanel';
 import { AiProvidersSettingsPanel } from './AiProvidersSettingsPanel';
 import { AiWebApiManualConnectPanel } from './AiWebApiManualConnectPanel';
 import { PreferNotebookPackToggle } from './PreferNotebookPackToggle';
@@ -13,13 +13,11 @@ import { SettingsDisclosure } from './SettingsDisclosure';
 import { SettingsGroup } from './SettingsGroup';
 import { SettingsRow } from './SettingsRow';
 import { SettingsSection } from './SettingsSection';
-import { SettingsStatus } from './SettingsStatus';
 import { SystemHealthPanel } from './SystemHealthPanel';
 import { useSettingsFeedback } from './useSettingsFeedback';
 
 export function AdvancedSettingsPanel({
   loadError,
-  onClearLoadError,
 }: {
   loadError: string | null;
   onClearLoadError: () => void;
@@ -27,18 +25,10 @@ export function AdvancedSettingsPanel({
   const t = useT();
   const navigate = useNavigate();
   const { showSaved } = useSettingsFeedback();
-  const [updateError, setUpdateError] = useState<string | null>(null);
-  const [appVersion, setAppVersion] = useState<string | null>(null);
   const showAdvancedTools = useUiShellStore((s) => s.showAdvancedTools);
   const setShowAdvancedTools = useUiShellStore((s) => s.setShowAdvancedTools);
   const showParagraphIds = useUiShellStore((s) => s.showParagraphIds);
   const setShowParagraphIds = useUiShellStore((s) => s.setShowParagraphIds);
-
-  useEffect(() => {
-    void window.khepreeNovelAI.getVersion().then((v) => {
-      setAppVersion(v.version);
-    });
-  }, []);
 
   const errInfo = loadError ? friendlyError(loadError) : null;
 
@@ -137,34 +127,7 @@ export function AdvancedSettingsPanel({
         </SettingsDisclosure>
       </SettingsSection>
 
-      <SettingsSection title={t('settings.updatesTitle')}>
-        {updateError ? <SettingsStatus tone="error">{updateError}</SettingsStatus> : null}
-        {appVersion ? (
-          <p className="muted">{t('settings.currentVersion', { version: appVersion })}</p>
-        ) : null}
-        <Button
-          variant="secondary"
-          onClick={() => {
-            onClearLoadError();
-            setUpdateError(null);
-            void window.khepreeNovelAI
-              .checkForUpdates()
-              .then((result) => {
-                showSaved(`${result.providerLabel}: ${result.message}`);
-              })
-              .catch((err: unknown) => {
-                setUpdateError(
-                  err instanceof Error ? err.message : t('errors.UNKNOWN.title'),
-                );
-              });
-          }}
-        >
-          {t('settings.checkUpdates')}
-        </Button>
-        <SettingsDisclosure title={t('settings.aiDetails')} defaultOpen={false}>
-          <p className="muted">{t('settings.updatesBody')}</p>
-        </SettingsDisclosure>
-      </SettingsSection>
+      <UpdatesSettingsPanel />
 
       <SettingsSection
         title={t('settings.advancedMaintenanceSection')}

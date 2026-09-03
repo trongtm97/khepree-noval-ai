@@ -132,7 +132,7 @@ describe('Execution worker matrix (provider-neutral)', () => {
     scheduler = new AutomationScheduler(db, {
       maxConcurrentWorkers: 1,
       tickMs: 40,
-      sendInitial: async (ctx) => {
+      sendInitial: (ctx) => {
         usedTargets.push(ctx.executionTarget.workerId);
         expect(ctx.executionTarget.providerId).toBe(AI_PROVIDER_IDS.PLAYWRIGHT_CHATGPT);
         expect(ctx.executionTarget.accountKind).toBe('AI_ACCOUNT');
@@ -140,7 +140,7 @@ describe('Execution worker matrix (provider-neutral)', () => {
         const opts = buildSendPromptOptions(ctx.executionTarget);
         expect(opts.aiAccountId).toBe(chatgptId);
         expect(opts.googleAccountId).toBeNull();
-        return { rawResponse: okResponse(), inputRef: 'chatgpt-init' };
+        return Promise.resolve({ rawResponse: okResponse(), inputRef: 'chatgpt-init' });
       },
     });
     service.attachScheduler(scheduler);
@@ -175,10 +175,10 @@ describe('Execution worker matrix (provider-neutral)', () => {
     scheduler = new AutomationScheduler(db, {
       maxConcurrentWorkers: 1,
       tickMs: 40,
-      sendInitial: async (ctx) => {
+      sendInitial: (ctx) => {
         expect(ctx.executionTarget.providerId).toBe(AI_PROVIDER_IDS.PLAYWRIGHT_META_AI);
         expect(ctx.executionTarget.accountId).toBe(metaId);
-        return { rawResponse: okResponse(), inputRef: 'meta-init' };
+        return Promise.resolve({ rawResponse: okResponse(), inputRef: 'meta-init' });
       },
     });
     service.attachScheduler(scheduler);
@@ -202,9 +202,9 @@ describe('Execution worker matrix (provider-neutral)', () => {
     scheduler = new AutomationScheduler(db, {
       maxConcurrentWorkers: 1,
       tickMs: 40,
-      sendInitial: async (ctx) => {
+      sendInitial: (ctx) => {
         seenTarget = ctx.executionTarget.accountId;
-        return { rawResponse: okResponse(), inputRef: 'gem' };
+        return Promise.resolve({ rawResponse: okResponse(), inputRef: 'gem' });
       },
     });
     service.attachScheduler(scheduler);

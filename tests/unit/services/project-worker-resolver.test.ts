@@ -86,7 +86,7 @@ describe('ProjectWorkerResolver', () => {
   });
 
   it('uses project assigned worker when no notebook', () => {
-    db.driveSyncState.assignWorker(projectId, accountB);
+    db.knowledgeSyncState.assignWorker(projectId, accountB);
 
     const resolved = resolveProjectWorker(db, {
       projectId,
@@ -127,7 +127,7 @@ describe('ProjectWorkerResolver', () => {
       status: 'ready',
       resource_url: 'https://notebook.google.com/n/b',
     });
-    db.driveSyncState.assignWorker(projectId, accountB);
+    db.knowledgeSyncState.assignWorker(projectId, accountB);
 
     const resolved = resolveProjectWorker(db, {
       projectId,

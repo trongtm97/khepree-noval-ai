@@ -136,7 +136,7 @@ export class ChatGptSurfaceAdapter implements BrowserConversationSurfaceAdapter 
   ): Promise<SendConfirmEvidence | null> {
     const page = this.requirePage();
     const composerText = normalizeComposerText(await this.readComposerText()).trim();
-    if (!composerText || !composerText.includes(marker)) {
+    if (!composerText.includes(marker)) {
       return 'composer_cleared';
     }
 

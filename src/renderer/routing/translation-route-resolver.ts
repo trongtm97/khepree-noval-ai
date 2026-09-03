@@ -21,7 +21,7 @@ export function resolveTranslationDestination(
   );
   const known = input.knownProjectIds;
   const projectId =
-    candidates.find((id) => !known || known.includes(id)) ?? candidates[0] ?? null;
+    candidates.find((id) => known === undefined || known.includes(id)) ?? null;
 
   if (projectId) {
     return {

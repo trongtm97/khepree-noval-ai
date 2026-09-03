@@ -19,7 +19,7 @@ export function resolveEditionMemoryContext(
 ): EditionMemoryContext {
   if (editionId) {
     const edition = db.translationEditions.getById(editionId);
-    if (!edition || edition.project_id !== projectId) {
+    if (edition?.project_id !== projectId) {
       throw new Error(`Edition not found for project: ${editionId}`);
     }
     return {

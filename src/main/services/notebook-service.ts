@@ -137,8 +137,8 @@ function loadNotebookInstructions(
   const project = db.projects.getById(projectId);
   const sourceCode = project?.source_language ?? 'zh-Hans';
   const targetCode = project?.target_language ?? 'vi';
-  const sourceName = getLanguageProfile(sourceCode).displayNameNative;
-  const targetName = getLanguageProfile(targetCode).displayNameNative;
+  const sourceName = getLanguageProfile(sourceCode).nativeName;
+  const targetName = getLanguageProfile(targetCode).nativeName;
 
   const lines: string[] =
     role === 'RESEARCH'

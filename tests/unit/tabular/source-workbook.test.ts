@@ -11,6 +11,23 @@ import { importCommitService } from '@main/tabular/import-commit-service';
 import { tabularExportService } from '@main/tabular/tabular-export-service';
 import { validateSourceWorkbookRow } from '@main/tabular/handlers/source-workbook-handler';
 
+function excelCellText(value: ExcelJS.CellValue): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object' && 'result' in value) {
+    const result = value.result;
+    if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
+      return String(result);
+    }
+  }
+  if (typeof value === 'object' && 'richText' in value && Array.isArray(value.richText)) {
+    return value.richText.map((part) => part.text).join('');
+  }
+  return '';
+}
+
 describe('source workbook', () => {
   let tempRoot: string;
 
@@ -75,12 +92,11 @@ describe('source workbook', () => {
     await workbook.xlsx.readFile(xlsxPath);
     const chapters = workbook.getWorksheet('CHAPTERS');
     const paragraphs = workbook.getWorksheet('PARAGRAPHS');
-    expect(chapters).toBeTruthy();
-    expect(paragraphs).toBeTruthy();
-    expect(paragraphs!.rowCount).toBeGreaterThan(1);
-    const paraRow = paragraphs!.getRow(2);
-    expect(String(paraRow.getCell(2).value)).toBe(stableId);
-    expect(String(paraRow.getCell(4).value)).toBe('你好');
+    if (!chapters || !paragraphs) throw new Error('expected CHAPTERS and PARAGRAPHS worksheets');
+    expect(paragraphs.rowCount).toBeGreaterThan(1);
+    const paraRow = paragraphs.getRow(2);
+    expect(excelCellText(paraRow.getCell(2).value)).toBe(stableId);
+    expect(excelCellText(paraRow.getCell(4).value)).toBe('你好');
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
@@ -143,7 +159,8 @@ describe('source workbook', () => {
     const updatedChapter = db.chapters.getById(chapter.id);
     expect(updatedChapter?.status).toBe('needs_retranslation');
     expect(updatedChapter?.source_status).toBe('SOURCE_MODIFIED');
-    expect(db.translations.getByParagraphId(para!.id, edition.id)?.translated_text).toBe('bản dịch');
+    if (!para) throw new Error('expected paragraph');
+    expect(db.translations.getByParagraphId(para.id, edition.id)?.translated_text).toBe('bản dịch');
 
     fs.rmSync(tempDir, { recursive: true, force: true });
   });

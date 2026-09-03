@@ -1,5 +1,7 @@
 import type {
+  AiSupportTier,
   LanguageCatalogSeed,
+  ProviderSupport,
   RegionGroup,
 } from './language-catalog-types';
 import type {
@@ -57,6 +59,12 @@ function transliterationFor(code: string, script: string): {
   return { supportsTransliteration: false };
 }
 
+function aiSupportTierFromProvider(provider: ProviderSupport): AiSupportTier {
+  if (provider === 'GEMINI_WEB_OFFICIAL') return 'GEMINI_WEB_VERIFIED';
+  if (provider === 'GEMINI_API_EXTENDED') return 'GEMINI_EXTENDED';
+  return 'EXPERIMENTAL';
+}
+
 /** Expand catalog seed into full LanguageProfile with script-based defaults. */
 export function buildLanguageProfile(seed: LanguageCatalogSeed): LanguageProfile {
   const translit = seed.supportsTransliteration != null
@@ -77,7 +85,7 @@ export function buildLanguageProfile(seed: LanguageCatalogSeed): LanguageProfile
     regionGroup: seed.regionGroup,
     providerSupport: seed.providerSupport,
     khepreeNovelAiVerification: seed.khepreeNovelAiVerification,
-    aiSupportTier: seed.aiSupportTier,
+    aiSupportTier: aiSupportTierFromProvider(seed.providerSupport),
     segmentationStrategy: segmentationForScript(seed.script),
     quoteStyle: quoteStyleForScript(seed.script),
     punctuationProfile: punctuationForScript(seed.script, seed.direction),

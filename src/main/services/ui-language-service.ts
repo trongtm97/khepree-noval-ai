@@ -15,8 +15,8 @@ import type { UiLanguageStatus } from '@shared/schemas/ui-language';
 import type { DatabaseManager } from '../db/database-manager';
 
 function resolveOsUiLocale(): UiLocaleCode {
-  const raw = app.getLocale?.() ?? 'vi';
-  const base = raw.split('-')[0]?.toLowerCase();
+  const raw = app.getLocale();
+  const base = raw.split('-')[0].toLowerCase();
   return base === 'en' ? 'en' : 'vi';
 }
 

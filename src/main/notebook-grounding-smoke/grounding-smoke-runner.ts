@@ -376,6 +376,7 @@ async function testB(
     'status' | 'message' | 'durationMs' | 'response' | 'screenshotPath'
   >,
 ): Promise<GroundingSmokeTestResult> {
+  await Promise.resolve();
   return {
     ...base(),
     status: 'SKIP',
@@ -429,6 +430,7 @@ async function testD(
     'status' | 'message' | 'durationMs' | 'response' | 'screenshotPath'
   >,
 ): Promise<GroundingSmokeTestResult> {
+  await Promise.resolve();
   return {
     ...base(),
     status: 'SKIP',

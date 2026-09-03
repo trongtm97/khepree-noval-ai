@@ -213,7 +213,7 @@ export function AccountRow({
             <p className="muted">{t('accounts.browserNotSecureHint')}</p>
           </details>
         </div>
-      ) : cardError && !showBrowserWarning ? (
+      ) : cardError ? (
         <div className="account-card-error" role="alert">
           <p>{cardError}</p>
         </div>

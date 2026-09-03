@@ -100,7 +100,7 @@ export class TabularImportService {
     });
     return {
       canceled: result.canceled,
-      filePath: result.filePath ?? null,
+      filePath: result.canceled ? null : result.filePath,
     };
   }
 

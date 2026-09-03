@@ -129,7 +129,7 @@ describe('account availability consistency', () => {
     const added = await service.addAccount({ skipBrowser: true });
     await service.completeLogin(added.id, { email: 'user@gmail.com' });
     const worker = db.workerStates.getByAccountId(added.id);
-    expect(worker).toBeTruthy();
+    if (!worker) throw new Error('expected worker for account');
 
     const project = db.projects.create({
       title: 'Truyện 1',
@@ -140,10 +140,10 @@ describe('account availability consistency', () => {
       project_id: project.id,
       type: 'TRANSLATE',
       state: 'RUNNING',
-      worker_id: worker!.id,
+      worker_id: worker.id,
       pinned_account_id: added.id,
     });
-    db.workerStates.markBusy(worker!.id, job.id);
+    db.workerStates.markBusy(worker.id, job.id);
 
     const resolved = availability.resolve(added.id);
     expect(resolved.availability).toBe('BUSY');

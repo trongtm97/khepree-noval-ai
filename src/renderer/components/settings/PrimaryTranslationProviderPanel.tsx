@@ -162,7 +162,7 @@ export function PrimaryTranslationProviderPanel() {
             disabled={busy}
             options={segmentedOptions}
             onChange={(next) => {
-              void savePrimary(next as TranslationAiProviderId);
+              void savePrimary(next);
             }}
           />
         }

@@ -166,7 +166,7 @@ function buildLocalContextBody(
       const aliases =
         character.aliases.length > 0 ? ` aliases=${character.aliases.join('|')}` : '';
       lines.push(
-        `${character.canonicalName}` +
+        character.canonicalName +
           (character.translatedName ? ` → ${character.translatedName}` : '') +
           (character.role ? ` [${character.role}]` : '') +
           aliases,

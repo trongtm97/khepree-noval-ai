@@ -7,6 +7,7 @@ import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-nati
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 /**
  * Code signing — set via environment only. Never commit cert/password.
@@ -141,6 +142,17 @@ const config: ForgeConfig = {
      * Browser provider still works without it.
      */
     postPackage: (_config, packageResult): Promise<void> => {
+      const projectDir = process.cwd();
+      const bundlePath = path.join(projectDir, '.vite', 'build', 'main.js');
+      if (fs.existsSync(bundlePath)) {
+        execFileSync(process.execPath, [
+          path.join(projectDir, 'scripts', 'check-khepree-signing.mjs'),
+          '--require-keys',
+          '--verify-bundle',
+          bundlePath,
+        ], { stdio: 'inherit' });
+      }
+
       if (process.platform !== 'win32') return Promise.resolve();
       const outputPaths = packageResult.outputPaths;
       let found = false;

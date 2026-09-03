@@ -75,7 +75,7 @@ export function buildProjectDataWorkbookExportData(
         valid_from?: number;
         valid_to?: number;
       };
-      if (parsed.value != null) value = String(parsed.value);
+      if (typeof parsed.value === 'string') value = parsed.value;
       if (parsed.valid_from != null) validFrom = String(parsed.valid_from);
       if (parsed.valid_to != null) validTo = String(parsed.valid_to);
     } catch {

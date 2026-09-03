@@ -106,9 +106,12 @@ describe('default_target_language', () => {
   });
 
   it('wizard draft keeps explicit selection over default (test 3 contract)', () => {
-    const userSelected = 'es';
-    const settingsDefault = 'vi';
-    const effective = userSelected || settingsDefault;
-    expect(effective).toBe('es');
+    const resolveWizardTarget = (
+      userSelected: string | undefined,
+      settingsDefault: string,
+    ): string => userSelected ?? settingsDefault;
+
+    expect(resolveWizardTarget('es', 'vi')).toBe('es');
+    expect(resolveWizardTarget(undefined, 'vi')).toBe('vi');
   });
 });

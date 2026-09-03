@@ -60,7 +60,7 @@ export class AiAutoSetupService {
       const ok = groupReady[kind] && (row?.status === 'READY' || groupReady[kind]);
       return {
         preference: kind,
-        ok: Boolean(ok && row?.enabled !== false),
+        ok: ok && row?.enabled !== false,
         accountCount,
       };
     });

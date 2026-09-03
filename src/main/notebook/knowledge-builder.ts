@@ -223,8 +223,8 @@ export class NotebookKnowledgeBuilder {
     const staticHeader = [
       `# ${project.title} — Quy tắc dịch`,
       '',
-      `Ngôn ngữ nguồn: ${getLanguageProfile(project.source_language).displayNameNative} (${project.source_language}).`,
-      `Ngôn ngữ đích: ${getLanguageProfile(project.target_language).displayNameNative} (${project.target_language}).`,
+      `Ngôn ngữ nguồn: ${getLanguageProfile(project.source_language).nativeName} (${project.source_language}).`,
+      `Ngôn ngữ đích: ${getLanguageProfile(project.target_language).nativeName} (${project.target_language}).`,
       '',
       'Yêu cầu:',
       '- dịch đầy đủ, không tóm tắt, không bỏ nội dung',

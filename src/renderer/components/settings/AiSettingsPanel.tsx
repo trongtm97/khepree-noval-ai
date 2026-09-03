@@ -97,7 +97,7 @@ export function AiSettingsPanel({
             <SettingsStatus tone={status.ready ? 'info' : 'warn'}>
               {status.ready ? `✓ ${t('settings.aiStatusReady')}` : t('settings.aiStatusNeedsSetup')}
             </SettingsStatus>
-            {status.providerHealth?.length ? (
+            {status.providerHealth.length > 0 ? (
               <ul className="settings-ai-health-list">
                 {status.providerHealth.map((row) => (
                   <li key={row.preference}>
@@ -174,7 +174,7 @@ export function AiSettingsPanel({
           ) : null}
         </div>
 
-        {result && result.outcome === 'failed' ? (
+        {result?.outcome === 'failed' ? (
           <SettingsDisclosure title={t('settings.aiDetails')} defaultOpen>
             <pre
               className="muted"

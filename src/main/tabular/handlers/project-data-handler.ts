@@ -30,7 +30,7 @@ export const projectDataTabularHandler: TabularDataTypeHandler = {
   },
 
   naturalKey(row, ctx) {
-    const sheet = row._sheet ?? 'PROJECT';
+    const sheet = row._sheet || 'PROJECT';
     const id =
       pick(row, 'rule_id', 'fact_id', 'memory_id', 'project_id') ||
       pick(row, 'source_key', 'key') ||

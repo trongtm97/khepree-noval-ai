@@ -34,9 +34,9 @@ export function SystemHealthPanel() {
     switch (id) {
       case 'export':
       case 'backup':
-        return { label: t('settings.advancedOpenStorage'), action: () => navigate('/settings?tab=storage') };
+        return { label: t('settings.advancedOpenStorage'), action: () => { navigate('/settings?tab=storage'); } };
       case 'ai':
-        return { label: t('settings.advancedOpenAi'), action: () => navigate('/settings?tab=ai') };
+        return { label: t('settings.advancedOpenAi'), action: () => { navigate('/settings?tab=ai'); } };
       default:
         return null;
     }

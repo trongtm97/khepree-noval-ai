@@ -73,7 +73,7 @@ export function TermDetailDrawer({
             {draft.locked ? t('terms.lockedLabel') : t('terms.unlockedLabel')}
           </p>
           <div className="btn-row">
-            <Button variant="primary" onClick={() => setEditing(true)}>
+            <Button variant="primary" onClick={() => { setEditing(true); }}>
               {t('actions.edit')}
             </Button>
           </div>
@@ -85,7 +85,7 @@ export function TermDetailDrawer({
             <Input
               value={draft.sourceText}
               disabled={busy || draft.locked}
-              onChange={(e) => setDraft({ ...draft, sourceText: e.target.value })}
+              onChange={(e) => { setDraft({ ...draft, sourceText: e.target.value }); }}
             />
           </label>
           <label className="form-field">
@@ -94,7 +94,7 @@ export function TermDetailDrawer({
               value={draft.preferredTranslation ?? ''}
               disabled={busy}
               onChange={(e) =>
-                setDraft({ ...draft, preferredTranslation: e.target.value || null })
+                { setDraft({ ...draft, preferredTranslation: e.target.value || null }); }
               }
             />
           </label>
@@ -104,7 +104,7 @@ export function TermDetailDrawer({
               <Input
                 value={draft.pinyin ?? draft.transliteration ?? ''}
                 disabled={busy}
-                onChange={(e) => setDraft({ ...draft, pinyin: e.target.value || null })}
+                onChange={(e) => { setDraft({ ...draft, pinyin: e.target.value || null }); }}
               />
             </label>
           ) : null}
@@ -115,7 +115,7 @@ export function TermDetailDrawer({
               rows={3}
               value={draft.notes ?? ''}
               disabled={busy}
-              onChange={(e) => setDraft({ ...draft, notes: e.target.value || null })}
+              onChange={(e) => { setDraft({ ...draft, notes: e.target.value || null }); }}
             />
           </label>
           <label className="checkbox-row">
@@ -123,7 +123,7 @@ export function TermDetailDrawer({
               type="checkbox"
               checked={draft.locked}
               disabled={busy}
-              onChange={(e) => setDraft({ ...draft, locked: e.target.checked })}
+              onChange={(e) => { setDraft({ ...draft, locked: e.target.checked }); }}
             />
             {t('terms.lock')}
           </label>
@@ -131,7 +131,7 @@ export function TermDetailDrawer({
             <Button variant="primary" disabled={busy} onClick={() => void save()}>
               {t('actions.save')}
             </Button>
-            <Button disabled={busy} onClick={() => setEditing(false)}>
+            <Button disabled={busy} onClick={() => { setEditing(false); }}>
               {t('actions.cancel')}
             </Button>
           </div>

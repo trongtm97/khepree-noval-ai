@@ -8,13 +8,13 @@ import { useUiShellStore } from '../stores/ui-shell-store';
 import { ProjectExportSettingsPanel } from '../components/settings/ProjectExportSettingsPanel';
 import { buildNovelExportFilename } from '@shared/utils/sanitize-filename';
 
-type BackupEntry = {
+interface BackupEntry {
   fileName: string;
   filePath: string;
   createdAt: string;
   sizeBytes: number;
   kind?: 'auto' | 'manual' | 'migration' | 'archive';
-};
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

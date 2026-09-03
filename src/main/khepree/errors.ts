@@ -105,6 +105,7 @@ export function isInvalidRefreshError(error: unknown): boolean {
     error.code === 'INVALID_REFRESH' ||
     error.code === 'INVALID_REFRESH_TOKEN' ||
     error.code === 'REFRESH_TOKEN_INVALID' ||
+    error.code === 'REFRESH_TOKEN_REUSED' ||
     error.code === 'SESSION_REVOKED' ||
     error.code === 'HTTP_401'
   );

@@ -15,7 +15,6 @@ export {
   isBrowserTransportType,
   providerIdForType,
   PROVIDER_CAPABILITY_REGISTRY,
-  defaultCapabilitiesForProviderType,
   executionTargetCapabilitiesFrom,
 } from './provider-capabilities';
 

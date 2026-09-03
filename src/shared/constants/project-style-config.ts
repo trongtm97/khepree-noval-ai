@@ -21,7 +21,7 @@ export function parseProjectStyleConfig(
   if (!styleConfigJson?.trim()) return {};
   try {
     const parsed = JSON.parse(styleConfigJson) as ProjectStyleConfig;
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    return parsed;
   } catch {
     return {};
   }
@@ -52,8 +52,8 @@ export function readProjectPrimaryProviderOverride(
     return null;
   }
   const value = cfg.primaryProviderId;
-  if (value === null || value === undefined || value === '') return null;
-  return String(value);
+  if (typeof value !== 'string' || value === '') return null;
+  return value;
 }
 
 export function readProjectAiPreferenceOverride(

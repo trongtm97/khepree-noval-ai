@@ -13,6 +13,7 @@ import {
   resetMockKhepreeApiStateForTests,
 } from '@main/khepree/khepree-api-client';
 import { setKhepreeProductAccessEnforcer } from '@main/khepree/product-access-boundary';
+import { khepreeAccessInternals } from '../../helpers/khepree-service-internals';
 import { lockProtectedJobsOnKhepreeRevocation } from '@main/khepree/licensing-job-guard';
 import { JobService } from '@main/services/job-service';
 import { resetJobServiceForTests, setJobServiceForTests } from '@main/services/job-service-singleton';
@@ -69,7 +70,7 @@ function createService(tempRoot: string): {
     repository: db.secrets,
   });
   const service = new KhepreeAccessService(() => db, secretStorage);
-  setKhepreeProductAccessEnforcer((feature) => service.assertProductAccess(feature));
+  setKhepreeProductAccessEnforcer((feature) => { service.assertProductAccess(feature); });
   const heartbeat = new KhepreeHeartbeatService(service);
   return { service, heartbeat, db };
 }
@@ -92,7 +93,7 @@ describe('Khepree heartbeat runtime (N05)', () => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nts-khepree-hb-'));
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     setKhepreeProductAccessEnforcer(null);
     resetJobServiceForTests();
     vi.useRealTimers();
@@ -117,11 +118,11 @@ describe('Khepree heartbeat runtime (N05)', () => {
     const { service } = createService(tempRoot);
     service.setRuntimeRevocationHandler((reason) => pausedReasons.push(reason));
     await loginActive(service);
-    expect(service['deviceIdentity'].getDeviceId()).not.toBeNull();
+    expect(khepreeAccessInternals(service).deviceIdentity.getDeviceId()).not.toBeNull();
     mockKhepreeHeartbeatState.nextStatus = 'DEVICE_REMOVED';
     await service.handleHeartbeat();
     expect(service.getPublicState().status).toBe('DEVICE_REMOVED');
-    expect(service['deviceIdentity'].getDeviceId()).toBeNull();
+    expect(khepreeAccessInternals(service).deviceIdentity.getDeviceId()).toBeNull();
     expect(pausedReasons).toContain('DEVICE_REMOVED');
     await service.shutdown();
   });
@@ -185,9 +186,10 @@ describe('Khepree heartbeat runtime (N05)', () => {
   it('network error with expired lease enters OFFLINE_COLD_START', async () => {
     const { service } = createService(tempRoot);
     await loginActive(service);
-    if (service['currentLease']) {
-      service['currentLease'].payload.expiresAt = new Date(Date.now() - 60_000).toISOString();
-      service['currentLease'].payload.graceUntil = null;
+    const internals = khepreeAccessInternals(service);
+    if (internals.currentLease) {
+      internals.currentLease.payload.expiresAt = new Date(Date.now() - 60_000).toISOString();
+      internals.currentLease.payload.graceUntil = null;
     }
     mockKhepreeHeartbeatState.networkFail = true;
     await service.handleHeartbeat();

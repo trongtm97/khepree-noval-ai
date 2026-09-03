@@ -25,8 +25,8 @@ export interface PendingOAuthTransaction {
   expiresAt: number;
 }
 
-type ParseFailure = { ok: false; code: string; message: string };
-type ParseSuccess = { ok: true; result: OAuthCallbackResult };
+interface ParseFailure { ok: false; code: string; message: string }
+interface ParseSuccess { ok: true; result: OAuthCallbackResult }
 
 export function parseAuthCallbackUrl(rawUrl: string): ParseSuccess | ParseFailure {
   let url: URL;
@@ -103,7 +103,7 @@ export class OAuthAuthTransactionManager {
   }
 
   getCodeVerifier(state: string): string | null {
-    if (!this.pending || this.pending.state !== state) {
+    if (this.pending?.state !== state) {
       return null;
     }
     if (Date.now() > this.pending.expiresAt) {

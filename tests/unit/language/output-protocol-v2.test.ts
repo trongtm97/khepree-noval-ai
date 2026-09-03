@@ -45,7 +45,7 @@ describe('Output Protocol v2', () => {
     expect(OUTPUT_PROTOCOL_BLOCK).not.toContain('```');
   });
 
-  const multilingualSamples: Array<{ lang: string; lines: string[]; text: string }> = [
+  const multilingualSamples: { lang: string; lines: string[]; text: string }[] = [
     {
       lang: 'Arabic RTL',
       lines: [`${IDS.p1} مرحبًا بالعالم.`],

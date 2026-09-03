@@ -75,8 +75,8 @@ function validateChapterRow(row: Record<string, string>, ctx: TabularCommitConte
     _sheet: 'CHAPTERS',
     chapter_id: chapter?.id ?? chapterId,
     chapter_number: chapterNumber || (chapter?.chapter_number != null ? String(chapter.chapter_number) : ''),
-    chapter_type: pick(row, 'chapter_type') || chapter?.chapter_type || 'NORMAL',
-    title: pick(row, 'title') || chapter?.display_title || chapter?.chapter_title || '',
+    chapter_type: pick(row, 'chapter_type') || (chapter?.chapter_type ?? 'NORMAL'),
+    title: pick(row, 'title') || (chapter?.display_title ?? chapter?.chapter_title ?? ''),
     sequence_order:
       pick(row, 'sequence_order') ||
       (chapter?.sequence_order != null ? String(chapter.sequence_order) : ''),
@@ -150,14 +150,15 @@ function validateParagraphRow(row: Record<string, string>, ctx: TabularCommitCon
 
 function commitChapterRow(row: Record<string, string>, ctx: TabularCommitContext) {
   const db = ctx.db;
-  const projectId = ctx.projectId!;
+  const projectId = ctx.projectId;
+  if (!projectId) return { action: 'skip' as const };
   const chapter = resolveChapter(db, projectId, row.chapter_id, row.chapter_number);
   if (!chapter) return { action: 'skip' as const };
 
   const prior = { ...chapter };
   db.chapters.update(chapter.id, {
     chapter_number: row.chapter_number ? Number(row.chapter_number) : chapter.chapter_number,
-    chapter_type: (row.chapter_type as typeof chapter.chapter_type) ?? chapter.chapter_type,
+    chapter_type: (row.chapter_type as typeof chapter.chapter_type | undefined) ?? chapter.chapter_type,
     display_title: row.title || chapter.display_title,
     chapter_title: row.title || chapter.chapter_title,
     sequence_order: row.sequence_order ? Number(row.sequence_order) : chapter.sequence_order,

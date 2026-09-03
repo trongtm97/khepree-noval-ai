@@ -19,7 +19,7 @@ function verifyWireBodyProof(input: {
   sessionPublicId: string;
   proofPath: string;
   publicKeySpki: string;
-  canonicalFields: Array<[string, string]>;
+  canonicalFields: [string, string][];
   nowSeconds?: number;
 }): void {
   const parsed = JSON.parse(input.wireBody) as {

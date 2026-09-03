@@ -16,7 +16,6 @@ import { isPackModeOrLegacy, normalizePackMode } from '@shared/constants/pack-mo
 import type { AttentionAction, WorkerMode } from '@shared/constants/job';
 import {
   ATTENTION_ACTIONS,
-  DEFAULT_MAX_CHAPTERS_PER_JOB,
   DEFAULT_MAX_REPAIR_ATTEMPTS,
   DEFAULT_MAX_CONCURRENT_WORKERS,
 } from '@shared/constants/job';

@@ -34,7 +34,7 @@ function editionLabel(db: DatabaseManager, editionId: string | null): string {
   if (!editionId) return '';
   const edition = db.translationEditions.getById(editionId);
   if (!edition) return editionId;
-  const name = edition.name?.trim() || edition.target_language;
+  const name = edition.name.trim() || edition.target_language;
   return `${name} (${editionId})`;
 }
 
@@ -83,7 +83,7 @@ function conflictChapter(row: { delta_source: string; proposed_value: string | n
     // fall through
   }
   if (row.proposed_value) {
-    const m = row.proposed_value.match(/chapter[_\s-]?(\d+)/i);
+    const m = /chapter[_\s-]?(\d+)/i.exec(row.proposed_value);
     if (m?.[1]) return m[1];
   }
   return '';
@@ -97,7 +97,7 @@ export function buildJobsExportRows(ctx: OperationalExportContext): Record<strin
     const latestAttempt = attempts[attempts.length - 1];
     const progress = parseProgress(job.progress);
     const provider =
-      latestAttempt?.provider_type ??
+      latestAttempt.provider_type ??
       (typeof progress.providerType === 'string' ? progress.providerType : '');
     rows.push({
       job_id: job.id,

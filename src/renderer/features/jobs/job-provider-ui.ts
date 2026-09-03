@@ -53,7 +53,7 @@ export function readJobFallbackNotice(
   }
 
   const last = timeline[timeline.length - 1];
-  if (last?.event === 'provider_fallback' && last.message) {
+  if (last.event === 'provider_fallback' && last.message) {
     return last.message;
   }
 

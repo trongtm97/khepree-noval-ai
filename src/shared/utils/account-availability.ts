@@ -155,7 +155,7 @@ export function resolveAccountAvailability(input: AccountAvailabilityInput): Acc
 }
 
 export function computeAvailabilitySummary(
-  items: Array<{ availability: AccountAvailabilityDto }>,
+  items: { availability: AccountAvailabilityDto }[],
 ): AccountAvailabilitySummary {
   const summary: AccountAvailabilitySummary = {
     ready: 0,
@@ -183,13 +183,13 @@ export function computeAvailabilitySummary(
 }
 
 export function countUsableForNewJob(
-  items: Array<{ availability: AccountAvailabilityDto }>,
+  items: { availability: AccountAvailabilityDto }[],
 ): number {
   return items.filter((i) => i.availability.usableForNewJob).length;
 }
 
 export function formatAvailabilityPreflightMessage(
-  items: Array<{ availability: AccountAvailabilityDto; label?: string }>,
+  items: { availability: AccountAvailabilityDto; label?: string }[],
 ): string | null {
   const login = items.filter((i) => i.availability.availability === 'LOGIN_REQUIRED').length;
   const attention = items.filter(

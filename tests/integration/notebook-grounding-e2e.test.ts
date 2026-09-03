@@ -193,7 +193,7 @@ describe('FULL-novel Notebook grounding E2E', () => {
     // 4) Drive LIVE sync (noop upload) → pending version
     const sync = new NotebookSyncService(db);
     await sync.syncLocalKnowledge(projectId);
-    const pending = db.driveSyncState.ensure(projectId);
+    const pending = db.knowledgeSyncState.ensure(projectId);
     expect(pending.pending_knowledge_version).toBeGreaterThan(0);
     expect(pending.pending_sync_nonce).toBeTruthy();
     expect(pending.version_probe_status).toBe('pending');
@@ -335,7 +335,7 @@ describe('FULL-novel Notebook grounding E2E', () => {
     expect(docs['02_PROJECT_TERMS.md']).toContain(GROUNDING_PROBE.itemViUpdated);
 
     await sync.syncLocalKnowledge(projectId);
-    const pending = db.driveSyncState.ensure(projectId);
+    const pending = db.knowledgeSyncState.ensure(projectId);
     const probe = await runKnowledgeVersionProbe(db, {
       projectId,
       accountId,

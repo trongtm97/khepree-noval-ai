@@ -14,5 +14,6 @@ export function formatKhepreePlanPrice(plan: KhepreePlanCatalogItem, locale: str
 
 export function pickDefaultUpgradePlan(plans: KhepreePlanCatalogItem[]): KhepreePlanCatalogItem | null {
   const upgradeable = plans.filter((plan) => plan.isUpgradeAvailable && !plan.isCurrent);
-  return upgradeable[0] ?? plans.find((plan) => !plan.isCurrent) ?? null;
+  if (upgradeable.length > 0) return upgradeable[0];
+  return plans.find((plan) => !plan.isCurrent) ?? null;
 }

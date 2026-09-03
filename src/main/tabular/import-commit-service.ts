@@ -3,7 +3,7 @@ import type {
   TermTabularDefaultStatus,
   TermTabularDuplicateStrategy,
 } from '@shared/constants/term-tabular';
-import type { TermScope, TermStatus, TermType } from '@shared/constants/term';
+import type { TermScope, TermStatus } from '@shared/constants/term';
 import { normalizeTermType } from '@shared/constants/term';
 import type { TranslationSpreadsheetConflictStrategy } from '@shared/constants/translation-spreadsheet';
 import type { SourceWorkbookImportMode } from '@shared/constants/source-workbook-tabular';
@@ -210,7 +210,7 @@ export class ImportCommitService {
   undoLast(projectId?: string): { undone: boolean; importId: string | null; message: string } {
     const db = getDatabase();
     const latest = db.importHistory.getLatest(projectId);
-    if (!latest || latest.status !== 'committed') {
+    if (latest?.status !== 'committed') {
       return { undone: false, importId: null, message: 'No import to undo.' };
     }
 
@@ -255,10 +255,9 @@ export class ImportCommitService {
         ? PROJECT_DATA_COMMIT_ORDER
         : CHARACTER_WORKBOOK_COMMIT_ORDER;
     const order = new Map<string, number>(orderList.map((s, i) => [s, i]));
-    const defaultSheet = orderList[0] ?? 'CHARACTERS';
     return [...rows].sort((a, b) => {
-      const sheetA = a.data._sheet ?? defaultSheet;
-      const sheetB = b.data._sheet ?? defaultSheet;
+      const sheetA = a.data._sheet;
+      const sheetB = b.data._sheet;
       return (order.get(sheetA) ?? 99) - (order.get(sheetB) ?? 99);
     });
   }
@@ -281,7 +280,7 @@ export class ImportCommitService {
         pinyin: prior.pinyin,
         source_language: prior.source_language,
         target_language: prior.target_language,
-        term_type: normalizeTermType(prior.term_type) as TermType,
+        term_type: normalizeTermType(prior.term_type),
         meaning: prior.meaning,
         scope: prior.scope as TermScope,
         scope_ref: prior.scope_ref,

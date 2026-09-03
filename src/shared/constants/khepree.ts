@@ -34,7 +34,16 @@ export const KHEPREE_DESKTOP_API_PATHS = {
   heartbeat: '/desktop/heartbeat',
   checkout: '/desktop/checkout',
   plans: '/desktop/plans',
+  announcements: '/desktop/announcements',
+  updatesLatest: '/desktop/updates/latest',
+  updatesSquirrelFeedTicket: '/desktop/updates/squirrel-feed-ticket',
 } as const;
+
+/** Announcement sync interval when online (ms). */
+export const KHEPREE_ANNOUNCEMENT_SYNC_INTERVAL_MS = 20 * 60 * 1000;
+
+/** Max cached announcements retained locally. */
+export const KHEPREE_ANNOUNCEMENT_CACHE_MAX = 100;
 
 /** Full device-proof paths (include /api/v1 prefix). */
 export const KHEPREE_DESKTOP_PROOF_PATHS = {
@@ -71,7 +80,6 @@ export type KhepreeExternalLinkTarget = keyof typeof KHEPREE_EXTERNAL_URLS;
 export {
   KHEPREE_ACCESS_STATES,
   type KhepreeAccessStatus,
-  KHEPREE_GATE_PHASES,
   type KhepreeGatePhase,
   isKhepreeActive,
   resolveStatusFromEntitlement,

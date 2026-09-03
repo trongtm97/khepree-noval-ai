@@ -15,14 +15,14 @@ export function useKhepreeAccessState(): {
   };
 
   useEffect(() => {
-    let alive = true;
+    const ac = new AbortController();
     void (async () => {
       try {
         const initial = await window.khepreeNovelAI.khepree.getAccessState();
-        if (!alive) return;
+        if (ac.signal.aborted) return;
         setState(initial);
       } finally {
-        if (alive) setLoading(false);
+        if (!ac.signal.aborted) setLoading(false);
       }
     })();
     const unsubscribe = window.khepreeNovelAI.khepree.onAccessState((next) => {
@@ -30,7 +30,7 @@ export function useKhepreeAccessState(): {
       setLoading(false);
     });
     return () => {
-      alive = false;
+      ac.abort();
       unsubscribe();
     };
   }, []);

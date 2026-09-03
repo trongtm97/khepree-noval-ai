@@ -27,7 +27,7 @@ const samplePlans: KhepreePlanCatalogItem[] = [
 
 describe('khepree plan format', () => {
   it('formats price from API currency without inventing monthly label', () => {
-    const text = formatKhepreePlanPrice(samplePlans[0]!, 'vi-VN');
+    const text = formatKhepreePlanPrice(samplePlans[0], 'vi-VN');
     expect(text).toMatch(/99/);
     expect(text.toLowerCase()).not.toContain('month');
   });

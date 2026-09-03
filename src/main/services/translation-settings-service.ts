@@ -34,7 +34,7 @@ export function readDefaultTargetLanguage(
   return {
     defaultTargetLanguage: normalized,
     hadPersistedValue: true,
-    experimental: profile.aiSupportTier === 'EXPERIMENTAL',
+    experimental: profile.providerSupport === 'CATALOG_ONLY',
   };
 }
 

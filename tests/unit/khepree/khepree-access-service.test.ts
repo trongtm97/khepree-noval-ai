@@ -7,10 +7,14 @@ import { resolveAppPaths } from '@main/services/paths-service';
 import { SecretStorageService } from '@main/security/secret-storage-service';
 import type { SafeStorageBackend } from '@main/security/safe-storage-backend';
 import { KhepreeAccessService } from '@main/khepree/khepree-access-service';
-import { resetMockKhepreeApiStateForTests } from '@main/khepree/khepree-api-client';
+import {
+  MockKhepreeApiClient,
+  resetMockKhepreeApiStateForTests,
+} from '@main/khepree/khepree-api-client';
 import { setKhepreeProductAccessEnforcer } from '@main/khepree/product-access-boundary';
 import { KHEPREE_FEATURES, KHEPREE_SECRET_KEYS } from '@shared/constants/khepree';
 import { KhepreeProductAccessDeniedError } from '@main/khepree/errors';
+import { khepreeAccessInternals } from '../../helpers/khepree-service-internals';
 
 process.env.KHEPREE_DEV_MOCK = '1';
 
@@ -57,7 +61,7 @@ function createService(tempRoot: string): { service: KhepreeAccessService; db: D
     repository: db.secrets,
   });
   const service = new KhepreeAccessService(() => db, secretStorage);
-  setKhepreeProductAccessEnforcer((feature) => service.assertProductAccess(feature));
+  setKhepreeProductAccessEnforcer((feature) => { service.assertProductAccess(feature); });
   return { service, db };
 }
 
@@ -83,19 +87,20 @@ describe('KhepreeAccessService state machine (N04)', () => {
       'KHEPREE_MOCK_EXPIRED_LEASE',
       'KHEPREE_MOCK_WRONG_PRODUCT',
       'KHEPREE_MOCK_NETWORK_FAIL',
+      'KHEPREE_MOCK_REFRESH_NETWORK_FAIL',
       'KHEPREE_MOCK_ENTITLEMENT_EXPIRED',
       'KHEPREE_MOCK_ENTITLEMENT_SUSPENDED',
     ]) {
       envBackup[key] = process.env[key];
-      delete process.env[key];
+      Reflect.deleteProperty(process.env, key);
     }
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nts-khepree-n04-'));
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     setKhepreeProductAccessEnforcer(null);
     for (const [key, value] of Object.entries(envBackup)) {
-      if (value === undefined) delete process.env[key];
+      if (value === undefined) Reflect.deleteProperty(process.env, key);
       else process.env[key] = value;
     }
     vi.useRealTimers();
@@ -138,7 +143,7 @@ describe('KhepreeAccessService state machine (N04)', () => {
     await loginActive(service);
     expect(service.getPublicState().status).toBe('FREE');
     expect(service.getPublicState().canUseWorkspace).toBe(true);
-    expect(() => service.assertProductAccess(KHEPREE_FEATURES.translation)).toThrow();
+    expect(() => { service.assertProductAccess(KHEPREE_FEATURES.translation); }).toThrow();
     await service.shutdown();
   });
 
@@ -230,7 +235,7 @@ describe('KhepreeAccessService state machine (N04)', () => {
   it('assertProductAccess blocked before ACTIVE', async () => {
     const { service } = createService(tempRoot);
     await service.initializeOnColdStart();
-    expect(() => service.assertProductAccess(KHEPREE_FEATURES.translation)).toThrow(
+    expect(() => { service.assertProductAccess(KHEPREE_FEATURES.translation); }).toThrow(
       KhepreeProductAccessDeniedError,
     );
     await service.shutdown();
@@ -239,14 +244,14 @@ describe('KhepreeAccessService state machine (N04)', () => {
   it('assertProductAccess allowed when ACTIVE', async () => {
     const { service } = createService(tempRoot);
     await loginActive(service);
-    expect(() => service.assertProductAccess(KHEPREE_FEATURES.translation)).not.toThrow();
+    expect(() => { service.assertProductAccess(KHEPREE_FEATURES.translation); }).not.toThrow();
     await service.shutdown();
   });
 
   it('invalid refresh clears session → AUTH_REQUIRED', async () => {
     const { service, db } = createService(tempRoot);
     await loginActive(service);
-    service['sessionStore'].clearAccessToken();
+    khepreeAccessInternals(service).sessionStore.clearAccessToken();
     const secretStorage = new SecretStorageService({
       backend: createXorBackend(),
       repository: db.secrets,
@@ -260,6 +265,174 @@ describe('KhepreeAccessService state machine (N04)', () => {
     });
     const cold = await service.initializeOnColdStart();
     expect(cold.status).toBe('AUTH_REQUIRED');
+    await service.shutdown();
+  });
+});
+
+describe('KhepreeAccessService cold-start refresh (single rotation)', () => {
+  let tempRoot: string;
+  const envBackup: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetMockKhepreeApiStateForTests();
+    for (const key of [
+      'KHEPREE_MOCK_DEVICE_LIMIT',
+      'KHEPREE_MOCK_NO_ENTITLEMENT',
+      'KHEPREE_MOCK_DEVICE_BLOCKED',
+      'KHEPREE_MOCK_DEVICE_REMOVED',
+      'KHEPREE_MOCK_BAD_LEASE_SIGNATURE',
+      'KHEPREE_MOCK_EXPIRED_LEASE',
+      'KHEPREE_MOCK_WRONG_PRODUCT',
+      'KHEPREE_MOCK_NETWORK_FAIL',
+      'KHEPREE_MOCK_REFRESH_NETWORK_FAIL',
+      'KHEPREE_MOCK_ENTITLEMENT_EXPIRED',
+      'KHEPREE_MOCK_ENTITLEMENT_SUSPENDED',
+    ]) {
+      envBackup[key] = process.env[key];
+      Reflect.deleteProperty(process.env, key);
+    }
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nts-khepree-refresh-'));
+  });
+
+  afterEach(() => {
+    setKhepreeProductAccessEnforcer(null);
+    for (const [key, value] of Object.entries(envBackup)) {
+      if (value === undefined) Reflect.deleteProperty(process.env, key);
+      else process.env[key] = value;
+    }
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    closeDatabase();
+    try {
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    } catch {
+      // Windows lock
+    }
+  });
+
+  it('cold start calls refreshSession exactly once', async () => {
+    const refreshSpy = vi.spyOn(MockKhepreeApiClient.prototype, 'refreshSession');
+    const validateSpy = vi.spyOn(MockKhepreeApiClient.prototype, 'coldStartValidate');
+
+    const first = createService(tempRoot);
+    await loginActive(first.service);
+    await first.service.shutdown();
+
+    refreshSpy.mockClear();
+    validateSpy.mockClear();
+
+    const second = createService(tempRoot);
+    khepreeAccessInternals(second.service).sessionStore.clearAccessToken();
+    const cold = await second.service.initializeOnColdStart();
+
+    expect(cold.status).toBe('ACTIVE');
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
+    expect(validateSpy).toHaveBeenCalledTimes(1);
+    await second.service.shutdown();
+  });
+
+  it('persists rotated refresh token from refresh response', async () => {
+    const first = createService(tempRoot);
+    await loginActive(first.service);
+    const originalToken = await khepreeAccessInternals(first.service).sessionStore.loadRefreshToken();
+    expect(originalToken).toBeTruthy();
+    await first.service.shutdown();
+
+    const second = createService(tempRoot);
+    khepreeAccessInternals(second.service).sessionStore.clearAccessToken();
+    await second.service.initializeOnColdStart();
+
+    const storedToken = await khepreeAccessInternals(second.service).sessionStore.loadRefreshToken();
+    expect(storedToken).toBeTruthy();
+    expect(storedToken).not.toBe(originalToken);
+    expect(storedToken).toBe(`${originalToken}:rotated`);
+    await second.service.shutdown();
+  });
+
+  it('does not send revoked refresh token on a second refresh attempt', async () => {
+    const refreshSpy = vi.spyOn(MockKhepreeApiClient.prototype, 'refreshSession');
+
+    const first = createService(tempRoot);
+    await loginActive(first.service);
+    const originalToken = await khepreeAccessInternals(first.service).sessionStore.loadRefreshToken();
+    await first.service.shutdown();
+
+    refreshSpy.mockClear();
+
+    const second = createService(tempRoot);
+    khepreeAccessInternals(second.service).sessionStore.clearAccessToken();
+    await second.service.initializeOnColdStart();
+
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
+    expect(refreshSpy.mock.calls[0]?.[0]?.refreshToken).toBe(originalToken);
+
+    refreshSpy.mockClear();
+    const tokenBeforeSecondColdStart = await khepreeAccessInternals(second.service).sessionStore.loadRefreshToken();
+    khepreeAccessInternals(second.service).sessionStore.clearAccessToken();
+    await second.service.initializeOnColdStart();
+
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
+    expect(refreshSpy.mock.calls[0]?.[0]?.refreshToken).toBe(tokenBeforeSecondColdStart);
+    expect(refreshSpy.mock.calls[0]?.[0]?.refreshToken).not.toBe(originalToken);
+    const tokenAfterSecondColdStart = await khepreeAccessInternals(second.service).sessionStore.loadRefreshToken();
+    expect(tokenAfterSecondColdStart).toBe(`${tokenBeforeSecondColdStart}:rotated`);
+    await second.service.shutdown();
+  });
+
+  it('refresh network error keeps credentials and returns OFFLINE_COLD_START', async () => {
+    const first = createService(tempRoot);
+    await loginActive(first.service);
+    await first.service.shutdown();
+
+    process.env.KHEPREE_MOCK_REFRESH_NETWORK_FAIL = '1';
+    const second = createService(tempRoot);
+    khepreeAccessInternals(second.service).sessionStore.clearAccessToken();
+    const cold = await second.service.initializeOnColdStart();
+
+    expect(cold.status).toBe('OFFLINE_COLD_START');
+    expect(khepreeAccessInternals(second.service).sessionStore.hasRefreshToken()).toBe(true);
+    await second.service.shutdown();
+  });
+
+  it('no entitlement cold start → FREE after single refresh', async () => {
+    process.env.KHEPREE_MOCK_NO_ENTITLEMENT = '1';
+    const refreshSpy = vi.spyOn(MockKhepreeApiClient.prototype, 'refreshSession');
+
+    const first = createService(tempRoot);
+    await loginActive(first.service);
+    await first.service.shutdown();
+
+    refreshSpy.mockClear();
+
+    const second = createService(tempRoot);
+    khepreeAccessInternals(second.service).sessionStore.clearAccessToken();
+    const cold = await second.service.initializeOnColdStart();
+
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
+    expect(cold.status).toBe('FREE');
+    expect(cold.canUseWorkspace).toBe(true);
+    await second.service.shutdown();
+  });
+
+  it('missing device activates once without extra refresh', async () => {
+    const refreshSpy = vi.spyOn(MockKhepreeApiClient.prototype, 'refreshSession');
+    const activateSpy = vi.spyOn(MockKhepreeApiClient.prototype, 'activateDevice');
+
+    const { service } = createService(tempRoot);
+    await loginActive(service);
+
+    khepreeAccessInternals(service).deviceIdentity.clearDeviceId();
+
+    refreshSpy.mockClear();
+    activateSpy.mockClear();
+    khepreeAccessInternals(service).sessionStore.clearAccessToken();
+
+    const cold = await service.initializeOnColdStart();
+
+    expect(refreshSpy).toHaveBeenCalledTimes(1);
+    expect(activateSpy).toHaveBeenCalledTimes(1);
+    expect(cold.status).toBe('ACTIVE');
     await service.shutdown();
   });
 });

@@ -194,7 +194,7 @@ export function DataImportWizard({
                   onClick={() => {
                     void window.khepreeNovelAI.tabular
                       .downloadTermTemplate({})
-                      .then((r) => onComplete(t('terms.tabularTemplateSaved', { path: r.filePath })))
+                      .then((r) => { onComplete(t('terms.tabularTemplateSaved', { path: r.filePath })); })
                       .catch(() => undefined);
                   }}
                 >
@@ -234,12 +234,10 @@ export function DataImportWizard({
                     onChange={(e) => {
                       const src = e.target.value;
                       setColumnMapping((prev) => {
-                        const next = { ...prev };
-                        for (const [k, v] of Object.entries(next)) {
-                          if (v === field.key) delete next[k];
-                        }
-                        if (src) next[src] = field.key;
-                        return next;
+                        const cleared = Object.fromEntries(
+                          Object.entries(prev).filter(([, mapped]) => mapped !== field.key),
+                        ) as Record<string, string>;
+                        return src ? { ...cleared, [src]: field.key } : cleared;
                       });
                     }}
                   >
@@ -256,7 +254,7 @@ export function DataImportWizard({
                 <input
                   type="checkbox"
                   checked={savePreset}
-                  onChange={(e) => setSavePreset(e.target.checked)}
+                  onChange={(e) => { setSavePreset(e.target.checked); }}
                 />
                 {t('dataHub.wizard.savePreset')}
               </label>
@@ -335,7 +333,7 @@ export function DataImportWizard({
                 <Select
                   value={duplicateStrategy}
                   onChange={(e) =>
-                    setDuplicateStrategy(e.target.value as TermTabularDuplicateStrategy)
+                    { setDuplicateStrategy(e.target.value as TermTabularDuplicateStrategy); }
                   }
                 >
                   <option value="SKIP">{t('terms.tabularDup.SKIP')}</option>
@@ -348,7 +346,7 @@ export function DataImportWizard({
                 <Select
                   value={conflictStrategy}
                   onChange={(e) =>
-                    setConflictStrategy(e.target.value as TranslationSpreadsheetConflictStrategy)
+                    { setConflictStrategy(e.target.value as TranslationSpreadsheetConflictStrategy); }
                   }
                 >
                   <option value="USE_EXCEL">{t('translationSpreadsheet.useExcel')}</option>
@@ -359,7 +357,7 @@ export function DataImportWizard({
                 <Select
                   value={sourceImportMode}
                   onChange={(e) =>
-                    setSourceImportMode(e.target.value as SourceWorkbookImportMode)
+                    { setSourceImportMode(e.target.value as SourceWorkbookImportMode); }
                   }
                 >
                   <option value="METADATA_ONLY">{t('sourceWorkbook.modeMetadataOnly')}</option>
@@ -370,7 +368,7 @@ export function DataImportWizard({
               ) : null}
               <Select
                 value={importMode}
-                onChange={(e) => setImportMode(e.target.value as TabularImportMode)}
+                onChange={(e) => { setImportMode(e.target.value as TabularImportMode); }}
               >
                 <option value="IMPORT_VALID_ONLY">{t('tabular.modeValidOnly')}</option>
                 <option value="REQUIRE_ALL_VALID">{t('tabular.modeRequireAll')}</option>
@@ -390,7 +388,7 @@ export function DataImportWizard({
               <Button
                 variant="ghost"
                 disabled={busy}
-                onClick={() => setStep((s) => Math.max(1, s - 1) as WizardStep)}
+                onClick={() => { setStep((s) => Math.max(1, s - 1) as WizardStep); }}
               >
                 {t('dataHub.wizard.back')}
               </Button>
@@ -401,7 +399,7 @@ export function DataImportWizard({
               </Button>
             ) : null}
             {step === 2 ? (
-              <Button variant="primary" disabled={busy} onClick={() => setStep(4)}>
+              <Button variant="primary" disabled={busy} onClick={() => { setStep(4); }}>
                 {t('dataHub.wizard.next')}
               </Button>
             ) : null}
@@ -411,12 +409,12 @@ export function DataImportWizard({
               </Button>
             ) : null}
             {step === 4 ? (
-              <Button variant="primary" disabled={busy} onClick={() => setStep(5)}>
+              <Button variant="primary" disabled={busy} onClick={() => { setStep(5); }}>
                 {t('dataHub.wizard.next')}
               </Button>
             ) : null}
             {step === 5 ? (
-              <Button variant="primary" disabled={busy} onClick={() => setStep(6)}>
+              <Button variant="primary" disabled={busy} onClick={() => { setStep(6); }}>
                 {t('dataHub.wizard.next')}
               </Button>
             ) : null}

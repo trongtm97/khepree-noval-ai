@@ -98,7 +98,7 @@ export function CharactersPage() {
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
       })
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); });
   }, [projectId, refresh, t]);
 
   const run = async (action: () => Promise<void>) => {
@@ -344,7 +344,7 @@ export function CharactersPage() {
               },
             ]}
             value={tab}
-            onChange={(id) => setTab(id as Tab)}
+            onChange={(id) => { setTab(id as Tab); }}
           />
 
           {errInfo ? (
@@ -362,12 +362,12 @@ export function CharactersPage() {
               <SearchInput
                 placeholder={t('characters.searchPlaceholder')}
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => { setQuery(e.target.value); }}
               />
               <Select
                 value={roleFilter}
                 aria-label={t('characters.role')}
-                onChange={(e) => setRoleFilter(e.target.value)}
+                onChange={(e) => { setRoleFilter(e.target.value); }}
               >
                 <option value="">{t('characters.allRoles')}</option>
                 {roles.map((role) => (
@@ -379,7 +379,7 @@ export function CharactersPage() {
               <Select
                 value={statusFilter}
                 aria-label={t('characters.status')}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => { setStatusFilter(e.target.value); }}
               >
                 <option value="">{t('characters.allStatuses')}</option>
                 <option value="active">{characterStatusLabel('active')}</option>
@@ -392,7 +392,7 @@ export function CharactersPage() {
                 min={1}
                 placeholder={t('characters.chapterFilterPlaceholder')}
                 value={chapterFilter}
-                onChange={(e) => setChapterFilter(e.target.value)}
+                onChange={(e) => { setChapterFilter(e.target.value); }}
               />
             </div>
             {filteredCharacters.length === 0 ? (
@@ -420,7 +420,7 @@ export function CharactersPage() {
                 columns={characterColumns}
                 rows={filteredCharacters}
                 rowKey={(row) => row.id}
-                onRowClick={(row) => setDetailCharacter(row)}
+                onRowClick={(row) => { setDetailCharacter(row); }}
               />
             )}
           </TabPanel>
@@ -498,7 +498,7 @@ export function CharactersPage() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        onClick={() => setDetailCharacter(group.characters[0])}
+                        onClick={() => { setDetailCharacter(group.characters[0]); }}
                       >
                         {t('characters.compare')}
                       </Button>
@@ -506,7 +506,7 @@ export function CharactersPage() {
                         size="sm"
                         variant="primary"
                         disabled={busy}
-                        onClick={() => mergeDuplicates(group)}
+                        onClick={() => { mergeDuplicates(group); }}
                       >
                         {t('characters.merge')}
                       </Button>
@@ -514,7 +514,7 @@ export function CharactersPage() {
                         size="sm"
                         variant="ghost"
                         onClick={() =>
-                          setDismissedDupes((prev) => new Set(prev).add(group.id))
+                          { setDismissedDupes((prev) => new Set(prev).add(group.id)); }
                         }
                       >
                         {t('characters.dismiss')}
@@ -558,7 +558,7 @@ export function CharactersPage() {
         busy={busy}
         projectId={projectId}
         character={detailCharacter}
-        onClose={() => setDetailCharacter(null)}
+        onClose={() => { setDetailCharacter(null); }}
         onSaved={() => {
           setDetailCharacter(null);
           void refresh();

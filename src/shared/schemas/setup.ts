@@ -57,3 +57,12 @@ export const CheckForUpdatesResponseSchema = z.object({
 });
 
 export type CheckForUpdatesResponse = z.infer<typeof CheckForUpdatesResponseSchema>;
+
+/** @deprecated Import from @shared/schemas/updates */
+export {
+  UpdateStatusSchema,
+  UpdatePostponeRequestSchema,
+  UpdatePostponeResponseSchema,
+  type UpdateStatus,
+  type UpdateStatusPhase,
+} from './updates';

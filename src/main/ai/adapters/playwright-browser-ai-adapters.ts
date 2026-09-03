@@ -33,6 +33,7 @@ export abstract class PlaywrightBrowserAiAdapterBase implements IAIProvider {
   }
 
   async healthCheck(): Promise<AIProviderHealth> {
+    await Promise.resolve();
     const db = getDatabase();
     const ready = db.aiAccounts.listReadyByProvider(this.providerId);
     if (ready.length === 0) {
@@ -102,9 +103,9 @@ export abstract class PlaywrightBrowserAiAdapterBase implements IAIProvider {
         providerType: this.providerType,
         aiAccountId,
         pack,
-        jobId: options?.jobId ?? null,
-        headless: options?.headless,
-        maxTimeoutMs: options?.maxTimeoutMs,
+        jobId: options.jobId ?? null,
+        headless: options.headless,
+        maxTimeoutMs: options.maxTimeoutMs,
         correlationId,
       });
 
@@ -127,7 +128,7 @@ export abstract class PlaywrightBrowserAiAdapterBase implements IAIProvider {
         text: '',
         errorCode: sent.errorCode ?? status,
         errorMessage:
-          sent.errorMessage ?? userMessageForStatus(status) ?? 'Yêu cầu AI thất bại.',
+          sent.errorMessage ?? userMessageForStatus(status),
         providerType: this.providerType,
         providerId: this.providerId,
       };

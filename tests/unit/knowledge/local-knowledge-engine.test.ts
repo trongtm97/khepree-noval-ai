@@ -25,7 +25,7 @@ describe('Local Knowledge Engine — Phase 3', () => {
   });
 
   afterEach(() => {
-    db?.close();
+    db.close();
     closeDatabase();
     fs.rmSync(tmp, { recursive: true, force: true });
   });
@@ -107,7 +107,8 @@ describe('Local Knowledge Engine — Phase 3', () => {
       meaning: 'Ngộ đạo',
     });
 
-    const ch451 = db.chapters.listByProject(project.id).find((c) => c.chapter_number === 451)!;
+    const ch451 = db.chapters.listByProject(project.id).find((c) => c.chapter_number === 451);
+    if (!ch451) throw new Error('expected chapter 451');
     const ctx = buildCtx(project.id, [ch451.id], editionId);
 
     expect(ctx.fingerprint).toBeDefined();

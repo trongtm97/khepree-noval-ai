@@ -122,7 +122,7 @@ export function channelSnapshotForAttempt(
  */
 export function wrapRepairPromptWithChannelContext(input: {
   repairBody: string;
-  packMode?: PackMode | string | null;
+  packMode?: PackMode | null;
   localContextSnapshot?: string | null;
   lockedTerms?: { source: string; preferred: string }[];
   hotMemoryText?: string | null;

@@ -12,6 +12,9 @@ function resolvePreferredTarget(raw: Record<string, unknown>): unknown {
 
 function normalizeGenderInput(raw: unknown): string | null | undefined {
   if (raw == null) return null;
+  if (typeof raw !== 'string' && typeof raw !== 'number' && typeof raw !== 'boolean') {
+    return null;
+  }
   const s = String(raw).trim().toLowerCase();
   if (!s || s === 'unknown' || s === 'null') return null;
   return String(raw).trim();

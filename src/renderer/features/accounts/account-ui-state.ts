@@ -70,9 +70,9 @@ export function resolveAccountIdentity(
   account: GoogleAccountDto,
   fallbackTitle: string,
 ): { title: string; subtitle: string | null } {
-  const email = account.email?.trim() || null;
-  const displayName = account.displayName?.trim() || null;
-  const label = account.label?.trim() || null;
+  const email = account.email ? account.email.trim() : null;
+  const displayName = account.displayName ? account.displayName.trim() : null;
+  const label = account.label ? account.label.trim() : null;
 
   let title: string;
   if (label && !AUTO_LABEL_RE.test(label)) {

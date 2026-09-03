@@ -173,7 +173,7 @@ export function ProjectSourcePage() {
       internationalName: profile.internationalName,
       nativeName: profile.nativeName,
       displayNameVi: profile.displayNameVi,
-      displayNameNative: profile.displayNameNative,
+      displayNameNative: profile.nativeName,
       hintCode: project.sourceLanguageHint ?? null,
       hintMismatch: project.hintMismatch ?? false,
       mixedLanguage: false,

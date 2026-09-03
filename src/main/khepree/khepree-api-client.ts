@@ -31,6 +31,16 @@ import {
   KHEPREE_DESKTOP_API_PATHS,
   KHEPREE_DESKTOP_PROOF_PATHS,
 } from '@shared/constants/khepree';
+import {
+  DesktopAnnouncementsResponseSchema,
+  DesktopAnnouncementReadResponseSchema,
+  DesktopAnnouncementDismissResponseSchema,
+  type DesktopAnnouncementItem,
+} from '@shared/schemas/khepree-announcements';
+import {
+  DesktopLatestUpdateResponseSchema,
+  DesktopSquirrelFeedTicketResponseSchema,
+} from '@shared/schemas/khepree-updates-api';
 
 export type KhepreeDeviceSignFn = (message: Buffer) => Buffer;
 import { KhepreeApiResponseInvalidError, KhepreeDeviceLimitError, KhepreeNetworkError, KhepreeAccessError, mapDesktopApiErrorCode } from './errors';
@@ -95,8 +105,8 @@ export interface KhepreeApiClient {
     installationId: string;
     deviceId: string;
     sessionPublicId: string;
-    refreshToken: string;
     sign: KhepreeDeviceSignFn;
+    lease?: PlatformSignedLease;
     devicePublicKey: string;
     deviceName: string;
     platform?: string;
@@ -142,6 +152,45 @@ export interface KhepreeApiClient {
   fetchDesktopProfile(input: { accessToken: string }): Promise<KhepreeDesktopProfile>;
 
   revokeSession(input: { accessToken: string }): Promise<{ ok: true }>;
+
+  listAnnouncements(input: {
+    accessToken: string;
+    clientId: string;
+    appVersion: string;
+    platform: string;
+    architecture: string;
+    channel: string;
+    locale: string;
+    cursor?: string | null;
+    limit?: number;
+  }): Promise<import('@shared/schemas/khepree-announcements').DesktopAnnouncementsResponse>;
+
+  markAnnouncementRead(input: {
+    accessToken: string;
+    publicId: string;
+  }): Promise<import('@shared/schemas/khepree-announcements').DesktopAnnouncementReadResponse>;
+
+  dismissAnnouncement(input: {
+    accessToken: string;
+    publicId: string;
+  }): Promise<import('@shared/schemas/khepree-announcements').DesktopAnnouncementDismissResponse>;
+
+  fetchLatestUpdate(input: {
+    accessToken: string;
+    clientId: string;
+    currentVersion: string;
+    platform: string;
+    architecture: string;
+    channel: string;
+    locale: string;
+  }): Promise<import('@shared/schemas/khepree-updates-api').DesktopLatestUpdateResponse>;
+
+  requestSquirrelFeedTicket(input: {
+    accessToken: string;
+    clientId: string;
+    architecture?: string;
+    channel?: string;
+  }): Promise<import('@shared/schemas/khepree-updates-api').DesktopSquirrelFeedTicketResponse>;
 }
 
 function canonicalPayload(payload: KhepreeSignedLeasePayload): Buffer {
@@ -180,6 +229,7 @@ function signLeasePayload(payload: KhepreeSignedLeasePayload): KhepreeSignedLeas
 
 /** Shared mock server state — persists across client instances like a real API. */
 const mockSessions = new Map<string, { user: KhepreeAuthTokenResult['user']; refreshToken: string }>();
+const mockRevokedRefreshTokens = new Set<string>();
 const mockDevices = new Map<string, { installationId: string; deviceId: string }>();
 const mockPendingAuth = new Map<
   string,
@@ -198,6 +248,12 @@ export const mockKhepreeCheckoutState = {
   invalidPlanIds: new Set<string>(),
   /** After payment, entitlement cold-start may lag until this is cleared. */
   entitlementPendingAfterPayment: false,
+};
+
+export const mockKhepreeAnnouncementsState = {
+  items: [] as DesktopAnnouncementItem[],
+  readIds: new Set<string>(),
+  dismissedIds: new Set<string>(),
 };
 
 function buildMockPlanCatalog(): KhepreePlanCatalogResponse {
@@ -256,7 +312,7 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
 
   exchangeDeviceAuth(input: DeviceAuthExchangeInput): Promise<KhepreeAuthTokenResult> {
     const pending = this.pendingAuth.get(input.state);
-    if (!pending || pending.installationId !== input.installationId) {
+    if (pending?.installationId !== input.installationId) {
       return Promise.reject(new KhepreeAccessError('OAUTH_STATE_MISMATCH', 'Invalid auth state'));
     }
     if (pending.redirectUri !== input.redirectUri) {
@@ -294,19 +350,31 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     sign?: KhepreeDeviceSignFn;
     deviceProof?: KhepreeDeviceProof;
   }): Promise<KhepreeAuthTokenResult & { sessionPublicId: string; lease?: PlatformSignedLease }> {
-    void input.sessionPublicId;
+    void input.installationId;
     void input.sign;
     void input.deviceProof;
+    if (process.env.KHEPREE_MOCK_REFRESH_NETWORK_FAIL === '1') {
+      throw new KhepreeNetworkError();
+    }
+    if (mockRevokedRefreshTokens.has(input.refreshToken)) {
+      return Promise.reject(
+        new KhepreeAccessError('REFRESH_TOKEN_REUSED', 'Refresh token was already used.'),
+      );
+    }
     const session = this.sessions.get(input.refreshToken);
     if (!session) {
       return Promise.reject(new KhepreeAccessError('INVALID_REFRESH', 'Refresh token invalid'));
     }
+    const newRefreshToken = `${input.refreshToken}:rotated`;
+    mockRevokedRefreshTokens.add(input.refreshToken);
+    this.sessions.delete(input.refreshToken);
+    this.sessions.set(newRefreshToken, { user: session.user, refreshToken: newRefreshToken });
     return Promise.resolve({
       accessToken: `mock-access-${session.user.id}`,
-      refreshToken: input.refreshToken,
+      refreshToken: newRefreshToken,
       expiresIn: 3600,
       user: session.user,
-      sessionPublicId: `mock-session-${session.user.id}`,
+      sessionPublicId: input.sessionPublicId ?? `mock-session-${session.user.id}`,
     });
   }
 
@@ -405,8 +473,8 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     installationId: string;
     deviceId: string;
     sessionPublicId?: string;
-    refreshToken?: string;
     sign?: KhepreeDeviceSignFn;
+    lease?: PlatformSignedLease;
     deviceProof?: KhepreeDeviceProof;
     devicePublicKey?: string;
     deviceName?: string;
@@ -414,13 +482,13 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
     appVersion?: string;
   }): Promise<KhepreeColdStartResult> {
     void input.sessionPublicId;
-    void input.refreshToken;
     void input.sign;
     void input.deviceProof;
     void input.devicePublicKey;
     void input.deviceName;
     void input.platform;
     void input.appVersion;
+    void input.lease;
     const userId = input.accessToken.replace('mock-access-', '');
     const session = [...this.sessions.values()].find((s) => s.user.id === userId);
     if (!session) {
@@ -576,6 +644,91 @@ export class MockKhepreeApiClient implements KhepreeApiClient {
   revokeSession(): Promise<{ ok: true }> {
     return Promise.resolve({ ok: true });
   }
+
+  listAnnouncements(input: {
+    accessToken: string;
+    clientId: string;
+    appVersion: string;
+    platform: string;
+    architecture: string;
+    channel: string;
+    locale: string;
+    cursor?: string | null;
+    limit?: number;
+  }): Promise<z.infer<typeof DesktopAnnouncementsResponseSchema>> {
+    void input.accessToken;
+    void input.clientId;
+    void input.appVersion;
+    void input.platform;
+    void input.architecture;
+    void input.channel;
+    void input.locale;
+    const limit = input.limit ?? 50;
+    const start = input.cursor ? Number(input.cursor) : 0;
+    const slice = mockKhepreeAnnouncementsState.items.slice(start, start + limit);
+    const next = start + limit < mockKhepreeAnnouncementsState.items.length
+      ? String(start + limit)
+      : null;
+    const items = slice.map((item) => ({
+      ...item,
+      readAt: mockKhepreeAnnouncementsState.readIds.has(item.publicId)
+        ? item.readAt ?? new Date().toISOString()
+        : item.readAt,
+      dismissedAt: mockKhepreeAnnouncementsState.dismissedIds.has(item.publicId)
+        ? item.dismissedAt ?? new Date().toISOString()
+        : item.dismissedAt,
+    }));
+    return Promise.resolve({ items, nextCursor: next });
+  }
+
+  markAnnouncementRead(input: {
+    accessToken: string;
+    publicId: string;
+  }): Promise<z.infer<typeof DesktopAnnouncementReadResponseSchema>> {
+    void input.accessToken;
+    mockKhepreeAnnouncementsState.readIds.add(input.publicId);
+    return Promise.resolve({ publicId: input.publicId, readAt: new Date().toISOString() });
+  }
+
+  dismissAnnouncement(input: {
+    accessToken: string;
+    publicId: string;
+  }): Promise<z.infer<typeof DesktopAnnouncementDismissResponseSchema>> {
+    void input.accessToken;
+    mockKhepreeAnnouncementsState.dismissedIds.add(input.publicId);
+    mockKhepreeAnnouncementsState.readIds.add(input.publicId);
+    return Promise.resolve({
+      publicId: input.publicId,
+      dismissedAt: new Date().toISOString(),
+      readAt: new Date().toISOString(),
+    });
+  }
+
+  fetchLatestUpdate(input: {
+    accessToken: string;
+    clientId: string;
+    currentVersion: string;
+    platform: string;
+    architecture: string;
+    channel: string;
+    locale: string;
+  }): Promise<z.infer<typeof DesktopLatestUpdateResponseSchema>> {
+    void input;
+    return Promise.resolve({ update: null });
+  }
+
+  requestSquirrelFeedTicket(input: {
+    accessToken: string;
+    clientId: string;
+    architecture?: string;
+    channel?: string;
+  }): Promise<z.infer<typeof DesktopSquirrelFeedTicketResponseSchema>> {
+    void input.accessToken;
+    return Promise.resolve({
+      feedBaseUrl: 'https://api.khepree.com/api/v1/squirrel/feed/khepree-novel-ai/windows/x64/stable?ft=mock-ticket',
+      feedTicketExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    });
+  }
 }
 
 /** HTTP client for Khepree platform desktop API (/api/v1/desktop/*). */
@@ -584,7 +737,7 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
 
   private unwrapData(body: unknown): unknown {
     if (body && typeof body === 'object' && 'data' in body) {
-      return (body as { data: unknown }).data;
+      return (body).data;
     }
     return body;
   }
@@ -620,7 +773,7 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     } catch {
       throw new KhepreeNetworkError();
     }
-    const body = await response.json().catch(() => ({}));
+    const body: unknown = await response.json().catch(() => ({}));
     return { ok: response.ok, status: response.status, body };
   }
 
@@ -688,7 +841,7 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
         displayName: data.user.name || null,
       },
       sessionPublicId: data.sessionPublicId,
-    } as KhepreeAuthTokenResult & { sessionPublicId: string }));
+    }));
   }
 
   refreshSession(input: {
@@ -818,39 +971,21 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     installationId: string;
     deviceId: string;
     sessionPublicId: string;
-    refreshToken: string;
     sign: KhepreeDeviceSignFn;
+    lease?: PlatformSignedLease;
     devicePublicKey: string;
     deviceName: string;
     platform?: string;
     appVersion?: string;
   }): Promise<KhepreeColdStartResult> {
-    return this.getDesktopMe(input.accessToken).then(async (me) => {
-      let lease: PlatformSignedLease | undefined;
-      try {
-        const refreshed = await this.refreshSession({
-          refreshToken: input.refreshToken,
-          installationId: input.installationId,
-          sessionPublicId: input.sessionPublicId,
-          sign: input.sign,
-        });
-        lease = refreshed.lease;
-      } catch {
-        lease = undefined;
-      }
-
-      if (!lease) {
-        const activation = await this.activateDevice({
-          accessToken: input.accessToken,
-          installationId: input.installationId,
-          devicePublicKey: input.devicePublicKey,
-          deviceName: input.deviceName,
-          platform: input.platform,
-          appVersion: input.appVersion,
-        });
-        lease = activation.lease;
-      }
-
+    void input.sessionPublicId;
+    void input.sign;
+    void input.devicePublicKey;
+    void input.deviceName;
+    void input.platform;
+    void input.appVersion;
+    return this.getDesktopMe(input.accessToken).then((me) => {
+      const lease = input.lease;
       if (!lease || !isPlatformSignedLease(lease)) {
         throw new KhepreeAccessError('ENTITLEMENT_MISSING', 'Could not obtain a valid license lease.');
       }
@@ -879,7 +1014,25 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     platform?: string;
     appVersion?: string;
   }): Promise<KhepreeSignedLease> {
-    return this.coldStartValidate(input).then((result) => result.lease);
+    return this.refreshSession({
+      refreshToken: input.refreshToken,
+      installationId: input.installationId,
+      sessionPublicId: input.sessionPublicId,
+      sign: input.sign,
+    }).then((refreshed) =>
+      this.coldStartValidate({
+        accessToken: refreshed.accessToken,
+        installationId: input.installationId,
+        deviceId: input.deviceId,
+        sessionPublicId: input.sessionPublicId,
+        sign: input.sign,
+        lease: refreshed.lease,
+        devicePublicKey: input.devicePublicKey,
+        deviceName: input.deviceName,
+        platform: input.platform,
+        appVersion: input.appVersion,
+      }).then((result) => result.lease),
+    );
   }
 
   heartbeat(input: {
@@ -994,6 +1147,106 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     }));
   }
 
+  listAnnouncements(input: {
+    accessToken: string;
+    clientId: string;
+    appVersion: string;
+    platform: string;
+    architecture: string;
+    channel: string;
+    locale: string;
+    cursor?: string | null;
+    limit?: number;
+  }): Promise<z.infer<typeof DesktopAnnouncementsResponseSchema>> {
+    const params = new URLSearchParams({
+      clientId: input.clientId,
+      appVersion: input.appVersion,
+      platform: input.platform,
+      architecture: input.architecture,
+      channel: input.channel,
+      locale: input.locale,
+    });
+    if (input.limit != null) params.set('limit', String(input.limit));
+    if (input.cursor) params.set('cursor', input.cursor);
+    return this.requestData(
+      `${KHEPREE_DESKTOP_API_PATHS.announcements}?${params.toString()}`,
+      { method: 'GET', accessToken: input.accessToken },
+      DesktopAnnouncementsResponseSchema,
+      'desktop/announcements',
+    );
+  }
+
+  markAnnouncementRead(input: {
+    accessToken: string;
+    publicId: string;
+  }): Promise<z.infer<typeof DesktopAnnouncementReadResponseSchema>> {
+    return this.requestData(
+      `${KHEPREE_DESKTOP_API_PATHS.announcements}/${encodeURIComponent(input.publicId)}/read`,
+      { method: 'POST', accessToken: input.accessToken, body: JSON.stringify({}) },
+      DesktopAnnouncementReadResponseSchema,
+      'desktop/announcements/read',
+    );
+  }
+
+  dismissAnnouncement(input: {
+    accessToken: string;
+    publicId: string;
+  }): Promise<z.infer<typeof DesktopAnnouncementDismissResponseSchema>> {
+    return this.requestData(
+      `${KHEPREE_DESKTOP_API_PATHS.announcements}/${encodeURIComponent(input.publicId)}/dismiss`,
+      { method: 'POST', accessToken: input.accessToken, body: JSON.stringify({}) },
+      DesktopAnnouncementDismissResponseSchema,
+      'desktop/announcements/dismiss',
+    );
+  }
+
+  fetchLatestUpdate(input: {
+    accessToken: string;
+    clientId: string;
+    currentVersion: string;
+    platform: string;
+    architecture: string;
+    channel: string;
+    locale: string;
+  }): Promise<z.infer<typeof DesktopLatestUpdateResponseSchema>> {
+    const params = new URLSearchParams({
+      clientId: input.clientId,
+      currentVersion: input.currentVersion,
+      platform: input.platform,
+      architecture: input.architecture,
+      channel: input.channel,
+      locale: input.locale,
+    });
+    return this.requestData(
+      `${KHEPREE_DESKTOP_API_PATHS.updatesLatest}?${params.toString()}`,
+      { method: 'GET', accessToken: input.accessToken },
+      DesktopLatestUpdateResponseSchema,
+      'desktop/updates/latest',
+    );
+  }
+
+  requestSquirrelFeedTicket(input: {
+    accessToken: string;
+    clientId: string;
+    architecture?: string;
+    channel?: string;
+  }): Promise<z.infer<typeof DesktopSquirrelFeedTicketResponseSchema>> {
+    return this.requestData(
+      KHEPREE_DESKTOP_API_PATHS.updatesSquirrelFeedTicket,
+      {
+        method: 'POST',
+        accessToken: input.accessToken,
+        body: JSON.stringify({
+          clientId: input.clientId,
+          architecture: input.architecture,
+          channel: input.channel,
+        }),
+      },
+      DesktopSquirrelFeedTicketResponseSchema,
+      'desktop/updates/squirrel-feed-ticket',
+    );
+  }
+
   revokeSession(input: { accessToken: string }): Promise<{ ok: true }> {
     return this.requestData(
       KHEPREE_DESKTOP_API_PATHS.authLogout,
@@ -1006,6 +1259,7 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
 
 export function resetMockKhepreeApiStateForTests(): void {
   mockSessions.clear();
+  mockRevokedRefreshTokens.clear();
   mockDevices.clear();
   mockPendingAuth.clear();
   mockKhepreeHeartbeatState.nextStatus = 'ACTIVE';
@@ -1015,6 +1269,9 @@ export function resetMockKhepreeApiStateForTests(): void {
   mockKhepreeCheckoutState.returnBadUrl = false;
   mockKhepreeCheckoutState.invalidPlanIds = new Set();
   mockKhepreeCheckoutState.entitlementPendingAfterPayment = false;
+  mockKhepreeAnnouncementsState.items = [];
+  mockKhepreeAnnouncementsState.readIds = new Set();
+  mockKhepreeAnnouncementsState.dismissedIds = new Set();
   delete process.env.KHEPREE_MOCK_CHECKOUT_STATUS;
 }
 

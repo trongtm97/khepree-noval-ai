@@ -11,7 +11,7 @@ interface SearchInputProps extends InputHTMLAttributes<HTMLInputElement> {
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   function SearchInput({ className = '', value, onClear, trailingAction, ...rest }, ref) {
     const showClear = Boolean(onClear && value && String(value).length > 0);
-    const hasTrailing = Boolean(trailingAction || showClear);
+    const hasTrailing = Boolean(trailingAction ?? showClear);
     return (
       <div className={`nt-search ${hasTrailing ? 'nt-search--has-trailing' : ''} ${className}`.trim()}>
         <Search aria-hidden />

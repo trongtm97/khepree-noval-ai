@@ -181,9 +181,11 @@ export function mockProvider(
       Promise.resolve({ ok: true, status: 'READY' as const, message: 'ok' }),
     ),
     sendPrompt: vi.fn((pack: TranslationPackDto, opts?: SendPromptOptions) => {
-      captures?.packs.push(pack);
-      captures?.providerIds.push(id);
-      captures?.sendCounts.set(id, (captures?.sendCounts.get(id) ?? 0) + 1);
+      if (captures) {
+        captures.packs.push(pack);
+        captures.providerIds.push(id);
+        captures.sendCounts.set(id, (captures.sendCounts.get(id) ?? 0) + 1);
+      }
       return handler(pack, opts);
     }),
     cancelRequest: vi.fn(() => Promise.resolve()),
@@ -200,21 +202,23 @@ export function mockProvider(
 }
 
 export function enablePreflightReady(): void {
-  vi.mocked(checkProviderForJob).mockImplementation(async (_db, input) => ({
-    providerId: input.providerId,
-    result: 'READY',
-    message: 'ok',
-    checks: {},
-  }));
+  vi.mocked(checkProviderForJob).mockImplementation((_db, input) =>
+    Promise.resolve({
+      providerId: input.providerId,
+      result: 'READY',
+      message: 'ok',
+      checks: {},
+    }),
+  );
 }
 
-export async function createPipelineHarness(
+export function createPipelineHarness(
   options?: {
     maxConcurrentWorkers?: number;
     buildProviders?: (captures: CaptureSink) => IAIProvider[];
     routingMode?: 'AUTO' | 'PIN';
   },
-): Promise<PipelineHarness> {
+): PipelineHarness {
   enablePreflightReady();
 
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nts-mp-accept-'));

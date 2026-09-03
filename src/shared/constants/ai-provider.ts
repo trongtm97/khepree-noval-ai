@@ -51,6 +51,16 @@ export function isBrowserAiAccountProvider(
   return (BROWSER_AI_ACCOUNT_PROVIDER_TYPES as readonly string[]).includes(type);
 }
 
+/** Narrow arbitrary string to {@link AiProviderType} when valid. */
+export function parseAiProviderType(
+  value: string | null | undefined,
+): AiProviderType | null {
+  if (value != null && (AI_PROVIDER_TYPES as readonly string[]).includes(value)) {
+    return value as AiProviderType;
+  }
+  return null;
+}
+
 export const AI_RESPONSE_STATUSES = [
   'SUCCESS',
   'ERROR',

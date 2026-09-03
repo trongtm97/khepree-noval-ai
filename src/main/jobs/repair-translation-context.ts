@@ -46,12 +46,15 @@ export function readRepairTranslationContextFromProgress(
     const lockedTerms: LockedTermForQa[] =
       Array.isArray(lockedRaw)
         ? lockedRaw
-            .filter((t): t is Record<string, unknown> => t && typeof t === 'object')
+            .filter(
+              (t): t is { source?: unknown; preferred?: unknown; forbiddenVariants?: unknown } =>
+                typeof t === 'object' && t !== null,
+            )
             .map((t) => ({
-              source: String(t.source ?? ''),
-              preferred: String(t.preferred ?? ''),
+              source: typeof t.source === 'string' ? t.source : '',
+              preferred: typeof t.preferred === 'string' ? t.preferred : '',
               forbiddenVariants: Array.isArray(t.forbiddenVariants)
-                ? t.forbiddenVariants.map(String)
+                ? t.forbiddenVariants.filter((v): v is string => typeof v === 'string')
                 : undefined,
             }))
             .filter((t) => t.source && t.preferred)
@@ -115,7 +118,7 @@ export function requireRepairTranslationContext(
   if (!job) throw new Error(`Job not found: ${jobId}`);
 
   const partial = readRepairTranslationContextFromProgress(job.progress);
-  if (!partial?.sourceLanguage || !partial?.targetLanguage) {
+  if (!partial?.sourceLanguage || !partial.targetLanguage) {
     throw new TranslationLanguagePairMissingError(
       'Repair requires frozen language pair from the initial translation send.',
     );
@@ -144,8 +147,8 @@ export function buildRepairTranslationContext(input: {
   knowledgeVersion: number | null;
   lockedTerms?: LockedTermForQa[];
 }): RepairTranslationContext {
-  const sourceLanguage = input.sourceLanguage?.trim();
-  const targetLanguage = input.targetLanguage?.trim();
+  const sourceLanguage = input.sourceLanguage.trim();
+  const targetLanguage = input.targetLanguage.trim();
   if (!sourceLanguage || !targetLanguage) {
     throw new TranslationLanguagePairMissingError();
   }

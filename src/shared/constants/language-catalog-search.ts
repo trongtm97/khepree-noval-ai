@@ -77,7 +77,6 @@ export function languageMatchesQuery(
     profile.internationalName,
     profile.nativeName,
     profile.displayNameVi,
-    profile.displayNameNative,
   ]
     .join(' ')
     .toLowerCase()

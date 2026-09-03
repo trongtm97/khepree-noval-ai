@@ -56,7 +56,7 @@ function isWebApiReady(input: StartupAiReadinessInput): boolean {
 function enabledTranslationIds(input: StartupAiReadinessInput): string[] {
   if (input.providerRows?.length) {
     return TRANSLATION_AI_PROVIDER_IDS.filter((id) =>
-      input.providerRows!.some((row) => row.id === id && row.enabled),
+      input.providerRows?.some((row) => row.id === id && row.enabled) ?? false,
     );
   }
   return input.hasEnabledProvider ? [...TRANSLATION_AI_PROVIDER_IDS] : [];
@@ -140,7 +140,7 @@ export function evaluateStartupAiReadiness(
     const hasAnyGoogle = input.googleAccounts.some(
       (a) => a.availability.availability !== 'PAUSED',
     );
-    if (!hasAnyGoogle && !input.browserAiReady) {
+    if (!hasAnyGoogle) {
       issues.push('no_ai_account');
     }
   }

@@ -115,10 +115,10 @@ export function googleAccountToViewModel(
 export function aiAccountToViewModel(account: AiAccountDto): AiAccountViewModel {
   const kind = providerKindFromProviderId(account.providerId);
   const displayName =
-    account.displayName?.trim() ||
-    account.googleEmail?.trim() ||
+    account.displayName?.trim() ??
+    account.googleEmail?.trim() ??
     account.id.slice(0, 8);
-  const email = account.googleEmail?.trim() || null;
+  const email = account.googleEmail?.trim() ?? null;
   return {
     id: account.id,
     providerId: account.providerId,
@@ -233,10 +233,7 @@ export function matchesStatusFilter(
   if (filter === 'ready') return lane === 'ready';
   if (filter === 'busy') return lane === 'running';
   if (filter === 'paused') return lane === 'paused';
-  if (filter === 'attention') {
-    return lane === 'login' || lane === 'limited' || lane === 'attention';
-  }
-  return true;
+  return lane === 'login' || lane === 'limited';
 }
 
 export function openSiteLabelKey(kind: AiAccountProviderKind): string {

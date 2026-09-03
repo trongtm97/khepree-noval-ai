@@ -16,7 +16,7 @@ import { formatTranslationTaskHeader } from '@shared/constants/translation-style
 import { assemblePackSections } from '@main/prompt/translation-pack-builder';
 import type { MemoryContextDto } from '@shared/schemas/memory';
 import {
-  detectLanguage,
+  detectSourceLanguage,
   detectLanguageHeuristic,
 } from '@main/language/language-detect';
 
@@ -92,12 +92,12 @@ describe('LanguageProfile registry', () => {
 
 describe('language detection heuristic', () => {
   it('detects Japanese from kana sample', async () => {
-    const r = await detectLanguage({
+    const r = await detectSourceLanguage({
       sampleText: 'これは日本語の小説です。主人公は東京に住んでいます。',
     });
-    expect(r.code).toBe('ja');
+    expect(r.detectedLanguage).toBe('ja');
     expect(r.displayNameVi).toBe('Tiếng Nhật');
-    expect(r.method).toBe('heuristic');
+    expect(r.method).toBe('LOCAL');
   });
 
   it('detects English with high confidence', () => {
@@ -149,7 +149,7 @@ describe('pack prompts are language-pair driven', () => {
 describe('AI detect injection', () => {
   it('calls AI only when heuristic is weak', async () => {
     let aiCalled = false;
-    const r = await detectLanguage({
+    const r = await detectSourceLanguage({
       sampleText: '??? !!! ###',
       aiDetect: () => {
         aiCalled = true;
@@ -157,7 +157,7 @@ describe('AI detect injection', () => {
       },
     });
     expect(aiCalled).toBe(true);
-    expect(r.code).toBe('es');
-    expect(r.method).toBe('ai');
+    expect(r.detectedLanguage).toBe('es');
+    expect(r.method).toBe('AI');
   });
 });

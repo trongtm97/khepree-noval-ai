@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const releaseAccountResources = vi.fn(async () => undefined);
+const releaseAccountResources = vi.fn(() => Promise.resolve(undefined));
 
 vi.mock('../../../src/main/services/playwright-browser-ai-service-singleton', () => ({
   getPlaywrightBrowserAiService: () => ({

@@ -33,6 +33,13 @@ export interface KnowledgeSyncStateRow {
 }
 
 export class KnowledgeSyncStateRepository extends BaseRepository {
+  hasLegacyDriveRootFolder(projectId: string): boolean {
+    const row = this.db
+      .prepare(`SELECT root_folder_id FROM drive_sync_state WHERE project_id = ?`)
+      .get(projectId) as { root_folder_id: string | null } | undefined;
+    return Boolean(row?.root_folder_id);
+  }
+
   getByProject(projectId: string): KnowledgeSyncStateRow | null {
     return (
       (this.db

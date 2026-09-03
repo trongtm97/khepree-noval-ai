@@ -119,10 +119,8 @@ function writeTermsReferenceSheet(
   });
   for (const term of terms.slice(0, 5000)) {
     const translations = db.terms.listTranslations(term.id);
-    const primary =
-      translations.find((t) => t.is_primary === 1)?.target_text ??
-      translations[0]?.target_text ??
-      '';
+    const primary = translations.find((t) => t.is_primary === 1)?.target_text
+      ?? translations[0].target_text;
     sheet.addRow([
       term.source_text ?? term.source_simplified,
       primary,

@@ -78,7 +78,8 @@ import {
 import { redetectProjectSourceLanguage } from '../services/source-language-redetect';
 import { resolveProjectSourceLanguage } from '../services/resolve-project-source-language';
 import {
-  detectLanguage,
+  detectSourceLanguage,
+  toLegacyLanguageDetectResponse,
   resolveSourceLanguageInput,
 } from '../language/language-detect';
 import {
@@ -392,9 +393,26 @@ import {
 } from '@shared/schemas/ui-language';
 import { openKhepreeExternal } from '../khepree/external-links';
 import {
-  checkForUpdates,
   getUpdateProvider,
 } from '../updates/update-provider';
+import {
+  getUpdateService,
+  initializeUpdateService,
+} from '../updates/update-singleton';
+import {
+  getAnnouncementSyncService,
+  initializeAnnouncementSyncService,
+} from '../khepree/announcement-sync-singleton';
+import {
+  KhepreeAnnouncementsListResponseSchema,
+  KhepreeAnnouncementMarkReadRequestSchema,
+  KhepreeAnnouncementDismissRequestSchema,
+} from '@shared/schemas/khepree-announcements';
+import {
+  UpdateStatusSchema,
+  UpdatePostponeRequestSchema,
+  UpdatePostponeResponseSchema,
+} from '@shared/schemas/updates';
 import {
   CheckForUpdatesResponseSchema,
   SetupCompleteRequestSchema,
@@ -592,11 +610,13 @@ export function registerIpcHandlers(): void {
       const byId = availabilitySvc.resolveAll();
       const accounts = getAccountWorkerService()
         .listAccounts()
-        .map((row) =>
-          GoogleAccountDtoSchema.parse(
-            toGoogleAccountDto(row, byId.get(row.id)!),
-          ),
-        );
+        .map((row) => {
+          const availability =
+            byId.get(row.id) ?? availabilitySvc.resolve(row.id);
+          return GoogleAccountDtoSchema.parse(
+            toGoogleAccountDto(row, availability),
+          );
+        });
       return AccountListResponseSchema.parse({
         accounts,
         summary: availabilitySvc.summarize(),
@@ -862,10 +882,12 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.LANGUAGE_DETECT,
     createIpcHandler(LanguageDetectRequestSchema, async (request) => {
-      const result = await detectLanguage({
-        sampleText: request.sampleText,
-        hintCode: request.hintCode,
-      });
+      const result = toLegacyLanguageDetectResponse(
+        await detectSourceLanguage({
+          sampleText: request.sampleText,
+          hintCode: request.hintCode,
+        }),
+      );
       return LanguageDetectResponseSchema.parse(result);
     }),
   );
@@ -981,7 +1003,7 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.PROJECT_GET_TRANSLATE_PACK_SETTINGS,
     createIpcHandler(
       z.object({ projectId: z.string().uuid() }),
-      async (request) => {
+      (request) => {
         const db = getDatabase();
         const project = db.projects.getById(request.projectId);
         if (!project) throw new Error(`Project not found: ${request.projectId}`);
@@ -1007,7 +1029,7 @@ export function registerIpcHandlers(): void {
         projectId: z.string().uuid(),
         preferNotebookPack: z.boolean(),
       }),
-      async (request) => {
+      (request) => {
         const db = getDatabase();
         const project = db.projects.getById(request.projectId);
         if (!project) throw new Error(`Project not found: ${request.projectId}`);
@@ -1023,7 +1045,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.PROJECT_SET_PRIMARY_PROVIDER,
-    createIpcHandler(ProjectSetPrimaryProviderRequestSchema, async (request) => {
+    createIpcHandler(ProjectSetPrimaryProviderRequestSchema, (request) => {
       const db = getDatabase();
       const project = db.projects.getById(request.projectId);
       if (!project) throw new Error(`Project not found: ${request.projectId}`);
@@ -1048,7 +1070,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     IPC_CHANNELS.PROJECT_SET_AI_PREFERENCE,
-    createIpcHandler(ProjectSetAiPreferenceRequestSchema, async (request) => {
+    createIpcHandler(ProjectSetAiPreferenceRequestSchema, (request) => {
       const db = getDatabase();
       const project = db.projects.getById(request.projectId);
       if (!project) throw new Error(`Project not found: ${request.projectId}`);
@@ -1206,7 +1228,7 @@ export function registerIpcHandlers(): void {
           genre: request.genre,
           description: request.description,
           chineseTitle: request.chineseTitle,
-          sourceLanguageHint: request.sourceLanguageHint ?? request.sourceLanguage,
+          sourceLanguageHint: request.sourceLanguageHint,
           sourceLanguageMode: request.sourceLanguageMode,
           targetLanguage: request.targetLanguage,
           accountId: request.accountId,
@@ -2826,13 +2848,114 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.APP_CHECK_FOR_UPDATES,
     createIpcHandlerNoArg(async () => {
+      initializeUpdateService();
+      const status = await getUpdateService().checkNow('legacy-ipc');
+      const legacyStatus =
+        status.phase === 'available' || status.phase === 'downloaded' || status.phase === 'downloading'
+          ? 'update-available'
+          : status.phase === 'up-to-date'
+            ? 'up-to-date'
+            : status.phase === 'error'
+              ? 'error'
+              : 'unavailable';
       const provider = getUpdateProvider();
-      const result = await checkForUpdates(app.getVersion());
       return CheckForUpdatesResponseSchema.parse({
-        ...result,
+        ok: status.phase !== 'error',
+        status: legacyStatus,
+        currentVersion: status.currentVersion,
+        latestVersion: status.latestVersion,
+        message:
+          status.errorMessage ??
+          (legacyStatus === 'update-available'
+            ? `Update ${status.latestVersion ?? ''} available`
+            : legacyStatus === 'up-to-date'
+              ? 'App is up to date'
+              : 'Update check unavailable in this environment'),
+        releaseNotes: status.releaseNotes,
+        downloadUrl: status.manualDownloadUrl,
         providerId: provider.id,
         providerLabel: provider.label,
       });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.UPDATE_GET_STATUS,
+    createIpcHandlerNoArg(() => {
+      initializeUpdateService();
+      return UpdateStatusSchema.parse(getUpdateService().getStatus());
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.UPDATE_CHECK_NOW,
+    createIpcHandlerNoArg(async () => {
+      initializeUpdateService();
+      const status = await getUpdateService().checkNow('manual');
+      return UpdateStatusSchema.parse(status);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.UPDATE_INSTALL_AND_RESTART,
+    createIpcHandlerNoArg(async () => {
+      initializeUpdateService();
+      return getUpdateService().installAndRestart();
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.UPDATE_POSTPONE,
+    createIpcHandler(UpdatePostponeRequestSchema, (request) => {
+      initializeUpdateService();
+      const status = getUpdateService().postpone(request.untilMs);
+      return UpdatePostponeResponseSchema.parse({
+        ok: true,
+        postponedUntil: status.postponedUntil,
+      });
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_ANNOUNCEMENTS_LIST,
+    createIpcHandlerNoArg(() => {
+      initializeAnnouncementSyncService();
+      return KhepreeAnnouncementsListResponseSchema.parse(
+        getAnnouncementSyncService().listForRenderer(),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_ANNOUNCEMENTS_SYNC,
+    createIpcHandlerNoArg(async () => {
+      initializeAnnouncementSyncService();
+      await getAnnouncementSyncService().sync('manual');
+      return KhepreeAnnouncementsListResponseSchema.parse(
+        getAnnouncementSyncService().listForRenderer(),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_ANNOUNCEMENT_MARK_READ,
+    createIpcHandler(KhepreeAnnouncementMarkReadRequestSchema, (request) => {
+      initializeAnnouncementSyncService();
+      getAnnouncementSyncService().markReadLocal(request.publicId);
+      return KhepreeAnnouncementsListResponseSchema.parse(
+        getAnnouncementSyncService().listForRenderer(),
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.KHEPREE_ANNOUNCEMENT_DISMISS,
+    createIpcHandler(KhepreeAnnouncementDismissRequestSchema, (request) => {
+      initializeAnnouncementSyncService();
+      getAnnouncementSyncService().dismissLocal(request.publicId);
+      return KhepreeAnnouncementsListResponseSchema.parse(
+        getAnnouncementSyncService().listForRenderer(),
+      );
     }),
   );
 

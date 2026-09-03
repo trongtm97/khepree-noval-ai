@@ -343,7 +343,7 @@ export class BrowserConversationHarness {
       return await Promise.race([
         fn(),
         new Promise<T>((_, reject) => {
-          timer = setTimeout(() => reject(new AutomationError('RESPONSE_TIMEOUT', message)), timeoutMs);
+          timer = setTimeout(() => { reject(new AutomationError('RESPONSE_TIMEOUT', message)); }, timeoutMs);
         }),
       ]);
     } finally {

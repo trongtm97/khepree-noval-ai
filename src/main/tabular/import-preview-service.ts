@@ -11,7 +11,6 @@ import { getDatabase } from '../db/connection';
 import { tabularSchemaRegistry } from './tabular-schema-registry';
 import { assertKhepreeTabularMeta, parseTabularFile } from './tabular-file-parser';
 import { findExistingTerm } from './handlers/term-tabular-utils';
-import type { CharacterWorkbookSheet } from '@shared/constants/character-tabular';
 import {
   CHARACTER_TABULAR_WARNINGS,
   CHARACTER_WORKBOOK_COMMIT_ORDER,
@@ -24,7 +23,6 @@ import type {
 import { isCharacterWorkbookFile } from './character-workbook-export';
 import { validateWorkbookRow } from './handlers/character-workbook-handler';
 import { isLegacyCharacterHeaders } from './handlers/character-tabular-utils';
-import type { ProjectDataWorkbookSheet } from '@shared/constants/project-data-tabular';
 import {
   PROJECT_DATA_COMMIT_ORDER,
   PROJECT_DATA_WARNINGS,
@@ -69,7 +67,7 @@ export class ImportPreviewService {
     const parsed = await parseTabularFile(input.filePath);
     assertKhepreeTabularMeta(parsed.meta);
 
-    const dataTypeHint = input.dataTypeHint ?? (parsed.meta?.data_type as TabularDataType | undefined);
+    const dataTypeHint = input.dataTypeHint ?? (parsed.meta?.data_type);
     const characterWorkbook =
       dataTypeHint === 'characters' && isCharacterWorkbookFile(parsed.sheets);
     const projectDataWorkbook =
@@ -113,7 +111,7 @@ export class ImportPreviewService {
             ? 'project_data'
             : tabularSchemaRegistry.detectDataType(
                 primarySheet?.headers ?? [],
-                parsed.meta?.data_type as TabularDataType | undefined,
+                parsed.meta?.data_type,
               ) ?? dataTypeHint;
     if (!dataType) {
       throw new Error('Could not detect tabular data type from headers');
@@ -173,7 +171,7 @@ export class ImportPreviewService {
             })
           : (primarySheet?.rows ?? []).map((row, rowIndex) => {
           const legacyRow =
-            dataType === 'characters' && isLegacyCharacterHeaders(primarySheet!.headers)
+            dataType === 'characters' && primarySheet && isLegacyCharacterHeaders(primarySheet.headers)
               ? { ...row, _legacy: '1' }
               : row;
           const mappedRow = applyColumnMapping(legacyRow, input.columnMapping);
@@ -288,7 +286,7 @@ export class ImportPreviewService {
       if (!sheet || sheet.rows.length === 0) continue;
 
       for (const row of sheet.rows) {
-        const result = validateWorkbookRow(sheetName as CharacterWorkbookSheet, row, rowCounter, ctx);
+        const result = validateWorkbookRow(sheetName, row, rowCounter, ctx);
         const hasConflict =
           result.messages.includes(CHARACTER_TABULAR_WARNINGS.AMBIGUOUS_CHARACTER) ||
           result.messages.includes(CHARACTER_TABULAR_WARNINGS.DISPLAY_NAME_COLLISION);
@@ -332,7 +330,7 @@ export class ImportPreviewService {
 
       for (const row of dataRows) {
         const result = validateProjectDataRow(
-          sheetName as ProjectDataWorkbookSheet,
+          sheetName,
           row,
           rowCounter,
           ctx,
@@ -393,7 +391,7 @@ export class ImportPreviewService {
 
       for (const row of sheet.rows) {
         const result = validateSourceWorkbookRow(
-          sheetName as SourceWorkbookSheet,
+          sheetName,
           row,
           rowCounter,
           ctx,

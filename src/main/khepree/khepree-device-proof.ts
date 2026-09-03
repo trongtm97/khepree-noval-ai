@@ -41,7 +41,7 @@ export function buildKhepreeDeviceProofMessage(input: {
 /** Canonical signed payload — excludes deviceProof (matches Khepree API verification). */
 export function buildCanonicalDesktopPayloadSha256(
   sessionPublicId: string,
-  extraFields: Array<[string, string]>,
+  extraFields: [string, string][],
 ): string {
   const payload: Record<string, string> = { sessionPublicId };
   for (const [key, value] of extraFields) {
@@ -52,7 +52,7 @@ export function buildCanonicalDesktopPayloadSha256(
 
 function serializeSignedRequestBody(
   sessionPublicId: string,
-  extraFields: Array<[string, string]>,
+  extraFields: [string, string][],
   proof: KhepreeDeviceProof,
 ): string {
   const body: Record<string, unknown> = { sessionPublicId };
@@ -78,7 +78,7 @@ export function buildSignedDesktopRequestBody(input: {
   sessionPublicId: string;
   method: string;
   path: string;
-  extraFields: Array<[string, string]>;
+  extraFields: [string, string][];
   sign: (message: Buffer) => Buffer;
   nowSeconds?: number;
 }): SignedDesktopRequest {

@@ -1,6 +1,6 @@
 /**
- * Ensure better-sqlite3 is built for Electron before package/make.
- * Skips @electron/rebuild when a .node binary already exists (no VS required).
+ * Ensure better-sqlite3 is ready for Electron before package/make.
+ * v13+ ships N-API prebuilds under prebuilds/; legacy builds use build/Release/.
  */
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -8,14 +8,37 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const nodeFile = path.join(root, 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node');
+const sqliteRoot = path.join(root, 'node_modules', 'better-sqlite3');
+
+function prebuildPath() {
+  const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
+  const platform =
+    process.platform === 'win32'
+      ? 'win32'
+      : process.platform === 'darwin'
+        ? 'darwin'
+        : process.platform === 'linux'
+          ? 'linux'
+          : null;
+  if (!platform) return null;
+  return path.join(sqliteRoot, 'prebuilds', `${platform}-${arch}.node`);
+}
+
+function candidateBinaries() {
+  return [
+    path.join(sqliteRoot, 'build', 'Release', 'better_sqlite3.node'),
+    prebuildPath(),
+  ].filter((p) => p != null);
+}
 
 function hasBinary() {
-  try {
-    return fs.statSync(nodeFile).size > 0;
-  } catch {
-    return false;
-  }
+  return candidateBinaries().some((file) => {
+    try {
+      return fs.statSync(file).size > 0;
+    } catch {
+      return false;
+    }
+  });
 }
 
 function tryRebuild() {
@@ -27,14 +50,14 @@ function tryRebuild() {
 }
 
 if (hasBinary() && process.env.KHEPREE_FORCE_NATIVE_REBUILD !== '1') {
-  console.log('[ensure-electron-native] using existing better_sqlite3.node');
+  console.log('[ensure-electron-native] better-sqlite3 native binary present (prebuild or Release)');
   process.exit(0);
 }
 
 try {
   tryRebuild();
   if (!hasBinary()) {
-    throw new Error('rebuild finished but better_sqlite3.node is missing');
+    throw new Error('rebuild finished but no better-sqlite3 native binary found');
   }
   console.log('[ensure-electron-native] rebuilt better-sqlite3 for Electron');
 } catch (error) {

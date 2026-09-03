@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_TRANSLATE_BATCH_PARAGRAPHS,
   PLAYWRIGHT_TRANSLATE_BATCH_PARAGRAPHS,
 } from '../../../src/shared/constants/job';
 import {

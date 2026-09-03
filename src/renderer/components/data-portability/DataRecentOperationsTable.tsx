@@ -84,11 +84,11 @@ export function DataRecentOperationsTable({
       render: (e: TabularImportHistoryEntry) => (
         <div className="data-recent-row-actions">
           {e.id === latestId && e.dataType !== 'operational_workbook' ? (
-            <Button size="sm" variant="ghost" disabled={busy} onClick={() => onUndo(e.id)}>
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => { onUndo(e.id); }}>
               {t('dataHub.undoImport')}
             </Button>
           ) : null}
-          <IconButton label={t('common.moreActions')} onClick={() => onViewReport(e)}>
+          <IconButton label={t('common.moreActions')} onClick={() => { onViewReport(e); }}>
             <MoreHorizontal size={16} />
           </IconButton>
         </div>

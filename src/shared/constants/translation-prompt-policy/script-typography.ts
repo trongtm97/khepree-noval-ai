@@ -32,7 +32,7 @@ export function resolveScriptTypographyRules(
     rules.push(
       `Target typography (quoteStyle=${target.quoteStyle}): use curly quotation marks for dialogue.`,
     );
-  } else if (target.quoteStyle === 'ascii') {
+  } else {
     rules.push(
       `Target typography (quoteStyle=${target.quoteStyle}): use ASCII-style quotes where appropriate.`,
     );
@@ -50,7 +50,7 @@ export function resolveScriptTypographyRules(
     rules.push(
       `Target punctuation (punctuationProfile=${target.punctuationProfile}): follow Western punctuation conventions for ${target.nativeName}.`,
     );
-  } else if (target.punctuationProfile === 'thai') {
+  } else {
     rules.push(
       `Target punctuation (punctuationProfile=${target.punctuationProfile}): follow Thai punctuation conventions.`,
     );

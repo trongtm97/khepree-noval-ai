@@ -1,0 +1,127 @@
+src\main\ai\adapters\playwright-browser-ai-adapters.ts:131 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\main\ai\provider-capabilities.ts:154 [@typescript-eslint/no-unnecessary-type-assertion] This assertion is unnecessary since it does not change the type of the expression.
+src\main\ai\provider-preflight.ts:514 [@typescript-eslint/prefer-optional-chain] Prefer using an optional chain expression instead, as it's more concise and easier to read.
+src\main\bootstrap\full-novel-preprocess-orchestrator.ts:299 [@typescript-eslint/require-await] Async method 'resumeFromRaw' has no 'await' expression.
+src\main\jobs\qa-language-aware.ts:257 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, comparison is always true, since `"thai" === "thai"` is true.
+src\main\khepree\announcement-cta-policy.ts:50 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\main\khepree\announcement-cta-policy.ts:83 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always falsy.
+src\main\khepree\announcement-sync-singleton.ts:40 [@typescript-eslint/use-unknown-in-catch-callback-variable] Prefer the safe `: unknown` for a `catch` callback variable.
+src\main\khepree\checkout-poller.ts:65 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always falsy.
+src\main\khepree\khepree-access-service.ts:831 [@typescript-eslint/require-await] Async method 'cancelCheckout' has no 'await' expression.
+src\main\khepree\khepree-access-service.ts:1170 [@typescript-eslint/require-await] Async method 'shutdown' has no 'await' expression.
+src\main\khepree\khepree-access-singleton.ts:20 [@typescript-eslint/no-non-null-assertion] Forbidden non-null assertion.
+src\main\khepree\khepree-api-client.ts:315 [@typescript-eslint/prefer-optional-chain] Prefer using an optional chain expression instead, as it's more concise and easier to read.
+src\main\khepree\khepree-api-client.ts:776 [@typescript-eslint/no-unsafe-assignment] Unsafe assignment of an `any` value.
+src\main\khepree\oauth-auth-transaction.ts:106 [@typescript-eslint/prefer-optional-chain] Prefer using an optional chain expression instead, as it's more concise and easier to read.
+src\main\khepree\platform-lease.ts:167 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, the types have no overlap.
+src\main\khepree\product-access-boundary.ts:19 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\main\knowledge\context-budget.ts:35 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\main\knowledge\knowledge-retriever.ts:98 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, the types have no overlap.
+src\main\knowledge\semantic-retriever.ts:28 [@typescript-eslint/require-await] Async method 'retrieve' has no 'await' expression.
+src\main\learning\learning-pipeline.ts:132 [prefer-const] 'terms' is never reassigned. Use 'const' instead.
+src\main\learning\learning-pipeline.ts:132 [prefer-const] 'memory' is never reassigned. Use 'const' instead.
+src\main\memory\context-selector.ts:334 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\main\memory\edition-memory.ts:22 [@typescript-eslint/prefer-optional-chain] Prefer using an optional chain expression instead, as it's more concise and easier to read.
+src\main\notebook-grounding-smoke\grounding-smoke-runner.ts:369 [@typescript-eslint/require-await] Async function 'testB' has no 'await' expression.
+src\main\notebook-grounding-smoke\grounding-smoke-runner.ts:422 [@typescript-eslint/require-await] Async function 'testD' has no 'await' expression.
+src\main\notebook\notebook-bootstrap-service.ts:244 [@typescript-eslint/require-await] Async method 'prepareForTranslate' has no 'await' expression.
+src\main\notebook\notebook-sync-service.ts:160 [@typescript-eslint/require-await] Async method 'syncLocalKnowledge' has no 'await' expression.
+src\main\notebook\playwright-send-target.ts:107 [@typescript-eslint/no-non-null-assertion] Forbidden non-null assertion.
+src\main\portability\auto-backup.ts:265 [@typescript-eslint/use-unknown-in-catch-callback-variable] Prefer the safe `: unknown` for a `catch` callback variable.
+src\main\portability\backup-archive.ts:415 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\main\portability\backup-archive.ts:418 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\main\services\account-availability-service.ts:88 [@typescript-eslint/no-non-null-assertion] Forbidden non-null assertion.
+src\main\services\account-availability-service.ts:208 [@typescript-eslint/prefer-nullish-coalescing] Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read.
+src\main\services\account-worker-service.ts:80 [@typescript-eslint/prefer-nullish-coalescing] Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.
+src\main\services\notebook-send-readiness-service.ts:168 [@typescript-eslint/prefer-nullish-coalescing] Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.
+src\main\services\project-dto.ts:70 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\main\services\ui-language-service-singleton.ts:7 [@typescript-eslint/prefer-nullish-coalescing] Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read.
+src\main\services\ui-language-service.ts:18 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\main\services\ui-language-service.ts:18 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\main\tabular\column-mapping.ts:12 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\main\tabular\column-mapping.ts:14 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, the types have no overlap.
+src\main\tabular\import-commit-service.ts:6 [@typescript-eslint/no-unused-vars] 'TermType' is defined but never used. Allowed unused vars must match /^_/u.
+src\main\tabular\import-commit-service.ts:213 [@typescript-eslint/prefer-optional-chain] Prefer using an optional chain expression instead, as it's more concise and easier to read.
+src\main\tabular\import-commit-service.ts:260 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\main\tabular\import-commit-service.ts:261 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\main\tabular\import-preview-service.ts:14 [@typescript-eslint/no-unused-vars] 'CharacterWorkbookSheet' is defined but never used. Allowed unused vars must match /^_/u.
+src\main\tabular\import-preview-service.ts:27 [@typescript-eslint/no-unused-vars] 'ProjectDataWorkbookSheet' is defined but never used. Allowed unused vars must match /^_/u.
+src\main\tabular\import-preview-service.ts:176 [@typescript-eslint/no-non-null-assertion] Forbidden non-null assertion.
+src\main\tabular\operational-export-builders.ts:37 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\main\tabular\operational-export-builders.ts:100 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\main\tabular\operational-sanitize.ts:31 [@typescript-eslint/no-unnecessary-type-conversion] Passing a string to String() does not change the type or value of the string.
+src\main\tabular\operational-sanitize.ts:57 [@typescript-eslint/no-base-to-string] 'value' will use Object's default stringification format ('[object Object]') when stringified.
+src\main\tabular\project-data-workbook-export.ts:78 [@typescript-eslint/no-unnecessary-type-conversion] Passing a string to String() does not change the type or value of the string.
+src\main\tabular\tabular-export-service.ts:169 [@typescript-eslint/require-await] Async method 'writeCsv' has no 'await' expression.
+src\main\tabular\tabular-export-service.ts:177 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, the types have no overlap.
+src\main\tabular\tabular-file-parser.ts:128 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always falsy.
+src\main\tabular\tabular-file-parser.ts:144 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\main\tabular\tabular-file-parser.ts:156 [@typescript-eslint/no-base-to-string] 'value' will use Object's default stringification format ('[object Object]') when stringified.
+src\main\tabular\tabular-file-parser.ts:160 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, the types have no overlap.
+src\main\tabular\tabular-import-service.ts:103 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\main\tabular\translation-spreadsheet-export.ts:123 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\main\updates\update-ports.ts:14 [@typescript-eslint/unified-signatures] This overload and the one on line 7 can be combined into one signature taking `'update-available' | 'update-downloaded'`.
+src\main\updates\update-service.ts:133 [@typescript-eslint/require-await] Async method 'installAndRestart' has no 'await' expression.
+src\renderer\components\CreateProjectWizard.tsx:147 [@typescript-eslint/prefer-optional-chain] Prefer using an optional chain expression instead, as it's more concise and easier to read.
+src\renderer\components\data-portability\DataImportWizard.tsx:239 [@typescript-eslint/no-dynamic-delete] Do not delete dynamically computed property keys.
+src\renderer\components\data-portability\import-preview-summary.ts:25 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, comparison is always true, since `"warning" === "warning"` is true.
+src\renderer\components\settings\AiPreferencePanel.tsx:139 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\renderer\components\settings\AiSettingsPanel.tsx:100 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\renderer\components\settings\AiSettingsPanel.tsx:177 [@typescript-eslint/prefer-optional-chain] Prefer using an optional chain expression instead, as it's more concise and easier to read.
+src\renderer\components\TermVaultTabularDialog.tsx:319 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\renderer\components\TermVaultTabularDialog.tsx:320 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\renderer\components\translation\BilingualEditor.tsx:90 [@typescript-eslint/prefer-nullish-coalescing] Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.
+src\renderer\components\translation\BilingualEditor.tsx:90 [@typescript-eslint/prefer-nullish-coalescing] Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.
+src\renderer\components\ui\SearchInput.tsx:14 [@typescript-eslint/prefer-nullish-coalescing] Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.
+src\renderer\features\accounts\account-ui-state.ts:73 [@typescript-eslint/prefer-nullish-coalescing] Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.
+src\renderer\features\accounts\account-ui-state.ts:74 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\renderer\features\accounts\account-ui-state.ts:75 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\renderer\features\accounts\AccountRow.tsx:216 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\renderer\features\accounts\ai-account-view-model.ts:118 [@typescript-eslint/prefer-nullish-coalescing] Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.
+src\renderer\features\accounts\ai-account-view-model.ts:119 [@typescript-eslint/prefer-nullish-coalescing] Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.
+src\renderer\features\accounts\ai-account-view-model.ts:121 [@typescript-eslint/prefer-nullish-coalescing] Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.
+src\renderer\features\accounts\ai-account-view-model.ts:236 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, comparison is always true, since `"attention" === "attention"` is true.
+src\renderer\features\accounts\UnifiedAccountDetailsDrawer.tsx:77 [@typescript-eslint/no-non-null-assertion] Forbidden non-null assertion.
+src\renderer\features\jobs\job-provider-ui.ts:56 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\renderer\features\jobs\jobs-utils.ts:107 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\renderer\features\jobs\jobs-utils.ts:109 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\renderer\features\jobs\RunningJobCard.tsx:59 [@typescript-eslint/no-unnecessary-condition] Unnecessary optional chain on a non-nullish value.
+src\renderer\features\jobs\useJobsOverview.ts:75 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, comparison is always true, since `"rejected" === "rejected"` is true.
+src\renderer\features\khepree\khepree-display.ts:65 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\renderer\features\khepree\khepree-display.ts:65 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\renderer\features\khepree\khepree-plan-format.ts:17 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\renderer\features\khepree\KhepreeAccessGate.tsx:381 [@typescript-eslint/await-thenable] Unexpected `await` of a non-Promise (non-"Thenable") value.
+src\renderer\features\khepree\KhepreeAccessGate.tsx:381 [@typescript-eslint/no-confusing-void-expression] Placing a void expression inside another expression is forbidden. Move it to its own statement instead.
+src\renderer\features\khepree\KhepreeAccessGate.tsx:394 [@typescript-eslint/await-thenable] Unexpected `await` of a non-Promise (non-"Thenable") value.
+src\renderer\features\khepree\KhepreeAccessGate.tsx:394 [@typescript-eslint/no-confusing-void-expression] Placing a void expression inside another expression is forbidden. Move it to its own statement instead.
+src\renderer\features\khepree\KhepreeAccessGate.tsx:407 [@typescript-eslint/await-thenable] Unexpected `await` of a non-Promise (non-"Thenable") value.
+src\renderer\features\khepree\KhepreeAccessGate.tsx:407 [@typescript-eslint/no-confusing-void-expression] Placing a void expression inside another expression is forbidden. Move it to its own statement instead.
+src\renderer\features\khepree\pages\KhepreePlanPage.tsx:103 [@typescript-eslint/no-misused-promises] Promise-returning function provided to attribute where a void return was expected.
+src\renderer\features\khepree\useKhepreeAccessState.ts:22 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always falsy.
+src\renderer\features\khepree\useKhepreeAccessState.ts:25 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\renderer\features\project-chapters\SourceLanguageCompact.tsx:40 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\renderer\features\projects\project-status.ts:109 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\renderer\features\translation\hooks\useTranslationEditorController.tsx:740 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\renderer\pages\AccountsPage.tsx:397 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\renderer\pages\AccountsPage.tsx:583 [@typescript-eslint/prefer-optional-chain] Prefer using an optional chain expression instead, as it's more concise and easier to read.
+src\renderer\pages\TermsPage.tsx:6 [@typescript-eslint/no-unused-vars] 'TermStatus' is defined but never used. Allowed unused vars must match /^_/u.
+src\renderer\pages\TermsPage.tsx:6 [@typescript-eslint/no-unused-vars] 'TermType' is defined but never used. Allowed unused vars must match /^_/u.
+src\renderer\routing\translation-route-resolver.ts:24 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\renderer\stores\notification-store.ts:95 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\renderer\utils\startup-ai-readiness.ts:59 [@typescript-eslint/no-non-null-assertion] Forbidden non-null assertion.
+src\renderer\utils\startup-ai-readiness.ts:143 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\renderer\utils\translate-preflight.ts:70 [@typescript-eslint/no-non-null-assertion] Forbidden non-null assertion.
+src\shared\constants\project-style-config.ts:24 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\shared\constants\project-style-config.ts:56 [@typescript-eslint/no-unnecessary-type-conversion] Passing a string to String() does not change the type or value of the string.
+src\shared\constants\translation-prompt-policy\script-typography.ts:35 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, comparison is always true, since `"ascii" === "ascii"` is true.
+src\shared\constants\translation-prompt-policy\script-typography.ts:53 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, comparison is always true, since `"thai" === "thai"` is true.
+src\shared\constants\translation-prompt-policy\source-policies.ts:127 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\shared\constants\translation-prompt-policy\source-policies.ts:132 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\shared\constants\translation-prompt-policy\target-policies.ts:78 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\shared\constants\translation-prompt-policy\target-policies.ts:81 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, value is always truthy.
+src\shared\schemas\bootstrap.ts:15 [@typescript-eslint/no-base-to-string] 'raw' will use Object's default stringification format ('[object Object]') when stringified.
+src\shared\schemas\bootstrap.ts:17 [@typescript-eslint/no-base-to-string] 'raw' will use Object's default stringification format ('[object Object]') when stringified.
+src\shared\utils\provider-response-classifier.ts:119 [@typescript-eslint/no-non-null-assertion] Forbidden non-null assertion.
+src\shared\utils\provider-response-classifier.ts:119 [@typescript-eslint/no-unnecessary-type-assertion] This assertion is unnecessary since it does not change the type of the expression.
+src\shared\utils\provider-response-classifier.ts:135 [@typescript-eslint/no-unnecessary-condition] Unnecessary conditional, expected left-hand side of `??` operator to be possibly null or undefined.
+src\shared\utils\provider-response-classifier.ts:135 [@typescript-eslint/non-nullable-type-assertion-style] Use a ! assertion to more succinctly remove null and undefined from the type.

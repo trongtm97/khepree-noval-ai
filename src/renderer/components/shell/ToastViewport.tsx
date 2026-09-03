@@ -19,6 +19,7 @@ export function ToastViewport({
   const t = useT();
   const navigate = useNavigate();
   const allItems = useNotificationStore((s) => s.items);
+  const dismissToast = useNotificationStore((s) => s.dismissToast);
   const markRead = useNotificationStore((s) => s.markRead);
   const toasts = useMemo(() => allItems.filter((i) => i.toast), [allItems]);
   const timersRef = useRef<Map<string, number>>(new Map());
@@ -40,11 +41,11 @@ export function ToastViewport({
       const duration = resolveToastDurationMs(item.kind, item.toastDurationMs);
       const timerId = window.setTimeout(() => {
         timers.delete(item.id);
-        markRead(item.id);
+        dismissToast(item.id);
       }, duration);
       timers.set(item.id, timerId);
     }
-  }, [toasts, markRead]);
+  }, [toasts, dismissToast]);
 
   useEffect(() => {
     const timers = timersRef.current;
@@ -119,7 +120,7 @@ export function ToastViewport({
           <IconButton
             label={t('actions.close')}
             onClick={() => {
-              markRead(item.id);
+              dismissToast(item.id);
             }}
           >
             <X size={14} />

@@ -44,7 +44,7 @@ export function KhepreePlanCatalog({ plans, busy = false, onUpgrade }: KhepreePl
               type="button"
               variant="primary"
               disabled={busy}
-              onClick={() => onUpgrade(plan.planId)}
+              onClick={() => { onUpgrade(plan.planId); }}
             >
               {t('khepree.plans.upgradeAction')}
             </Button>

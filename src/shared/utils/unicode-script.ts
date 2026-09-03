@@ -16,7 +16,7 @@ export type ScriptBucket =
   | 'Greek'
   | 'Other';
 
-const SCRIPT_CLASSIFIERS: Array<{ bucket: ScriptBucket; re: RegExp }> = [
+const SCRIPT_CLASSIFIERS: { bucket: ScriptBucket; re: RegExp }[] = [
   { bucket: 'Han', re: /\p{Script=Han}/u },
   { bucket: 'Hiragana', re: /\p{Script=Hiragana}/u },
   { bucket: 'Katakana', re: /\p{Script=Katakana}/u },

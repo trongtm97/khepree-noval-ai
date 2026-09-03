@@ -25,7 +25,7 @@ async function seedVerifiedNotebook(
     status: 'ready',
     instructions_hash: 'hash',
   });
-  db.driveSyncState.patch(projectId, {
+  db.knowledgeSyncState.patch(projectId, {
     pendingKnowledgeVersion: version,
     pendingSyncNonce: nonce,
     versionProbeStatus: 'pending',
@@ -220,7 +220,7 @@ describe('Notebook Hot Memory (structured SQLite deltas)', () => {
     expect(sync.buildActiveHotMemoryText(projectId, { anchorChapter: 450 })).toContain('王林');
 
     // CONTENT_CURRENT probe clears hot
-    db.driveSyncState.patch(projectId, {
+    db.knowledgeSyncState.patch(projectId, {
       pendingKnowledgeVersion: 2,
       pendingSyncNonce: 'AABB0002',
       versionProbeStatus: 'pending',

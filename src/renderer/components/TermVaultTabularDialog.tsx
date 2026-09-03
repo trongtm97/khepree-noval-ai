@@ -254,7 +254,7 @@ export function TermVaultTabularDialog({
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Select
                 value={rowFilter}
-                onChange={(e) => setRowFilter(e.target.value as RowFilter)}
+                onChange={(e) => { setRowFilter(e.target.value as RowFilter); }}
                 aria-label={t('tabular.filterRows')}
               >
                 <option value="all">{t('tabular.filterAll')}</option>
@@ -265,7 +265,7 @@ export function TermVaultTabularDialog({
               <Select
                 value={duplicateStrategy}
                 onChange={(e) =>
-                  setDuplicateStrategy(e.target.value as TermTabularDuplicateStrategy)
+                  { setDuplicateStrategy(e.target.value as TermTabularDuplicateStrategy); }
                 }
                 aria-label={t('terms.tabularDuplicateStrategy')}
               >
@@ -277,7 +277,7 @@ export function TermVaultTabularDialog({
               </Select>
               <Select
                 value={importMode}
-                onChange={(e) => setImportMode(e.target.value as TabularImportMode)}
+                onChange={(e) => { setImportMode(e.target.value as TabularImportMode); }}
                 aria-label={t('tabular.importMode')}
               >
                 <option value="IMPORT_VALID_ONLY">{t('tabular.modeValidOnly')}</option>
@@ -288,7 +288,7 @@ export function TermVaultTabularDialog({
               <input
                 type="checkbox"
                 checked={allowElevatedStatus}
-                onChange={(e) => setAllowElevatedStatus(e.target.checked)}
+                onChange={(e) => { setAllowElevatedStatus(e.target.checked); }}
               />
               {t('terms.tabularAllowElevated')}
             </label>
@@ -316,8 +316,8 @@ export function TermVaultTabularDialog({
                     <tr key={row.rowIndex}>
                       <td>{row.rowIndex}</td>
                       <td>{row.status}</td>
-                      <td>{row.data.source_text ?? '—'}</td>
-                      <td>{row.data.target_text ?? '—'}</td>
+                      <td>{row.data.source_text || '—'}</td>
+                      <td>{row.data.target_text || '—'}</td>
                       <td>{row.messages.join('; ') || '—'}</td>
                     </tr>
                   ))}
@@ -336,12 +336,12 @@ export function TermVaultTabularDialog({
         cancelLabel={t('actions.cancel')}
         busy={busy}
         onConfirm={() => void runExport()}
-        onCancel={() => setExportOpen(false)}
+        onCancel={() => { setExportOpen(false); }}
       >
         <div style={{ display: 'grid', gap: 12, marginBottom: 12 }}>
           <Select
             value={exportScope}
-            onChange={(e) => setExportScope(e.target.value as TermTabularExportScope)}
+            onChange={(e) => { setExportScope(e.target.value as TermTabularExportScope); }}
             aria-label={t('terms.tabularExportScope')}
           >
             {TERM_TABULAR_EXPORT_SCOPES.map((scope) => (
@@ -352,7 +352,7 @@ export function TermVaultTabularDialog({
           </Select>
           <Select
             value={exportFormat}
-            onChange={(e) => setExportFormat(e.target.value as TabularFormat)}
+            onChange={(e) => { setExportFormat(e.target.value as TabularFormat); }}
             aria-label={t('terms.tabularExportFormat')}
           >
             <option value="xlsx">XLSX</option>
@@ -370,7 +370,7 @@ export function TermVaultTabularDialog({
           ref={menuRef}
           variant="secondary"
           disabled={busy}
-          onClick={() => setMenuOpen((o) => !o)}
+          onClick={() => { setMenuOpen((o) => !o); }}
         >
           {t('terms.importExportMenu')}
           <ChevronDown size={14} style={{ marginLeft: 4 }} aria-hidden />
@@ -467,7 +467,7 @@ export function TermVaultTabularDialog({
       <Button variant="secondary" disabled={busy} onClick={() => void startImport()}>
         {t('terms.tabularImport')}
       </Button>
-      <Button variant="secondary" disabled={busy} onClick={() => setExportOpen(true)}>
+      <Button variant="secondary" disabled={busy} onClick={() => { setExportOpen(true); }}>
         {t('terms.tabularExport')}
       </Button>
       <Button variant="ghost" disabled={busy} onClick={() => void downloadTemplate()}>
