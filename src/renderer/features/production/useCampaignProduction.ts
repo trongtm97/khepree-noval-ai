@@ -15,7 +15,7 @@ export function useCampaignList(pollMs = 8000) {
   const refresh = useCallback(async () => {
     try {
       const res = await window.khepreeNovelAI.translationCampaign.list();
-      setCampaigns(res.campaigns);
+      setCampaigns(Array.isArray(res.campaigns) ? res.campaigns : []);
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'list_failed');

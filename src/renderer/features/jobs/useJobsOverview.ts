@@ -89,13 +89,17 @@ export function useJobsOverview(): JobsOverviewData {
       results;
 
     if (projectResult.status === 'fulfilled') {
-      setProjects(projectResult.value.projects);
+      setProjects(
+        Array.isArray(projectResult.value.projects) ? projectResult.value.projects : [],
+      );
     }
     if (accountResult.status === 'fulfilled') {
-      setAccounts(accountResult.value.accounts);
+      setAccounts(
+        Array.isArray(accountResult.value.accounts) ? accountResult.value.accounts : [],
+      );
     }
     if (jobResult.status === 'fulfilled') {
-      setJobs(jobResult.value.jobs);
+      setJobs(Array.isArray(jobResult.value.jobs) ? jobResult.value.jobs : []);
     }
     if (status.status === 'fulfilled') {
       setScheduler({
@@ -108,14 +112,17 @@ export function useJobsOverview(): JobsOverviewData {
       });
     }
     if (workerResult.status === 'fulfilled') {
-      setWorkers(workerResult.value.workers);
+      setWorkers(
+        Array.isArray(workerResult.value.workers) ? workerResult.value.workers : [],
+      );
     }
     if (routingResult.status === 'fulfilled') {
       setAiPreference(routingResult.value.aiPreference);
     }
     if (aiStatusResult.status === 'fulfilled') {
+      const health = aiStatusResult.value.providerHealth;
       setAiReadyProviders(
-        aiStatusResult.value.providerHealth.filter((row) => row.ok).length,
+        Array.isArray(health) ? health.filter((row) => row.ok).length : 0,
       );
     }
   }, [t]);

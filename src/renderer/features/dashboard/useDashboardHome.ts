@@ -32,11 +32,17 @@ export function useDashboardHome() {
       window.khepreeNovelAI.attentionInbox.list(),
     ]);
     if (campRes.status === 'fulfilled') {
-      setCampaigns(campRes.value.campaigns);
+      setCampaigns(
+        Array.isArray(campRes.value.campaigns) ? campRes.value.campaigns : [],
+      );
     }
     if (attnRes.status === 'fulfilled') {
-      setAttentionItems(attnRes.value.items);
-      setAttentionOpenCount(attnRes.value.openCount);
+      setAttentionItems(
+        Array.isArray(attnRes.value.items) ? attnRes.value.items : [],
+      );
+      setAttentionOpenCount(
+        typeof attnRes.value.openCount === 'number' ? attnRes.value.openCount : 0,
+      );
     }
   }, []);
 

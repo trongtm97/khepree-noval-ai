@@ -348,9 +348,10 @@ export function StorageSettingsPanel() {
             ) : null}
 
             <SettingsDisclosure
-              title={t('settings.storageBackupAdvanced')}
-              description={t('settings.storageRetentionAdvancedHelp')}
+              title={t('settings.advancedSection')}
+              description={t('settings.advancedSectionHelp')}
             >
+              <p className="field-help muted">{t('settings.storageRetentionAdvancedHelp')}</p>
               <div className="form-row" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
                 <label>
                   {t('settings.storageRetentionDaily')}
@@ -442,8 +443,12 @@ export function StorageSettingsPanel() {
         </Button>
       </SettingsSection>
 
-      <SettingsDisclosure title={t('settings.storageRestoreSection')} defaultOpen={false}>
-        <p className="muted">{t('portability.restoreHint')}</p>
+      <SettingsDisclosure
+        title={t('settings.storageRestoreSection')}
+        description={t('settings.advancedSectionHelp')}
+        defaultOpen={false}
+      >
+        <p className="field-help muted">{t('portability.restoreHint')}</p>
         <div className="btn-row">
           <Button variant="secondary" disabled={busy} onClick={() => { void pickRestoreFile(); }}>
             {t('settings.storageRestorePick')}

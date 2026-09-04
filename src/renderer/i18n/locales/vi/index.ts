@@ -45,7 +45,7 @@ export const vi = {
   librarySearch: {
     title: 'Tìm trong thư viện',
     subtitle:
-      'Tìm truyện, chương hoặc nội dung bạn đã lưu trên máy. Không gửi dữ liệu lên internet.',
+      'Tìm truyện, chương hoặc đoạn đã lưu trên máy. Bấm kết quả để mở. Không gửi dữ liệu lên mạng.',
     howto:
       'Gõ tên truyện, tên chương hoặc cụm từ trong nội dung. Bấm một kết quả để mở ngay.',
     placeholder: 'Nhập từ khóa… (ví dụ: tên truyện hoặc số chương)',
@@ -121,7 +121,7 @@ export const vi = {
     locked: 'đã khóa',
     sharedKnowledgeTitle: 'Kiến thức dùng chung',
     sharedKnowledgeHelp:
-      'Đây là thông tin thế giới dùng chung cho mọi tập trong bộ (bối cảnh, lực lượng, quy tắc…). Dùng khi dịch và khi đồng bộ Notebook của từng truyện đã liên kết.',
+      'Thông tin ở đây giúp các truyện trong cùng bộ giữ nhân vật, thuật ngữ và văn phong nhất quán.',
     styleRulesTitle: 'Quy tắc văn phong',
     styleRulesHelp:
       'Giúp các tập trong cùng bộ giữ cách dịch và cách xưng hô nhất quán. Không bắt buộc — chỉ thêm khi cần thống nhất.',
@@ -498,7 +498,7 @@ export const vi = {
   aiMemory: {
     title: 'Bộ nhớ AI',
     subtitle:
-      'Giúp AI nhớ tên nhân vật, thuật ngữ, quan hệ và bối cảnh xuyên suốt truyện.',
+      'Giúp AI nhớ tên nhân vật, thuật ngữ, quan hệ và bối cảnh. Notebook đã liên kết được dùng lại — không tạo mới.',
     noProject: 'Chưa chọn dự án.',
     notebook: 'Notebook',
     translationNotebook: 'Translation Notebook',
@@ -519,8 +519,8 @@ export const vi = {
       'NovelTrans sẽ tiếp tục sử dụng Notebook này cho truyện. Không tạo Notebook mới.',
     openOtherNotebook: 'Mở Notebook khác',
     notebookUnnamed: 'Notebook chưa đặt tên',
-    notebookLocallyBound: 'Đang gắn cục bộ',
-    notebookInactiveLocal: 'Không còn dùng cục bộ',
+    notebookLocallyBound: 'Đã liên kết trên máy này',
+    notebookInactiveLocal: 'Không còn dùng trên máy này',
     notebookLastUsed: 'Dùng gần nhất',
     notebookUpdated: 'Cập nhật',
     google: 'Google',
@@ -632,7 +632,7 @@ export const vi = {
     fullResearchPending: 'Chưa chạy phân tích toàn truyện (tùy chọn)',
     reanalyzeFull: 'Phân tích lại',
     lookupSection: 'Tra cứu toàn truyện',
-    lookupHint: 'Hỏi Research Notebook — kết quả chỉ là gợi ý, xác minh trước khi lưu SQLite.',
+    lookupHint: 'Hỏi Research Notebook — kết quả chỉ là gợi ý; hãy xác minh trước khi lưu.',
     legacyDriveNotice:
       'Khepree Novel AI không còn cần Google Drive. Dữ liệu của bạn vẫn được lưu trên máy.',
     legacyDriveDismiss: 'Đã hiểu',
@@ -1290,7 +1290,7 @@ export const vi = {
   production: {
     title: 'Trung tâm sản xuất',
     subtitle:
-      'Quản lý các bộ truyện đang được phần mềm xử lý tự động, hàng đợi chương, và việc cần bạn xem.',
+      'Dùng khi theo dõi nhiều chương hoặc job cùng lúc — chiến dịch, hàng đợi, và việc cần bạn xem.',
     tabsAria: 'Các khu vực trung tâm sản xuất',
     tabCampaigns: 'Chiến dịch',
     tabCampaignsHelp: 'Các bộ truyện đang được xử lý tự động.',
@@ -1757,12 +1757,17 @@ export const vi = {
   },
   settings: {
     title: 'Cài đặt',
-    subtitle: 'Tùy chỉnh giao diện và hành vi ứng dụng.',
+    subtitle:
+      'Bắt đầu ở tab Chung hoặc Language. Tab Nâng cao tùy chọn — chỉ mở khi cần.',
     general: 'Chung',
     languageTabLabel: 'Language',
     ai: 'AI',
     storage: 'Lưu trữ',
     saved: 'Đã lưu',
+    basicSection: 'Cơ bản',
+    basicSectionHelp: 'Giao diện và cấu hình khuyên dùng — đủ cho hầu hết người dùng.',
+    advancedSection: 'Nâng cao',
+    advancedSectionHelp: 'Tùy chọn ít dùng. Chỉ mở khi cần chỉnh chi tiết.',
     recommendedTitle: 'Cài đặt khuyên dùng',
     recommendedBody:
       'Một nút đặt giao diện và hiệu năng dịch về cấu hình an toàn, dễ dùng. Không đổi ngôn ngữ dịch, thư mục xuất hay tài khoản.',

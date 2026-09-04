@@ -477,7 +477,7 @@ export function AppShell({ children, appInfo }: AppShellProps) {
           <p className="muted">{t('notifications.empty')}</p>
         ) : (
           <div style={{ display: 'grid', gap: '0.5rem' }}>
-            {notifications.map((n) => (
+            {(Array.isArray(notifications) ? notifications : []).map((n) => (
               <div
                 key={n.id}
                 className={`nt-notif-item ${n.read ? '' : 'nt-notif-item--unread'}`}

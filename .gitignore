@@ -42,6 +42,8 @@ logs/
 
 # Screenshots from automation
 screenshots/
+docs/settings-novice-screenshots/
+docs/v5-electron-smoke/
 
 # Temp
 tmp/

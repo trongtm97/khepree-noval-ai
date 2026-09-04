@@ -194,6 +194,18 @@ export class KhepreeAccessService {
     const hasRefresh = this.sessionStore.hasRefreshToken();
     this.hasRefreshCredential = hasRefresh;
     if (!hasRefresh) {
+      // Unpackaged UI smoke only — never in production packages.
+      if (process.env.KHEPREE_UI_SMOKE_BYPASS === '1' && !app.isPackaged) {
+        this.status = 'FREE';
+        this.entitlement = 'none';
+        this.features = {};
+        this.currentLease = null;
+        this.lastError = null;
+        this.loginPhase = null;
+        logger.warn('Khepree UI smoke bypass active — FREE workspace without sign-in');
+        this.emit();
+        return this.getPublicState();
+      }
       this.status = 'AUTH_REQUIRED';
       this.loginPhase = 'idle';
       this.emit();

@@ -38,7 +38,7 @@ export const en: LocaleMessages = {
   librarySearch: {
     title: 'Search your library',
     subtitle:
-      'Find stories, chapters, or text you already saved on this computer. Nothing is sent online.',
+      'Search stories, chapters, or saved text on this device. Click a result to open it. Nothing is sent online.',
     howto:
       'Type a story name, chapter title, or a phrase. Click a result to open it.',
     placeholder: 'Enter keywords… (story name or chapter number)',
@@ -115,7 +115,7 @@ export const en: LocaleMessages = {
     locked: 'locked',
     sharedKnowledgeTitle: 'Shared knowledge',
     sharedKnowledgeHelp:
-      'World facts shared by every volume in this series (setting, factions, rules…). Used in translation and when syncing each story’s linked Notebook.',
+      'Info here helps stories in the same series keep characters, terms, and style consistent.',
     styleRulesTitle: 'Style rules',
     styleRulesHelp:
       'Keeps translation tone and pronouns consistent across volumes. Optional — add only when you need consistency.',
@@ -492,7 +492,7 @@ export const en: LocaleMessages = {
   aiMemory: {
     title: 'AI Memory',
     subtitle:
-      'Helps AI remember character names, terms, relationships, and story context across the novel.',
+      'Helps AI remember characters, terms, relationships, and context. A linked Notebook is reused — not created again.',
     noProject: 'No project selected.',
     notebook: 'Notebook',
     translationNotebook: 'Translation Notebook',
@@ -514,8 +514,8 @@ export const en: LocaleMessages = {
       'NovelTrans will keep using this Notebook for the story. No new Notebook will be created.',
     openOtherNotebook: 'Open other Notebook',
     notebookUnnamed: 'Unnamed Notebook',
-    notebookLocallyBound: 'Locally bound',
-    notebookInactiveLocal: 'Inactive locally',
+    notebookLocallyBound: 'Linked on this device',
+    notebookInactiveLocal: 'Not used on this device',
     notebookLastUsed: 'Last used',
     notebookUpdated: 'Updated',
     google: 'Google',
@@ -629,7 +629,7 @@ export const en: LocaleMessages = {
     fullResearchPending: 'Full-novel analysis not run yet (optional)',
     reanalyzeFull: 'Re-analyze',
     lookupSection: 'Full-novel lookup',
-    lookupHint: 'Ask Research Notebook — results are suggestions only; verify before saving to SQLite.',
+    lookupHint: 'Ask Research Notebook — results are suggestions only; verify before saving.',
     legacyDriveNotice:
       'Khepree Novel AI no longer needs Google Drive. Your data stays on this device.',
     legacyDriveDismiss: 'Got it',
@@ -1283,7 +1283,7 @@ export const en: LocaleMessages = {
   production: {
     title: 'Production Center',
     subtitle:
-      'Manage stories being processed automatically, the chapter queue, and items that need you.',
+      'Use when tracking many chapters or jobs at once — campaigns, the queue, and items that need you.',
     tabsAria: 'Production center areas',
     tabCampaigns: 'Campaigns',
     tabCampaignsHelp: 'Stories the app is processing automatically.',
@@ -1752,12 +1752,17 @@ export const en: LocaleMessages = {
   },
   settings: {
     title: 'Settings',
-    subtitle: 'Customize appearance and app behavior.',
+    subtitle:
+      'Start on General or Language. Advanced is optional — open only when you need it.',
     general: 'General',
     languageTabLabel: 'Language',
     ai: 'AI',
     storage: 'Storage',
     saved: 'Saved',
+    basicSection: 'Basic',
+    basicSectionHelp: 'Appearance and recommended defaults — enough for most users.',
+    advancedSection: 'Advanced',
+    advancedSectionHelp: 'Less-used options. Open only when you need fine control.',
     recommendedTitle: 'Recommended settings',
     recommendedBody:
       'One click sets appearance and translation throughput to a safe, easy default. Does not change target language, export folders, or accounts.',

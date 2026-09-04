@@ -22,7 +22,9 @@ export class PathsService {
   private paths: AppPaths | null = null;
 
   initialize(): AppPaths {
-    const appData = app.getPath('appData');
+    // Isolated smoke/dev roots: KHEPREE_APPDATA_ROOT=<parent of KhepreeNovelAI>
+    const override = process.env.KHEPREE_APPDATA_ROOT?.trim();
+    const appData = override && override.length > 0 ? override : app.getPath('appData');
     this.paths = resolveAppPaths(appData);
     this.ensureDirectories();
     return this.paths;

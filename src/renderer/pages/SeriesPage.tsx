@@ -460,8 +460,12 @@ export function SeriesPage() {
           >
             <h3 id="series-shared-knowledge-heading">{t('series.sharedKnowledgeTitle')}</h3>
             <p className="field-help">{t('series.sharedKnowledgeHelp')}</p>
-            <p className="field-help muted">{t('series.whenEffective')}</p>
-            <p className="field-help muted">{t('series.storyOverrideNote')}</p>
+            <details className="series-tech-details">
+              <summary>{t('errors.technicalDetails')}</summary>
+              <p className="field-help muted">{t('series.whenEffective')}</p>
+              <p className="field-help muted">{t('series.storyOverrideNote')}</p>
+              <p className="field-help muted">{t('series.notebookNote')}</p>
+            </details>
 
             <div className="series-world-rows">
               {worldRows.map((row, index) => (

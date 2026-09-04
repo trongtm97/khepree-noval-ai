@@ -133,7 +133,12 @@ export function TranslationSettingsPanel(props: {
     <>
       <TranslationRecipePanel onLoadError={props.onLoadError} />
 
-      <SettingsDisclosure title={t('settings.translationThroughputTitle')} defaultOpen={false}>
+      <SettingsDisclosure
+        title={t('settings.advancedSection')}
+        description={t('settings.advancedSectionHelp')}
+        defaultOpen={false}
+      >
+      <p className="field-help muted">{t('settings.translationThroughputTitle')}</p>
       <SettingsSection
         title={t('settings.translationAutomationTitle')}
         description={t('settings.translationAutomationBody')}

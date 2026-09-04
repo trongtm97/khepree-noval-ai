@@ -53,9 +53,14 @@ export function GeneralSettingsPanel() {
   return (
     <>
       <SettingsSection
-        title={t('settings.recommendedTitle')}
-        description={t('settings.recommendedBody')}
+        title={t('settings.basicSection')}
+        description={t('settings.basicSectionHelp')}
       >
+        <p className="field-help">
+          <strong>{t('settings.recommendedTitle')}</strong>
+          {' — '}
+          {t('settings.recommendedBody')}
+        </p>
         <Button
           variant="secondary"
           disabled={applyingRecommended}
@@ -65,9 +70,7 @@ export function GeneralSettingsPanel() {
         >
           {t('settings.recommendedApply')}
         </Button>
-      </SettingsSection>
 
-      <SettingsSection title={t('settings.appearanceSection')}>
         <SettingsGroup>
           <SettingsRow
             label={t('settings.theme')}

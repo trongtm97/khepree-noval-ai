@@ -99,7 +99,7 @@ export function AiSettingsPanel({
             </SettingsStatus>
             {status.providerHealth.length > 0 ? (
               <ul className="settings-ai-health-list">
-                {status.providerHealth.map((row) => (
+                {(Array.isArray(status.providerHealth) ? status.providerHealth : []).map((row) => (
                   <li key={row.preference}>
                     <span>{t(healthLabelKey(row.preference))}</span>
                     <span className={row.ok ? 'settings-ai-health-ok' : 'settings-ai-health-bad'}>
@@ -175,7 +175,12 @@ export function AiSettingsPanel({
         </div>
 
         {result?.outcome === 'failed' ? (
-          <SettingsDisclosure title={t('settings.aiDetails')} defaultOpen>
+          <SettingsDisclosure
+            title={t('settings.advancedSection')}
+            description={t('settings.advancedSectionHelp')}
+            defaultOpen
+          >
+            <p className="field-help muted">{t('errors.technicalDetails')}</p>
             <pre
               className="muted"
               style={{

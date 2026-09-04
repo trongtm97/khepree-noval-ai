@@ -74,9 +74,9 @@ export function AttentionInboxPanel({
   const refresh = useCallback(async () => {
     try {
       const res = await window.khepreeNovelAI.attentionInbox.list();
-      setItems(res.items);
-      setOpenCount(res.openCount);
-      onOpenCountChange?.(res.openCount);
+      setItems(Array.isArray(res.items) ? res.items : []);
+      setOpenCount(typeof res.openCount === 'number' ? res.openCount : 0);
+      onOpenCountChange?.(typeof res.openCount === 'number' ? res.openCount : 0);
     } catch {
       setItems([]);
       setOpenCount(0);

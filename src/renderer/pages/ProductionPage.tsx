@@ -91,7 +91,7 @@ export function ProductionPage() {
   );
 
   const accountOrder = useMemo(
-    () => new Map(overview.accounts.map((a, i) => [a.id, i])),
+    () => new Map((overview.accounts ?? []).map((a, i) => [a.id, i])),
     [overview.accounts],
   );
   const aiRoutingLabel = routingPreferenceLabel(overview.aiPreference, t);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ProjectScopedRedirect } from './components/routing/ProjectScopedRedirect';
@@ -156,7 +156,7 @@ export function App() {
     }
 
     return (
-      <BrowserRouter>
+      <HashRouter>
         <AppShell appInfo={appInfo}>
           <Routes>
             <Route path="/" element={<DashboardPage />} />
@@ -208,7 +208,7 @@ export function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppShell>
-      </BrowserRouter>
+      </HashRouter>
     );
   })();
 

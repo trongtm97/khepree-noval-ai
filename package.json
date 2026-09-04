@@ -86,7 +86,7 @@
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
-    "@khepree/sdk": "file:../KHEPREE/packages/sdk",
+    "@khepree/sdk": "file:vendor/@khepree/sdk",
     "@tanstack/react-virtual": "^3.14.10",
     "better-sqlite3": "13.0.3",
     "chokidar": "^4.0.3",

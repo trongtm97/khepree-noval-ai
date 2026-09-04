@@ -22,7 +22,7 @@
       "@shared/*": ["src/shared/*"],
       "@renderer/*": ["src/renderer/*"],
       "@main/*": ["src/main/*"],
-      "@khepree/sdk": ["../KHEPREE/packages/sdk/src/index.ts"]
+      "@khepree/sdk": ["vendor/@khepree/sdk/src/index.ts"]
     }
   },
   "include": [

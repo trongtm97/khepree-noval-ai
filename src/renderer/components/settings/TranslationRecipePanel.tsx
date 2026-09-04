@@ -228,7 +228,11 @@ export function TranslationRecipePanel(props: {
         </SettingsGroup>
       ) : null}
 
-      <SettingsDisclosure title={t('settings.recipeAdvancedTitle')} defaultOpen={false}>
+      <SettingsDisclosure
+        title={t('settings.recipeAdvancedTitle')}
+        description={t('settings.advancedSectionHelp')}
+        defaultOpen={false}
+      >
         <p className="muted">{t('settings.recipeAdvancedBody')}</p>
         {selected ? (
           <SettingsGroup>

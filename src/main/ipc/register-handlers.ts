@@ -150,6 +150,9 @@ import { getAccountWorkerService } from '../services/account-worker-singleton';
 import type { GoogleAccountDetail } from '../db/repositories/google-account-repository';
 import { toGoogleAccountDto } from '../services/account-dto';
 import { getAccountAvailabilityService } from '../services/account-availability-service';
+import { getLibrarySearchService } from '../library-search/library-search-service';
+import { getAttentionInboxService } from '../services/attention-inbox-service';
+import { getFeatureIntroService } from '../services/feature-intro-service';
 import { getDatabase } from '../db/connection';
 import { toProjectDto, toProjectDtoFromDb } from '../services/project-dto';
 import {
@@ -3202,7 +3205,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.ATTENTION_INBOX_LIST,
     createIpcHandlerNoArg(() => {
-      const { getAttentionInboxService } = require('../services/attention-inbox-service') as typeof import('../services/attention-inbox-service');
       const svc = getAttentionInboxService(getDatabase());
       return AttentionInboxListResponseSchema.parse({
         items: svc.listOpen(100),
@@ -3214,7 +3216,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.ATTENTION_INBOX_COUNT,
     createIpcHandlerNoArg(() => {
-      const { getAttentionInboxService } = require('../services/attention-inbox-service') as typeof import('../services/attention-inbox-service');
       return AttentionInboxCountResponseSchema.parse({
         openCount: getAttentionInboxService(getDatabase()).countOpen(),
       });
@@ -3226,7 +3227,6 @@ export function registerIpcHandlers(): void {
     createIpcHandler(
       AttentionInboxActRequestSchema,
       (request) => {
-        const { getAttentionInboxService } = require('../services/attention-inbox-service') as typeof import('../services/attention-inbox-service');
         const item = getAttentionInboxService(getDatabase()).act(
           request.itemId,
           request.action,
@@ -3446,7 +3446,6 @@ export function registerIpcHandlers(): void {
     createIpcHandler(
       AttentionInboxBulkRetryRequestSchema,
       (request) => {
-        const { getAttentionInboxService } = require('../services/attention-inbox-service') as typeof import('../services/attention-inbox-service');
         return getAttentionInboxService(getDatabase()).bulkRetry({
           itemIds: request.itemIds,
           allRetryable: request.allRetryable,
@@ -3458,7 +3457,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.ATTENTION_INBOX_RECONCILE,
     createIpcHandlerNoArg(() => {
-      const { getAttentionInboxService } = require('../services/attention-inbox-service') as typeof import('../services/attention-inbox-service');
       return getAttentionInboxService(getDatabase()).reconcile();
     }),
   );
@@ -3468,23 +3466,17 @@ export function registerIpcHandlers(): void {
     createIpcHandler(
       LibrarySearchQueryInputSchema,
       (request) => {
-        const { getLibrarySearchService } =
-          require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
         return getLibrarySearchService(getDatabase()).query(request);
       },
     ),
   );
 
   ipcMain.handle(IPC_CHANNELS.LIBRARY_SEARCH_CANCEL, createIpcHandlerNoArg(() => {
-    const { getLibrarySearchService } =
-      require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
     getLibrarySearchService(getDatabase()).cancelQuery();
     return { ok: true };
   }));
 
   ipcMain.handle(IPC_CHANNELS.LIBRARY_SEARCH_GET_SETTINGS, createIpcHandlerNoArg(() => {
-    const { getLibrarySearchService } =
-      require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
     return LibrarySearchSettingsSchema.parse(
       getLibrarySearchService(getDatabase()).getSettings(),
     );
@@ -3495,8 +3487,6 @@ export function registerIpcHandlers(): void {
     createIpcHandler(
       LibrarySearchSettingsSchema.partial(),
       (request) => {
-        const { getLibrarySearchService } =
-          require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
         return LibrarySearchSettingsSchema.parse(
           getLibrarySearchService(getDatabase()).updateSettings(request),
         );
@@ -3507,8 +3497,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.LIBRARY_SEARCH_START_REINDEX,
     createIpcHandler(z.object({ force: z.boolean().optional() }).optional(), async (request) => {
-      const { getLibrarySearchService } =
-        require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
       const progress = await getLibrarySearchService(getDatabase()).startReindex(
         request?.force ?? false,
       );
@@ -3517,22 +3505,16 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(IPC_CHANNELS.LIBRARY_SEARCH_CANCEL_REINDEX, createIpcHandlerNoArg(() => {
-    const { getLibrarySearchService } =
-      require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
     const progress = getLibrarySearchService(getDatabase()).cancelReindex();
     return progress ? LibrarySearchIndexProgressSchema.parse(progress) : null;
   }));
 
   ipcMain.handle(IPC_CHANNELS.LIBRARY_SEARCH_GET_REINDEX_PROGRESS, createIpcHandlerNoArg(() => {
-    const { getLibrarySearchService } =
-      require('../library-search/library-search-service') as typeof import('../library-search/library-search-service');
     const progress = getLibrarySearchService(getDatabase()).getReindexProgress();
     return progress ? LibrarySearchIndexProgressSchema.parse(progress) : null;
   }));
 
   ipcMain.handle(IPC_CHANNELS.FEATURE_INTRO_GET_STATE, createIpcHandlerNoArg(() => {
-    const { getFeatureIntroService } =
-      require('../services/feature-intro-service') as typeof import('../services/feature-intro-service');
     return FeatureIntroStateSchema.parse(getFeatureIntroService(getDatabase()).getState());
   }));
 
@@ -3541,8 +3523,6 @@ export function registerIpcHandlers(): void {
     createIpcHandler(
       FeatureIntroDismissRequestSchema,
       (request) => {
-        const { getFeatureIntroService } =
-          require('../services/feature-intro-service') as typeof import('../services/feature-intro-service');
         return FeatureIntroStateSchema.parse(
           getFeatureIntroService(getDatabase()).dismissWhatsNew(request.mode),
         );
@@ -3555,8 +3535,6 @@ export function registerIpcHandlers(): void {
     createIpcHandler(
       FeatureIntroTourUpdateSchema,
       (request) => {
-        const { getFeatureIntroService } =
-          require('../services/feature-intro-service') as typeof import('../services/feature-intro-service');
         return FeatureIntroStateSchema.parse(
           getFeatureIntroService(getDatabase()).updateTour(request),
         );
