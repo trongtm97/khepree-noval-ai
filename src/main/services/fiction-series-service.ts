@@ -2,6 +2,8 @@ import type { DatabaseManager } from '../db/database-manager';
 import { getDatabase } from '../db/connection';
 import type { FictionSeriesRow } from '../db/repositories/fiction-series-repository';
 import type { TermScope, TermStatus, TermType } from '@shared/constants/term';
+import { NotebookKnowledgeBuilder } from '../notebook/knowledge-builder';
+import { getNotebookSyncService } from '../notebook/notebook-sync-service-singleton';
 
 export interface FictionSeriesDto {
   id: string;
@@ -229,7 +231,7 @@ export class FictionSeriesService {
           };
           let order = 0;
           for (const content of parsed.criticalRules ?? []) {
-            if (!content?.trim()) continue;
+            if (!content.trim()) continue;
             db.fictionSeries.upsertStyleRule({
               seriesId,
               ruleKind: 'critical',
@@ -238,7 +240,7 @@ export class FictionSeriesService {
             });
           }
           for (const content of parsed.rules ?? []) {
-            if (!content?.trim()) continue;
+            if (!content.trim()) continue;
             db.fictionSeries.upsertStyleRule({
               seriesId,
               ruleKind: 'style',
@@ -297,15 +299,15 @@ export class FictionSeriesService {
     kind: 'khepree-series-knowledge';
     series: FictionSeriesDto;
     volumes: FictionSeriesVolumeDto[];
-    terms: Array<{
+    terms: {
       id: string;
       scope: TermScope;
       sourceText: string;
       translations: string[];
       termType: string;
       locked: boolean;
-    }>;
-    styleRules: Array<{ kind: string; content: string }>;
+    }[];
+    styleRules: { kind: string; content: string }[];
     worldKnowledge: Record<string, unknown> | null;
   } {
     const db = this.getDb();
@@ -343,14 +345,130 @@ export class FictionSeriesService {
       worldKnowledge,
     };
   }
+
+  updateSeries(input: {
+    seriesId: string;
+    title?: string;
+    description?: string | null;
+    genre?: string | null;
+  }): FictionSeriesDto {
+    const db = this.getDb();
+    const row = db.fictionSeries.updateSeries(input.seriesId, {
+      title: input.title,
+      description: input.description,
+      genre: input.genre,
+    });
+    if (!row) throw new Error('SERIES_NOT_FOUND');
+    return toSeriesDto(db, row);
+  }
+
+  getWorldKnowledge(seriesId: string): {
+    worldKnowledge: Record<string, unknown>;
+    updatedAt: string | null;
+  } {
+    const db = this.getDb();
+    if (!db.fictionSeries.getSeriesById(seriesId)) throw new Error('SERIES_NOT_FOUND');
+    const world = db.fictionSeries.getWorldState(seriesId);
+    let worldKnowledge: Record<string, unknown> = {};
+    if (world?.world_knowledge_json) {
+      try {
+        worldKnowledge = JSON.parse(world.world_knowledge_json) as Record<string, unknown>;
+      } catch {
+        worldKnowledge = {};
+      }
+    }
+    return { worldKnowledge, updatedAt: world?.updated_at ?? null };
+  }
+
+  setWorldKnowledge(
+    seriesId: string,
+    worldKnowledge: Record<string, unknown>,
+  ): { worldKnowledge: Record<string, unknown>; updatedAt: string } {
+    const db = this.getDb();
+    if (!db.fictionSeries.getSeriesById(seriesId)) throw new Error('SERIES_NOT_FOUND');
+    const json = JSON.stringify(worldKnowledge);
+    const row = db.fictionSeries.setWorldKnowledgeJson(seriesId, json);
+    this.propagateSeriesKnowledgeDirty(seriesId, 'WORLD_KNOWLEDGE_CHANGED');
+    return {
+      worldKnowledge,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  listStyleRules(seriesId: string): {
+    id: string;
+    kind: string;
+    content: string;
+    sortOrder: number;
+  }[] {
+    const db = this.getDb();
+    if (!db.fictionSeries.getSeriesById(seriesId)) throw new Error('SERIES_NOT_FOUND');
+    return db.fictionSeries.listStyleRules(seriesId).map((r) => ({
+      id: r.id,
+      kind: r.rule_kind,
+      content: r.content,
+      sortOrder: r.sort_order,
+    }));
+  }
+
+  upsertStyleRule(input: {
+    seriesId: string;
+    id?: string;
+    kind: string;
+    content: string;
+    sortOrder?: number;
+  }): { id: string; kind: string; content: string; sortOrder: number } {
+    const db = this.getDb();
+    if (!db.fictionSeries.getSeriesById(input.seriesId)) throw new Error('SERIES_NOT_FOUND');
+    const row = db.fictionSeries.upsertStyleRule({
+      id: input.id,
+      seriesId: input.seriesId,
+      ruleKind: input.kind,
+      content: input.content.trim(),
+      sortOrder: input.sortOrder,
+    });
+    this.propagateSeriesKnowledgeDirty(input.seriesId, 'TRANSLATION_RULES_CHANGED');
+    return {
+      id: row.id,
+      kind: row.rule_kind,
+      content: row.content,
+      sortOrder: row.sort_order,
+    };
+  }
+
+  deleteStyleRule(input: { seriesId: string; ruleId: string }): { ok: true } {
+    const db = this.getDb();
+    const rules = db.fictionSeries.listStyleRules(input.seriesId);
+    if (!rules.some((r) => r.id === input.ruleId)) throw new Error('STYLE_RULE_NOT_FOUND');
+    db.fictionSeries.deleteStyleRule(input.ruleId);
+    this.propagateSeriesKnowledgeDirty(input.seriesId, 'TRANSLATION_RULES_CHANGED');
+    return { ok: true };
+  }
+
+  /**
+   * When shared series knowledge changes, rebuild Notebook world/rules for every volume.
+   * Each project keeps its own Notebook binding — only knowledge content is refreshed.
+   */
+  private propagateSeriesKnowledgeDirty(
+    seriesId: string,
+    event: 'WORLD_KNOWLEDGE_CHANGED' | 'TRANSLATION_RULES_CHANGED' | 'ALL',
+  ): void {
+    const db = this.getDb();
+    const volumes = db.fictionSeries.listVolumes(seriesId);
+    if (volumes.length === 0) return;
+    const builder = new NotebookKnowledgeBuilder(db);
+    const sync = getNotebookSyncService(db);
+    for (const volume of volumes) {
+      builder.rebuildAndTrack(volume.project_id);
+      sync.markDirty(volume.project_id, event);
+    }
+  }
 }
 
 let singleton: FictionSeriesService | null = null;
 
 export function getFictionSeriesService(): FictionSeriesService {
-  if (!singleton) {
-    singleton = new FictionSeriesService(() => getDatabase());
-  }
+  singleton ??= new FictionSeriesService(() => getDatabase());
   return singleton;
 }
 

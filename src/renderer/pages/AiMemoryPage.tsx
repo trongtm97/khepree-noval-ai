@@ -5,6 +5,7 @@ import type { NotebookDualHealthDto, NotebookHealthDto } from '@shared/schemas/n
 import { Button, Badge, ErrorPanel, ProgressBar } from '../components/ui';
 import { ProjectSectionHeader } from '../components/shell/ProjectSectionHeader';
 import { MemoryDetailDrawer } from '../features/ai-memory/MemoryDetailDrawer';
+import { NotebookDuplicateResolver } from '../features/ai-memory/NotebookDuplicateResolver';
 import type { CharacterDto, MemoryConflictDto, RelationshipDto, StoryStateDto } from '@shared/schemas/memory';
 import type { TermDto } from '@shared/schemas/term';
 import type { ProjectDto } from '@shared/schemas/import';
@@ -42,6 +43,7 @@ export function AiMemoryPage() {
   const projectId = paramProjectId || storeProjectId;
   const [dualHealth, setDualHealth] = useState<NotebookDualHealthDto | null>(null);
   const [health, setHealth] = useState<NotebookHealthDto | null>(null);
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
   const [bootstrap, setBootstrap] = useState<{
     status: string;
     throughChapter: number | null;
@@ -132,6 +134,12 @@ export function AiMemoryPage() {
     setStoryState(storyRes.storyState);
     setConflicts(conflictRes.conflicts);
     setProject(projectRes.project);
+    try {
+      const sync = await window.khepreeNovelAI.notebook.listSyncStatus({ projectId });
+      setSyncStatusMsg(sync.userMessage);
+    } catch {
+      setSyncStatusMsg(null);
+    }
   }, [projectId]);
 
   const changeWorker = async (nextAccountId: string) => {
@@ -476,6 +484,21 @@ export function AiMemoryPage() {
             : undefined
         }
       />
+
+      {projectId ? (
+        <NotebookDuplicateResolver
+          projectId={projectId}
+          onResolved={() => {
+            void refresh();
+          }}
+        />
+      ) : null}
+
+      {syncStatusMsg ? (
+        <p className="muted ai-memory-sync-status" role="status">
+          {syncStatusMsg}
+        </p>
+      ) : null}
 
       {showLegacyDriveNotice ? (
         <div className="banner banner-info ai-memory-legacy-drive" role="status">

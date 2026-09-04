@@ -14,6 +14,31 @@ import { Button, EmptyState, PageHeader, SearchInput, Select, Spinner } from '..
 
 const PAGE_SIZE = 25;
 
+function openActionKey(
+  entityType: LibrarySearchEntityType,
+): `librarySearch.open${string}` {
+  switch (entityType) {
+    case 'project':
+      return 'librarySearch.openProject';
+    case 'chapter':
+      return 'librarySearch.openChapter';
+    case 'term':
+      return 'librarySearch.openTerm';
+    case 'character':
+      return 'librarySearch.openCharacter';
+    case 'translation':
+      return 'librarySearch.openTranslation';
+    case 'qa_finding':
+      return 'librarySearch.openTranslation';
+    case 'series':
+      return 'librarySearch.openSeries';
+    case 'world':
+      return 'librarySearch.openWorld';
+    default:
+      return 'librarySearch.openResult';
+  }
+}
+
 export function LibrarySearchPage() {
   const t = useT();
   const navigate = useNavigate();
@@ -29,8 +54,8 @@ export function LibrarySearchPage() {
   const requestSeq = useRef(0);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 320);
-    return () => clearTimeout(timer);
+    const timer = setTimeout(() => { setDebouncedQuery(query.trim()); }, 320);
+    return () => { clearTimeout(timer); };
   }, [query]);
 
   useEffect(() => {
@@ -38,7 +63,7 @@ export function LibrarySearchPage() {
     void window.khepreeNovelAI.librarySearch.getReindexProgress().then((p) => {
       if (p) setReindex(p);
     });
-    return window.khepreeNovelAI.librarySearch.onReindexProgress((p) => setReindex(p));
+    return window.khepreeNovelAI.librarySearch.onReindexProgress((p) => { setReindex(p); });
   }, []);
 
   const runSearch = useCallback(async (q: string, nextOffset: number) => {
@@ -105,13 +130,13 @@ export function LibrarySearchPage() {
       <div className="library-search-toolbar">
         <SearchInput
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { setQuery(e.target.value); }}
           placeholder={t('librarySearch.placeholder')}
           aria-label={t('librarySearch.placeholder')}
         />
         <Select
           value={entityType}
-          onChange={(e) => setEntityType(e.target.value)}
+          onChange={(e) => { setEntityType(e.target.value); }}
           aria-label={t('librarySearch.filterType')}
         >
           <option value="">{t('librarySearch.allTypes')}</option>
@@ -193,7 +218,7 @@ export function LibrarySearchPage() {
       <ul className="library-search-results">
         {items.map((item) => (
           <li key={item.entityKey}>
-            <button type="button" className="library-search-result" onClick={() => openResult(item)}>
+            <button type="button" className="library-search-result" onClick={() => { openResult(item); }}>
               <span className="library-search-result-type">
                 {t(`librarySearch.type.${item.entityType}`)}
               </span>
@@ -205,6 +230,7 @@ export function LibrarySearchPage() {
                 <span className="library-search-result-meta">{item.seriesTitle}</span>
               )}
               <p className="library-search-result-snippet">{item.snippet}</p>
+              <span className="library-search-result-action">{t(openActionKey(item.entityType))}</span>
             </button>
           </li>
         ))}

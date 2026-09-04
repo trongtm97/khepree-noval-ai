@@ -87,3 +87,43 @@ export const ExportSeriesKnowledgeResponseSchema = z.object({
   styleRules: z.array(z.object({ kind: z.string(), content: z.string() })),
   worldKnowledge: z.record(z.unknown()).nullable(),
 });
+
+export const UpdateFictionSeriesRequestSchema = z.object({
+  seriesId: z.string().uuid(),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).optional().nullable(),
+  genre: z.string().max(100).optional().nullable(),
+});
+
+export const GetSeriesWorldRequestSchema = z.object({
+  seriesId: z.string().uuid(),
+});
+
+export const SetSeriesWorldRequestSchema = z.object({
+  seriesId: z.string().uuid(),
+  worldKnowledge: z.record(z.unknown()),
+});
+
+export const ListSeriesStyleRulesRequestSchema = z.object({
+  seriesId: z.string().uuid(),
+});
+
+export const UpsertSeriesStyleRuleRequestSchema = z.object({
+  seriesId: z.string().uuid(),
+  id: z.string().uuid().optional(),
+  kind: z.enum(['critical', 'style', 'pronoun', 'address']).or(z.string().min(1).max(40)),
+  content: z.string().min(1).max(4000),
+  sortOrder: z.number().int().optional(),
+});
+
+export const DeleteSeriesStyleRuleRequestSchema = z.object({
+  seriesId: z.string().uuid(),
+  ruleId: z.string().uuid(),
+});
+
+export const SeriesStyleRuleDtoSchema = z.object({
+  id: z.string().uuid(),
+  kind: z.string(),
+  content: z.string(),
+  sortOrder: z.number().int(),
+});

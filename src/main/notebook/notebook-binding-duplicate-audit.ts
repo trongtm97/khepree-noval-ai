@@ -207,14 +207,14 @@ function insertUserAttention(
       cause_code, primary_action, secondary_actions_json, project_id,
       affected_scope_json, dedupe_key, tech_detail, created_at, updated_at
     ) VALUES (?, 'PIPELINE_BLOCKED', 'OPEN', 'high', ?, ?, ?, ?,
-      'NOTEBOOK_BINDING_DUPLICATE', 'VIEW_ERROR', ?, ?, ?, ?, ?, ?, ?)`,
+      'NOTEBOOK_BINDING_DUPLICATE', 'CHOOSE_SOURCE', ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     'Multiple Notebooks linked to one story',
     'Nhiều Notebook gắn với một truyện',
-    'This story has more than one NotebookLM project binding. Remote notebooks were kept. Open AI Memory and keep one primary binding.',
-    'Truyện này có nhiều NotebookLM được liên kết. Notebook trên Google không bị xóa. Mở Bộ nhớ AI và chọn một liên kết chính.',
-    JSON.stringify(['VIEW_ERROR', 'SKIP']),
+    'This story has more than one NotebookLM project binding. Remote notebooks were kept. Choose one primary binding — others stay on Google unused by NovelTrans.',
+    'Truyện này có nhiều Notebook được liên kết. NovelTrans chỉ dùng một Notebook mỗi truyện để tránh vượt giới hạn NotebookLM. Chọn Notebook chính — các Notebook khác trên Google không bị xóa.',
+    JSON.stringify(['CHOOSE_SOURCE', 'VIEW_ERROR', 'SKIP']),
     group.projectId,
     JSON.stringify({
       jobIds: [],
@@ -333,4 +333,139 @@ export function auditHistoricalNotebookBindingDuplicates(
 
   report.projectsTouched = projects.size;
   return report;
+}
+
+export interface DuplicateBindingCandidateDto {
+  id: string;
+  projectId: string;
+  notebookId: string | null;
+  notebookName: string | null;
+  resourceUrl: string | null;
+  role: string;
+  status: string;
+  lastVerifiedAt: string | null;
+  updatedAt: string;
+  locallyBound: boolean;
+  deprecatedAt: string | null;
+}
+
+/** List active (and soft-conflict) candidates for user primary selection. */
+export function listDuplicateBindingCandidates(
+  db: Database.Database,
+  projectId: string,
+): DuplicateBindingCandidateDto[] {
+  const rows = db
+    .prepare(
+      `SELECT id, project_id, google_account_id, notebook_id, resource_url,
+              notebook_name, notebook_role, status, knowledge_version,
+              last_verified_at, updated_at, deprecated_at
+       FROM notebook_resources
+       WHERE project_id = ?
+         AND notebook_id IS NOT NULL
+         AND trim(notebook_id) != ''
+         AND (
+           deprecated_at IS NULL
+           OR last_error LIKE '%duplicate_binding%'
+         )
+       ORDER BY deprecated_at IS NULL DESC, updated_at DESC`,
+    )
+    .all(projectId) as NotebookBindingAuditRow[];
+
+  return rows.map((r) => ({
+    id: r.id,
+    projectId: r.project_id,
+    notebookId: r.notebook_id,
+    notebookName: r.notebook_name,
+    resourceUrl: r.resource_url,
+    role: r.notebook_role,
+    status: r.status,
+    lastVerifiedAt: r.last_verified_at,
+    updatedAt: r.updated_at,
+    locallyBound: r.deprecated_at == null,
+    deprecatedAt: r.deprecated_at,
+  }));
+}
+
+/**
+ * User picks primary local binding. Never deletes remote NotebookLM.
+ * Other local rows for same project+role → deprecated_at.
+ */
+export function resolvePrimaryNotebookBinding(
+  db: Database.Database,
+  input: { projectId: string; primaryRowId: string },
+): { ok: true; primaryId: string; deprecatedIds: string[] } {
+  const now = utcNow();
+  const primary = db
+    .prepare(
+      `SELECT id, project_id, google_account_id, notebook_id, resource_url,
+              notebook_name, notebook_role, status, knowledge_version,
+              last_verified_at, updated_at, deprecated_at
+       FROM notebook_resources WHERE id = ?`,
+    )
+    .get(input.primaryRowId) as NotebookBindingAuditRow | undefined;
+  if (primary?.project_id !== input.projectId) {
+    throw new Error('NOTEBOOK_BINDING_NOT_FOUND');
+  }
+
+  // Clear deprecation on primary
+  db.prepare(
+    `UPDATE notebook_resources SET
+       deprecated_at = NULL,
+       last_error = CASE
+         WHEN last_error LIKE '%duplicate_binding%' THEN NULL
+         ELSE last_error
+       END,
+       updated_at = ?
+     WHERE id = ?`,
+  ).run(now, primary.id);
+
+  const siblings = db
+    .prepare(
+      `SELECT id FROM notebook_resources
+       WHERE project_id = ?
+         AND notebook_role = ?
+         AND id != ?
+         AND deprecated_at IS NULL
+         AND notebook_id IS NOT NULL
+         AND trim(notebook_id) != ''`,
+    )
+    .all(input.projectId, primary.notebook_role, primary.id) as { id: string }[];
+
+  const deprecatedIds: string[] = [];
+  const note = `user_chose_primary:${primary.id}`;
+  for (const s of siblings) {
+    markDeprecatedLocal(db, s.id, now, note);
+    deprecatedIds.push(s.id);
+  }
+
+  // Resolve matching attention inbox items
+  const table = db
+    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='attention_inbox_items'`)
+    .get() as { name: string } | undefined;
+  if (table) {
+    const dedupeKey = buildAttentionDedupeKey({
+      type: 'PIPELINE_BLOCKED',
+      projectId: input.projectId,
+      causeCode: 'NOTEBOOK_BINDING_DUPLICATE',
+    });
+    db.prepare(
+      `UPDATE attention_inbox_items
+       SET status = 'RESOLVED', updated_at = ?
+       WHERE dedupe_key = ? AND status IN ('OPEN', 'SNOOZED')`,
+    ).run(now, dedupeKey);
+  }
+
+  insertSyncEvent(
+    db,
+    input.projectId,
+    `User selected primary Notebook binding. ${deprecatedIds.length} local duplicate(s) marked inactive. Remote notebooks were not deleted.`,
+    {
+      primaryId: primary.id,
+      deprecatedIds,
+      role: primary.notebook_role,
+    },
+    now,
+  );
+
+  return { ok: true, primaryId: primary.id, deprecatedIds };
 }

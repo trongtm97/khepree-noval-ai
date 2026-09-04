@@ -8,6 +8,7 @@ import { filterRelevantEntities } from '../memory/relevant-memory';
 import { getSemanticRetriever } from './semantic-retriever';
 import type { TermScope } from '@shared/constants/term';
 import { resolveKnowledgeScopeContext } from './scope-context';
+import { worldEntriesForTranslation } from './story-knowledge-snapshot';
 
 export interface KnowledgeScanInput {
   projectId: string;
@@ -93,59 +94,6 @@ function listPriorSeriesProjectIds(
   return volumes
     .filter((v) => v.volume_order < current.volume_order)
     .map((v) => v.project_id);
-}
-
-function parseSeriesWorldKnowledge(
-  db: DatabaseManager,
-  seriesId: string | null,
-  anchorChapter: number,
-): { key: string; value: string }[] {
-  if (!seriesId) return [];
-  const row = db.fictionSeries.getWorldState(seriesId);
-  if (!row?.world_knowledge_json) return [];
-  try {
-    const world = JSON.parse(row.world_knowledge_json) as Record<string, unknown>;
-    const entries: { key: string; value: string }[] = [];
-    for (const [key, value] of Object.entries(world)) {
-      if (value == null) continue;
-      const chapter =
-        typeof value === 'object' && 'chapter' in value
-          ? Number((value as { chapter?: number }).chapter)
-          : null;
-      if (chapter != null && chapter > anchorChapter) continue;
-      entries.push({
-        key: `series:${key}`,
-        value: typeof value === 'string' ? value : JSON.stringify(value),
-      });
-    }
-    return entries;
-  } catch {
-    return [];
-  }
-}
-
-function parseWorldKnowledge(
-  db: DatabaseManager,
-  projectId: string,
-  anchorChapter: number,
-): { key: string; value: string }[] {
-  const story = db.storyStates.getByProject(projectId);
-  if (!story) return [];
-  const structured = db.storyStates.parseStructured(story);
-  const world = structured.worldKnowledge as Record<string, unknown> | undefined;
-  if (!world || typeof world !== 'object') return [];
-
-  const entries: { key: string; value: string }[] = [];
-  for (const [key, value] of Object.entries(world)) {
-    if (value == null) continue;
-    const chapter =
-      typeof value === 'object' && 'chapter' in value
-        ? Number((value as { chapter?: number }).chapter)
-        : null;
-    if (chapter != null && chapter > anchorChapter) continue;
-    entries.push({ key, value: typeof value === 'string' ? value : JSON.stringify(value) });
-  }
-  return entries;
 }
 
 /**
@@ -271,20 +219,19 @@ export function scanRelevantKnowledge(
     }
   }
 
-  // Series world facts first (traceable series: prefix), then project — still text-gated.
-  const worldKnowledge = [
-    ...parseSeriesWorldKnowledge(db, scopeCtx.seriesId, anchorChapter),
-    ...parseWorldKnowledge(db, projectId, anchorChapter),
-  ].filter((entry) => {
-    const bareKey = entry.key.startsWith('series:')
-      ? entry.key.slice('series:'.length)
-      : entry.key;
-    return (
-      batchText.includes(bareKey) ||
-      batchText.includes(entry.key) ||
-      (entry.value.length > 0 && batchText.includes(entry.value.slice(0, 20)))
-    );
-  });
+  // Series + story world from canonical projection (series: prefix preserved).
+  const worldKnowledge = worldEntriesForTranslation(db, projectId, anchorChapter).filter(
+    (entry) => {
+      const bareKey = entry.key.startsWith('series:')
+        ? entry.key.slice('series:'.length)
+        : entry.key;
+      return (
+        batchText.includes(bareKey) ||
+        batchText.includes(entry.key) ||
+        (entry.value.length > 0 && batchText.includes(entry.value.slice(0, 20)))
+      );
+    },
+  );
 
   return {
     termRows,

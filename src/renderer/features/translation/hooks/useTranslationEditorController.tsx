@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { ProjectDto } from '@shared/schemas/import';
 import type { ChapterSummaryDto } from '@shared/schemas/translation-pack';
 import type { JobDto } from '@shared/schemas/job';
@@ -55,6 +55,8 @@ import { TranslationInterruptStrip } from '../../../components/translation/Trans
 export function useTranslationEditorController() {
   const t = useT();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkHandledRef = useRef<string | null>(null);
   const { prompt: exportDirectoryPrompt, dialog: exportDirectoryDialog } =
     useExportDirectoryPersistPrompt();
   const { projectId: routeProjectId } = useParams();
@@ -249,27 +251,105 @@ export function useTranslationEditorController() {
   }, [routeProjectId, storedProjectId, t]);
 
   useEffect(() => {
+    deepLinkHandledRef.current = null;
+  }, [projectId]);
+
+  const clearDeepLinkParams = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('chapter');
+        next.delete('paragraph');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams]);
+
+  useEffect(() => {
     if (!projectId) return;
     const project = projects.find((p) => p.id === projectId);
     if (project) {
       setCurrentProject(project.id, project.title);
       setLastTranslationSession(project.id);
     }
+    const chapterParam = searchParams.get('chapter');
+    const paragraphParam = searchParams.get('paragraph');
+    const deepLinkKey = `${projectId}:${chapterParam ?? ''}:${paragraphParam ?? ''}`;
     void window.khepreeNovelAI.pack
       .listChapters(projectId)
       .then((result) => {
         setChapters(result.chapters);
-        const savedIdx = lastTranslationChapterId
-          ? result.chapters.findIndex((c) => c.id === lastTranslationChapterId)
-          : -1;
-        setChapterIndex(savedIdx >= 0 ? savedIdx : 0);
+        let targetIdx = 0;
+        if (chapterParam) {
+          const foundIdx = result.chapters.findIndex((c) => c.id === chapterParam);
+          if (foundIdx >= 0) {
+            targetIdx = foundIdx;
+            if (!paragraphParam) clearDeepLinkParams();
+          } else if (deepLinkHandledRef.current !== deepLinkKey) {
+            addNotification({
+              kind: 'WARNING',
+              title: t('translation.deepLinkChapterMissing'),
+              description: '',
+              toast: true,
+            });
+            deepLinkHandledRef.current = deepLinkKey;
+            if (!paragraphParam) clearDeepLinkParams();
+            targetIdx = 0;
+          }
+        } else {
+          const savedIdx = lastTranslationChapterId
+            ? result.chapters.findIndex((c) => c.id === lastTranslationChapterId)
+            : -1;
+          targetIdx = savedIdx >= 0 ? savedIdx : 0;
+        }
+        setChapterIndex(targetIdx);
         setSelectedChapterIds(new Set());
         selectAnchorRef.current = null;
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
       });
-  }, [projectId, projects, setCurrentProject, setLastTranslationSession, lastTranslationChapterId, t]);
+  }, [
+    projectId,
+    projects,
+    searchParams,
+    setCurrentProject,
+    setLastTranslationSession,
+    lastTranslationChapterId,
+    addNotification,
+    clearDeepLinkParams,
+    t,
+  ]);
+
+  useEffect(() => {
+    const paragraphParam = searchParams.get('paragraph');
+    if (!paragraphParam || paragraphs.length === 0) return;
+    const deepLinkKey = `${projectId}:${searchParams.get('chapter') ?? ''}:${paragraphParam}`;
+    if (deepLinkHandledRef.current === deepLinkKey) return;
+
+    const found = paragraphs.find((p) => p.stableParagraphId === paragraphParam);
+    if (found) {
+      setActiveParagraph(found.stableParagraphId);
+    } else {
+      addNotification({
+        kind: 'WARNING',
+        title: t('translation.deepLinkParagraphMissing'),
+        description: '',
+        toast: true,
+      });
+    }
+    deepLinkHandledRef.current = deepLinkKey;
+    clearDeepLinkParams();
+  }, [
+    paragraphs,
+    searchParams,
+    projectId,
+    setActiveParagraph,
+    addNotification,
+    clearDeepLinkParams,
+    t,
+  ]);
 
   useEffect(() => {
     if (!projectId || chapters.length === 0) return;

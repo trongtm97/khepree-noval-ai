@@ -33,6 +33,7 @@ import {
   sortWorldKnowledgeKeys,
   type CharacterRankContext,
 } from './knowledge-ranking';
+import { buildStoryKnowledgeSnapshot } from '../knowledge/story-knowledge-snapshot';
 
 export function hashKnowledgeContent(content: string): string {
   return createHash('sha256').update(content).digest('hex');
@@ -473,9 +474,9 @@ export class NotebookKnowledgeBuilder {
   buildWorldKnowledge(projectId: string): string {
     const project = this.db.projects.getById(projectId);
     if (!project) throw new Error(`Project not found: ${projectId}`);
-    const storyRow = this.db.storyStates.getByProject(projectId);
-    const story = storyRow ? this.db.storyStates.parseStructured(storyRow) : {};
-    const world = story.worldKnowledge ?? {};
+    // Canonical merge: series_world_states + story_states (same source as translation).
+    const snapshot = buildStoryKnowledgeSnapshot(this.db, projectId);
+    const world = snapshot.worldKnowledge;
 
     const records: KnowledgeRecord[] = [];
     const keys = sortWorldKnowledgeKeys(Object.keys(world));
@@ -484,7 +485,10 @@ export class NotebookKnowledgeBuilder {
       const value = world[key];
       const body =
         typeof value === 'string' ? value : JSON.stringify(value, null, 2);
-      records.push({ id: `world-${key}`, text: `## ${key}\n${body}` });
+      const heading = key.startsWith('series:')
+        ? `## [Bộ truyện] ${key.slice('series:'.length)}`
+        : `## ${key}`;
+      records.push({ id: `world-${key}`, text: `${heading}\n${body}` });
     }
 
     if (records.length === 0 && project.genre) {

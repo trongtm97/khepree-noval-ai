@@ -966,6 +966,35 @@ export interface KhepreeNovelAIApi {
       projectId: string;
       accountId?: string;
     }) => Promise<{ ok: boolean; url: string | null }>;
+    listDuplicateCandidates: (input: {
+      projectId: string;
+    }) => Promise<{
+      candidates: Array<{
+        id: string;
+        projectId: string;
+        notebookId: string | null;
+        notebookName: string | null;
+        resourceUrl: string | null;
+        role: string;
+        status: string;
+        lastVerifiedAt: string | null;
+        updatedAt: string;
+        locallyBound: boolean;
+        deprecatedAt: string | null;
+      }>;
+    }>;
+    resolvePrimaryBinding: (input: {
+      projectId: string;
+      primaryRowId: string;
+    }) => Promise<{ ok: true; primaryId: string; deprecatedIds: string[] }>;
+    listSyncStatus: (input: {
+      projectId: string;
+    }) => Promise<{
+      userStatus: 'updated' | 'needs_sync' | 'idle';
+      userMessage: string | null;
+      recentEventCount: number;
+      dirtyCount: number;
+    }>;
     packNovelCorpus: (input: {
       projectId: string;
       outputDir?: string;
@@ -1497,6 +1526,36 @@ export interface KhepreeNovelAIApi {
     exportKnowledge: (input: { seriesId: string }) => Promise<
       z.infer<typeof import('../schemas/fiction-series').ExportSeriesKnowledgeResponseSchema>
     >;
+    getWorld: (input: { seriesId: string }) => Promise<{
+      worldKnowledge: Record<string, unknown>;
+      updatedAt: string | null;
+    }>;
+    setWorld: (input: {
+      seriesId: string;
+      worldKnowledge: Record<string, unknown>;
+    }) => Promise<{
+      worldKnowledge: Record<string, unknown>;
+      updatedAt: string;
+    }>;
+    listStyleRules: (seriesId: string) => Promise<
+      z.infer<typeof import('../schemas/fiction-series').SeriesStyleRuleDtoSchema>[]
+    >;
+    upsertStyleRule: (input: {
+      seriesId: string;
+      id?: string;
+      kind: string;
+      content: string;
+      sortOrder?: number;
+    }) => Promise<z.infer<typeof import('../schemas/fiction-series').SeriesStyleRuleDtoSchema>>;
+    deleteStyleRule: (input: { seriesId: string; ruleId: string }) => Promise<{ ok: true }>;
+    update: (input: {
+      seriesId: string;
+      title?: string;
+      description?: string | null;
+      genre?: string | null;
+    }) => Promise<{
+      series: z.infer<typeof import('../schemas/fiction-series').FictionSeriesDtoSchema>;
+    }>;
   };
   aiProviders: {
     list: () => Promise<z.infer<typeof AiProviderListResponseSchema>>;

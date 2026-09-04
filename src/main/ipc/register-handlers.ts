@@ -295,14 +295,21 @@ import { getFictionSeriesService } from '../services/fiction-series-service';
 import {
   AddSeriesVolumeRequestSchema,
   CreateFictionSeriesRequestSchema,
+  DeleteSeriesStyleRuleRequestSchema,
   ExportSeriesKnowledgeRequestSchema,
   ExportSeriesKnowledgeResponseSchema,
   FictionSeriesDtoSchema,
   FictionSeriesVolumeDtoSchema,
+  GetSeriesWorldRequestSchema,
+  ListSeriesStyleRulesRequestSchema,
   PreviewSeriesMembershipRequestSchema,
   RemoveSeriesVolumeRequestSchema,
   ReorderSeriesVolumesRequestSchema,
   SeriesMembershipConflictPreviewSchema,
+  SeriesStyleRuleDtoSchema,
+  SetSeriesWorldRequestSchema,
+  UpdateFictionSeriesRequestSchema,
+  UpsertSeriesStyleRuleRequestSchema,
 } from '@shared/schemas/fiction-series';
 import {
   LearningDashboardRequestSchema,
@@ -3320,6 +3327,117 @@ export function registerIpcHandlers(): void {
       return ExportSeriesKnowledgeResponseSchema.parse(
         getFictionSeriesService().exportSeriesKnowledge(request.seriesId),
       );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_UPDATE,
+    createIpcHandler(UpdateFictionSeriesRequestSchema, (request) => {
+      const series = getFictionSeriesService().updateSeries(request);
+      return { series: FictionSeriesDtoSchema.parse(series) };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_GET_WORLD,
+    createIpcHandler(GetSeriesWorldRequestSchema, (request) => {
+      return getFictionSeriesService().getWorldKnowledge(request.seriesId);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_SET_WORLD,
+    createIpcHandler(SetSeriesWorldRequestSchema, (request) => {
+      return getFictionSeriesService().setWorldKnowledge(
+        request.seriesId,
+        request.worldKnowledge,
+      );
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_LIST_STYLE_RULES,
+    createIpcHandler(ListSeriesStyleRulesRequestSchema, (request) => {
+      const rules = getFictionSeriesService().listStyleRules(request.seriesId);
+      return { rules: SeriesStyleRuleDtoSchema.array().parse(rules) };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_UPSERT_STYLE_RULE,
+    createIpcHandler(UpsertSeriesStyleRuleRequestSchema, (request) => {
+      const rule = getFictionSeriesService().upsertStyleRule({
+        seriesId: request.seriesId,
+        id: request.id,
+        kind: request.kind,
+        content: request.content,
+        sortOrder: request.sortOrder,
+      });
+      return { rule: SeriesStyleRuleDtoSchema.parse(rule) };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.FICTION_SERIES_DELETE_STYLE_RULE,
+    createIpcHandler(DeleteSeriesStyleRuleRequestSchema, (request) => {
+      return getFictionSeriesService().deleteStyleRule(request);
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NOTEBOOK_LIST_DUPLICATE_CANDIDATES,
+    createIpcHandler(z.object({ projectId: z.string().uuid() }), (request) => {
+      const {
+        listDuplicateBindingCandidates,
+      } = require('../notebook/notebook-binding-duplicate-audit') as typeof import('../notebook/notebook-binding-duplicate-audit');
+      return {
+        candidates: listDuplicateBindingCandidates(
+          getDatabase().getConnection(),
+          request.projectId,
+        ),
+      };
+    }),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NOTEBOOK_RESOLVE_PRIMARY_BINDING,
+    createIpcHandler(
+      z.object({
+        projectId: z.string().uuid(),
+        primaryRowId: z.string().uuid(),
+      }),
+      (request) => {
+        const {
+          resolvePrimaryNotebookBinding,
+        } = require('../notebook/notebook-binding-duplicate-audit') as typeof import('../notebook/notebook-binding-duplicate-audit');
+        return resolvePrimaryNotebookBinding(getDatabase().getConnection(), request);
+      },
+    ),
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.NOTEBOOK_LIST_SYNC_STATUS,
+    createIpcHandler(z.object({ projectId: z.string().uuid() }), (request) => {
+      const db = getDatabase();
+      const events = db.knowledgeSyncEvents.listRecent(request.projectId, 20);
+      const dirtyCount = db.knowledgeFiles.anyDirty(request.projectId) ? 1 : 0;
+      const last = events[0] ?? null;
+      let userStatus: 'updated' | 'needs_sync' | 'idle' = 'idle';
+      if (dirtyCount > 0) userStatus = 'needs_sync';
+      else if (last && /KNOWLEDGE_BUILD|SYNC|WORLD|STYLE|DIRTY/i.test(last.event_type)) {
+        userStatus = 'updated';
+      }
+      return {
+        userStatus,
+        userMessage:
+          userStatus === 'needs_sync'
+            ? 'Notebook cần đồng bộ lại'
+            : userStatus === 'updated'
+              ? 'Kiến thức đã được cập nhật'
+              : null,
+        recentEventCount: events.length,
+        dirtyCount,
+      };
     }),
   );
 

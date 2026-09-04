@@ -89,7 +89,21 @@ export class CampaignPipelineOrchestrator {
 
   /** Resume all active pipeline runs after app restart. */
   async resumeActive(): Promise<{ advanced: number; errors: number }> {
-    const runs = this.db.campaignPipeline.listActiveRuns();
+    try {
+      if (!this.db.getConnection().open) {
+        return { advanced: 0, errors: 0 };
+      }
+    } catch {
+      return { advanced: 0, errors: 0 };
+    }
+    let runs: ReturnType<typeof this.db.campaignPipeline.listActiveRuns>;
+    try {
+      runs = this.db.campaignPipeline.listActiveRuns();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/not open|closed/i.test(message)) return { advanced: 0, errors: 0 };
+      throw error;
+    }
     let advanced = 0;
     let errors = 0;
     for (const run of runs) {

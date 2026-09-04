@@ -24,6 +24,8 @@ export interface JobExecuteContext {
    * New code must use executionTarget, not assume Google account.
    */
   accountId: string;
+  /** When true, stop after await points without further DB mutations. */
+  shouldAbort?: () => boolean;
 }
 
 export interface InitialSendResult {
@@ -87,11 +89,19 @@ export class BatchExecutor {
 
     // Keep lease alive for multi-chunk / slow Gemini calls (default lease alone is too short).
     const heartbeat = setInterval(() => {
-      const ok = this.db.jobs.renewLease(job.id, leaseOwner, leaseMs);
-      if (!ok) {
-        logger.warn('Job lease renew failed — scheduler may have reclaimed job', {
-          jobId: job.id,
-        });
+      if (ctx.shouldAbort?.()) return;
+      try {
+        if (!this.db.getConnection().open) return;
+        const ok = this.db.jobs.renewLease(job.id, leaseOwner, leaseMs);
+        if (!ok) {
+          logger.warn('Job lease renew failed — scheduler may have reclaimed job', {
+            jobId: job.id,
+          });
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (/not open|closed/i.test(message)) return;
+        logger.warn('Job lease renew error', { jobId: job.id, message });
       }
     }, heartbeatMs);
 
@@ -112,6 +122,10 @@ export class BatchExecutor {
       try {
         initial = await this.options.sendInitial(ctx);
       } catch (error) {
+        if (ctx.shouldAbort?.()) {
+          finalStateForLedger = 'ABORTED';
+          return { finalState: 'QUEUED' };
+        }
         const message = error instanceof Error ? error.message : String(error);
         if (/QUOTA_LIMIT|quota/i.test(message) && legacyWorkerId) {
           const until = new Date(
@@ -124,6 +138,11 @@ export class BatchExecutor {
           return { finalState: 'QUEUED' };
         }
         throw error;
+      }
+
+      if (ctx.shouldAbort?.()) {
+        finalStateForLedger = 'ABORTED';
+        return { finalState: 'QUEUED' };
       }
 
       this.db.jobs.updateState(job.id, 'WAITING_AI');

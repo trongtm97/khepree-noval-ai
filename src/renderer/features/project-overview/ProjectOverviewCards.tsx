@@ -40,20 +40,38 @@ export function ProjectOverviewCards({
             value={metadata.publicationStatus}
           />
           {project.seriesId ? (
-            <ReadField
-              label={t('bookMetadata.series')}
-              value={
-                <button
-                  type="button"
-                  className="nt-btn nt-btn--ghost nt-btn--sm"
-                  onClick={() => {
-                    navigate(`/series/${project.seriesId}`);
-                  }}
-                >
-                  {project.seriesTitle ?? t('bookMetadata.openSeries')}
-                </button>
-              }
-            />
+            <>
+              <ReadField
+                label={t('bookMetadata.series')}
+                value={
+                  <button
+                    type="button"
+                    className="nt-btn nt-btn--ghost nt-btn--sm"
+                    onClick={() => {
+                      navigate(`/series/${project.seriesId}`);
+                    }}
+                  >
+                    {project.seriesTitle ?? t('bookMetadata.openSeries')}
+                  </button>
+                }
+              />
+              <ReadField
+                label={t('series.sharedKnowledgeTitle')}
+                value={t('bookMetadata.sharedKnowledgeApplying')}
+              />
+              {project.health?.notebook != null ? (
+                <ReadField
+                  label={t('nav.aiMemory')}
+                  value={
+                    project.health.notebook === 'ok'
+                      ? t('bookMetadata.notebookLinked')
+                      : project.health.notebook === 'missing'
+                        ? t('bookMetadata.notebookNotLinked')
+                        : t('bookMetadata.sourceWarn')
+                  }
+                />
+              ) : null}
+            </>
           ) : null}
         </div>
         <div className="card overview-card">

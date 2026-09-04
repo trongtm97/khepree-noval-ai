@@ -307,6 +307,12 @@ const api: KhepreeNovelAIApi = {
       invokeChannel(IPC_CHANNELS.NOTEBOOK_RESEARCH_QUERY, input),
     openResearch: (input) =>
       invokeChannel(IPC_CHANNELS.NOTEBOOK_OPEN_RESEARCH, input),
+    listDuplicateCandidates: (input) =>
+      invokeChannel(IPC_CHANNELS.NOTEBOOK_LIST_DUPLICATE_CANDIDATES, input),
+    resolvePrimaryBinding: (input) =>
+      invokeChannel(IPC_CHANNELS.NOTEBOOK_RESOLVE_PRIMARY_BINDING, input),
+    listSyncStatus: (input) =>
+      invokeChannel(IPC_CHANNELS.NOTEBOOK_LIST_SYNC_STATUS, input),
     packNovelCorpus: (input) =>
       invokeChannel(IPC_CHANNELS.BOOTSTRAP_PACK_NOVEL_CORPUS, input),
     getPreprocessPrompt: (input) =>
@@ -469,6 +475,15 @@ const api: KhepreeNovelAIApi = {
       invokeChannel(IPC_CHANNELS.FICTION_SERIES_ASSIGN_PROJECT, input),
     exportKnowledge: (input) =>
       invokeChannel(IPC_CHANNELS.FICTION_SERIES_EXPORT_KNOWLEDGE, input),
+    getWorld: (input) => invokeChannel(IPC_CHANNELS.FICTION_SERIES_GET_WORLD, input),
+    setWorld: (input) => invokeChannel(IPC_CHANNELS.FICTION_SERIES_SET_WORLD, input),
+    listStyleRules: (seriesId) =>
+      invokeChannel(IPC_CHANNELS.FICTION_SERIES_LIST_STYLE_RULES, { seriesId }),
+    upsertStyleRule: (input) =>
+      invokeChannel(IPC_CHANNELS.FICTION_SERIES_UPSERT_STYLE_RULE, input),
+    deleteStyleRule: (input) =>
+      invokeChannel(IPC_CHANNELS.FICTION_SERIES_DELETE_STYLE_RULE, input),
+    update: (input) => invokeChannel(IPC_CHANNELS.FICTION_SERIES_UPDATE, input),
   },
   setup: {
     getStatus: () => invokeChannel(IPC_CHANNELS.SETUP_GET_STATUS),

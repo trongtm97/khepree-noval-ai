@@ -77,6 +77,9 @@ export class AutomationScheduler {
   private shuttingDown = false;
   private readonly inFlight = new Set<string>();
   private readonly inFlightMeta = new Map<string, InFlightSlot>();
+  /** Jobs force-requeued on stop — runJob must not continue DB writes. */
+  private readonly abortedJobs = new Set<string>();
+  private readonly runPromises = new Map<string, Promise<void>>();
   /** Weighted fair virtual-time state (not the job queue). */
   private readonly fairState: WeightedFairState = { served: new Map() };
   private readonly pool: ExecutionTargetPool;
@@ -171,18 +174,38 @@ export class AutomationScheduler {
       await sleep(50);
     }
     for (const jobId of this.inFlight) {
-      this.db.jobs.releaseLease(jobId);
-      const job = this.db.jobs.getById(jobId);
-      if (job && !['COMPLETED', 'FAILED', 'NEEDS_ATTENTION', 'CANCELLED'].includes(job.state)) {
-        this.db.jobs.updateState(jobId, 'QUEUED', 'Scheduler shutdown — requeued');
-      }
-      if (job?.worker_id) {
-        this.db.workerStates.markReady(job.worker_id);
+      this.abortedJobs.add(jobId);
+      try {
+        if (!this.db.getConnection().open) continue;
+        this.db.jobs.releaseLease(jobId);
+        const job = this.db.jobs.getById(jobId);
+        if (job && !['COMPLETED', 'FAILED', 'NEEDS_ATTENTION', 'CANCELLED'].includes(job.state)) {
+          this.db.jobs.updateState(jobId, 'QUEUED', 'Scheduler shutdown — requeued');
+        }
+        if (job?.worker_id) {
+          this.db.workerStates.markReady(job.worker_id);
+        }
+      } catch (error) {
+        logger.warn('Scheduler stop requeue skipped (DB closed)', {
+          jobId,
+          message: error instanceof Error ? error.message : String(error),
+        });
       }
       this.inFlightMeta.delete(jobId);
     }
     this.inFlight.clear();
     this.running = false;
+
+    // Await leftover runJob promises so they observe abort before DB teardown.
+    const leftover = [...this.runPromises.values()];
+    if (leftover.length > 0) {
+      await Promise.race([
+        Promise.allSettled(leftover),
+        sleep(Math.min(2_000, Math.max(100, waitMs))),
+      ]);
+    }
+    this.abortedJobs.clear();
+    this.runPromises.clear();
   }
 
   pauseAll(reason = 'pause_all'): number {
@@ -340,12 +363,18 @@ export class AutomationScheduler {
 
   /** Advance durable campaign stages when chapter jobs finish (resume-safe). */
   private advanceCampaignPipelines(): void {
+    if (this.shuttingDown || !this.db.getConnection().open) return;
     try {
-      void getCampaignPipelineOrchestrator(this.db).resumeActive();
-    } catch (error) {
-      logger.warn('Campaign pipeline advance on scheduler tick failed', {
-        message: error instanceof Error ? error.message : String(error),
+      const orchestrator = getCampaignPipelineOrchestrator(this.db);
+      void orchestrator.resumeActive().catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        if (/not open|closed/i.test(message)) return;
+        logger.warn('Campaign pipeline advance on scheduler tick failed', { message });
       });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/not open|closed/i.test(message)) return;
+      logger.warn('Campaign pipeline advance on scheduler tick failed', { message });
     }
   }
 
@@ -410,26 +439,40 @@ export class AutomationScheduler {
     target: AiExecutionTarget,
     profilePath: string,
   ): Promise<void> {
-    try {
-      const fresh = this.db.jobs.getById(jobId);
-      if (!fresh) return;
+    const run = (async () => {
+      try {
+        if (this.shuttingDown || this.abortedJobs.has(jobId)) return;
+        if (!this.db.getConnection().open) return;
+        const fresh = this.db.jobs.getById(jobId);
+        if (!fresh) return;
 
-      await this.executor.execute({
-        job: fresh,
-        executionTarget: target,
-        accountId: target.accountId,
-        profilePath,
-        leaseOwner: this.leaseOwner,
-      });
-    } catch (error) {
-      logger.warn('Scheduler job run failed', {
-        jobId,
-        message: error instanceof Error ? error.message : String(error),
-      });
-    } finally {
-      this.inFlight.delete(jobId);
-      this.inFlightMeta.delete(jobId);
-    }
+        await this.executor.execute({
+          job: fresh,
+          executionTarget: target,
+          accountId: target.accountId,
+          profilePath,
+          leaseOwner: this.leaseOwner,
+          shouldAbort: () =>
+            this.shuttingDown ||
+            this.abortedJobs.has(jobId) ||
+            !this.db.getConnection().open,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (/not open|closed/i.test(message)) {
+          logger.warn('Scheduler job run aborted — database closed', { jobId, message });
+          return;
+        }
+        logger.warn('Scheduler job run failed', { jobId, message });
+      } finally {
+        this.inFlight.delete(jobId);
+        this.inFlightMeta.delete(jobId);
+        this.runPromises.delete(jobId);
+        this.abortedJobs.delete(jobId);
+      }
+    })();
+    this.runPromises.set(jobId, run);
+    await run;
   }
 
   private readSetting(key: string): string | null {

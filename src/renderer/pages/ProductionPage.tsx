@@ -299,7 +299,11 @@ export function ProductionPage() {
         aria-labelledby={`production-tab-${tab}`}
       >
         {tab === 'campaigns' ? (
-          <CampaignListPanel
+          <>
+            <p className="muted" style={{ marginBottom: '0.75rem' }}>
+              {t('production.usingLinkedNotebook')}
+            </p>
+            <CampaignListPanel
             campaigns={campaignList.campaigns}
             loading={campaignList.loading}
             error={campaignList.error}
@@ -310,6 +314,7 @@ export function ProductionPage() {
               void campaignList.refresh();
             }}
           />
+          </>
         ) : null}
 
         {tab === 'queue' ? (
@@ -410,7 +415,9 @@ export function ProductionPage() {
                 navigate(`/projects/${projectId}`);
               }}
               onChooseSource={(projectId) => {
-                navigate(`/projects/${projectId}/chapters`);
+                // NOTEBOOK_BINDING_DUPLICATE uses CHOOSE_SOURCE → AI Memory resolver.
+                // Folder source issues still land here via cause; AI Memory is safe default.
+                navigate(`/projects/${projectId}/ai-memory?resolveNotebook=1`);
               }}
               onSwitchProvider={(accountId) => {
                 navigate(
