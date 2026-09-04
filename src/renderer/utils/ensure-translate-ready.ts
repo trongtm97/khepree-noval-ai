@@ -1,13 +1,20 @@
 import type { TranslateEnsureReadyResponse } from '@shared/schemas/translate-readiness';
 
-export type EnsureCtaAction = 'check_google' | 'open_notebook' | 'open_ai_memory';
+export type EnsureCtaAction =
+  | 'check_google'
+  | 'open_notebook'
+  | 'open_ai_memory'
+  | 'retry_connect'
+  | 'relink_notebook';
 
 export interface EnsureCta {
   action: EnsureCtaAction;
   labelKey:
     | 'translation.ctaCheckGoogle'
     | 'translation.ctaOpenNotebook'
-    | 'translation.ctaOpenAiMemory';
+    | 'translation.ctaOpenAiMemory'
+    | 'translation.ctaRetryConnect'
+    | 'translation.ctaRelinkNotebook';
   accountId: string | null;
 }
 
@@ -27,6 +34,18 @@ export function mapEnsureActions(
       out.push({
         action,
         labelKey: 'translation.ctaOpenNotebook',
+        accountId,
+      });
+    } else if (action === 'retry_connect') {
+      out.push({
+        action,
+        labelKey: 'translation.ctaRetryConnect',
+        accountId,
+      });
+    } else if (action === 'relink_notebook') {
+      out.push({
+        action,
+        labelKey: 'translation.ctaRelinkNotebook',
         accountId,
       });
     } else {

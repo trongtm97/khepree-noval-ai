@@ -177,6 +177,14 @@ function mockNovelDb(opts: {
         return row;
       },
     },
+    fictionSeries: {
+      getVolumeByProject: () => null,
+      getWorldState: () => null,
+    },
+    translationCampaigns: {
+      getCampaignIdForJob: () => null,
+      tryLinkJob: () => true,
+    },
   } as unknown as DatabaseManager;
 
   return { db, created };
@@ -328,5 +336,25 @@ describe('JobService.enqueueTranslateNovel', () => {
     expect(result.queuedCount).toBe(1);
     expect(result.jobs[0]?.chapterFrom).toBe(2);
     expect(result.skippedCount).toBe(1);
+  });
+
+  it('job DTO keeps stable domain IDs (chapterIds + campaignId in config)', () => {
+    const { db } = seed();
+    const campaignId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+    const service = new JobService(db);
+    const result = service.enqueueTranslateNovel({
+      projectId,
+      chapterIds: ['ch2'],
+      campaignId,
+      skipTranslated: true,
+    });
+    expect(result.jobs).toHaveLength(1);
+    const job = result.jobs[0]!;
+    expect(job.id).toMatch(/^job-/);
+    expect(job.projectId).toBe(projectId);
+    expect(job.chapterIds).toEqual(['ch2']);
+    expect(job.campaignId).toBe(campaignId);
+    expect(job.seriesId).toBeNull();
+    expect(job.worldId).toBeNull();
   });
 });

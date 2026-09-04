@@ -43,7 +43,7 @@ export function buildLibrarySearchRoute(input: {
         : `/terms?q=${encodeURIComponent(input.entityId)}`;
     case 'character':
       return input.projectId
-        ? `/projects/${input.projectId}/characters`
+        ? `/projects/${input.projectId}/characters?characterId=${encodeURIComponent(input.entityId)}`
         : '/projects';
     case 'translation':
       return buildChapterOpenHref(
@@ -58,6 +58,8 @@ export function buildLibrarySearchRoute(input: {
         input.stableParagraphId ?? null,
       );
     case 'series':
+      return `/series/${input.entityId}`;
+    case 'world':
       return `/series/${input.entityId}`;
     default:
       return '/';
@@ -84,6 +86,8 @@ export function buildIndexRow(
       return buildQaFindingRow(db, ref.entityId);
     case 'series':
       return buildSeriesRow(db, ref.entityId);
+    case 'world':
+      return buildWorldRow(db, ref.entityId);
     default:
       return null;
   }
@@ -262,10 +266,42 @@ function buildQaFindingRow(db: DatabaseManager, findingId: string): LibrarySearc
 function buildSeriesRow(db: DatabaseManager, seriesId: string): LibrarySearchFtsRow | null {
   const series = db.fictionSeries.getSeriesById(seriesId);
   if (!series || series.deleted_at) return null;
-  const body = joinSearchBody([series.title, series.description, series.genre]);
+  const world = db.fictionSeries.getWorldState(seriesId);
+  const styleRules = db.fictionSeries.listStyleRules(seriesId);
+  const body = joinSearchBody([
+    series.title,
+    series.description,
+    series.genre,
+    world?.world_knowledge_json,
+    ...styleRules.map((r) => r.content),
+  ]);
   return {
     entity_key: entityKey('series', seriesId),
     entity_type: 'series',
+    project_id: null,
+    series_id: seriesId,
+    status: 'active',
+    language: null,
+    body,
+  };
+}
+
+/** Shared series world lore — entity_id is series_id; opens Series page. */
+function buildWorldRow(db: DatabaseManager, seriesId: string): LibrarySearchFtsRow | null {
+  const series = db.fictionSeries.getSeriesById(seriesId);
+  if (!series || series.deleted_at) return null;
+  const world = db.fictionSeries.getWorldState(seriesId);
+  if (!world?.world_knowledge_json?.trim()) return null;
+  const styleRules = db.fictionSeries.listStyleRules(seriesId);
+  const body = joinSearchBody([
+    series.title,
+    'world',
+    world.world_knowledge_json,
+    ...styleRules.map((r) => `${r.rule_kind}: ${r.content}`),
+  ]);
+  return {
+    entity_key: entityKey('world', seriesId),
+    entity_type: 'world',
     project_id: null,
     series_id: seriesId,
     status: 'active',
@@ -285,6 +321,10 @@ export function listAllIndexRefs(db: DatabaseManager): LibraryIndexEntityRef[] {
   for (const series of db.fictionSeries.listSeries()) {
     if (series.deleted_at) continue;
     refs.push({ entityType: 'series', entityId: series.id });
+    const world = db.fictionSeries.getWorldState(series.id);
+    if (world?.world_knowledge_json?.trim()) {
+      refs.push({ entityType: 'world', entityId: series.id });
+    }
   }
 
   for (const project of db.projects.list()) {
@@ -371,6 +411,10 @@ export function resolveResultTitle(
     case 'series': {
       const s = db.fictionSeries.getSeriesById(entityId);
       return s?.title ?? entityId;
+    }
+    case 'world': {
+      const s = db.fictionSeries.getSeriesById(entityId);
+      return s ? `${s.title} — world` : entityId;
     }
     default:
       return entityId;

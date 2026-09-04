@@ -10,6 +10,10 @@ import { resolveTranslationPackMode } from '../prompt/pack-mode-resolver';
 import { resolveProjectWorker } from './project-worker-resolver';
 import { getAccountAvailabilityService } from './account-availability-service';
 import { getNotebookSendReadinessService } from './notebook-send-readiness-singleton';
+import {
+  NOTEBOOK_BINDING_INACCESSIBLE_USER_MESSAGE_VI,
+  NOTEBOOK_BINDING_ACCESS_ACTIONS,
+} from '@shared/constants/notebook-binding-access';
 
 export const TRANSLATE_ENSURE_REASONS = [
   'ok',
@@ -25,6 +29,8 @@ export const TRANSLATE_ENSURE_ACTIONS = [
   'check_google',
   'open_notebook',
   'open_ai_memory',
+  'retry_connect',
+  'relink_notebook',
 ] as const;
 
 export type TranslateEnsureAction = (typeof TRANSLATE_ENSURE_ACTIONS)[number];
@@ -150,18 +156,23 @@ export class TranslateReadinessService {
         packMode,
       });
       if (!sendReady.ok && sendReady.needsAssisted) {
-        if (!prepared.needsAssisted) {
+        if (!prepared.needsAssisted && !sendReady.bindingInaccessible) {
           await this.tryOpenBrowser(accountId, 'notebook');
         }
+        const inaccessible = Boolean(sendReady.bindingInaccessible);
         return {
           ok: false,
           reason: 'needs_notebook',
-          message: sendReady.message,
+          message: inaccessible
+            ? sendReady.userMessage || NOTEBOOK_BINDING_INACCESSIBLE_USER_MESSAGE_VI
+            : sendReady.message,
           workerAccountId: accountId,
           notebookStatus: sendReady.mapping?.status ?? notebookStatus,
           usedFallback: true,
           needsAssisted: true,
-          actions: ['open_notebook', 'open_ai_memory'],
+          actions: inaccessible
+            ? [...NOTEBOOK_BINDING_ACCESS_ACTIONS]
+            : ['open_notebook', 'open_ai_memory'],
         };
       }
     }

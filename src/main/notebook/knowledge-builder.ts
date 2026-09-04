@@ -50,10 +50,10 @@ function loadStyleConfig(db: DatabaseManager, projectId: string): {
     : [];
   const seriesCritical = seriesStyleRows
     .filter((r) => r.rule_kind === 'critical')
-    .map((r) => r.content);
+    .map((r) => `[series:critical] ${r.content}`);
   const seriesRules = seriesStyleRows
     .filter((r) => r.rule_kind !== 'critical')
-    .map((r) => r.content);
+    .map((r) => `[series:${r.rule_kind || 'style'}] ${r.content}`);
 
   const row = db
     .getConnection()
@@ -75,12 +75,20 @@ function loadStyleConfig(db: DatabaseManager, projectId: string): {
       notebookInstructions?: string;
       notebook?: Partial<typeof DEFAULT_NOTEBOOK_SETTINGS>;
     };
-    if (Array.isArray(parsed.rules)) result.rules = parsed.rules;
-    if (Array.isArray(parsed.criticalRules)) result.criticalRules = parsed.criticalRules;
+    // Merge: series baseline + project overrides (do not discard series).
+    if (Array.isArray(parsed.rules)) {
+      result.rules = [...result.rules, ...parsed.rules.filter(Boolean)];
+    }
+    if (Array.isArray(parsed.criticalRules)) {
+      result.criticalRules = [
+        ...result.criticalRules,
+        ...parsed.criticalRules.filter(Boolean),
+      ];
+    }
     if (parsed.notebookInstructions) result.notebookInstructions = parsed.notebookInstructions;
     if (parsed.notebook) result.notebookSettings = parsed.notebook;
   } catch {
-    result.rules = [row.style_config];
+    result.rules = [...result.rules, row.style_config];
   }
   return result;
 }

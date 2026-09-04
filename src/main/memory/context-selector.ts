@@ -53,8 +53,30 @@ function maxChapterNumber(db: DatabaseManager, chapterIds: string[]): number {
   return max;
 }
 
-function loadCriticalRules(db: DatabaseManager, projectId: string): string[] {
-  const rules: string[] = [];
+function loadCriticalRules(
+  db: DatabaseManager,
+  projectId: string,
+): { rule: string; priority: number; sourceId: string }[] {
+  const rules: { rule: string; priority: number; sourceId: string }[] = [];
+  const scopeCtx = resolveKnowledgeScopeContext(db, projectId);
+
+  if (scopeCtx.seriesId) {
+    for (const row of db.fictionSeries.listStyleRules(scopeCtx.seriesId)) {
+      const kind = (row.rule_kind || 'style').toLowerCase();
+      const priority =
+        kind === 'critical'
+          ? 340
+          : kind === 'naming' || kind === 'address' || kind === 'pronoun'
+            ? 315
+            : 260;
+      rules.push({
+        rule: `[series:${kind}] ${row.content}`,
+        priority,
+        sourceId: `series-rule:${row.id}`,
+      });
+    }
+  }
+
   const styleRow = db
     .getConnection()
     .prepare(`SELECT style_config FROM project_settings WHERE project_id = ?`)
@@ -65,11 +87,30 @@ function loadCriticalRules(db: DatabaseManager, projectId: string): string[] {
         rules?: string[];
         criticalRules?: string[];
       };
-      if (Array.isArray(parsed.rules)) rules.push(...parsed.rules.filter(Boolean));
-      if (Array.isArray(parsed.criticalRules))
-        rules.push(...parsed.criticalRules.filter(Boolean));
+      if (Array.isArray(parsed.criticalRules)) {
+        for (const [idx, rule] of parsed.criticalRules.filter(Boolean).entries()) {
+          rules.push({
+            rule,
+            priority: 330,
+            sourceId: `project-critical:${idx}`,
+          });
+        }
+      }
+      if (Array.isArray(parsed.rules)) {
+        for (const [idx, rule] of parsed.rules.filter(Boolean).entries()) {
+          rules.push({
+            rule,
+            priority: 300,
+            sourceId: `project-rule:${idx}`,
+          });
+        }
+      }
     } catch {
-      rules.push(styleRow.style_config);
+      rules.push({
+        rule: styleRow.style_config,
+        priority: 300,
+        sourceId: 'project-style-raw',
+      });
     }
   }
 
@@ -77,9 +118,22 @@ function loadCriticalRules(db: DatabaseManager, projectId: string): string[] {
     .listByProject(projectId)
     .filter((event) => event.category === 'custom' && event.event_key.startsWith('rule:'));
   for (const event of customRules) {
-    if (event.event_value) rules.push(event.event_value);
+    if (event.event_value) {
+      rules.push({
+        rule: event.event_value,
+        priority: 305,
+        sourceId: `memory-rule:${event.id}`,
+      });
+    }
   }
-  return [...new Set(rules)];
+
+  const seen = new Set<string>();
+  return rules.filter((entry) => {
+    const key = entry.rule.trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function candidateAsMatchTerm(
@@ -295,11 +349,11 @@ export function buildMemoryContext(
       }));
 
   const ruleRecords: ContextRecord<string>[] = loadCriticalRules(db, input.projectId).map(
-    (rule, idx) => ({
-      id: `rule-${idx}`,
-      item: rule,
-      priority: 300,
-      serialize: () => rule,
+    (entry) => ({
+      id: entry.sourceId,
+      item: entry.rule,
+      priority: entry.priority,
+      serialize: () => entry.rule,
     }),
   );
 
@@ -411,7 +465,13 @@ export function buildMemoryContext(
     ],
     characterIds: activeCharacters.map((c) => c.id),
     relationshipIds: activeRelationships.map((r) => r.id),
-    memoryKeys: recentMemory.map((m) => `${m.category}.${m.key}`),
+    memoryKeys: [
+      ...recentMemory.map((m) => `${m.category}.${m.key}`),
+      ...criticalProjectRules
+        .filter((r) => r.startsWith('[series:'))
+        .map((r) => `series-rule:${r.slice(0, 80)}`),
+      ...worldKnowledge.map((w) => `world:${w.key}`),
+    ],
     estimatedTokens,
   });
 

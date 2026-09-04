@@ -1,7 +1,7 @@
 import type { DatabaseManager } from '../db/database-manager';
 import { getDatabase } from '../db/connection';
 import type { FictionSeriesRow } from '../db/repositories/fiction-series-repository';
-import type { TermScope } from '@shared/constants/term';
+import type { TermScope, TermStatus, TermType } from '@shared/constants/term';
 
 export interface FictionSeriesDto {
   id: string;
@@ -191,11 +191,105 @@ export class FictionSeriesService {
     if (existing && existing.series_id !== input.seriesId) {
       db.fictionSeries.removeVolumeMembership(existing.series_id, input.projectId);
     }
-    return this.addVolume({
+    const volume = this.addVolume({
       seriesId: input.seriesId,
       projectId: input.projectId,
       volumeLabel: input.volumeLabel,
     });
+    this.seedSharedSeriesKnowledge(input.seriesId, input.projectId);
+    return volume;
+  }
+
+  /**
+   * Intended series workflow: shared SERIES glossary + world state across volumes.
+   * - Seed series world from project story world when series world empty.
+   * - Copy unique PROJECT terms into SERIES scope (keep PROJECT rows as overrides).
+   */
+  private seedSharedSeriesKnowledge(seriesId: string, projectId: string): void {
+    const db = this.getDb();
+
+    const world = db.fictionSeries.getWorldState(seriesId);
+    if (!world?.world_knowledge_json) {
+      const story = db.storyStates.getByProject(projectId);
+      if (story?.world_knowledge_json) {
+        db.fictionSeries.setWorldKnowledgeJson(seriesId, story.world_knowledge_json);
+      }
+    }
+
+    if (db.fictionSeries.listStyleRules(seriesId).length === 0) {
+      const styleRow = db
+        .getConnection()
+        .prepare(`SELECT style_config FROM project_settings WHERE project_id = ?`)
+        .get(projectId) as { style_config: string | null } | undefined;
+      if (styleRow?.style_config) {
+        try {
+          const parsed = JSON.parse(styleRow.style_config) as {
+            rules?: string[];
+            criticalRules?: string[];
+          };
+          let order = 0;
+          for (const content of parsed.criticalRules ?? []) {
+            if (!content?.trim()) continue;
+            db.fictionSeries.upsertStyleRule({
+              seriesId,
+              ruleKind: 'critical',
+              content: content.trim(),
+              sortOrder: order++,
+            });
+          }
+          for (const content of parsed.rules ?? []) {
+            if (!content?.trim()) continue;
+            db.fictionSeries.upsertStyleRule({
+              seriesId,
+              ruleKind: 'style',
+              content: content.trim(),
+              sortOrder: order++,
+            });
+          }
+        } catch {
+          if (styleRow.style_config.trim()) {
+            db.fictionSeries.upsertStyleRule({
+              seriesId,
+              ruleKind: 'style',
+              content: styleRow.style_config.trim(),
+              sortOrder: 0,
+            });
+          }
+        }
+      }
+    }
+
+    const seriesTerms = db.terms.listByScope('SERIES', seriesId);
+    const seriesSources = new Set(
+      seriesTerms
+        .map((t) => t.source_text ?? t.source_simplified)
+        .filter((s): s is string => Boolean(s)),
+    );
+
+    for (const pt of db.terms.listByScope('PROJECT', projectId)) {
+      const source = pt.source_text ?? pt.source_simplified;
+      if (!source || seriesSources.has(source)) continue;
+      const preferred = primaryTranslation(db, pt.id);
+      db.terms.create({
+        source_text: source,
+        source_simplified: pt.source_simplified,
+        source_traditional: pt.source_traditional,
+        pinyin: pt.pinyin,
+        transliteration: pt.transliteration,
+        term_type: pt.term_type as TermType,
+        genre: pt.genre,
+        scope: 'SERIES',
+        scope_ref: seriesId,
+        status:
+          pt.status === 'LOCKED' ? 'PROJECT_VERIFIED' : (pt.status as TermStatus),
+        preferred_translation: preferred ?? undefined,
+        meaning: pt.meaning,
+        notes: pt.notes,
+        source_language: pt.source_language,
+        target_language: pt.target_language,
+      });
+      seriesSources.add(source);
+    }
   }
 
   exportSeriesKnowledge(seriesId: string): {

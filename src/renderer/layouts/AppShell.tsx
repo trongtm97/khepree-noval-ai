@@ -2,10 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import {
-  LayoutDashboard,
-  FolderKanban,
-  Languages,
-  ListTodo,
   Settings,
   PanelLeftClose,
   PanelLeft,
@@ -14,7 +10,6 @@ import {
   BookOpen,
   CircleUser,
   Shield,
-  Search,
 } from 'lucide-react';
 import type { GetInfoResponse } from '@shared/schemas/ipc';
 import { useT } from '../i18n';
@@ -33,6 +28,7 @@ import { useProductionCompletionEvents } from '../hooks/useProductionCompletionE
 import {
   isProjectWorkspacePath,
 } from './ProjectWorkspace';
+import { PRIMARY_NAV } from './primary-nav';
 import {
   isTranslationWorkspaceRoute,
   isTranslationNavActive,
@@ -47,15 +43,6 @@ interface AppShellProps {
   children: ReactNode;
   appInfo: GetInfoResponse;
 }
-
-const PRIMARY_NAV = [
-  { to: '/', key: 'nav.dashboard', icon: LayoutDashboard, end: true },
-  { to: '/projects', key: 'nav.projects', icon: FolderKanban },
-  { to: '/series', key: 'nav.series', icon: BookOpen },
-  { to: '/search', key: 'nav.search', icon: Search },
-  { to: '__translation__', key: 'nav.translation', icon: Languages, translation: true },
-  { to: '/jobs', key: 'nav.production', icon: ListTodo },
-] as const;
 
 const SECONDARY_NAV = [
   { to: '/accounts', key: 'nav.accounts', icon: CircleUser },

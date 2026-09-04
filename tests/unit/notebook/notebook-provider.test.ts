@@ -51,6 +51,16 @@ describe('NotebookProvider (fixture DOM)', () => {
     return p;
   }
 
+  async function ownedCreate<T>(fn: () => Promise<T>): Promise<T> {
+    return NotebookProvider.runOwnedCreate(fn);
+  }
+
+  it('blocks createNotebook outside NotebookBindingService ownership', async () => {
+    await page.goto(`${baseUrl}/home.html`);
+    const p = provider();
+    await expect(p.createNotebook('[Khepree] X')).rejects.toThrow(/NotebookBindingService/);
+  });
+
   it('detectAvailability returns true on fixture shell', async () => {
     await page.goto(`${baseUrl}/home.html`);
     const p = provider();
@@ -61,7 +71,9 @@ describe('NotebookProvider (fixture DOM)', () => {
     await page.goto(`${baseUrl}/broken.html`);
     const p = provider();
     expect(await p.detectAvailability()).toBe(false);
-    await expect(p.createNotebook('[Khepree] X')).rejects.toMatchObject({
+    await expect(
+      ownedCreate(() => p.createNotebook('[Khepree] X')),
+    ).rejects.toMatchObject({
       code: 'SELECTOR_NOT_FOUND',
     });
   }, 15_000);
@@ -71,10 +83,10 @@ describe('NotebookProvider (fixture DOM)', () => {
     const p = provider();
     const name = formatNotebookName('Fixture Novel');
 
-    const first = await p.createNotebook(name);
+    const first = await ownedCreate(() => p.createNotebook(name));
     expect(first.name).toBe(name);
 
-    const second = await p.createNotebook(name);
+    const second = await ownedCreate(() => p.createNotebook(name));
     expect(second.name).toBe(name);
 
     const list = await p.listNotebooks();
@@ -89,7 +101,7 @@ describe('NotebookProvider (fixture DOM)', () => {
     });
     p.attachPage(page);
     const name = formatNotebookName('Live Create Novel');
-    const created = await p.createNotebook(name);
+    const created = await ownedCreate(() => p.createNotebook(name));
     expect(created.name).toBe(name);
     const state = await p.getNotebookState();
     expect(state.currentName).toBe(name);
@@ -105,7 +117,7 @@ describe('NotebookProvider (fixture DOM)', () => {
     });
     p.attachPage(page);
     const name = formatNotebookName('Truyện 1');
-    const ensured = await p.ensureNotebook(name);
+    const ensured = await ownedCreate(() => p.ensureNotebook(name));
     expect(ensured.name).toBe(name);
     const state = await p.getNotebookState();
     expect(state.currentName).toBe(name);
@@ -115,7 +127,7 @@ describe('NotebookProvider (fixture DOM)', () => {
     await page.goto(`${baseUrl}/home.html`);
     const p = provider();
     const name = formatNotebookName('Source Novel');
-    await p.createNotebook(name);
+    await ownedCreate(() => p.createNotebook(name));
     await p.openNotebook(name);
 
     const sources = [...KNOWLEDGE_PROJECT_FILES];
@@ -144,7 +156,7 @@ describe('NotebookProvider (fixture DOM)', () => {
     await page.goto(`${baseUrl}/home.html`);
     const p = provider();
     const name = formatNotebookName('Text Sources');
-    await p.createNotebook(name);
+    await ownedCreate(() => p.createNotebook(name));
     await p.openNotebook(name);
 
     const sources = [
@@ -161,7 +173,7 @@ describe('NotebookProvider (fixture DOM)', () => {
     await page.goto(`${baseUrl}/home.html`);
     const p = provider();
     const name = formatNotebookName('File Upload');
-    await p.createNotebook(name);
+    await ownedCreate(() => p.createNotebook(name));
     await p.openNotebook(name);
 
     const dir = path.join(tempRoot, 'sources');
@@ -235,7 +247,7 @@ describe('NotebookProvider (fixture DOM)', () => {
     await page.goto(`${baseUrl}/home.html`);
     const p = provider();
     const name = formatNotebookName('Rename Me');
-    await p.createNotebook(name);
+    await ownedCreate(() => p.createNotebook(name));
     await p.openNotebook(name);
     await p.renameNotebook('[Khepree] Renamed');
     const state = await p.getNotebookState();
@@ -246,7 +258,7 @@ describe('NotebookProvider (fixture DOM)', () => {
     await page.goto(`${baseUrl}/broken.html`);
     const p = provider();
     try {
-      await p.createNotebook('x');
+      await ownedCreate(() => p.createNotebook('x'));
       expect.fail('should throw');
     } catch (error) {
       expect(error).toBeInstanceOf(AutomationError);

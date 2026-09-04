@@ -169,4 +169,121 @@ describe('library search', () => {
     expect(db.librarySearch.listDirty(10).length).toBe(0);
     expect(svc.query({ query: 'Dirty' }).total).toBeGreaterThan(0);
   });
+
+  it('indexes series world lore and navigates to series page', async () => {
+    const db = getDatabase();
+    const { FictionSeriesService, resetFictionSeriesServiceForTests } = await import(
+      '@main/services/fiction-series-service'
+    );
+    resetFictionSeriesServiceForTests();
+    const seriesSvc = new FictionSeriesService(() => db);
+    const series = seriesSvc.createSeries({ title: 'Cloud Peak Saga' });
+    db.fictionSeries.setWorldKnowledgeJson(
+      series.id,
+      JSON.stringify({ 青云门: 'Thanh Van Mon righteous sect' }),
+    );
+    db.fictionSeries.upsertStyleRule({
+      seriesId: series.id,
+      ruleKind: 'naming',
+      content: 'Keep sect titles on first mention',
+      sortOrder: 0,
+    });
+
+    const svc = getLibrarySearchService(db);
+    await svc.startReindex(true);
+    await waitForReindex(svc);
+
+    const worldHits = svc.query({ query: 'Thanh Van Mon', entityTypes: ['world'] });
+    expect(worldHits.total).toBeGreaterThan(0);
+    const worldItem = worldHits.items.find((i) => i.entityType === 'world');
+    expect(worldItem?.entityId).toBe(series.id);
+    expect(worldItem?.route).toBe(`/series/${series.id}`);
+
+    const seriesHits = svc.query({ query: 'sect titles', entityTypes: ['series'] });
+    expect(seriesHits.items.some((i) => i.entityId === series.id)).toBe(true);
+  });
+
+  it('dirty-queues glossary translation edits and character aliases', async () => {
+    const db = getDatabase();
+    const project = db.projects.create({ title: 'Glossary Dirty' });
+    const term = db.terms.create({
+      source_text: '金丹',
+      scope: 'PROJECT',
+      scope_ref: project.id,
+      status: 'PROJECT_VERIFIED',
+      preferred_translation: 'Kim Đan',
+    });
+    const character = db.characters.create({
+      project_id: project.id,
+      canonical_name: '王林',
+      translated_name: 'Vuong Lam',
+    });
+
+    // Clear trigger noise from create
+    db.getConnection().prepare(`DELETE FROM library_search_dirty`).run();
+
+    db.terms.setTranslations(term.id, 'Golden Core', []);
+    const termDirty = db.librarySearch
+      .listDirty(20)
+      .some((d) => d.entity_type === 'term' && d.entity_id === term.id);
+    expect(termDirty).toBe(true);
+
+    db.getConnection().prepare(`DELETE FROM library_search_dirty`).run();
+    db.characters.addAlias(character.id, 'Daoist Wang');
+    const charDirty = db.librarySearch
+      .listDirty(20)
+      .some((d) => d.entity_type === 'character' && d.entity_id === character.id);
+    expect(charDirty).toBe(true);
+
+    const svc = getLibrarySearchService(db);
+    svc.processDirtyBatch(20);
+    await svc.startReindex(true);
+    await waitForReindex(svc);
+    expect(svc.query({ query: 'Golden Core' }).total).toBeGreaterThan(0);
+    expect(svc.query({ query: 'Daoist Wang' }).total).toBeGreaterThan(0);
+  });
+
+  it('result routes use stable IDs for project chapter character series', async () => {
+    const db = getDatabase();
+    const project = db.projects.create({ title: 'Nav Novel' });
+    const chapter = db.chapters.create({
+      project_id: project.id,
+      chapter_number: 3,
+      sequence_order: 3,
+      chapter_title: 'Nav Chapter',
+      source_text: 'hello',
+      status: 'pending',
+      source_status: 'SOURCE_READY',
+    });
+    const character = db.characters.create({
+      project_id: project.id,
+      canonical_name: 'NavHero',
+      translated_name: 'Hero',
+    });
+    const { FictionSeriesService, resetFictionSeriesServiceForTests } = await import(
+      '@main/services/fiction-series-service'
+    );
+    resetFictionSeriesServiceForTests();
+    const series = new FictionSeriesService(() => db).createSeries({ title: 'Nav Series' });
+
+    const svc = getLibrarySearchService(db);
+    await svc.startReindex(true);
+    await waitForReindex(svc);
+
+    const projectHit = svc.query({ query: 'Nav Novel', entityTypes: ['project'] }).items[0];
+    expect(projectHit?.route).toBe(`/projects/${project.id}`);
+
+    const chapterHit = svc.query({ query: 'Nav Chapter', entityTypes: ['chapter'] }).items[0];
+    expect(chapterHit?.entityId).toBe(chapter.id);
+    expect(chapterHit?.route).toContain(project.id);
+    expect(chapterHit?.route).toContain(chapter.id);
+
+    const charHit = svc.query({ query: 'NavHero', entityTypes: ['character'] }).items[0];
+    expect(charHit?.route).toBe(
+      `/projects/${project.id}/characters?characterId=${encodeURIComponent(character.id)}`,
+    );
+
+    const seriesHit = svc.query({ query: 'Nav Series', entityTypes: ['series'] }).items[0];
+    expect(seriesHit?.route).toBe(`/series/${series.id}`);
+  });
 });

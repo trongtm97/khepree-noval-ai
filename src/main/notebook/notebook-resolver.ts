@@ -66,7 +66,26 @@ export function resolveTranslationNotebook(
   const legacy = rows.find(
     (r) => r.notebook_role === 'TRANSLATION' && isActiveNotebookRow(r) && !r.deprecated_at,
   );
-  return legacy ?? null;
+  if (legacy) return legacy;
+
+  // HARD REQUIREMENT 16 — story-level binding (Production Center / other worker).
+  // Owner is projectId; fall back when this account has no row but story already bound.
+  return resolveStoryNotebookRow(db, projectId);
+}
+
+/**
+ * HARD REQUIREMENT 16 — resolve NotebookLM by story/project only (no create).
+ */
+export function resolveStoryNotebookRow(
+  db: DatabaseManager,
+  projectId: string,
+): NotebookResourceRow | null {
+  const rows = db.notebooks.listByProject(projectId).filter(isActiveNotebookRow);
+  return (
+    rows.find((r) => r.notebook_role === 'SINGLE' && r.notebook_id) ??
+    rows.find((r) => r.notebook_id) ??
+    null
+  );
 }
 
 export function resolveResearchNotebook(

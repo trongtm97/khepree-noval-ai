@@ -61,6 +61,9 @@ import { MIGRATION_052_ATTENTION_INBOX } from './052-attention-inbox';
 import { MIGRATION_053_FICTION_SERIES } from './053-fiction-series';
 import { MIGRATION_054_WATCH_FOLDER } from './054-watch-folder';
 import { MIGRATION_055_LIBRARY_SEARCH } from './055-library-search';
+import { MIGRATION_056_LIBRARY_SEARCH_WORLD_DIRTY } from './056-library-search-world-dirty';
+import { MIGRATION_057_NOTEBOOK_BINDING_DUPLICATE_AUDIT } from './057-notebook-binding-duplicate-audit';
+import { MIGRATION_058_NOTEBOOK_BINDING_COMPAT } from './058-notebook-binding-compat';
 
 export const MIGRATIONS: MigrationDefinition[] = [
   {
@@ -332,6 +335,13 @@ export const MIGRATIONS: MigrationDefinition[] = [
     name: 'library_search',
     sql: MIGRATION_055_LIBRARY_SEARCH,
   },
+  {
+    version: 56,
+    name: 'library_search_world_dirty',
+    sql: MIGRATION_056_LIBRARY_SEARCH_WORLD_DIRTY,
+  },
+  MIGRATION_057_NOTEBOOK_BINDING_DUPLICATE_AUDIT,
+  MIGRATION_058_NOTEBOOK_BINDING_COMPAT,
 ];
 
 export function migrationChecksum(sql: string): string {

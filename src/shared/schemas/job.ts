@@ -59,6 +59,17 @@ export const JobDtoSchema = z.object({
   priority: z.number().int(),
   chapterFrom: z.number().int().nullable(),
   chapterTo: z.number().int().nullable(),
+  /** Stable chapter UUIDs covered by this job (not titles). */
+  chapterIds: z.array(z.string().uuid()).optional(),
+  /** Campaign link when job was created/linked by Production Center. */
+  campaignId: z.string().uuid().nullable().optional(),
+  /** Fiction-series membership for the project (stable series UUID). */
+  seriesId: z.string().uuid().nullable().optional(),
+  /**
+   * Shared series world binding. Same UUID as seriesId when world state exists;
+   * null when project has no series world. Not a separate table PK beyond series.
+   */
+  worldId: z.string().uuid().nullable().optional(),
   workerMode: z.enum(WORKER_MODES),
   pinnedAccountId: z.string().nullable(),
   attemptCount: z.number().int().nonnegative(),

@@ -30,6 +30,7 @@ import { browserProfileManager } from '../automation/browser-runner/profile-mana
 import { profileLockManager, startLeaseHeartbeat } from '../automation/browser-runner/profile-lock';
 import { pathsService } from './paths-service';
 import { logger } from '../logging/logger';
+import { getNotebookBindingService } from './notebook-binding-service-singleton';
 import { getNotebookSyncService } from '../notebook/notebook-sync-service-singleton';
 
 export interface NotebookMappingDto {
@@ -43,6 +44,7 @@ export interface NotebookMappingDto {
   assistedStep: string | null;
   lastError: string | null;
   lastVerifiedAt: string | null;
+  createdAt?: string;
   knowledgeVersion?: number;
   localKnowledgeVersion?: number;
   lastSyncAt?: string | null;
@@ -53,6 +55,11 @@ export interface ProvisionNotebookResult {
   mapping: NotebookMappingDto;
   assisted: boolean;
   message: string;
+  /** HR13: bound notebook inaccessible — do not create another. */
+  bindingInaccessible?: boolean;
+  userMessage?: string;
+  technicalDetail?: string | null;
+  actions?: import('@shared/constants/notebook-binding-access').NotebookBindingAccessAction[];
 }
 
 function hashText(text: string): string {
@@ -366,19 +373,32 @@ export class NotebookService {
         return await handOffAssisted('create_notebook', 'NotebookLM UI not detected');
       }
 
-      const notebook = await provider.ensureNotebook(notebookName);
-
-      await provider.openNotebook(notebookName);
-      mapping = this.db.notebooks.upsert({
-        project_id: input.projectId,
-        google_account_id: input.accountId,
-        notebook_name: notebookName,
-        notebook_role: notebookRole,
-        notebook_id: notebook.id,
-        resource_url: notebook.url ?? page.url(),
-        status: 'provisioning',
-        instructions_hash: instructionsHash,
+      // HR10: get-or-reuse; create only when unbound. Never silent duplicate.
+      const bindResult = await getNotebookBindingService().getOrCreateNotebookBinding({
+        projectId: input.projectId,
+        accountId: input.accountId,
+        preferredName: notebookName,
+        role: notebookRole,
+        editionId: activeEdition?.id ?? null,
+        provider,
+        page,
+        instructionsHash,
       });
+
+      if (bindResult.outcome === 'needs_reconnect') {
+        return {
+          mapping: this.toDto(bindResult.row),
+          assisted: true,
+          bindingInaccessible: true,
+          message: bindResult.userMessage,
+          userMessage: bindResult.userMessage,
+          technicalDetail: bindResult.technicalDetail,
+          actions: bindResult.actions,
+        };
+      }
+
+      mapping = bindResult.row;
+      const notebook = bindResult.remote;
 
       if (attachKnowledge) {
         try {
@@ -448,18 +468,18 @@ export class NotebookService {
       void _instructionsApplied;
 
       // SOURCE_PRESENT ≠ CONTENT_CURRENT — stay sync_pending until version probe.
-      const ready = this.db.notebooks.upsert({
-        project_id: input.projectId,
-        google_account_id: input.accountId,
-        notebook_name: notebookName,
-        notebook_role: notebookRole,
-        notebook_id: mapping.notebook_id,
-        resource_url: mapping.resource_url ?? page.url(),
+      const ready = getNotebookBindingService().persistBinding({
+        projectId: input.projectId,
+        accountId: input.accountId,
+        notebookName: notebookName,
+        role: notebookRole,
+        notebookId: mapping.notebook_id,
+        notebookUrl: mapping.resource_url ?? page.url(),
         status: attachKnowledge ? 'sync_pending' : 'ready',
-        instructions_hash: instructionsHash,
-        assisted_step: null,
-        last_error: null,
-        last_verified_at: attachKnowledge ? null : new Date().toISOString(),
+        instructionsHash: instructionsHash,
+        assistedStep: null,
+        lastError: null,
+        lastVerifiedAt: attachKnowledge ? null : new Date().toISOString(),
       });
       if (attachKnowledge) {
         getNotebookSyncService(this.db).scheduleBackgroundVersionProbe(
@@ -623,22 +643,47 @@ export class NotebookService {
         );
       }
 
-      let found = await provider.findNotebookByName(notebookName);
-      if (!found) {
-        try {
-          // Never stop at "still missing" without attempting create/rename-untitled.
-          found = await provider.ensureNotebook(notebookName);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          const code = error instanceof AutomationError ? error.code : 'UNKNOWN_UI';
-          if (code === 'SELECTOR_NOT_FOUND' || code === 'LOGIN_REQUIRED' || code === 'UNKNOWN_UI') {
-            return await handOffAssisted('create_notebook', message);
-          }
-          throw error;
+      let found;
+      try {
+        const bindResult = await getNotebookBindingService().getOrCreateNotebookBinding({
+          projectId: input.projectId,
+          accountId: input.accountId,
+          preferredName: notebookName,
+          role: notebookRole,
+          provider,
+          page,
+          instructionsHash: hashText(instructions),
+          // HR12: if already bound, resume must not create another NotebookLM project.
+          allowCreate: !existing.notebook_id,
+        });
+        if (bindResult.outcome === 'needs_reconnect') {
+          return {
+            mapping: this.toDto(bindResult.row),
+            assisted: true,
+            bindingInaccessible: true,
+            message: bindResult.userMessage,
+            userMessage: bindResult.userMessage,
+            technicalDetail: bindResult.technicalDetail,
+            actions: bindResult.actions,
+          };
         }
+        found = bindResult.remote;
+        // Refresh local existing pointer after persist.
+        Object.assign(existing, bindResult.row);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const code = error instanceof AutomationError ? error.code : 'UNKNOWN_UI';
+        if (
+          !existing.notebook_id &&
+          (code === 'SELECTOR_NOT_FOUND' ||
+            code === 'LOGIN_REQUIRED' ||
+            code === 'UNKNOWN_UI' ||
+            /SELECTOR_NOT_FOUND|LOGIN_REQUIRED|UNKNOWN_UI|not found|Create|create/i.test(message))
+        ) {
+          return await handOffAssisted('create_notebook', message);
+        }
+        throw error;
       }
-
-      await provider.openNotebook(notebookName);
 
       if (attachKnowledge) {
         try {
@@ -709,18 +754,18 @@ export class NotebookService {
       }
       void _instructionsApplied;
 
-      const ready = this.db.notebooks.upsert({
-        project_id: input.projectId,
-        google_account_id: input.accountId,
-        notebook_name: notebookName,
-        notebook_role: notebookRole,
-        notebook_id: found.id,
-        resource_url: page.url(),
+      const ready = getNotebookBindingService().persistBinding({
+        projectId: input.projectId,
+        accountId: input.accountId,
+        notebookName: notebookName,
+        role: notebookRole,
+        notebookId: found.id,
+        notebookUrl: page.url(),
         status: attachKnowledge ? 'sync_pending' : 'ready',
-        assisted_step: null,
-        last_error: null,
-        last_verified_at: attachKnowledge ? null : new Date().toISOString(),
-        instructions_hash: hashText(instructions),
+        assistedStep: null,
+        lastError: null,
+        lastVerifiedAt: attachKnowledge ? null : new Date().toISOString(),
+        instructionsHash: hashText(instructions),
       });
 
       if (attachKnowledge) {
@@ -922,6 +967,7 @@ export class NotebookService {
     assisted_step: string | null;
     last_error: string | null;
     last_verified_at: string | null;
+    created_at?: string;
     knowledge_version?: number;
     local_knowledge_version?: number;
     last_sync_at?: string | null;
@@ -938,6 +984,7 @@ export class NotebookService {
       assistedStep: row.assisted_step,
       lastError: row.last_error,
       lastVerifiedAt: row.last_verified_at,
+      createdAt: row.created_at,
       knowledgeVersion: row.knowledge_version ?? 0,
       localKnowledgeVersion: row.local_knowledge_version ?? 0,
       lastSyncAt: row.last_sync_at ?? null,

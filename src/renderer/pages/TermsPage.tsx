@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { BookOpen, Lock } from 'lucide-react';
 import type { TermCandidateDto, TermDto } from '@shared/schemas/term';
 import type { ProjectDto } from '@shared/schemas/import';
@@ -40,10 +40,14 @@ const EMPTY_FILTERS: TermFiltersState = {
   pinyin: '',
 };
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function TermsPage() {
   const t = useT();
   const showAdvancedTools = useUiShellStore((s) => s.showAdvancedTools);
   const { projectId = '' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<Tab>('vault');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<TermFiltersState>(EMPTY_FILTERS);
@@ -59,6 +63,35 @@ export function TermsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // Library search deep-link: /projects/:id/terms?q=<termId|text>
+  useEffect(() => {
+    const raw = searchParams.get('q')?.trim();
+    if (!raw) return;
+    let cancelled = false;
+    void (async () => {
+      if (UUID_RE.test(raw)) {
+        try {
+          const { term } = await window.khepreeNovelAI.terms.get(raw);
+          if (cancelled) return;
+          setDetailTerm(term);
+          setSearchQuery(term.sourceText || term.simplified || '');
+          setTab('vault');
+        } catch {
+          if (!cancelled) setSearchQuery(raw);
+        }
+      } else {
+        setSearchQuery(raw);
+        setTab('vault');
+      }
+      const next = new URLSearchParams(searchParams);
+      next.delete('q');
+      setSearchParams(next, { replace: true });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, setSearchParams]);
 
   const columnLabels = useMemo(
     () =>

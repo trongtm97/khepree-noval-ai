@@ -39,6 +39,22 @@ export function ProjectOverviewCards({
             label={t('bookMetadata.publicationStatus')}
             value={metadata.publicationStatus}
           />
+          {project.seriesId ? (
+            <ReadField
+              label={t('bookMetadata.series')}
+              value={
+                <button
+                  type="button"
+                  className="nt-btn nt-btn--ghost nt-btn--sm"
+                  onClick={() => {
+                    navigate(`/series/${project.seriesId}`);
+                  }}
+                >
+                  {project.seriesTitle ?? t('bookMetadata.openSeries')}
+                </button>
+              }
+            />
+          ) : null}
         </div>
         <div className="card overview-card">
           <h3 className="overview-card__title">{t('bookMetadata.progressCardTitle')}</h3>

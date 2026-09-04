@@ -47,6 +47,20 @@ export function isDeprecatedNotebookRole(role: string | null | undefined): boole
 /** Default role for new NotebookLM mappings (Phase 5). */
 export const DEFAULT_NOTEBOOK_ROLE: NotebookRole = 'RESEARCH';
 
+/**
+ * HARD REQUIREMENT 18 — coerce unknown / empty legacy role strings.
+ * Never throw; older rows may lack a clean enum value.
+ */
+export function coerceNotebookRole(
+  role: string | null | undefined,
+): NotebookRole {
+  const raw = (role ?? '').trim();
+  if ((NOTEBOOK_ROLES as readonly string[]).includes(raw)) {
+    return raw as NotebookRole;
+  }
+  return DEFAULT_NOTEBOOK_ROLE;
+}
+
 /** Gemini web chat — used for translate when no legacy Translation notebook. */
 export const GEMINI_WEB_CHAT_URL = 'https://gemini.google.com/app';
 

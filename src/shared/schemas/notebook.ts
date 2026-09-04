@@ -1,7 +1,54 @@
 import { z } from 'zod';
 import { NOTEBOOK_ASSISTED_STEPS, NOTEBOOK_STATUSES } from '../constants/notebook';
-import { NOTEBOOK_ROLES } from '../constants/notebook-role';
+import {
+  coerceNotebookRole,
+  DEFAULT_NOTEBOOK_ROLE,
+  NOTEBOOK_ROLES,
+} from '../constants/notebook-role';
 import { KNOWLEDGE_TYPES } from '../constants/knowledge';
+
+/**
+ * HARD REQUIREMENT 9+15+18 — durable story ↔ NotebookLM binding.
+ * Persisted in SQLite `notebook_resources` (not a separate store).
+ * Survives app / queue / campaign / retry restarts.
+ *
+ * Owner is always story/projectId — never seriesId, campaignId, jobId, chapterId.
+ *
+ * HR18: backwards-compatible defaults — older rows / partial DTO shapes must parse.
+ * Binding absence is valid; never required to open the app or a legacy story.
+ */
+export const NotebookBindingSchema = z.object({
+  /** Story / project UUID — sole NotebookLM binding owner (HR15). */
+  projectId: z.string().uuid(),
+  /** Worker Google account (executor), not the binding owner. */
+  accountId: z.string().nullable().optional().default(null),
+  /** Remote NotebookLM project id (stable). Null = unbound legacy story. */
+  notebookId: z.string().nullable().optional().default(null),
+  /** Provider locator / notebook URL. */
+  notebookUrl: z.string().nullable().optional().default(null),
+  notebookName: z.string().nullable().optional().default(null),
+  role: z
+    .union([z.enum(NOTEBOOK_ROLES), z.string(), z.null(), z.undefined()])
+    .transform((v) => coerceNotebookRole(v))
+    .default(DEFAULT_NOTEBOOK_ROLE),
+  status: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => {
+      const s = (v ?? '').trim();
+      return s.length > 0 ? s : 'pending';
+    })
+    .default('pending'),
+  createdAt: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => {
+      const s = (v ?? '').trim();
+      return s.length > 0 ? s : '1970-01-01T00:00:00.000Z';
+    })
+    .default('1970-01-01T00:00:00.000Z'),
+  lastVerifiedAt: z.string().nullable().optional().default(null),
+});
+
+export type NotebookBinding = z.infer<typeof NotebookBindingSchema>;
 
 export const NotebookMappingDtoSchema = z.object({
   projectId: z.string().uuid(),
@@ -14,6 +61,7 @@ export const NotebookMappingDtoSchema = z.object({
   assistedStep: z.string().nullable(),
   lastError: z.string().nullable(),
   lastVerifiedAt: z.string().nullable(),
+  createdAt: z.string().optional(),
   knowledgeVersion: z.number().int().nonnegative().optional(),
   localKnowledgeVersion: z.number().int().nonnegative().optional(),
   lastSyncAt: z.string().nullable().optional(),
@@ -50,6 +98,12 @@ export const NotebookProvisionResponseSchema = z.object({
   mapping: NotebookMappingDtoSchema,
   assisted: z.boolean(),
   message: z.string(),
+  bindingInaccessible: z.boolean().optional(),
+  userMessage: z.string().optional(),
+  technicalDetail: z.string().nullable().optional(),
+  actions: z
+    .array(z.enum(['retry_connect', 'open_notebook', 'relink_notebook']))
+    .optional(),
 });
 
 export const NotebookListResponseSchema = z.object({

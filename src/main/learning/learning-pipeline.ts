@@ -174,7 +174,17 @@ export async function runLearningPipeline(
     const { getNotebookSyncService } = await import(
       '../notebook/notebook-sync-service-singleton'
     );
-    getNotebookSyncService(db).rebuildKnowledge(input.projectId);
+    const sync = getNotebookSyncService(db);
+    // Advance N-chapter / critical sync policy after each PASS (was orphaned).
+    const policy = sync.evaluateSyncPolicy(input.projectId, {
+      chapterCount,
+      critical,
+    });
+    if (policy.shouldSync) {
+      await sync.syncLocalKnowledge(input.projectId);
+    } else {
+      sync.rebuildKnowledge(input.projectId);
+    }
   } catch {
     try {
       new NotebookKnowledgeBuilder(db).rebuildAndTrack(input.projectId);

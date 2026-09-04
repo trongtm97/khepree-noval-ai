@@ -160,6 +160,46 @@ describe('Learning local knowledge lifecycle', () => {
     expect(db.knowledgeSyncState.ensure(projectId).chapters_since_sync).toBe(3);
   });
 
+  it('learning pipeline advances sync policy and syncs when threshold hit', async () => {
+    db.knowledgeSyncState.patch(projectId, {
+      syncEveryNChapters: 3,
+      chaptersSinceSync: 0,
+    });
+
+    const account = db.googleAccounts.create({
+      label: 'Policy',
+      email: 'policy@t.com',
+      displayName: 'Policy',
+      profileDirName: 'policy',
+      status: 'READY',
+      plan: 'UNKNOWN',
+    });
+    db.notebooks.upsert({
+      project_id: projectId,
+      google_account_id: account.id,
+      notebook_name: '[Khepree] Policy',
+      notebook_role: 'SINGLE',
+      status: 'ready',
+    });
+
+    await runLearningPipeline(db, {
+      projectId,
+      jobId: db.jobs.create({
+        project_id: projectId,
+        type: 'translate_batch',
+        chapter_from: 101,
+        chapter_to: 103,
+      }).id,
+      parsed: emptyParsed(),
+      chapterFrom: 101,
+      chapterTo: 103,
+      chaptersCompleted: 3,
+    });
+
+    expect(db.knowledgeSyncState.ensure(projectId).chapters_since_sync).toBe(0);
+    expect(db.notebooks.listByProject(projectId)[0]?.status).toBe('sync_pending');
+  });
+
   it('syncLocalKnowledge marks mapping sync_pending and emits KNOWLEDGE_SYNC_PENDING', async () => {
     const account = db.googleAccounts.create({
       label: 'W2',

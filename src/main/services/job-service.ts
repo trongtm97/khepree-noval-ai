@@ -345,6 +345,7 @@ export class JobService {
       recipeMode: recipeLimits?.mode ?? null,
       qaLevel: recipeLimits?.qaLevel ?? 'standard',
       repairScope: recipeLimits?.repairScope ?? 'targeted',
+      campaignId: input.campaignId ?? null,
     };
     const job = this.db.jobs.create({
       project_id: input.projectId,
@@ -358,6 +359,15 @@ export class JobService {
       config: JSON.stringify(config),
       edition_id: resolveActiveEditionId(this.db, input.projectId),
     });
+    if (input.campaignId) {
+      this.db.translationCampaigns.tryLinkJob({
+        campaignId: input.campaignId,
+        projectId: input.projectId,
+        jobId: job.id,
+        chapterFrom: input.chapterFrom,
+        chapterTo: input.chapterTo,
+      });
+    }
     return this.toJobDto(job);
   }
 
@@ -975,6 +985,10 @@ export class JobService {
       priority: row.priority,
       chapterFrom: row.chapter_from ?? null,
       chapterTo: row.chapter_to ?? null,
+      chapterIds: this.resolveJobChapterIds(row, config),
+      campaignId: this.resolveJobCampaignId(row.id, config),
+      seriesId: this.resolveJobSeriesId(row.project_id),
+      worldId: this.resolveJobWorldId(row.project_id),
       workerMode: row.worker_mode === 'PINNED' ? 'PINNED' : 'POOL',
       pinnedAccountId: row.pinned_account_id ?? null,
       attemptCount: row.attempt_count,
@@ -1018,6 +1032,48 @@ export class JobService {
       completedAt: row.completed_at,
     };
   }
+
+  private resolveJobChapterIds(
+    row: JobRow,
+    config: { chapterIds?: unknown },
+  ): string[] | undefined {
+    if (Array.isArray(config.chapterIds)) {
+      const ids = config.chapterIds.filter(
+        (id): id is string => typeof id === 'string' && id.length > 0,
+      );
+      if (ids.length > 0) return ids;
+    }
+    if (row.chapter_from == null || row.chapter_to == null) return undefined;
+    const chapters = this.db.chapters
+      .listByProject(row.project_id)
+      .filter((ch) => {
+        const ref = ch.chapter_number ?? ch.sequence_order;
+        return ref >= row.chapter_from! && ref <= row.chapter_to!;
+      })
+      .map((ch) => ch.id);
+    return chapters.length > 0 ? chapters : undefined;
+  }
+
+  private resolveJobCampaignId(
+    jobId: string,
+    config: { campaignId?: unknown },
+  ): string | null {
+    if (typeof config.campaignId === 'string' && config.campaignId) {
+      return config.campaignId;
+    }
+    return this.db.translationCampaigns.getCampaignIdForJob(jobId);
+  }
+
+  private resolveJobSeriesId(projectId: string): string | null {
+    return this.db.fictionSeries.getVolumeByProject(projectId)?.series_id ?? null;
+  }
+
+  private resolveJobWorldId(projectId: string): string | null {
+    const seriesId = this.resolveJobSeriesId(projectId);
+    if (!seriesId) return null;
+    const world = this.db.fictionSeries.getWorldState(seriesId);
+    return world?.world_knowledge_json ? seriesId : null;
+  }
 }
 
 function toAttemptDto(row: JobAttemptRow): JobAttemptDto {
@@ -1049,6 +1105,8 @@ function parseConfig(raw: string | null): {
   sourceParagraphIds: string[];
   maxRepairAttempts?: number;
   lockedTerms?: LockedTermForQa[];
+  chapterIds?: string[];
+  campaignId?: string | null;
 } {
   if (!raw) {
     return { batchParagraphs: [], sourceParagraphIds: [] };
@@ -1059,6 +1117,8 @@ function parseConfig(raw: string | null): {
       sourceParagraphIds: string[];
       maxRepairAttempts?: number;
       lockedTerms?: LockedTermForQa[];
+      chapterIds?: string[];
+      campaignId?: string | null;
     };
   } catch {
     return { batchParagraphs: [], sourceParagraphIds: [] };

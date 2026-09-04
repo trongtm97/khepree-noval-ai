@@ -72,6 +72,8 @@ export function toProjectDto(
     sourceLanguageConfidence: row.source_language_confidence ?? null,
     sourceLanguageDetectionMethod: row.source_language_detection_method ?? null,
     sourceLanguageDetectionCheckedAt: row.source_language_detection_checked_at ?? null,
+    seriesId: null,
+    seriesTitle: null,
     health,
   };
 }
@@ -182,9 +184,17 @@ function projectHealth(
 export function toProjectDtoFromDb(db: DatabaseManager, row: ProjectRow): ProjectDto {
   const base = db.chapters.getProjectChapterStats(row.id);
   const queuedChapterCount = countQueuedChapters(db, row.id);
-  return toProjectDto(
+  const dto = toProjectDto(
     row,
     { ...base, queuedChapterCount },
     projectHealth(db, row, base.errorChapterCount),
   );
+  const membership = db.fictionSeries.getVolumeByProject(row.id);
+  if (!membership) return dto;
+  const series = db.fictionSeries.getSeriesById(membership.series_id);
+  return {
+    ...dto,
+    seriesId: membership.series_id,
+    seriesTitle: series?.title ?? null,
+  };
 }

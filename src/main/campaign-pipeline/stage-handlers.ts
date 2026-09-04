@@ -10,6 +10,7 @@ import type {
 import type { CampaignPipelineStage } from '@shared/constants/campaign-pipeline';
 import { JOB_TERMINAL_STATES } from '@shared/constants/job';
 import { getJobService } from '../services/job-service-singleton';
+import { getNotebookBindingService } from '../services/notebook-binding-service-singleton';
 import { runDeliveryAutoExport } from '../portability/delivery-export-service';
 import { emitProductionCompletion } from '../production/completion-notify-bridge';
 
@@ -213,6 +214,13 @@ export const handleTranslation: StageHandler = async (ctx) => {
   const existing = ctx.db.campaignPipeline.parseSideEffects(ctx.stageRow);
   const checkpoint = ctx.db.campaignPipeline.parseCheckpoint(ctx.stageRow);
 
+  // HARD REQUIREMENT 5+16 — single translation engine + story Notebook binding.
+  // Production job → projectId → NotebookBindingService (read-only resolve).
+  // Does NOT own NotebookLM create lifecycle.
+  const storyNotebook = getNotebookBindingService().resolveNotebookForProductionJob(
+    ctx.projectId,
+  );
+
   if (!existing.translationEnqueued) {
     const jobService = getJobService();
     const enqueued = jobService.enqueueTranslateNovel({
@@ -242,6 +250,7 @@ export const handleTranslation: StageHandler = async (ctx) => {
       chaptersDone: enqueued.skippedCount,
       humanLockedCount: countHumanLocked(ctx.db, ctx.projectId),
       accountId: ctx.preferredAccountId ?? null,
+      notebookId: storyNotebook?.notebookId ?? checkpoint.notebookId ?? null,
     };
 
     if (ctx.crashAfterSideEffect === 'translationEnqueued') {

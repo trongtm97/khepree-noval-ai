@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Lock, MoreHorizontal, Users } from 'lucide-react';
 import type { ProjectDto } from '@shared/schemas/import';
 import type {
@@ -49,6 +49,7 @@ export function CharactersPage() {
   const t = useT();
   const showAdvancedTools = useUiShellStore((s) => s.showAdvancedTools);
   const { projectId: routeProjectId = '' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const storeProjectId = useUiShellStore((s) => s.currentProjectId) ?? '';
   const projectId = routeProjectId || storeProjectId;
   const [project, setProject] = useState<ProjectDto | null>(null);
@@ -72,6 +73,21 @@ export function CharactersPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // Library search deep-link: /projects/:id/characters?characterId=<uuid>
+  useEffect(() => {
+    const characterId = searchParams.get('characterId')?.trim();
+    if (!characterId || characters.length === 0) return;
+    const match = characters.find((c) => c.id === characterId);
+    if (match) {
+      setDetailCharacter(match);
+      setTab('characters');
+      setQuery(match.canonicalName || match.translatedName || '');
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('characterId');
+    setSearchParams(next, { replace: true });
+  }, [characters, searchParams, setSearchParams]);
 
   const refresh = useCallback(async () => {
     if (!projectId) return;

@@ -81,6 +81,20 @@ function filterTemporalMemory(events: MemoryEventRow[], anchor: number): MemoryE
   return events.filter((e) => e.chapter_number == null || e.chapter_number <= anchor);
 }
 
+function listPriorSeriesProjectIds(
+  db: DatabaseManager,
+  projectId: string,
+  seriesId: string | null,
+): string[] {
+  if (!seriesId) return [];
+  const volumes = db.fictionSeries.listVolumes(seriesId);
+  const current = volumes.find((v) => v.project_id === projectId);
+  if (!current) return [];
+  return volumes
+    .filter((v) => v.volume_order < current.volume_order)
+    .map((v) => v.project_id);
+}
+
 function parseSeriesWorldKnowledge(
   db: DatabaseManager,
   seriesId: string | null,
@@ -100,7 +114,7 @@ function parseSeriesWorldKnowledge(
           : null;
       if (chapter != null && chapter > anchorChapter) continue;
       entries.push({
-        key,
+        key: `series:${key}`,
         value: typeof value === 'string' ? value : JSON.stringify(value),
       });
     }
@@ -143,11 +157,23 @@ export function scanRelevantKnowledge(
   preferredNameByCharacter: Map<string, string | null>,
 ): ScannedKnowledge {
   const { projectId, batchText, anchorChapter } = input;
+  const scopeCtx = resolveKnowledgeScopeContext(db, projectId);
+  const priorProjectIds = listPriorSeriesProjectIds(db, projectId, scopeCtx.seriesId);
 
   const allCharacters = filterTemporalCharacters(
     db.characters.listByProject(projectId),
     anchorChapter,
   );
+  // Prior volumes in same series: continuity for names/aliases (relevance-filtered later).
+  for (const priorId of priorProjectIds) {
+    for (const character of db.characters.listByProject(priorId)) {
+      allCharacters.push(character);
+      if (!preferredNameByCharacter.has(character.id)) {
+        preferredNameByCharacter.set(character.id, character.translated_name);
+      }
+    }
+  }
+
   const aliasesByCharacter = new Map<string, string[]>();
   for (const character of allCharacters) {
     aliasesByCharacter.set(
@@ -156,7 +182,10 @@ export function scanRelevantKnowledge(
     );
   }
 
-  const allRelationships = db.relationships.listActiveAtChapter(projectId, anchorChapter);
+  const allRelationships = [
+    ...db.relationships.listActiveAtChapter(projectId, anchorChapter),
+    ...priorProjectIds.flatMap((priorId) => db.relationships.listByProject(priorId)),
+  ];
   const recentEvents = filterTemporalMemory(
     db.memoryEvents.listByProject(projectId),
     anchorChapter,
@@ -201,7 +230,6 @@ export function scanRelevantKnowledge(
   const editionRow = input.editionId
     ? db.translationEditions.getById(input.editionId)
     : null;
-  const scopeCtx = resolveKnowledgeScopeContext(db, projectId);
   const termRows = filterTemporalTerms(
     db.terms.listForMatching({
       projectId,
@@ -221,7 +249,7 @@ export function scanRelevantKnowledge(
     projectId,
     seriesId: scopeCtx.seriesId,
     genre: scopeCtx.genre,
-    sourceLanguage: project?.source_language,
+    sourceLanguage: input.sourceLanguage ?? project?.source_language,
     targetLanguage: editionRow?.target_language ?? project?.target_language,
   });
 
@@ -243,14 +271,20 @@ export function scanRelevantKnowledge(
     }
   }
 
+  // Series world facts first (traceable series: prefix), then project — still text-gated.
   const worldKnowledge = [
     ...parseSeriesWorldKnowledge(db, scopeCtx.seriesId, anchorChapter),
     ...parseWorldKnowledge(db, projectId, anchorChapter),
-  ].filter(
-    (entry) =>
+  ].filter((entry) => {
+    const bareKey = entry.key.startsWith('series:')
+      ? entry.key.slice('series:'.length)
+      : entry.key;
+    return (
+      batchText.includes(bareKey) ||
       batchText.includes(entry.key) ||
-      (entry.value.length > 0 && batchText.includes(entry.value.slice(0, 20))),
-  );
+      (entry.value.length > 0 && batchText.includes(entry.value.slice(0, 20)))
+    );
+  });
 
   return {
     termRows,

@@ -73,6 +73,7 @@ export const en: LocaleMessages = {
       translation: 'Translation',
       qa_finding: 'Quality warning',
       series: 'Series',
+      world: 'World',
     },
   },
   series: {
@@ -688,6 +689,10 @@ export const en: LocaleMessages = {
     ctaCheckGoogle: 'Check Google account',
     ctaOpenNotebook: 'Open NotebookLM',
     ctaOpenAiMemory: 'Open AI Memory',
+    ctaRetryConnect: 'Retry connection',
+    ctaRelinkNotebook: 'Relink',
+    notebookBindingInaccessible:
+      'Cannot access the Notebook linked to this story.',
     ensuringReady: 'Preparing account / Notebook…',
     ensureHint: 'Click translate — the app will try to fix this; you will get steps if it cannot.',
     selectAllChapters: 'Select all',
@@ -2541,6 +2546,8 @@ export const en: LocaleMessages = {
     genre: 'Genre',
     genreUnset: '— Not set —',
     publicationStatus: 'Publication status',
+    series: 'Series',
+    openSeries: 'Open series',
     expectedChapters: 'Expected chapter count',
     description: 'Description',
     introduction: 'Introduction',

@@ -55,9 +55,32 @@ export class NotebookProvider implements AutomationProvider {
   private readonly diagnosticsDir: string;
   private readonly baseUrl: string;
 
+  /**
+   * HARD REQUIREMENT 8 — create/ensure depth gate.
+   * Only NotebookBindingService (or fixture tests via runOwnedCreate) may create.
+   */
+  private static createOwnerDepth = 0;
+
   constructor(options: NotebookProviderOptions) {
     this.diagnosticsDir = options.diagnosticsDir;
     this.baseUrl = options.baseUrl ?? NOTEBOOK_URL;
+  }
+
+  /** Run a create/ensure path under NotebookBindingService ownership. */
+  static async runOwnedCreate<T>(fn: () => Promise<T>): Promise<T> {
+    NotebookProvider.createOwnerDepth += 1;
+    try {
+      return await fn();
+    } finally {
+      NotebookProvider.createOwnerDepth -= 1;
+    }
+  }
+
+  private assertCreateOwned(method: string): void {
+    if (NotebookProvider.createOwnerDepth > 0) return;
+    throw new Error(
+      `${method} is owned by NotebookBindingService — UI/workers/campaigns/retries must not create NotebookLM projects directly`,
+    );
   }
 
   /** Test / advanced: attach a raw Playwright page (fixture DOM). */
@@ -227,8 +250,11 @@ export class NotebookProvider implements AutomationProvider {
   /**
    * Ensure a notebook with this exact name exists.
    * Prefer rename of an existing untitled notebook (avoids duplicates), else create.
+   *
+   * HARD REQUIREMENT 8: call only via NotebookBindingService (runOwnedCreate).
    */
   async ensureNotebook(name: string): Promise<NotebookSummary> {
+    this.assertCreateOwned('ensureNotebook');
     const existing = await this.findNotebookByName(name);
     if (existing) return existing;
 
@@ -253,8 +279,11 @@ export class NotebookProvider implements AutomationProvider {
    * Create notebook (idempotent).
    * - Fixture / older UI: title dialog → Enter → appears in list
    * - Live Gemini Notebook: Create → navigate `/notebook/{id}` → rename title
+   *
+   * HARD REQUIREMENT 8: call only via NotebookBindingService (runOwnedCreate).
    */
   async createNotebook(name: string): Promise<NotebookSummary> {
+    this.assertCreateOwned('createNotebook');
     const existing = await this.findNotebookByName(name);
     if (existing) return existing;
 

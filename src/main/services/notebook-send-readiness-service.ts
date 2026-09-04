@@ -17,6 +17,10 @@ export interface NotebookSendReadinessResult {
   notebookRowId: string | null;
   mapping: NotebookResourceRow | null;
   usedWebChatFallback: boolean;
+  bindingInaccessible?: boolean;
+  userMessage?: string;
+  technicalDetail?: string | null;
+  actions?: import('@shared/constants/notebook-binding-access').NotebookBindingAccessAction[];
 }
 
 export interface NotebookSendReadinessDeps {
@@ -123,9 +127,18 @@ export class NotebookSendReadinessService {
       input.accountId,
     );
 
+    // HR12: story already has a remote NotebookLM binding → resume/reuse only.
+    const { getNotebookBindingService } = await import(
+      './notebook-binding-service-singleton'
+    );
+    const storyBound = getNotebookBindingService().getNotebookForStory(input.projectId);
+    const mustReuseOnly = Boolean(
+      storyBound?.notebookId || existing?.notebook_id,
+    );
+
     try {
       let provisionResult: ProvisionNotebookResult;
-      if (existing?.status === 'assisted_setup') {
+      if (existing?.status === 'assisted_setup' || mustReuseOnly) {
         const resume =
           this.deps.resumeAssisted ??
           (async (req) => {
@@ -159,10 +172,17 @@ export class NotebookSendReadinessService {
           input.accountId,
           input.packMode,
         );
+        const inaccessible = Boolean(provisionResult.bindingInaccessible);
         return {
           ok: false,
           needsAssisted: true,
-          message: provisionResult.message || viMessageAssistedSetup(),
+          bindingInaccessible: inaccessible,
+          userMessage: provisionResult.userMessage,
+          technicalDetail: provisionResult.technicalDetail ?? null,
+          actions: provisionResult.actions,
+          message: inaccessible
+            ? provisionResult.userMessage || provisionResult.message
+            : provisionResult.message || viMessageAssistedSetup(),
           notebookUrl: afterAssisted.notebookUrl,
           notebookRowId: afterAssisted.notebookRowId,
           mapping: afterAssisted.mapping,

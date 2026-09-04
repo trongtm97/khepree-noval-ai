@@ -34,6 +34,9 @@ export const ProjectDtoSchema = z.object({
     .optional(),
   sourceLanguageDetectionCheckedAt: z.string().nullable().optional(),
   hintMismatch: z.boolean().optional(),
+  /** Fiction-series membership when this project is a volume. */
+  seriesId: z.string().uuid().nullable().optional(),
+  seriesTitle: z.string().nullable().optional(),
   health: z
     .object({
       source: z.enum(['ok', 'warn', 'missing']),

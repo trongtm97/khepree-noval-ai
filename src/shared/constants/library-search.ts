@@ -8,6 +8,7 @@ export const LIBRARY_SEARCH_ENTITY_TYPES = [
   'translation',
   'qa_finding',
   'series',
+  'world',
 ] as const;
 
 export type LibrarySearchEntityType = (typeof LIBRARY_SEARCH_ENTITY_TYPES)[number];

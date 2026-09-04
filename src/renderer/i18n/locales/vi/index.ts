@@ -80,6 +80,7 @@ export const vi = {
       translation: 'Bản dịch',
       qa_finding: 'Cảnh báo chất lượng',
       series: 'Bộ truyện',
+      world: 'Thế giới',
     },
   },
   series: {
@@ -695,6 +696,10 @@ export const vi = {
     ctaCheckGoogle: 'Kiểm tra tài khoản Google',
     ctaOpenNotebook: 'Mở NotebookLM',
     ctaOpenAiMemory: 'Mở Bộ nhớ AI',
+    ctaRetryConnect: 'Thử kết nối lại',
+    ctaRelinkNotebook: 'Liên kết lại',
+    notebookBindingInaccessible:
+      'Không thể truy cập Notebook đã liên kết với truyện này.',
     ensuringReady: 'Đang tự chuẩn bị tài khoản / Notebook…',
     ensureHint: 'Bấm dịch — hệ thống sẽ tự thử sửa; nếu không được sẽ hướng dẫn bạn.',
     selectAllChapters: 'Chọn tất cả',
@@ -2548,6 +2553,8 @@ export const vi = {
     genre: 'Thể loại',
     genreUnset: '— Chưa chọn —',
     publicationStatus: 'Trạng thái',
+    series: 'Bộ truyện',
+    openSeries: 'Mở bộ truyện',
     expectedChapters: 'Tổng chương dự kiến',
     description: 'Mô tả',
     introduction: 'Giới thiệu',

@@ -17,6 +17,7 @@ import { BrowserEventLogger } from '../automation/browser-event-logger';
 import { browserProfileManager } from '../automation/browser-runner/profile-manager';
 import { profileLockManager } from '../automation/browser-runner/profile-lock';
 import { pathsService } from '../services/paths-service';
+import { getNotebookBindingService } from '../services/notebook-binding-service-singleton';
 import { logger } from '../logging/logger';
 import { newId } from '../db/utils/uuid';
 import { FullNovelPreprocessService } from './full-novel-preprocess-service';
@@ -474,14 +475,27 @@ export class FullNovelPreprocessOrchestrator {
             openNotebook: async (p, url) => {
               const notebook = new NotebookProvider({ diagnosticsDir });
               notebook.attachPage(p);
-              if (url.startsWith('http')) {
-                await p.goto(url, {
-                  waitUntil: 'domcontentloaded',
-                  timeout: 45_000,
+              const preferredName =
+                mapping.notebook_name ??
+                `[Khepree] ${input.projectId}`;
+              if (url.startsWith('http') || mapping.notebook_id) {
+                await getNotebookBindingService().openBound({
+                  provider: notebook,
+                  mapping,
+                  preferredName,
+                  page: p,
                 });
               } else {
-                await notebook.ensureNotebook(mapping.notebook_name ?? input.projectId);
-                await notebook.openNotebook(mapping.notebook_name ?? input.projectId);
+                // HR10: create only when unbound; persist via getOrCreate.
+                await getNotebookBindingService().getOrCreateNotebookBinding({
+                  projectId: input.projectId,
+                  accountId: input.accountId,
+                  preferredName,
+                  role: (mapping.notebook_role as import('@shared/constants/notebook-role').NotebookRole) ??
+                    'RESEARCH',
+                  provider: notebook,
+                  page: p,
+                });
               }
             },
           });

@@ -427,6 +427,16 @@ export class TranslationCampaignRepository extends BaseRepository {
   listJobIds(campaignId: string): string[] {
     return this.listJobs(campaignId).map((j) => j.job_id);
   }
+
+  /** Reverse lookup: which campaign owns this job (if any). */
+  getCampaignIdForJob(jobId: string): string | null {
+    const row = this.db
+      .prepare(
+        `SELECT campaign_id FROM translation_campaign_jobs WHERE job_id = ? LIMIT 1`,
+      )
+      .get(jobId) as { campaign_id: string } | undefined;
+    return row?.campaign_id ?? null;
+  }
 }
 
 export function createTranslationRecipeRepository(

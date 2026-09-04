@@ -540,6 +540,20 @@ export function useTranslationEditorController() {
         }
         return;
       }
+      if (cta.action === 'retry_connect') {
+        if (cta.accountId && projectId) {
+          await window.khepreeNovelAI.notebook.resume({
+            projectId,
+            accountId: cta.accountId,
+            role: 'SINGLE',
+          });
+        }
+        return;
+      }
+      if (cta.action === 'relink_notebook') {
+        if (projectId) navigate(`/projects/${projectId}/ai-memory`);
+        return;
+      }
       if (projectId) navigate(`/projects/${projectId}/ai-memory`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));

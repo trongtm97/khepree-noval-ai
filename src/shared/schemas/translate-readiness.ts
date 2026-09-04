@@ -12,6 +12,8 @@ export const TranslateEnsureActionSchema = z.enum([
   'check_google',
   'open_notebook',
   'open_ai_memory',
+  'retry_connect',
+  'relink_notebook',
 ]);
 
 export const TranslateEnsureReadyRequestSchema = z.object({

@@ -172,6 +172,148 @@ describe('fiction series scoped knowledge', () => {
     expect(a).toContain('local');
   });
 
+  it('assign seeds SERIES glossary and world from project', () => {
+    const db = getDatabase();
+    const series = service.createSeries({ title: 'Seed' });
+    const projectId = createProject('Seed vol');
+    db.terms.create({
+      source_text: '共享词',
+      scope: 'PROJECT',
+      scope_ref: projectId,
+      status: 'PROJECT_VERIFIED',
+      preferred_translation: 'shared term',
+    });
+    db.storyStates.patch(projectId, {
+      worldKnowledge: { realm: 'Qi cultivation' },
+    });
+
+    service.assignProjectToSeries({ projectId, seriesId: series.id, force: true });
+
+    const seriesTerms = db.terms.listByScope('SERIES', series.id);
+    expect(seriesTerms.some((t) => t.source_text === '共享词')).toBe(true);
+    expect(db.terms.listByScope('PROJECT', projectId).length).toBe(1);
+
+    const world = db.fictionSeries.getWorldState(series.id);
+    expect(world?.world_knowledge_json).toContain('Qi cultivation');
+  });
+
+  it('project DTO exposes series membership', async () => {
+    const db = getDatabase();
+    const series = service.createSeries({ title: 'DTO Series' });
+    const projectId = createProject('DTO vol');
+    service.assignProjectToSeries({ projectId, seriesId: series.id, force: true });
+    const { toProjectDtoFromDb } = await import('@main/services/project-dto');
+    const row = db.projects.getById(projectId)!;
+    const dto = toProjectDtoFromDb(db, row);
+    expect(dto.seriesId).toBe(series.id);
+    expect(dto.seriesTitle).toBe('DTO Series');
+  });
+
+  it('translation memory context consumes series glossary, style, world, prior-volume characters', async () => {
+    const db = getDatabase();
+    const { ensureDefaultEdition } = await import('@main/services/edition-service');
+    const { buildMemoryContext } = await import('@main/memory/context-selector');
+    const { buildTranslationPack } = await import('@main/prompt/translation-pack-builder');
+    const { toCharacterDto, toRelationshipDto } = await import('@main/services/memory-dto');
+    const { resolveCharacterPreferredName } = await import('@main/memory/edition-memory');
+
+    const series = service.createSeries({ title: 'Ctx Series' });
+    const vol1 = createProject('Vol 1');
+    const vol2 = createProject('Vol 2');
+    const edition2 = ensureDefaultEdition(db, vol2).id;
+
+    db.fictionSeries.upsertStyleRule({
+      seriesId: series.id,
+      ruleKind: 'naming',
+      content: 'Keep sect titles untranslated on first mention',
+      sortOrder: 0,
+    });
+    db.fictionSeries.upsertStyleRule({
+      seriesId: series.id,
+      ruleKind: 'address',
+      content: 'Junior disciples address elders as sư phụ',
+      sortOrder: 1,
+    });
+    db.fictionSeries.setWorldKnowledgeJson(
+      series.id,
+      JSON.stringify({ 青云门: 'Thanh Vân Môn — major righteous sect' }),
+    );
+    db.terms.create({
+      source_text: '筑基',
+      scope: 'SERIES',
+      scope_ref: series.id,
+      status: 'PROJECT_VERIFIED',
+      preferred_translation: 'Trúc Cơ',
+      term_type: 'CULTIVATION_LEVEL',
+    });
+
+    const heroVol1 = db.characters.create({
+      project_id: vol1,
+      canonical_name: '张小凡',
+      translated_name: 'Trương Tiểu Phàm',
+      first_chapter: 1,
+    });
+    db.characters.addAlias(heroVol1.id, '小凡');
+
+    service.assignProjectToSeries({ projectId: vol1, seriesId: series.id, force: true });
+    service.assignProjectToSeries({ projectId: vol2, seriesId: series.id, force: true });
+
+    const chapter = db.chapters.create({
+      project_id: vol2,
+      chapter_number: 1,
+      sequence_order: 1,
+      display_title: 'Ch 1',
+      chapter_type: 'NORMAL',
+    });
+    db.paragraphs.create({
+      chapter_id: chapter.id,
+      paragraph_id: 'P1-001',
+      sequence: 0,
+      source_text: '张小凡在青云门修炼筑基。',
+    });
+
+    const ctx = buildMemoryContext(
+      db,
+      { projectId: vol2, chapterIds: [chapter.id], editionId: edition2 },
+      (id) => {
+        const row = db.characters.getById(id);
+        if (!row) return null;
+        return toCharacterDto(
+          row,
+          db.characters.listAliases(row.id).map((a) => a.alias),
+          resolveCharacterPreferredName(db, row, edition2),
+        );
+      },
+      (rel) => {
+        const from = db.characters.getById(rel.from_character_id);
+        const to = db.characters.getById(rel.to_character_id);
+        return toRelationshipDto(rel, from?.canonical_name ?? '?', to?.canonical_name ?? '?');
+      },
+    );
+
+    expect(ctx.criticalProjectRules.some((r) => r.includes('[series:naming]'))).toBe(true);
+    expect(ctx.criticalProjectRules.some((r) => r.includes('[series:address]'))).toBe(true);
+    expect(ctx.worldKnowledge.some((w) => w.key === 'series:青云门')).toBe(true);
+    expect(ctx.activeTerms.some((t) => t.sourceText === '筑基')).toBe(true);
+    expect(ctx.activeCharacters.some((c) => c.canonicalName === '张小凡')).toBe(true);
+    // Fingerprint must change when series knowledge is in the pack (hash includes series/world keys).
+    expect(ctx.fingerprint.contextHash.length).toBeGreaterThan(10);
+    expect(ctx.fingerprint.memoryCount).toBeGreaterThan(0);
+
+    const pack = buildTranslationPack(db, {
+      projectId: vol2,
+      chapterIds: [chapter.id],
+      style: 'balanced',
+      context: ctx,
+      editionId: edition2,
+    });
+    expect(pack.prompt).toContain('[series:naming]');
+    expect(pack.prompt).toContain('SERIES glossary');
+    expect(pack.prompt).toContain('青云门');
+    expect(pack.prompt).toContain('张小凡');
+    expect(pack.prompt).toContain('筑基');
+  });
+
   it('export series knowledge has no credential fields', () => {
     const series = service.createSeries({ title: 'Export' });
     createSeriesTerm(series.id, '导出', 'export');

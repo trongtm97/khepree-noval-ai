@@ -113,6 +113,41 @@ describe('notebook role resolver', () => {
     expect(resolveNotebookForPurpose(db, projectId, accountId, 'translation')).toBeNull();
   });
 
+  it('upsert reuses one SINGLE binding across edition ids (no duplicate NotebookLM)', () => {
+    const editionA = db.translationEditions.create({
+      projectId,
+      targetLanguage: 'vi',
+      name: 'VI A',
+    });
+    const editionB = db.translationEditions.create({
+      projectId,
+      targetLanguage: 'en',
+      name: 'EN B',
+    });
+    const first = db.notebooks.upsert({
+      project_id: projectId,
+      google_account_id: accountId,
+      notebook_name: '[Khepree] Role Novel',
+      notebook_role: 'SINGLE',
+      edition_id: editionA.id,
+      notebook_id: 'nb-remote-1',
+      status: 'ready',
+    });
+    const second = db.notebooks.upsert({
+      project_id: projectId,
+      google_account_id: accountId,
+      notebook_name: '[Khepree] Role Novel Renamed',
+      notebook_role: 'SINGLE',
+      edition_id: editionB.id,
+      status: 'sync_pending',
+    });
+    expect(second.id).toBe(first.id);
+    expect(second.notebook_id).toBe('nb-remote-1');
+    expect(
+      db.notebooks.listByProject(projectId).filter((r) => r.notebook_role === 'SINGLE'),
+    ).toHaveLength(1);
+  });
+
   it('deprecated TRANSLATION row excluded from resolveTranslationNotebook', () => {
     const row = db.notebooks.upsert({
       project_id: projectId,

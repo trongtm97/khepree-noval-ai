@@ -55,6 +55,8 @@ export const CampaignPipelineCheckpointSchema = z.object({
   auditSkippedReason: z.string().optional(),
   deliveryReady: z.boolean().optional(),
   accountId: z.string().nullable().optional(),
+  /** HR16: story NotebookLM id resolved via NotebookBindingService (never created here). */
+  notebookId: z.string().nullable().optional(),
 });
 
 export type CampaignPipelineCheckpoint = z.infer<

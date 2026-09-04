@@ -49,6 +49,14 @@ export interface UpsertNotebookInput {
 }
 
 export class NotebookRepository extends BaseRepository {
+  getById(id: string): NotebookResourceRow | null {
+    return (
+      (this.db
+        .prepare(`SELECT * FROM notebook_resources WHERE id = ?`)
+        .get(id) as NotebookResourceRow | undefined) ?? null
+    );
+  }
+
   getByProjectWorkerRole(
     projectId: string,
     accountId: string,
@@ -123,12 +131,21 @@ export class NotebookRepository extends BaseRepository {
   upsert(input: UpsertNotebookInput): NotebookResourceRow {
     const role = input.notebook_role ?? DEFAULT_NOTEBOOK_ROLE;
     const editionId = role === 'RESEARCH' ? null : (input.edition_id ?? null);
-    const existing = this.getByProjectWorkerRole(
-      input.project_id,
-      input.google_account_id,
-      role,
-      editionId,
-    );
+    // ONE STORY → ONE BINDING per (project, worker, role).
+    // Do not key SINGLE/TRANSLATION on edition_id (would create duplicate NotebookLM projects).
+    const existing =
+      role === 'RESEARCH'
+        ? this.getByProjectWorkerRole(
+            input.project_id,
+            input.google_account_id,
+            role,
+            null,
+          )
+        : this.getByProjectWorkerRole(
+            input.project_id,
+            input.google_account_id,
+            role,
+          );
     const ts = touchTimestamps();
 
     if (existing) {
@@ -171,12 +188,7 @@ export class NotebookRepository extends BaseRepository {
           existing.id,
         );
       return this.assertRow(
-        this.getByProjectWorkerRole(
-          input.project_id,
-          input.google_account_id,
-          role,
-          editionId,
-        ),
+        this.getById(existing.id),
         'notebook',
         existing.id,
       );
@@ -209,16 +221,7 @@ export class NotebookRepository extends BaseRepository {
         ts.created_at,
         ts.updated_at,
       );
-    return this.assertRow(
-      this.getByProjectWorkerRole(
-        input.project_id,
-        input.google_account_id,
-        role,
-        editionId,
-      ),
-      'notebook',
-      id,
-    );
+    return this.assertRow(this.getById(id), 'notebook', id);
   }
 
   markVerified(id: string): NotebookResourceRow | null {
