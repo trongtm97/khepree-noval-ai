@@ -24,13 +24,14 @@ export function useKhepreeAnnouncements(enabled: boolean): {
 
   const applyList = useCallback(
     (remote: KhepreeAnnouncementDto[]) => {
-      const remoteIds = new Set(remote.map((a) => announcementId(a.publicId)));
+      const list = Array.isArray(remote) ? remote : [];
+      const remoteIds = new Set(list.map((a) => announcementId(a.publicId)));
       for (const local of items) {
         if (local.khepreePublicId && !remoteIds.has(local.id)) {
           remove(local.id);
         }
       }
-      for (const ann of remote) {
+      for (const ann of list) {
         const id = announcementId(ann.publicId);
         const existing = items.find((i) => i.id === id);
         upsert({

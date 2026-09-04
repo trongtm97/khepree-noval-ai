@@ -88,7 +88,7 @@ export function SeriesPage() {
     setVolumes(vols);
     setSeriesDetail(detail.series);
     setWorldRows(recordToRows(worldRes.worldKnowledge));
-    setStyleRules(rules);
+    setStyleRules(rules.rules);
   }, []);
 
   useEffect(() => {

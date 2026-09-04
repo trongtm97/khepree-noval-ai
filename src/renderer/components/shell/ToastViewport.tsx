@@ -67,7 +67,7 @@ export function ToastViewport({
           <div style={{ flex: 1, minWidth: 0 }}>
             <h4>{item.title}</h4>
             <p>{item.description}</p>
-            {item.toastActions && item.toastActions.length > 0 ? (
+            {Array.isArray(item.toastActions) && item.toastActions.length > 0 ? (
               <div className="nt-toast__actions">
                 {item.toastActions.map((action) => (
                   <Button

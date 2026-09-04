@@ -136,7 +136,7 @@ export function AiPreferencePanel() {
         ))}
       </fieldset>
 
-      {routing && routing.providerHealth.length > 0 ? (
+      {routing && Array.isArray(routing.providerHealth) && routing.providerHealth.length > 0 ? (
         <ul className="settings-ai-health-list" aria-label={t('settings.aiProviderHealthLabel')}>
           {routing.providerHealth.map((row) => (
             <li key={row.preference}>

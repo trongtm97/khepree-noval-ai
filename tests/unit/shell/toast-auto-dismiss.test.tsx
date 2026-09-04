@@ -132,6 +132,28 @@ describe('migrateNotificationPersist', () => {
     expect(migrated.items[0]?.read).toBe(false);
     expect(migrated.items[0]?.toast).toBe(false);
   });
+
+  it('drops non-array toastActions from persisted rows', () => {
+    const migrated = migrateNotificationPersist(
+      {
+        items: [
+          {
+            id: 'bad-actions',
+            kind: 'SUCCESS',
+            title: 'Done',
+            description: 'Export',
+            timestamp: '2026-01-01T00:00:00.000Z',
+            read: false,
+            toast: true,
+            toastActions: 'not-an-array' as unknown as [],
+          },
+        ],
+      },
+      1,
+    );
+
+    expect(migrated.items[0]?.toastActions).toBeUndefined();
+  });
 });
 
 describe('ToastViewport auto-dismiss timer', () => {

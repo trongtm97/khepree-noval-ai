@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JobDto } from '@shared/schemas/job';
 import type { ProjectDto } from '@shared/schemas/import';
 import type { GoogleAccountDto } from '@shared/schemas/account';
@@ -56,6 +56,14 @@ export function useJobsOverview(): JobsOverviewData {
   const [loading, setLoading] = useState(true);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const aliveRef = useRef(true);
+
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     const results = await Promise.allSettled([
@@ -67,6 +75,7 @@ export function useJobsOverview(): JobsOverviewData {
       window.khepreeNovelAI.aiProviders.getRouting(),
       window.khepreeNovelAI.aiProviders.autoSetupStatus(),
     ]);
+    if (!aliveRef.current) return;
 
     const failures = results.filter((r) => r.status === 'rejected');
     if (failures.length === results.length) {
@@ -130,9 +139,11 @@ export function useJobsOverview(): JobsOverviewData {
   useEffect(() => {
     void refresh()
       .catch((err: unknown) => {
+        if (!aliveRef.current) return;
         setRefreshError(err instanceof Error ? err.message : t('errors.UNKNOWN.title'));
       })
       .finally(() => {
+        if (!aliveRef.current) return;
         setInitialLoadDone(true);
         setLoading(false);
       });

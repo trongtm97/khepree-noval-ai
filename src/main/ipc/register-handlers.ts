@@ -305,6 +305,7 @@ import {
   FictionSeriesVolumeDtoSchema,
   GetSeriesWorldRequestSchema,
   ListSeriesStyleRulesRequestSchema,
+  ListSeriesStyleRulesResponseSchema,
   PreviewSeriesMembershipRequestSchema,
   RemoveSeriesVolumeRequestSchema,
   ReorderSeriesVolumesRequestSchema,
@@ -313,6 +314,7 @@ import {
   SetSeriesWorldRequestSchema,
   UpdateFictionSeriesRequestSchema,
   UpsertSeriesStyleRuleRequestSchema,
+  UpsertSeriesStyleRuleResponseSchema,
 } from '@shared/schemas/fiction-series';
 import {
   LearningDashboardRequestSchema,
@@ -3359,7 +3361,9 @@ export function registerIpcHandlers(): void {
     IPC_CHANNELS.FICTION_SERIES_LIST_STYLE_RULES,
     createIpcHandler(ListSeriesStyleRulesRequestSchema, (request) => {
       const rules = getFictionSeriesService().listStyleRules(request.seriesId);
-      return { rules: SeriesStyleRuleDtoSchema.array().parse(rules) };
+      return ListSeriesStyleRulesResponseSchema.parse({
+        rules: SeriesStyleRuleDtoSchema.array().parse(rules),
+      });
     }),
   );
 
@@ -3373,7 +3377,9 @@ export function registerIpcHandlers(): void {
         content: request.content,
         sortOrder: request.sortOrder,
       });
-      return { rule: SeriesStyleRuleDtoSchema.parse(rule) };
+      return UpsertSeriesStyleRuleResponseSchema.parse({
+        rule: SeriesStyleRuleDtoSchema.parse(rule),
+      });
     }),
   );
 

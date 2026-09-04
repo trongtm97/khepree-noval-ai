@@ -127,3 +127,11 @@ export const SeriesStyleRuleDtoSchema = z.object({
   content: z.string(),
   sortOrder: z.number().int(),
 });
+
+export const ListSeriesStyleRulesResponseSchema = z.object({
+  rules: z.array(SeriesStyleRuleDtoSchema),
+});
+
+export const UpsertSeriesStyleRuleResponseSchema = z.object({
+  rule: SeriesStyleRuleDtoSchema,
+});

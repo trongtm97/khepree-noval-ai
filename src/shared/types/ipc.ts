@@ -1538,7 +1538,7 @@ export interface KhepreeNovelAIApi {
       updatedAt: string;
     }>;
     listStyleRules: (seriesId: string) => Promise<
-      z.infer<typeof import('../schemas/fiction-series').SeriesStyleRuleDtoSchema>[]
+      z.infer<typeof import('../schemas/fiction-series').ListSeriesStyleRulesResponseSchema>
     >;
     upsertStyleRule: (input: {
       seriesId: string;
@@ -1546,7 +1546,9 @@ export interface KhepreeNovelAIApi {
       kind: string;
       content: string;
       sortOrder?: number;
-    }) => Promise<z.infer<typeof import('../schemas/fiction-series').SeriesStyleRuleDtoSchema>>;
+    }) => Promise<
+      z.infer<typeof import('../schemas/fiction-series').UpsertSeriesStyleRuleResponseSchema>
+    >;
     deleteStyleRule: (input: { seriesId: string; ruleId: string }) => Promise<{ ok: true }>;
     update: (input: {
       seriesId: string;

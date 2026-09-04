@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { FeatureIntroStateDto } from '@shared/schemas/feature-intro';
 import { useNotificationStore } from '../../stores/notification-store';
 import { useUpdateStatus } from '../../hooks/useUpdateStatus';
@@ -7,6 +8,7 @@ import { FeatureTour } from './FeatureTour';
 import { useFeatureIntroUiStore } from './feature-intro-store';
 
 export function FeatureIntroCoordinator() {
+  const location = useLocation();
   const [state, setState] = useState<FeatureIntroStateDto | null>(null);
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -23,6 +25,12 @@ export function FeatureIntroCoordinator() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Cross-route navigation must drop the overlay so Production/Settings mount without
+  // a leftover tour portal competing for the shell (V5 sequence crash surface).
+  useEffect(() => {
+    setTourOpen(false);
+  }, [location.pathname]);
 
   const blocked = useMemo(() => {
     const mandatoryUpdate =

@@ -79,7 +79,7 @@ function uid(): string {
   return `n_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-const NOTIFICATION_PERSIST_VERSION = 1;
+const NOTIFICATION_PERSIST_VERSION = 2;
 
 type PersistedNotificationState = Pick<NotificationState, 'items'>;
 
@@ -89,24 +89,43 @@ type LegacyPersistedNotification = Omit<AppNotification, 'read' | 'toast'> & {
   toast?: boolean;
 };
 
+function sanitizeToastActions(
+  value: unknown,
+): AppNotification['toastActions'] | undefined {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) return undefined;
+  const actions = value.filter(
+    (row): row is NonNullable<AppNotification['toastActions']>[number] =>
+      Boolean(
+        row &&
+          typeof row === 'object' &&
+          typeof (row as { label?: unknown }).label === 'string' &&
+          typeof (row as { path?: unknown }).path === 'string' &&
+          ((row as { action?: unknown }).action === 'open-file' ||
+            (row as { action?: unknown }).action === 'open-folder'),
+      ),
+  );
+  return actions.length > 0 ? actions : undefined;
+}
+
 export function migrateNotificationPersist(
   persisted: unknown,
   version: number,
 ): PersistedNotificationState {
   const state = (persisted ?? { items: [] }) as PersistedNotificationState;
-  const items = Array.isArray(state.items) ? state.items : [];
+  const rawItems = Array.isArray(state.items) ? state.items : [];
+  const items = rawItems.map((raw) => {
+    const item = raw as LegacyPersistedNotification;
+    return {
+      ...item,
+      read: item.read ?? false,
+      toast: item.toast ?? false,
+      toastActions: sanitizeToastActions(item.toastActions),
+    };
+  });
 
   if (version < NOTIFICATION_PERSIST_VERSION) {
-    return {
-      items: items.map((raw) => {
-        const item = raw as LegacyPersistedNotification;
-        return {
-          ...item,
-          read: item.read ?? false,
-          toast: item.toast ?? false,
-        };
-      }),
-    };
+    return { items };
   }
 
   return { items };

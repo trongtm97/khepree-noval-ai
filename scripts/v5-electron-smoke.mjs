@@ -778,8 +778,11 @@ async function main() {
       }
     }
 
-    // Dismiss feature-intro before Production / Settings (prevents ErrorBoundary traps).
-  for (const label of [/Đóng|Close|Không hiện lại|Don't show again/i]) {
+  // Dismiss feature-intro / What's New / Feature Tour before Production / Settings.
+  for (const label of [
+    /Đóng|Close|Không hiện lại|Don't show again/i,
+    /Bỏ qua|Skip/i,
+  ]) {
     const btn = page.getByRole('button', { name: label });
     if (await btn.first().isVisible().catch(() => false)) {
       await btn.first().click();
@@ -791,27 +794,20 @@ async function main() {
     try {
       await gotoHash(page, '/jobs');
       await sleep(800);
-      // Recover from ErrorBoundary if a prior route crashed the shell.
-      const crashed = await page.getByText(/Đã xảy ra lỗi|An error occurred/i).isVisible().catch(() => false);
-      if (crashed) {
-        const reload = page.getByRole('button', { name: /Tải lại ứng dụng|Reload/i });
-        if (await reload.isVisible().catch(() => false)) {
-          await reload.click();
-          await sleep(2500);
-          await bootstrapApp(page);
-          await gotoHash(page, '/jobs');
-          await sleep(800);
-        }
-      }
+      const crashed = await page.locator('.error-boundary, [data-testid="error-boundary"]').isVisible().catch(() => false);
       const text = await visibleText(page);
       const hasCampaigns = /Campaigns|Chiến dịch/i.test(text);
       const hasQueue = /Queue|Hàng đợi/i.test(text);
       const hasAttention = /Attention|Needs your action|Cần bạn xử lý/i.test(text);
       report.screenshots.H_jobs = await capture(page, 'H-jobs', 1280, 800);
-      if (hasCampaigns && hasQueue && hasAttention) {
+      if (crashed || /Đã xảy ra lỗi|An error occurred|map is not a function/i.test(text)) {
+        const stack = await page.locator('.error-boundary__stack').textContent().catch(() => null);
+        setJ(
+          'H',
+          journey('FAIL', `Renderer ErrorBoundary on Production: ${sanitizeText((stack || text).slice(0, 240))}`),
+        );
+      } else if (hasCampaigns && hasQueue && hasAttention) {
         setJ('H', journey('PASS', 'Campaigns/Queue/Attention tabs visible'));
-      } else if (/Đã xảy ra lỗi|An error occurred|map is not a function/i.test(text)) {
-        setJ('H', journey('FAIL', `Renderer crash on Production: ${sanitizeText(text.slice(0, 120))}`));
       } else if (text.trim().length > 20) {
         setJ(
           'H',
@@ -857,6 +853,21 @@ async function main() {
     try {
       await gotoHash(page, '/settings');
       await sleep(500);
+      const settingsCrashed = await page
+        .locator('.error-boundary, [data-testid="error-boundary"]')
+        .isVisible()
+        .catch(() => false);
+      if (settingsCrashed) {
+        const stack = await page.locator('.error-boundary__stack').textContent().catch(() => null);
+        const text = await visibleText(page);
+        setJ(
+          'J',
+          journey(
+            'FAIL',
+            `Renderer ErrorBoundary on Settings: ${sanitizeText((stack || text).slice(0, 240))}`,
+          ),
+        );
+      } else {
       const generalLabels = [/Chung|General|Cơ bản/i];
       let generalOpened = false;
       for (const re of generalLabels) {
@@ -909,8 +920,47 @@ async function main() {
           { jargonHits },
         ),
       );
+      }
     } catch (e) {
       setJ('J', journey('FAIL', sanitizeText(e.message || e)));
+    }
+
+    // ── J2. Repeated cross-route thrash (Production/Settings must stay clean) ──
+    try {
+      const routes = [
+        '/projects',
+        projectA?.projectId ? `/projects/${projectA.projectId}/translate` : '/projects',
+        '/search',
+        '/jobs',
+        '/settings',
+        '/series',
+        projectA?.projectId ? `/projects/${projectA.projectId}/translate` : '/projects',
+        '/jobs',
+        '/settings',
+      ];
+      let thrashFail = null;
+      for (let round = 0; round < 2 && !thrashFail; round++) {
+        for (const route of routes) {
+          await gotoHash(page, route);
+          await sleep(350);
+          const crashed = await page
+            .locator('.error-boundary, [data-testid="error-boundary"]')
+            .isVisible()
+            .catch(() => false);
+          if (crashed) {
+            const text = await visibleText(page);
+            thrashFail = `round=${round} route=${route}: ${sanitizeText(text.slice(0, 160))}`;
+            break;
+          }
+        }
+      }
+      if (thrashFail) {
+        setJ('J2', journey('FAIL', thrashFail));
+      } else {
+        setJ('J2', journey('PASS', 'Repeated route thrash: no ErrorBoundary'));
+      }
+    } catch (e) {
+      setJ('J2', journey('FAIL', sanitizeText(e.message || e)));
     }
 
     // ── K. Responsive window sizes ────────────────────────────────
@@ -1075,7 +1125,7 @@ async function main() {
   }
 
   // Summary
-  const keys = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'];
+  const keys = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'J2', 'K', 'L', 'M'];
   let fails = 0;
   let skips = 0;
   let passes = 0;
