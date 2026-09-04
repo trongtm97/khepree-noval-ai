@@ -47,6 +47,12 @@ screenshots/
 tmp/
 temp/
 
+# Lint / scan artifacts (local CI helpers)
+lint-output.json
+lint-critical-raw.json
+eslint-report.json
+.gitleaks-report.json
+
 # Real Google smoke local config + artifacts (never commit secrets / profiles)
 google-smoke.config.json
 tmp/google-smoke-artifacts/

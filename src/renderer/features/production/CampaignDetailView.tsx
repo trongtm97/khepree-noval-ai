@@ -190,7 +190,7 @@ export function CampaignDetailView({
               size="sm"
               variant="danger"
               disabled={busy}
-              onClick={() => setConfirmCancel(true)}
+              onClick={() => { setConfirmCancel(true); }}
             >
               {t('production.cancel')}
             </Button>
@@ -233,7 +233,7 @@ export function CampaignDetailView({
             }}
           >
             {virtualizer.getVirtualItems().map((row) => {
-              const project = projects[row.index]!;
+              const project = projects[row.index];
               return (
                 <div
                   key={row.key}
@@ -251,7 +251,7 @@ export function CampaignDetailView({
                   <ProjectRuntimeCard
                     project={project}
                     busy={busy}
-                    onOpen={() => navigate(`/projects/${project.projectId}`)}
+                    onOpen={() => { navigate(`/projects/${project.projectId}`); }}
                     onControl={onProjectControl}
                     stageLabel={stageLabel(project.stage, t)}
                   />
@@ -267,7 +267,7 @@ export function CampaignDetailView({
               <ProjectRuntimeCard
                 project={project}
                 busy={busy}
-                onOpen={() => navigate(`/projects/${project.projectId}`)}
+                onOpen={() => { navigate(`/projects/${project.projectId}`); }}
                 onControl={onProjectControl}
                 stageLabel={stageLabel(project.stage, t)}
               />
@@ -279,7 +279,7 @@ export function CampaignDetailView({
       <details
         className="production-advanced"
         open={showAdvanced}
-        onToggle={(e) => setShowAdvanced((e.target as HTMLDetailsElement).open)}
+        onToggle={(e) => { setShowAdvanced((e.target as HTMLDetailsElement).open); }}
       >
         <summary>{t('production.advancedToggle')}</summary>
         {campaign.advanced ? (
@@ -305,9 +305,9 @@ export function CampaignDetailView({
         danger
         busy={busy}
         onConfirm={() => {
-          void onCancel().finally(() => setConfirmCancel(false));
+          void onCancel().finally(() => { setConfirmCancel(false); });
         }}
-        onCancel={() => setConfirmCancel(false)}
+        onCancel={() => { setConfirmCancel(false); }}
       />
     </div>
   );

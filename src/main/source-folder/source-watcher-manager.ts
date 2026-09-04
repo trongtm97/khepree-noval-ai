@@ -171,9 +171,15 @@ export class SourceWatcherManager {
       entry.pathTimers.set(filePath, timer);
     };
 
-    watcher.on('add', (filePath) => schedule('add', filePath));
-    watcher.on('change', (filePath) => schedule('change', filePath));
-    watcher.on('unlink', (filePath) => schedule('unlink', filePath));
+    watcher.on('add', (filePath) => {
+      schedule('add', filePath);
+    });
+    watcher.on('change', (filePath) => {
+      schedule('change', filePath);
+    });
+    watcher.on('unlink', (filePath) => {
+      schedule('unlink', filePath);
+    });
     watcher.on('error', (err) => {
       logger.warn('source-folder watcher error', {
         key: input.key,

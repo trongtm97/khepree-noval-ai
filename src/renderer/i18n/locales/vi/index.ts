@@ -146,10 +146,10 @@ export const vi = {
     moveVolumeUp: 'Lên',
     moveVolumeDown: 'Xuống',
     notebookNote:
-      'Chỉnh kiến thức bộ không tạo Notebook mới. Chỉ các truyện đã liên kết Notebook mới được đánh dấu cần đồng bộ; truyện chưa liên kết giữ dirty cục bộ đến khi bạn mở Dịch / Bộ nhớ AI.',
+      'Notebook đã liên kết: NovelTrans sẽ tiếp tục sử dụng Notebook này cho truyện. Chỉnh kiến thức bộ không tạo Notebook mới. Chỉ các truyện đã liên kết mới được đánh dấu cần đồng bộ.',
     notebookStatusTitle: 'Trạng thái Notebook',
     notebookStatusHelp:
-      'Mỗi truyện tự quản lý Notebook riêng. Bộ truyện chỉ chia sẻ nội dung kiến thức — không sở hữu vòng đời Notebook.',
+      'Mỗi truyện tự quản lý Notebook riêng. Bộ truyện chỉ chia sẻ nội dung kiến thức — không sở hữu vòng đời Notebook. Không tạo Notebook mới từ trang này.',
   },
   projectNav: {
     overview: 'Tổng quan',
@@ -510,10 +510,13 @@ export const vi = {
     provisionTranslation: 'Thiết lập Translation Notebook',
     provisionResearch: 'Thiết lập Research Notebook',
     msgResearchProvisioned: 'Research Notebook đã được thiết lập.',
-    notebookDuplicateTitle: 'Phát hiện nhiều Notebook cho truyện này',
+    notebookDuplicateTitle: 'NovelTrans phát hiện nhiều Notebook từng được liên kết với truyện này',
     notebookDuplicateHelp:
-      'NovelTrans phát hiện nhiều Notebook từng được liên kết với truyện này. Để tránh vượt giới hạn NotebookLM, hãy chọn một Notebook chính. NovelTrans sẽ không xóa các Notebook khác khỏi tài khoản của bạn.',
+      'Để tránh vượt giới hạn NotebookLM, hãy chọn một Notebook chính. NovelTrans sẽ tiếp tục sử dụng Notebook đó cho truyện — không tạo Notebook mới. Các Notebook khác vẫn còn trên tài khoản Google của bạn.',
     choosePrimaryNotebook: 'Chọn làm Notebook chính',
+    notebookLinked: 'Notebook đã liên kết',
+    notebookReusePromise:
+      'NovelTrans sẽ tiếp tục sử dụng Notebook này cho truyện. Không tạo Notebook mới.',
     openOtherNotebook: 'Mở Notebook khác',
     notebookUnnamed: 'Notebook chưa đặt tên',
     notebookLocallyBound: 'Đang gắn cục bộ',
@@ -1291,7 +1294,8 @@ export const vi = {
     tabsAria: 'Các khu vực trung tâm sản xuất',
     tabCampaigns: 'Chiến dịch',
     tabCampaignsHelp: 'Các bộ truyện đang được xử lý tự động.',
-    usingLinkedNotebook: 'Dùng Notebook đã liên kết của truyện',
+    usingLinkedNotebook:
+      'Notebook đã liên kết — NovelTrans dùng lại Notebook của truyện. Không tạo Notebook mới.',
     tabQueue: 'Hàng đợi',
     tabQueueHelp: 'Các chương đang chờ đến lượt xử lý.',
     tabAttention: 'Cần bạn xử lý',

@@ -89,7 +89,7 @@ export function AttentionInboxPanel({
     const timer = setInterval(() => {
       void refresh();
     }, 8000);
-    return () => clearInterval(timer);
+    return () => { clearInterval(timer); };
   }, [refresh]);
 
   const runAct = async (
@@ -134,7 +134,7 @@ export function AttentionInboxPanel({
       setFocusIndex((i) => Math.max(0, i - 1));
     } else if (e.key === 'Enter' && items[focusIndex]) {
       e.preventDefault();
-      const item = items[focusIndex]!;
+      const item = items[focusIndex];
       void runAct(item.id, item.primaryAction);
     }
   };
@@ -185,7 +185,7 @@ export function AttentionInboxPanel({
                 role="listitem"
                 data-inbox-index={index}
                 aria-label={titleFor(item, locale)}
-                onFocus={() => setFocusIndex(index)}
+                onFocus={() => { setFocusIndex(index); }}
               >
                 <div className="jobs-card-main">
                   <strong>{titleFor(item, locale)}</strong>

@@ -225,17 +225,17 @@ export class AttentionInboxService {
         break;
       }
       case 'RETRY':
-        void this.retryItem(row);
+        this.retryItem(row);
         break;
       case 'SKIP':
         if (row.job_id) {
-          try {
-            getJobService().applyAttentionAction(row.job_id, 'skip');
-          } catch (err) {
-            logger.warn('Attention skip failed', {
-              message: err instanceof Error ? err.message : String(err),
+          void getJobService()
+            .applyAttentionAction(row.job_id, 'skip')
+            .catch((err: unknown) => {
+              logger.warn('Attention skip failed', {
+                message: err instanceof Error ? err.message : String(err),
+              });
             });
-          }
         }
         this.db.attentionInbox.setStatus(itemId, 'DISMISSED');
         break;
@@ -243,7 +243,9 @@ export class AttentionInboxService {
         // OPEN_LOGIN / VIEW_ERROR / etc. — UI navigates; keep OPEN
         break;
     }
-    return toDto(this.db.attentionInbox.getById(itemId)!);
+    const updated = this.db.attentionInbox.getById(itemId);
+    if (!updated) return null;
+    return toDto(updated);
   }
 
   /**
@@ -253,7 +255,7 @@ export class AttentionInboxService {
     itemIds?: string[];
     allRetryable?: boolean;
   }): { attempted: number; skippedProactive: number; retriedJobIds: string[] } {
-    let rows = opts?.allRetryable
+    const rows = opts?.allRetryable
       ? this.db.attentionInbox.listRetryableOpen(100)
       : (opts?.itemIds ?? [])
           .map((id) => this.db.attentionInbox.getById(id))
@@ -296,7 +298,12 @@ export class AttentionInboxService {
         const job = this.db.jobs.getById(jobId);
         if (!job) continue;
         if (job.state === 'NEEDS_ATTENTION' || job.state === 'FAILED') {
-          jobs.applyAttentionAction(jobId, 'retry');
+          void jobs.applyAttentionAction(jobId, 'retry').catch((err: unknown) => {
+            logger.warn('Attention retry failed', {
+              jobId,
+              message: err instanceof Error ? err.message : String(err),
+            });
+          });
           retried.push(jobId);
         }
       }

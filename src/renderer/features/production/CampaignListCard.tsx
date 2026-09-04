@@ -107,7 +107,7 @@ export function CampaignListCard({ item, onOpen }: CampaignListCardProps) {
           </p>
         </div>
         <div className="btn-row">
-          <Button size="sm" onClick={() => onOpen(item.campaignId)}>
+          <Button size="sm" onClick={() => { onOpen(item.campaignId); }}>
             {t('production.openCampaign')}
           </Button>
         </div>

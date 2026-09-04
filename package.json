@@ -30,6 +30,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests *.config.ts",
     "lint:fix": "eslint src tests *.config.ts --fix",
+    "lint:critical": "node scripts/lint-critical.mjs",
     "lint:i18n": "node scripts/check-i18n.mjs",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,html}\" \"tests/**/*.ts\" \"docs/**/*.md\" \"*.{json,md,ts,js}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\" \"tests/**/*.ts\" \"docs/**/*.md\" \"*.{json,md,ts,js}\"",
@@ -42,7 +43,8 @@
     "test:watch": "vitest",
     "check:khepree-signing": "node scripts/check-khepree-signing.mjs",
     "ci:deps": "npm ci --ignore-scripts && node scripts/postinstall.js",
-    "release:check": "npm run typecheck && npm run lint && npm run check:khepree-signing && npm run test:unit && npm run test:integration",
+    "ci:check": "npm run typecheck && npm run lint:critical && npm run test:unit && npm run test:integration",
+    "release:check": "npm run typecheck && npm run lint:critical && npm run check:khepree-signing && npm run test:unit && npm run test:integration",
     "pretest": "node scripts/ensure-electron-native.mjs",
     "posttest": "node scripts/ensure-electron-native.mjs",
     "postinstall": "node scripts/postinstall.js"

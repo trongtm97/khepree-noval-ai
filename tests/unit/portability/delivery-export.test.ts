@@ -96,7 +96,9 @@ describe('delivery export path helpers', () => {
     fs.mkdirSync(blockedDir);
     // Write to a path where rename target is a directory → rename fails
     const target = path.join(tmp, 'blocked');
-    expect(() => writeFileAtomic(target, 'x')).toThrow();
+    expect(() => {
+      writeFileAtomic(target, 'x');
+    }).toThrow();
     const leftovers = fs.readdirSync(tmp).filter((n) => n.includes('.tmp'));
     expect(leftovers.length).toBe(0);
   });

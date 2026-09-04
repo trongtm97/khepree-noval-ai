@@ -42,7 +42,9 @@ function walkForSecrets(value: unknown, path: string[]): void {
     return;
   }
   if (Array.isArray(value)) {
-    value.forEach((item, i) => walkForSecrets(item, [...path, String(i)]));
+    value.forEach((item, i) => {
+      walkForSecrets(item, [...path, String(i)]);
+    });
     return;
   }
   if (typeof value !== 'object') return;

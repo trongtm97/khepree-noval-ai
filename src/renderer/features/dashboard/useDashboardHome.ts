@@ -45,8 +45,8 @@ export function useDashboardHome() {
   }, [loadExtras]);
 
   useEffect(() => {
-    const onOnline = () => setOnline(true);
-    const onOffline = () => setOnline(false);
+    const onOnline = () => { setOnline(true); };
+    const onOffline = () => { setOnline(false); };
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
     return () => {
@@ -63,7 +63,7 @@ export function useDashboardHome() {
     const id = window.setInterval(() => {
       void loadExtras();
     }, 10_000);
-    return () => window.clearInterval(id);
+    return () => { window.clearInterval(id); };
   }, [campaigns, attentionOpenCount, loadExtras]);
 
   const activeProjects = useMemo(
@@ -124,7 +124,7 @@ export function useDashboardHome() {
         const running = res.campaign.projects.find(
           (p) => p.status === 'RUNNING' || p.status === 'QUEUED',
         );
-        setCampaignCurrentNovel(running?.title ?? res.campaign.projects[0]?.title ?? null);
+        setCampaignCurrentNovel((running ?? res.campaign.projects[0])?.title ?? null);
       })
       .catch(() => {
         if (!cancelled) setCampaignCurrentNovel(null);

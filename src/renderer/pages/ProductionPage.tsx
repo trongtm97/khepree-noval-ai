@@ -127,7 +127,7 @@ export function ProductionPage() {
           error={detail.error}
           displayStatus={detail.displayStatus}
           busy={busyControl}
-          onBack={() => navigate('/jobs?tab=campaigns')}
+          onBack={() => { navigate('/jobs?tab=campaigns'); }}
           onPause={async () => {
             setBusyControl(true);
             try {
@@ -261,7 +261,7 @@ export function ProductionPage() {
                 ? 'production-tab production-tab--active'
                 : 'production-tab'
             }
-            onClick={() => setTab(id)}
+            onClick={() => { setTab(id); }}
           >
             <span>{label}</span>
             <span
@@ -307,9 +307,9 @@ export function ProductionPage() {
             campaigns={campaignList.campaigns}
             loading={campaignList.loading}
             error={campaignList.error}
-            onOpen={(id) => navigate(`/jobs/campaigns/${id}`)}
-            onCreateCampaign={() => setShowCampaignWizard(true)}
-            onImportMany={() => setShowBatchImport(true)}
+            onOpen={(id) => { navigate(`/jobs/campaigns/${id}`); }}
+            onCreateCampaign={() => { setShowCampaignWizard(true); }}
+            onImportMany={() => { setShowBatchImport(true); }}
             onRetry={() => {
               void campaignList.refresh();
             }}
@@ -452,7 +452,7 @@ export function ProductionPage() {
               <div className="production-empty">
                 <h3>{t('production.attentionEmptyTitle')}</h3>
                 <p className="muted">{t('production.attentionEmptyBody')}</p>
-                <Button onClick={() => setTab('campaigns')}>
+                <Button onClick={() => { setTab('campaigns'); }}>
                   {t('production.tabCampaigns')}
                 </Button>
               </div>
@@ -529,7 +529,7 @@ export function ProductionPage() {
 
       <ModalPortal
         open={showCampaignWizard}
-        onBackdropClick={() => setShowCampaignWizard(false)}
+        onBackdropClick={() => { setShowCampaignWizard(false); }}
         contentClassName="projects-wizard-modal"
       >
         <TranslationCampaignWizard
@@ -537,23 +537,23 @@ export function ProductionPage() {
             id: p.id,
             title: p.title,
           }))}
-          onClose={() => setShowCampaignWizard(false)}
+          onClose={() => { setShowCampaignWizard(false); }}
           onStarted={() => {
             void campaignList.refresh();
             setShowCampaignWizard(false);
           }}
-          onError={(message) => setWizardError(message)}
+          onError={(message) => { setWizardError(message); }}
         />
       </ModalPortal>
 
       <ModalPortal
         open={showBatchImport}
-        onBackdropClick={() => setShowBatchImport(false)}
+        onBackdropClick={() => { setShowBatchImport(false); }}
         contentClassName="projects-wizard-modal"
       >
         <BatchImportPreflightWizard
-          onClose={() => setShowBatchImport(false)}
-          onError={(message) => setWizardError(message)}
+          onClose={() => { setShowBatchImport(false); }}
+          onError={(message) => { setWizardError(message); }}
         />
       </ModalPortal>
     </div>

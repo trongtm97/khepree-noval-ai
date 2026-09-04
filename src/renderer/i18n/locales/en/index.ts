@@ -140,10 +140,10 @@ export const en: LocaleMessages = {
     moveVolumeUp: 'Up',
     moveVolumeDown: 'Down',
     notebookNote:
-      'Editing series knowledge never creates a Notebook. Only stories that already have a Notebook are marked for sync; unbound stories stay locally dirty until you open Translate / AI Memory.',
+      'Linked Notebook: NovelTrans keeps using that Notebook for the story. Editing series knowledge never creates a new Notebook. Only already-linked stories are marked for sync.',
     notebookStatusTitle: 'Notebook status',
     notebookStatusHelp:
-      'Each story owns its Notebook lifecycle. The series only shares knowledge content — it does not create or replace Notebooks.',
+      'Each story owns its Notebook lifecycle. The series only shares knowledge content — it does not create or replace Notebooks. This page never creates a Notebook.',
   },
   projectNav: {
     overview: 'Overview',
@@ -504,10 +504,14 @@ export const en: LocaleMessages = {
     provisionTranslation: 'Provision Translation Notebook',
     provisionResearch: 'Provision Research Notebook',
     msgResearchProvisioned: 'Research Notebook provisioned.',
-    notebookDuplicateTitle: 'Multiple Notebooks found for this story',
+    notebookDuplicateTitle:
+      'NovelTrans found multiple Notebooks previously linked to this story',
     notebookDuplicateHelp:
-      'NovelTrans found multiple Notebooks previously linked to this story. To stay within NotebookLM limits, choose one primary Notebook. NovelTrans will not delete the other Notebooks from your account.',
+      'To stay within NotebookLM limits, choose one primary Notebook. NovelTrans will keep using that Notebook for the story — it will not create a new one. Other Notebooks remain in your Google account.',
     choosePrimaryNotebook: 'Use as primary Notebook',
+    notebookLinked: 'Notebook linked',
+    notebookReusePromise:
+      'NovelTrans will keep using this Notebook for the story. No new Notebook will be created.',
     openOtherNotebook: 'Open other Notebook',
     notebookUnnamed: 'Unnamed Notebook',
     notebookLocallyBound: 'Locally bound',
@@ -1283,7 +1287,8 @@ export const en: LocaleMessages = {
     tabsAria: 'Production center areas',
     tabCampaigns: 'Campaigns',
     tabCampaignsHelp: 'Stories the app is processing automatically.',
-    usingLinkedNotebook: 'Uses the story’s linked Notebook',
+    usingLinkedNotebook:
+      'Notebook linked — NovelTrans reuses the story Notebook. No new Notebook is created.',
     tabQueue: 'Queue',
     tabQueueHelp: 'Chapters waiting for their turn.',
     tabAttention: 'Needs your action',

@@ -105,7 +105,7 @@ export function DashboardPage() {
           onDismiss={
             systemNotice.kind === 'offline'
               ? undefined
-              : () => setNoticeDismissed(true)
+              : () => { setNoticeDismissed(true); }
           }
         />
       ) : null}
@@ -117,14 +117,14 @@ export function DashboardPage() {
       ) : null}
 
       <DashboardPrimaryActions
-        onImportOne={() => setShowImportOne(true)}
-        onImportMany={() => setShowImportMany(true)}
+        onImportOne={() => { setShowImportOne(true); }}
+        onImportMany={() => { setShowImportMany(true); }}
       />
 
       {showNewbie ? (
         <DashboardNewbieOnboarding
           steps={home.newbieSteps}
-          onImportOne={() => setShowImportOne(true)}
+          onImportOne={() => { setShowImportOne(true); }}
           onConnectAccount={() => {
             navigate('/accounts');
           }}
@@ -151,27 +151,27 @@ export function DashboardPage() {
 
       <ModalPortal
         open={showImportOne}
-        onBackdropClick={() => setShowImportOne(false)}
+        onBackdropClick={() => { setShowImportOne(false); }}
         contentClassName="projects-wizard-modal"
       >
         <CreateProjectWizard
-          onCancel={() => setShowImportOne(false)}
-          onComplete={async () => {
+          onCancel={() => { setShowImportOne(false); }}
+          onComplete={() => {
             setShowImportOne(false);
             home.refresh();
           }}
-          onError={(message) => setWizardError(message)}
+          onError={(message) => { setWizardError(message); }}
         />
       </ModalPortal>
 
       <ModalPortal
         open={showImportMany}
-        onBackdropClick={() => setShowImportMany(false)}
+        onBackdropClick={() => { setShowImportMany(false); }}
         contentClassName="projects-wizard-modal"
       >
         <BatchImportPreflightWizard
-          onClose={() => setShowImportMany(false)}
-          onError={(message) => setWizardError(message)}
+          onClose={() => { setShowImportMany(false); }}
+          onError={(message) => { setWizardError(message); }}
         />
       </ModalPortal>
     </div>

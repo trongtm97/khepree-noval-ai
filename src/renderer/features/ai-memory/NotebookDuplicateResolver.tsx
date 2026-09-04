@@ -63,6 +63,7 @@ export function NotebookDuplicateResolver({
     >
       <h3 id="notebook-dup-heading">{t('aiMemory.notebookDuplicateTitle')}</h3>
       <p className="field-help">{t('aiMemory.notebookDuplicateHelp')}</p>
+      <p className="field-help muted">{t('aiMemory.notebookReusePromise')}</p>
       {error ? <p className="error-text">{error}</p> : null}
       <ul className="notebook-dup-list">
         {candidates.map((c) => (

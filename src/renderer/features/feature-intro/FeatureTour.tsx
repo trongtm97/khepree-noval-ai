@@ -49,7 +49,7 @@ export function FeatureTour({ open, onSkip, onComplete }: FeatureTourProps) {
         {isLast ? (
           <Button onClick={finish}>{t('featureTour.finish')}</Button>
         ) : (
-          <Button onClick={() => setStep((s) => s + 1)}>{t('featureTour.next')}</Button>
+          <Button onClick={() => { setStep((s) => s + 1); }}>{t('featureTour.next')}</Button>
         )}
       </div>
     </ModalPortal>

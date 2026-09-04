@@ -29,7 +29,7 @@ export function useCampaignList(pollMs = 8000) {
     const timer = setInterval(() => {
       void refresh();
     }, pollMs);
-    return () => clearInterval(timer);
+    return () => { clearInterval(timer); };
   }, [refresh, pollMs]);
 
   return { campaigns, loading, error, refresh };
@@ -64,7 +64,7 @@ export function useCampaignDetail(campaignId: string | undefined, pollMs = 5000)
     const timer = setInterval(() => {
       void refresh();
     }, pollMs);
-    return () => clearInterval(timer);
+    return () => { clearInterval(timer); };
   }, [campaignId, refresh, pollMs]);
 
   const displayStatus = optimisticStatus ?? campaign?.status ?? null;

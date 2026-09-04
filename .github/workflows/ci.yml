@@ -1,0 +1,51 @@
+name: CI
+
+# Normal development / PR validation — no production signing secrets required.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies (frozen lockfile)
+        run: npm run ci:deps
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Critical lint (runtime-risk rules)
+        run: npm run lint:critical
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Gemini worker build
+        run: npm run build:gemini-worker
+
+      - name: Signing public-key check (informational — secrets optional)
+        run: npm run check:khepree-signing
+        continue-on-error: true

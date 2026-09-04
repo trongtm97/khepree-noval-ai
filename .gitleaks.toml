@@ -1,0 +1,20 @@
+# Gitleaks — free secret scanning for CI (no paid infra).
+# Findings report file/location only; avoid echoing secret values in logs.
+title = "khepree-noval-ai"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known non-secret fixtures and generated public material"
+paths = [
+  '''tests/.*''',
+  '''docs/.*''',
+  '''.*\.snap$''',
+  '''src/main/khepree/generated/trusted-signing-keys\.ts$''',
+  '''\.gitleaks\.toml$''',
+]
+regexes = [
+  '''KHEPREE_LICENSE_SIGNING_PUBLIC_KEY''',
+  '''dev-local''',
+]

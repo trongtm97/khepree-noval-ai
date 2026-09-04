@@ -8,7 +8,7 @@ interface FeatureIntroUiState {
 export const useFeatureIntroUiStore = create<FeatureIntroUiState>((set) => ({
   tourRequestToken: 0,
   requestTour: () =>
-    set((state) => ({
+    { set((state) => ({
       tourRequestToken: state.tourRequestToken + 1,
-    })),
+    })); },
 }));

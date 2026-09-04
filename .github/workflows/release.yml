@@ -1,0 +1,65 @@
+name: Release
+
+# Full release gate — requires production signing environment for package steps.
+# Missing signing secrets must not make ordinary PR CI look like a code failure
+# (see ci.yml for the normal pipeline).
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-gate:
+    runs-on: windows-latest
+    needs: secret-scan
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies (frozen lockfile)
+        run: npm run ci:deps
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Critical lint
+        run: npm run lint:critical
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Gemini worker build
+        run: npm run build:gemini-worker
+
+      - name: Signing keys required
+        env:
+          KHEPREE_LICENSE_SIGNING_PUBLIC_KEY: ${{ secrets.KHEPREE_LICENSE_SIGNING_PUBLIC_KEY }}
+        run: |
+          node scripts/generate-khepree-signing-keys.mjs --require-production
+          node scripts/check-khepree-signing.mjs --require-keys
+
+      - name: Package (signed environment)
+        env:
+          KHEPREE_LICENSE_SIGNING_PUBLIC_KEY: ${{ secrets.KHEPREE_LICENSE_SIGNING_PUBLIC_KEY }}
+          WINDOWS_CERTIFICATE_FILE: ${{ secrets.WINDOWS_CERTIFICATE_FILE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: npm run package
