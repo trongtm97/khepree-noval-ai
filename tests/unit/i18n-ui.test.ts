@@ -94,7 +94,7 @@ describe('status labels', () => {
     expect(statusLabel('NEEDS_ATTENTION')).toBe('Cần xử lý');
     expect(statusLabel('QUEUED')).toBe('Đang xếp hàng');
     expect(statusLabel('PREPARING')).toBe('Đang chuẩn bị');
-    expect(statusLabel('WAITING_WORKER')).toBe('Chờ worker');
+    expect(statusLabel('WAITING_WORKER')).toBe('Đang chờ sẵn sàng');
     expect(statusTone('RUNNING')).toBe('running');
     expect(statusTone('FAILED')).toBe('error');
     expect(statusTone('QUEUED')).toBe('waiting');

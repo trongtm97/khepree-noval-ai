@@ -38,21 +38,21 @@ export const en: LocaleMessages = {
   librarySearch: {
     title: 'Search your library',
     subtitle:
-      'Search stories, chapters, or saved text on this device. Click a result to open it. Nothing is sent online.',
+      'Find stories, chapters, characters, terms, or saved content in NovelTrans.',
     howto:
-      'Type a story name, chapter title, or a phrase. Click a result to open it.',
-    placeholder: 'Enter keywords… (story name or chapter number)',
+      'You can search by story name, chapter, character, or a phrase in the content.',
+    placeholder: 'Example: story name, character, or a sentence from a chapter…',
     filterType: 'Filter by type',
     allTypes: 'All',
     loading: 'Searching…',
     idleTitle: 'Start searching',
     idleBody:
-      'Type in the box above. You can search by story name, chapter, term, or translated text.',
+      'You can search by story name, chapter, character, or a phrase in the content.',
     emptyTitle: 'No results found',
     empty:
-      'Try different keywords, clear the type filter, or refresh the search index if you just added stories.',
-    reindex: 'Refresh search index',
-    reindexProgress: 'Updating index {done} / {total}',
+      'Try different keywords, clear the type filter, or refresh the list if you just added stories.',
+    reindex: 'Refresh search list',
+    reindexProgress: 'Updating {done} / {total}',
     indexSource: 'Allow searching original text',
     indexTranslation: 'Allow searching translations',
     indexSourceHelp: 'Turn on to find phrases inside original chapters.',
@@ -92,6 +92,11 @@ export const en: LocaleMessages = {
     subtitle:
       'Group volumes of the same series to share terms and style — without mixing other series.',
     create: 'Create series',
+    createHelp:
+      'A series groups volumes (projects) that share one world. Create the series first, then add each volume.',
+    createAnother: 'Create another series',
+    infoTitle: 'Series info',
+    infoHelp: 'Edit shared knowledge below. Changes apply to assigned volumes.',
     namePlaceholder: 'Example: My Long Novel',
     createButton: 'Create series',
     listTitle: 'Your series',
@@ -99,7 +104,7 @@ export const en: LocaleMessages = {
     emptyTitle: 'No series yet',
     emptyBody:
       'Create a series, then add each volume (story). Shared terms stay consistent across volumes.',
-    volumesTitle: 'Volumes in this series',
+    volumesTitle: 'Stories in this series',
     noVolumes: 'No volumes yet. Pick a story below to add one.',
     assignProject: 'Add a volume',
     assignHelp: 'Pick an existing story, preview term conflicts, then add it.',
@@ -115,10 +120,11 @@ export const en: LocaleMessages = {
     locked: 'locked',
     sharedKnowledgeTitle: 'Shared knowledge',
     sharedKnowledgeHelp:
-      'Info here helps stories in the same series keep characters, terms, and style consistent.',
+      'Info here helps stories in the same series keep characters, terms, and setting consistent.',
     styleRulesTitle: 'Style rules',
     styleRulesHelp:
-      'Keeps translation tone and pronouns consistent across volumes. Optional — add only when you need consistency.',
+      'Affects translation tone and pronouns across volumes. Optional — add only when you need consistency.',
+    styleRulesEmpty: 'No style rules yet.',
     saveWorld: 'Save knowledge',
     addStyleRule: 'Add rule',
     deleteStyleRule: 'Delete',
@@ -128,22 +134,25 @@ export const en: LocaleMessages = {
     styleKindAddress: 'Address forms',
     worldKey: 'Name',
     worldValue: 'Content',
-    addWorldFact: 'Add entry',
-    inheritedProjects: 'Stories affected',
+    addWorldFact: 'Add item',
+    inheritedProjects: 'Stories using this knowledge',
     applyStatusTitle: 'Apply status',
     applyStatusHelp:
-      'Changes apply to the next translation run. Notebook updates only for stories that already have a Notebook, when you (or a translate job) sync AI memory.',
+      'Changes take effect on the next translation. Editing shared knowledge does not create a new Notebook.',
     storyOverrideNote:
-      'Story-specific facts override series shared knowledge. If both define the same item, translation uses the story value.',
+      'Story-specific knowledge takes priority over series shared knowledge. If both define the same item, translation uses the story version.',
     whenEffective:
-      'Takes effect: immediately for new translation sessions; linked story Notebooks are marked for update (no new Notebook is created).',
+      'Effective immediately for new translation sessions; linked story Notebooks are marked for update (no new Notebook is created).',
     moveVolumeUp: 'Up',
     moveVolumeDown: 'Down',
     notebookNote:
-      'Linked Notebook: NovelTrans keeps using that Notebook for the story. Editing series knowledge never creates a new Notebook. Only already-linked stories are marked for sync.',
-    notebookStatusTitle: 'Notebook status',
+      'Linked Notebook: NovelTrans keeps using this Notebook for the story. Editing series knowledge does not create a new Notebook. Only linked stories are marked for sync.',
+    notebookReuseShort:
+      'NovelTrans does not create a new Notebook when you edit shared knowledge.',
+    notebookStatusTitle: 'Notebook',
     notebookStatusHelp:
-      'Each story owns its Notebook lifecycle. The series only shares knowledge content — it does not create or replace Notebooks. This page never creates a Notebook.',
+      'Each story manages its own Notebook. The series only shares knowledge content — it does not create Notebooks from this page.',
+    continueTranslate: 'Continue to Translate',
   },
   projectNav: {
     overview: 'Overview',
@@ -259,6 +268,7 @@ export const en: LocaleMessages = {
     unavailable: 'Unavailable',
     assistedSetup: 'Browser action needed',
     pending: 'Pending',
+    retrying: 'Retrying',
     sourceReady: 'Source ready',
     sourceMissing: 'Source missing',
     sourceStale: 'Source needs refresh',
@@ -420,10 +430,13 @@ export const en: LocaleMessages = {
   },
   projects: {
     title: 'Projects',
-    subtitle: 'Manage novels and translation progress.',
+    subtitle: 'Each story is one project. Open a project to translate, or create a new one.',
+    intro:
+      'A project holds one story and its translation. Create or open a project, then go to Translate to start.',
     emptyTitle: 'No projects yet',
     emptyDesc: 'Import your first novel to start translating.',
     emptyDescNew: 'Create your first project to start translating novels.',
+    nextStepTranslate: 'Start translating',
     searchPlaceholder: 'Search by novel title…',
     searchEmptyTitle: 'No matching projects',
     searchEmptyDesc: 'Try a different keyword or clear the filter.',
@@ -873,6 +886,11 @@ export const en: LocaleMessages = {
     memoryTooltipMixed: 'Notebook v{notebook} + local v{local}',
     memoryTooltipLocal: 'Local memory is not ready yet.',
     memoryTooltipLocalReady: 'Local memory is active.',
+    statusKnowledgeReady: 'Knowledge · ✓ In use',
+    statusKnowledgePending: 'Knowledge · Not ready yet',
+    statusNotebookLinked: 'Notebook · ✓ Linked — will be reused',
+    statusNotebookOptional: 'Notebook · Not linked (optional)',
+    statusSeriesApplied: 'Shared knowledge · ✓ Applied',
     memoryPackTooltip: '{mode}',
     paragraphMenu: 'Paragraph actions',
     retranslateParagraph: 'Retranslate paragraph',
@@ -1283,16 +1301,19 @@ export const en: LocaleMessages = {
   production: {
     title: 'Production Center',
     subtitle:
-      'Use when tracking many chapters or jobs at once — campaigns, the queue, and items that need you.',
+      'Use when you want to track many chapters or translation jobs at once.',
+    introCampaign: 'Campaign = a group of translation jobs.',
+    introQueue: 'Queue = chapters waiting their turn.',
+    introAttention: 'Needs your action = items to check before the app continues.',
     tabsAria: 'Production center areas',
     tabCampaigns: 'Campaigns',
-    tabCampaignsHelp: 'Stories the app is processing automatically.',
+    tabCampaignsHelp: 'Groups of chapters being processed.',
     usingLinkedNotebook:
       'Notebook linked — NovelTrans reuses the story Notebook. No new Notebook is created.',
     tabQueue: 'Queue',
     tabQueueHelp: 'Chapters waiting for their turn.',
     tabAttention: 'Needs your action',
-    tabAttentionHelp: 'Items you must check before the app can continue.',
+    tabAttentionHelp: 'Something needs your check before the app can continue.',
     emptyTitle: 'No campaigns yet',
     emptyBody:
       'A campaign lets the app translate many stories in order. Click “Create campaign” or “Import many stories” to begin.',

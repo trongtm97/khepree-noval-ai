@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Button, EmptyState, ErrorPanel, PageHeader } from '../components/ui';
+import { Button, EmptyState, ErrorPanel, Notice, PageHeader } from '../components/ui';
 import { useT } from '../i18n';
 
 type SeriesDto = Awaited<
@@ -74,8 +74,8 @@ export function SeriesPage() {
   const worldSectionRef = useRef<HTMLElement | null>(null);
 
   const refreshList = useCallback(async () => {
-    const { series } = await window.khepreeNovelAI.fictionSeries.list();
-    setSeriesList(series);
+    const res = await window.khepreeNovelAI.fictionSeries.list();
+    setSeriesList(Array.isArray(res.series) ? res.series : []);
   }, []);
 
   const refreshDetail = useCallback(async (id: string) => {
@@ -88,7 +88,7 @@ export function SeriesPage() {
     setVolumes(vols);
     setSeriesDetail(detail.series);
     setWorldRows(recordToRows(worldRes.worldKnowledge));
-    setStyleRules(rules.rules);
+    setStyleRules(Array.isArray(rules.rules) ? rules.rules : []);
   }, []);
 
   useEffect(() => {
@@ -303,30 +303,60 @@ export function SeriesPage() {
         <ErrorPanel title={t('app.errorTitle')} description={error} />
       ) : null}
 
-      <section className="series-create" aria-labelledby="series-create-heading">
-        <h2 id="series-create-heading">{t('series.create')}</h2>
-        <p className="field-help">{t('series.emptyBody')}</p>
-        <div className="btn-row">
-          <input
-            type="text"
-            value={newTitle}
-            placeholder={t('series.namePlaceholder')}
-            aria-label={t('series.namePlaceholder')}
-            onChange={(e) => { setNewTitle(e.target.value); }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void createSeries();
-            }}
-          />
-          <Button disabled={busy || !newTitle.trim()} onClick={() => void createSeries()}>
-            {busy ? t('common.loading') : t('series.createButton')}
-          </Button>
-        </div>
-      </section>
+      {!seriesId ? (
+        <section className="series-create" aria-labelledby="series-create-heading">
+          <h2 id="series-create-heading">{t('series.create')}</h2>
+          <p className="field-help">{t('series.createHelp')}</p>
+          <div className="btn-row">
+            <input
+              type="text"
+              value={newTitle}
+              placeholder={t('series.namePlaceholder')}
+              aria-label={t('series.namePlaceholder')}
+              onChange={(e) => { setNewTitle(e.target.value); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void createSeries();
+              }}
+            />
+            <Button disabled={busy || !newTitle.trim()} onClick={() => void createSeries()}>
+              {busy ? t('common.loading') : t('series.createButton')}
+            </Button>
+          </div>
+        </section>
+      ) : (
+        <details className="series-create series-create-collapsed">
+          <summary>{t('series.createAnother')}</summary>
+          <p className="field-help">{t('series.createHelp')}</p>
+          <div className="btn-row">
+            <input
+              type="text"
+              value={newTitle}
+              placeholder={t('series.namePlaceholder')}
+              aria-label={t('series.namePlaceholder')}
+              onChange={(e) => { setNewTitle(e.target.value); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void createSeries();
+              }}
+            />
+            <Button disabled={busy || !newTitle.trim()} onClick={() => void createSeries()}>
+              {busy ? t('common.loading') : t('series.createButton')}
+            </Button>
+          </div>
+        </details>
+      )}
 
-      <section aria-labelledby="series-list-heading">
+      <section className="series-list-section" aria-labelledby="series-list-heading">
         <h2 id="series-list-heading">{t('series.listTitle')}</h2>
-        {seriesList.length === 0 ? (
+        {seriesList.length === 0 && !seriesId ? (
           <EmptyState title={t('series.emptyTitle')} description={t('series.emptyBody')} />
+        ) : seriesList.length === 0 && seriesId ? (
+          <ul className="series-list">
+            <li>
+              <Link to={`/series/${seriesId}`} className="series-list-link is-active">
+                {detailTitle ?? t('series.infoTitle')}
+              </Link>
+            </li>
+          </ul>
         ) : (
           <ul className="series-list">
             {seriesList.map((s) => (
@@ -349,123 +379,123 @@ export function SeriesPage() {
 
       {seriesId ? (
         <section className="series-detail" aria-labelledby="series-detail-heading">
-          <h2 id="series-detail-heading" style={{ margin: 0 }}>
-            {detailTitle ?? t('series.volumesTitle')}
-          </h2>
+          <h2 id="series-detail-heading">{detailTitle ?? t('series.infoTitle')}</h2>
+          <p className="field-help">{t('series.infoHelp')}</p>
 
-          <div className="btn-row series-detail-header">
-            <h3 id="series-volumes-heading" style={{ flex: 1, margin: 0 }}>
-              {t('series.volumesTitle')}
-            </h3>
-            <Button variant="secondary" disabled={busy} onClick={() => void exportKnowledge()}>
-              {t('series.exportKnowledge')}
-            </Button>
-          </div>
-
-          {volumes.length === 0 ? (
-            <EmptyState title={t('series.noVolumes')} description={t('series.assignHelp')} />
-          ) : (
-            <ol className="series-volume-list">
-              {volumes.map((v, index) => (
-                <li key={v.id}>
-                  <span>
-                    #{v.volumeOrder} {v.projectTitle}
-                    {v.volumeLabel ? ` (${v.volumeLabel})` : ''}
-                  </span>
-                  <div className="btn-row">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busy || index === 0}
-                      aria-label={t('series.moveVolumeUp')}
-                      onClick={() => void moveVolume(index, -1)}
-                    >
-                      ↑ {t('series.moveVolumeUp')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busy || index === volumes.length - 1}
-                      aria-label={t('series.moveVolumeDown')}
-                      onClick={() => void moveVolume(index, 1)}
-                    >
-                      ↓ {t('series.moveVolumeDown')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busy}
-                      onClick={() => void removeVolume(v.projectId)}
-                    >
-                      {t('series.removeVolume')}
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-
-          <h3>{t('series.assignProject')}</h3>
-          <p className="field-help">{t('series.assignHelp')}</p>
-          <div className="btn-row">
-            <select
-              value={assignProjectId}
-              onChange={(e) => { setAssignProjectId(e.target.value); }}
-              aria-label={t('series.pickProject')}
-            >
-              <option value="">{t('series.pickProject')}</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title}
-                </option>
-              ))}
-            </select>
-            <Button
-              variant="secondary"
-              disabled={busy || !assignProjectId}
-              onClick={() => void previewAssign()}
-            >
-              {t('series.previewConflicts')}
-            </Button>
-            <Button disabled={busy || !assignProjectId} onClick={() => void confirmAssign(false)}>
-              {t('series.assign')}
-            </Button>
-          </div>
-
-          {conflicts && conflicts.conflicts.length > 0 ? (
-            <div className="series-conflicts">
-              <p>{t('series.conflictCount', { count: String(conflicts.conflicts.length) })}</p>
-              <ul>
-                {conflicts.conflicts.map((c) => (
-                  <li key={`${c.projectTermId}-${c.seriesTermId}`}>
-                    <strong>{c.sourceText}</strong>: {c.projectTranslation ?? '?'} vs{' '}
-                    {c.seriesTranslation ?? '?'}
-                    {c.projectLocked || c.seriesLocked ? ` (${t('series.locked')})` : ''}
-                  </li>
-                ))}
-              </ul>
-              <Button variant="secondary" disabled={busy} onClick={() => void confirmAssign(true)}>
-                {t('series.assignForce')}
+          <div className="series-detail-block" aria-labelledby="series-volumes-heading">
+            <div className="btn-row series-detail-header">
+              <h3 id="series-volumes-heading" style={{ flex: 1, margin: 0 }}>
+                {t('series.volumesTitle')}
+              </h3>
+              <Button variant="secondary" disabled={busy} onClick={() => void exportKnowledge()}>
+                {t('series.exportKnowledge')}
               </Button>
             </div>
-          ) : conflicts ? (
-            <p className="muted">{t('series.noConflicts')}</p>
-          ) : null}
+
+            {volumes.length === 0 ? (
+              <EmptyState title={t('series.noVolumes')} description={t('series.assignHelp')} />
+            ) : (
+              <ol className="series-volume-list">
+                {volumes.map((v, index) => (
+                  <li key={v.id}>
+                    <span>
+                      #{v.volumeOrder} {v.projectTitle}
+                      {v.volumeLabel ? ` (${v.volumeLabel})` : ''}
+                    </span>
+                    <div className="btn-row">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy || index === 0}
+                        aria-label={t('series.moveVolumeUp')}
+                        onClick={() => void moveVolume(index, -1)}
+                      >
+                        ↑ {t('series.moveVolumeUp')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy || index === volumes.length - 1}
+                        aria-label={t('series.moveVolumeDown')}
+                        onClick={() => void moveVolume(index, 1)}
+                      >
+                        ↓ {t('series.moveVolumeDown')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => void removeVolume(v.projectId)}
+                      >
+                        {t('series.removeVolume')}
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            <h3 style={{ margin: 0, fontSize: 'var(--font-body)' }}>{t('series.assignProject')}</h3>
+            <p className="field-help">{t('series.assignHelp')}</p>
+            <div className="btn-row">
+              <select
+                value={assignProjectId}
+                onChange={(e) => { setAssignProjectId(e.target.value); }}
+                aria-label={t('series.pickProject')}
+              >
+                <option value="">{t('series.pickProject')}</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="secondary"
+                disabled={busy || !assignProjectId}
+                onClick={() => void previewAssign()}
+              >
+                {t('series.previewConflicts')}
+              </Button>
+              <Button disabled={busy || !assignProjectId} onClick={() => void confirmAssign(false)}>
+                {t('series.assign')}
+              </Button>
+            </div>
+
+            {conflicts && conflicts.conflicts.length > 0 ? (
+              <div className="series-conflicts">
+                <p>{t('series.conflictCount', { count: String(conflicts.conflicts.length) })}</p>
+                <ul>
+                  {conflicts.conflicts.map((c) => (
+                    <li key={`${c.projectTermId}-${c.seriesTermId}`}>
+                      <strong>{c.sourceText}</strong>: {c.projectTranslation ?? '?'} vs{' '}
+                      {c.seriesTranslation ?? '?'}
+                      {c.projectLocked || c.seriesLocked ? ` (${t('series.locked')})` : ''}
+                    </li>
+                  ))}
+                </ul>
+                <Button variant="secondary" disabled={busy} onClick={() => void confirmAssign(true)}>
+                  {t('series.assignForce')}
+                </Button>
+              </div>
+            ) : conflicts ? (
+              <p className="muted">{t('series.noConflicts')}</p>
+            ) : null}
+          </div>
 
           <section
             id="series-shared-knowledge"
             ref={worldSectionRef}
-            className="series-world-section"
+            className="series-detail-block series-world-section"
             aria-labelledby="series-shared-knowledge-heading"
           >
-            <h3 id="series-shared-knowledge-heading">{t('series.sharedKnowledgeTitle')}</h3>
+            <h3 id="series-shared-knowledge-heading" style={{ margin: 0 }}>
+              {t('series.sharedKnowledgeTitle')}
+            </h3>
             <p className="field-help">{t('series.sharedKnowledgeHelp')}</p>
-            <details className="series-tech-details">
-              <summary>{t('errors.technicalDetails')}</summary>
-              <p className="field-help muted">{t('series.whenEffective')}</p>
-              <p className="field-help muted">{t('series.storyOverrideNote')}</p>
-              <p className="field-help muted">{t('series.notebookNote')}</p>
-            </details>
+            <Notice tone="info" className="series-override-notice">
+              {t('series.storyOverrideNote')}
+            </Notice>
 
             <div className="series-world-rows">
               {worldRows.map((row, index) => (
@@ -505,12 +535,17 @@ export function SeriesPage() {
             </div>
           </section>
 
-          <section className="series-style-rules" aria-labelledby="series-style-rules-heading">
-            <h3 id="series-style-rules-heading">{t('series.styleRulesTitle')}</h3>
+          <section
+            className="series-detail-block series-style-rules"
+            aria-labelledby="series-style-rules-heading"
+          >
+            <h3 id="series-style-rules-heading" style={{ margin: 0 }}>
+              {t('series.styleRulesTitle')}
+            </h3>
             <p className="field-help">{t('series.styleRulesHelp')}</p>
 
             {styleRules.length === 0 ? (
-              <p className="muted">{t('series.empty')}</p>
+              <p className="muted">{t('series.styleRulesEmpty')}</p>
             ) : (
               <ul className="series-style-rule-list">
                 {styleRules.map((rule) => (
@@ -558,8 +593,13 @@ export function SeriesPage() {
             </div>
           </section>
 
-          <section className="series-apply-status" aria-labelledby="series-apply-status-heading">
-            <h3 id="series-apply-status-heading">{t('series.applyStatusTitle')}</h3>
+          <section
+            className="series-detail-block series-apply-status"
+            aria-labelledby="series-apply-status-heading"
+          >
+            <h3 id="series-apply-status-heading" style={{ margin: 0 }}>
+              {t('series.applyStatusTitle')}
+            </h3>
             <p className="field-help">{t('series.applyStatusHelp')}</p>
             {volumes.length > 0 ? (
               <div className="series-inherited-projects">
@@ -568,6 +608,8 @@ export function SeriesPage() {
                   {volumes.map((v) => (
                     <li key={v.projectId}>
                       <Link to={`/projects/${v.projectId}`}>{v.projectTitle}</Link>
+                      {' · '}
+                      <Link to={`/projects/${v.projectId}/translate`}>{t('series.continueTranslate')}</Link>
                     </li>
                   ))}
                 </ul>
@@ -577,10 +619,20 @@ export function SeriesPage() {
             )}
           </section>
 
-          <section className="series-notebook-status" aria-labelledby="series-notebook-status-heading">
-            <h3 id="series-notebook-status-heading">{t('series.notebookStatusTitle')}</h3>
+          <section
+            className="series-detail-block series-notebook-status"
+            aria-labelledby="series-notebook-status-heading"
+          >
+            <h3 id="series-notebook-status-heading" style={{ margin: 0 }}>
+              {t('series.notebookStatusTitle')}
+            </h3>
             <p className="field-help">{t('series.notebookStatusHelp')}</p>
-            <p className="field-help muted">{t('series.notebookNote')}</p>
+            <Notice tone="success">{t('series.notebookReuseShort')}</Notice>
+            <details className="series-tech-details">
+              <summary>{t('errors.technicalDetails')}</summary>
+              <p className="field-help muted">{t('series.whenEffective')}</p>
+              <p className="field-help muted">{t('series.notebookNote')}</p>
+            </details>
           </section>
         </section>
       ) : null}

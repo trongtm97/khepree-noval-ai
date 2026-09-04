@@ -8,27 +8,31 @@ interface TranslationContextStatusProps {
   onOpenContext?: () => void;
 }
 
-interface MemoryBadge {
-  ok: boolean;
-  tooltip: string;
+interface MemoryState {
+  memoryOk: boolean;
+  notebookLinked: boolean;
 }
 
-/** Quiet ghost chip — opens context panel or memory summary. */
+/** Quiet status chip + beginner summary for knowledge / Notebook reuse. */
 export function TranslationContextStatus({
   projectId,
   onOpenContext,
 }: TranslationContextStatusProps) {
   const t = useT();
   const navigate = useNavigate();
-  const [badge, setBadge] = useState<MemoryBadge | null>(null);
+  const [state, setState] = useState<MemoryState | null>(null);
 
   const refresh = useCallback(async () => {
     if (!projectId) {
-      setBadge(null);
+      setState(null);
       return;
     }
     try {
-      const boot = await window.khepreeNovelAI.notebook.getBootstrapStatus(projectId);
+      const [boot, health] = await Promise.all([
+        window.khepreeNovelAI.notebook.getBootstrapStatus(projectId),
+        window.khepreeNovelAI.notebook.health({ projectId }).catch(() => null),
+      ]);
+
       const localReady =
         boot.characterCount > 0 ||
         boot.termCandidateCount > 0 ||
@@ -38,44 +42,75 @@ export function TranslationContextStatus({
         boot.status === 'COMPLETED_WITH_WARNINGS' ||
         boot.status === 'READY';
 
-      setBadge({
-        ok: localReady,
-        tooltip: localReady
-          ? t('translation.memoryTooltipActive')
-          : t('translation.memoryTooltipLocal'),
+      const healthAny = health as {
+        notebookUrl?: string | null;
+        translation?: { notebookUrl?: string | null; status?: string };
+        status?: string;
+      } | null;
+
+      const notebookUrl =
+        healthAny?.translation?.notebookUrl ?? healthAny?.notebookUrl ?? null;
+      const linked =
+        Boolean(notebookUrl) ||
+        healthAny?.translation?.status === 'ready' ||
+        healthAny?.status === 'ready';
+
+      setState({
+        memoryOk: localReady,
+        notebookLinked: linked,
       });
     } catch {
-      setBadge({
-        ok: false,
-        tooltip: t('translation.memoryTooltipLocal'),
+      setState({
+        memoryOk: false,
+        notebookLinked: false,
       });
     }
-  }, [projectId, t]);
+  }, [projectId]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  if (!badge) return null;
+  if (!state) return null;
+
+  const tooltip = state.memoryOk
+    ? t('translation.memoryTooltipActive')
+    : t('translation.memoryTooltipLocal');
 
   return (
-    <button
-      type="button"
-      className={`translation-memory-badge translation-memory-badge--ghost ${badge.ok ? 'is-ok' : ''}`}
-      title={badge.tooltip}
-      aria-label={badge.tooltip}
-      onClick={() => {
-        if (onOpenContext) {
-          onOpenContext();
-          return;
-        }
-        navigate(`/projects/${projectId}/ai-memory`);
-      }}
-    >
-      <Brain size={14} aria-hidden className="translation-memory-badge__icon" />
-      <span className="translation-memory-badge__label">
-        {badge.ok ? t('translation.memoryChipOkShort') : t('translation.memoryChipShort')}
-      </span>
-    </button>
+    <div className="translation-status-summary">
+      <button
+        type="button"
+        className={`translation-memory-badge translation-memory-badge--ghost ${state.memoryOk ? 'is-ok' : ''}`}
+        title={tooltip}
+        aria-label={tooltip}
+        onClick={() => {
+          if (onOpenContext) {
+            onOpenContext();
+            return;
+          }
+          navigate(`/projects/${projectId}/ai-memory`);
+        }}
+      >
+        <Brain size={14} aria-hidden className="translation-memory-badge__icon" />
+        <span className="translation-memory-badge__label">
+          {state.memoryOk ? t('translation.memoryChipOkShort') : t('translation.memoryChipShort')}
+        </span>
+      </button>
+      <div className="translation-status-summary__lines" aria-live="polite">
+        <span className={`translation-status-summary__item ${state.memoryOk ? 'is-ok' : ''}`}>
+          {state.memoryOk
+            ? t('translation.statusKnowledgeReady')
+            : t('translation.statusKnowledgePending')}
+        </span>
+        <span
+          className={`translation-status-summary__item ${state.notebookLinked ? 'is-ok' : ''}`}
+        >
+          {state.notebookLinked
+            ? t('translation.statusNotebookLinked')
+            : t('translation.statusNotebookOptional')}
+        </span>
+      </div>
+    </div>
   );
 }

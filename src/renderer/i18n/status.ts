@@ -77,6 +77,8 @@ const STATUS_KEY: Record<string, string> = {
   assisted_setup: 'status.assistedSetup',
   PENDING: 'status.pending',
   pending: 'status.pending',
+  RETRYING: 'status.retrying',
+  retrying: 'status.retrying',
   SOURCE_READY: 'status.sourceReady',
   source_ready: 'status.sourceReady',
   SOURCE_MISSING: 'status.sourceMissing',

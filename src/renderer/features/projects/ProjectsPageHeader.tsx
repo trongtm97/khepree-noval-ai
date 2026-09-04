@@ -56,6 +56,7 @@ export function ProjectsPageHeader({
     <header className="projects-page-header">
       <div className="projects-page-header__text">
         <h2>{t('projects.title')}</h2>
+        <p className="page-intro">{t('projects.intro')}</p>
         <p className="projects-page-header__summary muted">
           {summaryParts.map((part, i) => (
             <span key={i}>

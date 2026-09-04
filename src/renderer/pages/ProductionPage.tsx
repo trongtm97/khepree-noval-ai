@@ -91,7 +91,7 @@ export function ProductionPage() {
   );
 
   const accountOrder = useMemo(
-    () => new Map((overview.accounts ?? []).map((a, i) => [a.id, i])),
+    () => new Map((overview.accounts).map((a, i) => [a.id, i])),
     [overview.accounts],
   );
   const aiRoutingLabel = routingPreferenceLabel(overview.aiPreference, t);
@@ -217,6 +217,12 @@ export function ProductionPage() {
           </div>
         }
       />
+
+      <p className="page-intro production-glossary">
+        {t('production.introCampaign')}{' '}
+        {t('production.introQueue')}{' '}
+        {t('production.introAttention')}
+      </p>
 
       <div
         className="production-tabs"

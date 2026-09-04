@@ -125,7 +125,6 @@ export function LibrarySearchPage() {
         title={t('librarySearch.title')}
         description={t('librarySearch.subtitle')}
       />
-      <p className="field-help library-search-howto">{t('librarySearch.howto')}</p>
 
       <div className="library-search-toolbar">
         <SearchInput
@@ -146,12 +145,6 @@ export function LibrarySearchPage() {
             </option>
           ))}
         </Select>
-        <Button
-          variant="secondary"
-          onClick={() => void window.khepreeNovelAI.librarySearch.startReindex({ force: false })}
-        >
-          {t('librarySearch.reindex')}
-        </Button>
       </div>
 
       {reindex && reindex.status !== 'COMPLETED' && reindex.status !== 'CANCELLED' && (
@@ -190,6 +183,14 @@ export function LibrarySearchPage() {
                 <span className="field-help">{t('librarySearch.indexTranslationHelp')}</span>
               </span>
             </label>
+          </div>
+          <div className="btn-row" style={{ marginTop: 'var(--space-3)' }}>
+            <Button
+              variant="secondary"
+              onClick={() => void window.khepreeNovelAI.librarySearch.startReindex({ force: false })}
+            >
+              {t('librarySearch.reindex')}
+            </Button>
           </div>
         </details>
       )}

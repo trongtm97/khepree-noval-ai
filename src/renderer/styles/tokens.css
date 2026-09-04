@@ -17,10 +17,11 @@
   --text-muted: #717784;
   --text-inverse: #0d0f12;
 
-  /* Semantic surface / border / status aliases (Phase 6) */
+  /* Semantic surface / border / status aliases (Phase 6 / V6A) */
   --surface-page: var(--bg-app);
   --surface-card: var(--bg-secondary);
   --surface-subtle: var(--bg-tertiary);
+  --surface-hover: var(--bg-hover);
   --border-subtle: var(--border);
   --border-default: var(--border-strong);
   --status-success: var(--success);
@@ -28,14 +29,15 @@
   --status-danger: var(--error);
   --status-info: var(--info);
 
-  /* Page rhythm */
-  --pad-page: var(--space-6);
-  --gap-page-section: var(--space-6);
-  --gap-card: var(--space-4);
+  /* Page rhythm — desktop target 24–32px page pad / section gap */
+  --pad-page: var(--space-8);
+  --gap-page-section: var(--space-8);
+  --gap-card: var(--space-5);
   --gap-field: var(--space-4);
-  --gap-label-control: 0.4rem;
-  --gap-control-help: 0.375rem;
+  --gap-label-control: 0.4rem; /* ~6–8px */
+  --gap-control-help: 0.375rem; /* ~6px */
   --gap-btn-group: var(--space-2);
+  --gap-tab-content: var(--space-5);
 
   --accent: #7c8cff;
   --accent-hover: #6b7cf0;
@@ -98,19 +100,20 @@
   --font-small: 0.75rem; /* 12px */
   --font-log: 0.8125rem; /* 13px */
 
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
+  --space-10: 2.5rem; /* 40px */
 
   /* Semantic spacing aliases */
   --gap-inline: var(--space-2);
   --gap-stack: var(--space-3);
-  --gap-section: var(--space-5);
-  --pad-card: var(--space-5);
+  --gap-section: var(--space-6);
+  --pad-card: var(--space-5); /* 20px card internal */
   --pad-banner: var(--space-3) var(--space-4);
 
   /* Control sizes (Windows desktop density) */
