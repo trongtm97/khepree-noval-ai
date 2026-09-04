@@ -5,6 +5,8 @@ const rebuildKnowledge = vi.fn();
 vi.mock('@main/notebook/notebook-sync-service-singleton', () => ({
   getNotebookSyncService: () => ({
     rebuildKnowledge,
+    evaluateSyncPolicy: () => ({ shouldSync: false, chaptersSinceSync: 0 }),
+    syncLocalKnowledge: vi.fn(),
   }),
 }));
 

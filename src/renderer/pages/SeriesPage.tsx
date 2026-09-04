@@ -460,20 +460,8 @@ export function SeriesPage() {
           >
             <h3 id="series-shared-knowledge-heading">{t('series.sharedKnowledgeTitle')}</h3>
             <p className="field-help">{t('series.sharedKnowledgeHelp')}</p>
-            <p className="field-help muted">{t('series.notebookNote')}</p>
-
-            {volumes.length > 0 ? (
-              <div className="series-inherited-projects">
-                <strong>{t('series.inheritedProjects')}</strong>
-                <ul>
-                  {volumes.map((v) => (
-                    <li key={v.projectId}>
-                      <Link to={`/projects/${v.projectId}`}>{v.projectTitle}</Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
+            <p className="field-help muted">{t('series.whenEffective')}</p>
+            <p className="field-help muted">{t('series.storyOverrideNote')}</p>
 
             <div className="series-world-rows">
               {worldRows.map((row, index) => (
@@ -564,6 +552,31 @@ export function SeriesPage() {
                 {t('series.addStyleRule')}
               </Button>
             </div>
+          </section>
+
+          <section className="series-apply-status" aria-labelledby="series-apply-status-heading">
+            <h3 id="series-apply-status-heading">{t('series.applyStatusTitle')}</h3>
+            <p className="field-help">{t('series.applyStatusHelp')}</p>
+            {volumes.length > 0 ? (
+              <div className="series-inherited-projects">
+                <strong>{t('series.inheritedProjects')}</strong>
+                <ul>
+                  {volumes.map((v) => (
+                    <li key={v.projectId}>
+                      <Link to={`/projects/${v.projectId}`}>{v.projectTitle}</Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="muted">{t('series.noVolumes')}</p>
+            )}
+          </section>
+
+          <section className="series-notebook-status" aria-labelledby="series-notebook-status-heading">
+            <h3 id="series-notebook-status-heading">{t('series.notebookStatusTitle')}</h3>
+            <p className="field-help">{t('series.notebookStatusHelp')}</p>
+            <p className="field-help muted">{t('series.notebookNote')}</p>
           </section>
         </section>
       ) : null}

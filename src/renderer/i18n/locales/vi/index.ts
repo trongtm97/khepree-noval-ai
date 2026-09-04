@@ -121,10 +121,10 @@ export const vi = {
     locked: 'đã khóa',
     sharedKnowledgeTitle: 'Kiến thức dùng chung',
     sharedKnowledgeHelp:
-      'Các thông tin ở đây sẽ được dùng khi dịch những truyện thuộc bộ này.',
+      'Đây là thông tin thế giới dùng chung cho mọi tập trong bộ (bối cảnh, lực lượng, quy tắc…). Dùng khi dịch và khi đồng bộ Notebook của từng truyện đã liên kết.',
     styleRulesTitle: 'Quy tắc văn phong',
     styleRulesHelp:
-      'Giúp các tập trong cùng bộ giữ cách dịch và cách xưng hô nhất quán.',
+      'Giúp các tập trong cùng bộ giữ cách dịch và cách xưng hô nhất quán. Không bắt buộc — chỉ thêm khi cần thống nhất.',
     saveWorld: 'Lưu kiến thức',
     addStyleRule: 'Thêm quy tắc',
     deleteStyleRule: 'Xóa',
@@ -132,14 +132,24 @@ export const vi = {
     styleKindStyle: 'Văn phong',
     styleKindPronoun: 'Đại từ xưng hô',
     styleKindAddress: 'Cách gọi',
-    worldKey: 'Khóa',
-    worldValue: 'Giá trị',
+    worldKey: 'Tên mục',
+    worldValue: 'Nội dung',
     addWorldFact: 'Thêm mục',
-    inheritedProjects: 'Truyện dùng kiến thức này',
+    inheritedProjects: 'Truyện sẽ bị ảnh hưởng',
+    applyStatusTitle: 'Trạng thái áp dụng',
+    applyStatusHelp:
+      'Thay đổi có hiệu lực ngay cho bản dịch tiếp theo. Notebook chỉ cập nhật khi truyện đó đã có Notebook và khi bạn (hoặc tiến trình dịch) đồng bộ bộ nhớ AI.',
+    storyOverrideNote:
+      'Thông tin riêng của từng truyện được ưu tiên hơn kiến thức dùng chung của bộ. Nếu bộ và truyện cùng một mục, bản dịch dùng bản của truyện.',
+    whenEffective:
+      'Khi nào có hiệu lực: ngay với phiên dịch mới; Notebook của truyện đã liên kết sẽ được đánh dấu cần cập nhật (không tạo Notebook mới).',
     moveVolumeUp: 'Lên',
     moveVolumeDown: 'Xuống',
     notebookNote:
-      'Mỗi truyện vẫn có Notebook riêng; kiến thức chung được đồng bộ vào Notebook của từng tập.',
+      'Chỉnh kiến thức bộ không tạo Notebook mới. Chỉ các truyện đã liên kết Notebook mới được đánh dấu cần đồng bộ; truyện chưa liên kết giữ dirty cục bộ đến khi bạn mở Dịch / Bộ nhớ AI.',
+    notebookStatusTitle: 'Trạng thái Notebook',
+    notebookStatusHelp:
+      'Mỗi truyện tự quản lý Notebook riêng. Bộ truyện chỉ chia sẻ nội dung kiến thức — không sở hữu vòng đời Notebook.',
   },
   projectNav: {
     overview: 'Tổng quan',
@@ -502,7 +512,7 @@ export const vi = {
     msgResearchProvisioned: 'Research Notebook đã được thiết lập.',
     notebookDuplicateTitle: 'Phát hiện nhiều Notebook cho truyện này',
     notebookDuplicateHelp:
-      'NovelTrans hiện chỉ sử dụng một Notebook cho mỗi truyện để tránh vượt giới hạn NotebookLM. Chọn Notebook chính — các Notebook khác trên Google không bị xóa.',
+      'NovelTrans phát hiện nhiều Notebook từng được liên kết với truyện này. Để tránh vượt giới hạn NotebookLM, hãy chọn một Notebook chính. NovelTrans sẽ không xóa các Notebook khác khỏi tài khoản của bạn.',
     choosePrimaryNotebook: 'Chọn làm Notebook chính',
     openOtherNotebook: 'Mở Notebook khác',
     notebookUnnamed: 'Notebook chưa đặt tên',
@@ -2599,7 +2609,10 @@ export const vi = {
     publicationStatus: 'Trạng thái',
     series: 'Bộ truyện',
     openSeries: 'Mở bộ truyện',
+    inheritsFromSeries: 'Truyện này đang dùng kiến thức từ bộ: {name}',
     sharedKnowledgeApplying: 'Đang áp dụng',
+    storyOverrideHint:
+      'Thông tin riêng của truyện được ưu tiên hơn thông tin dùng chung của bộ.',
     notebookLinked: 'Đã liên kết',
     notebookNotLinked: 'Chưa liên kết',
     expectedChapters: 'Tổng chương dự kiến',

@@ -20,9 +20,10 @@ If conflict:
 1. This Translation Pack explicit instruction
 2. HOT MEMORY (recent SQLite changes)
 3. LOCKED PROJECT TERM
-4. Local Knowledge Engine context in this pack
-5. Model general knowledge (lowest)
-Do not let general knowledge override locked project terms.
+4. SERIES glossary / series style rules / series world facts (when project is in a series)
+5. Local Knowledge Engine context in this pack
+6. Model general knowledge (lowest)
+Do not let general knowledge override locked project or series terms.
 
 ## Critical Rules
 - Translate meaning faithfully into the target language.
@@ -103,9 +104,10 @@ If conflict:
 1. This Translation Pack explicit instruction
 2. HOT MEMORY (recent SQLite changes)
 3. LOCKED PROJECT TERM
-4. Local Knowledge Engine context in this pack
-5. Model general knowledge (lowest)
-Do not let general knowledge override locked project terms.
+4. SERIES glossary / series style rules / series world facts (when project is in a series)
+5. Local Knowledge Engine context in this pack
+6. Model general knowledge (lowest)
+Do not let general knowledge override locked project or series terms.
 
 ## Critical Rules
 - Translate meaning faithfully into the target language.

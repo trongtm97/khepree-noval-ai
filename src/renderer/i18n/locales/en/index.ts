@@ -115,10 +115,10 @@ export const en: LocaleMessages = {
     locked: 'locked',
     sharedKnowledgeTitle: 'Shared knowledge',
     sharedKnowledgeHelp:
-      'Information here is used when translating stories in this series.',
+      'World facts shared by every volume in this series (setting, factions, rules…). Used in translation and when syncing each story’s linked Notebook.',
     styleRulesTitle: 'Style rules',
     styleRulesHelp:
-      'Helps volumes in the same series keep translation tone and pronouns consistent.',
+      'Keeps translation tone and pronouns consistent across volumes. Optional — add only when you need consistency.',
     saveWorld: 'Save knowledge',
     addStyleRule: 'Add rule',
     deleteStyleRule: 'Delete',
@@ -126,14 +126,24 @@ export const en: LocaleMessages = {
     styleKindStyle: 'Style',
     styleKindPronoun: 'Pronouns',
     styleKindAddress: 'Address forms',
-    worldKey: 'Key',
-    worldValue: 'Value',
+    worldKey: 'Name',
+    worldValue: 'Content',
     addWorldFact: 'Add entry',
-    inheritedProjects: 'Stories using this knowledge',
+    inheritedProjects: 'Stories affected',
+    applyStatusTitle: 'Apply status',
+    applyStatusHelp:
+      'Changes apply to the next translation run. Notebook updates only for stories that already have a Notebook, when you (or a translate job) sync AI memory.',
+    storyOverrideNote:
+      'Story-specific facts override series shared knowledge. If both define the same item, translation uses the story value.',
+    whenEffective:
+      'Takes effect: immediately for new translation sessions; linked story Notebooks are marked for update (no new Notebook is created).',
     moveVolumeUp: 'Up',
     moveVolumeDown: 'Down',
     notebookNote:
-      'Each story still has its own Notebook; shared knowledge is synced into each volume.',
+      'Editing series knowledge never creates a Notebook. Only stories that already have a Notebook are marked for sync; unbound stories stay locally dirty until you open Translate / AI Memory.',
+    notebookStatusTitle: 'Notebook status',
+    notebookStatusHelp:
+      'Each story owns its Notebook lifecycle. The series only shares knowledge content — it does not create or replace Notebooks.',
   },
   projectNav: {
     overview: 'Overview',
@@ -496,7 +506,7 @@ export const en: LocaleMessages = {
     msgResearchProvisioned: 'Research Notebook provisioned.',
     notebookDuplicateTitle: 'Multiple Notebooks found for this story',
     notebookDuplicateHelp:
-      'NovelTrans uses one Notebook per story to stay within NotebookLM limits. Choose a primary binding — other Google Notebooks are kept and not deleted.',
+      'NovelTrans found multiple Notebooks previously linked to this story. To stay within NotebookLM limits, choose one primary Notebook. NovelTrans will not delete the other Notebooks from your account.',
     choosePrimaryNotebook: 'Use as primary Notebook',
     openOtherNotebook: 'Open other Notebook',
     notebookUnnamed: 'Unnamed Notebook',
@@ -2594,7 +2604,10 @@ export const en: LocaleMessages = {
     publicationStatus: 'Publication status',
     series: 'Series',
     openSeries: 'Open series',
+    inheritsFromSeries: 'This story uses knowledge from series: {name}',
     sharedKnowledgeApplying: 'Applying',
+    storyOverrideHint:
+      'Story-specific information takes priority over shared series knowledge.',
     notebookLinked: 'Linked',
     notebookNotLinked: 'Not linked',
     expectedChapters: 'Expected chapter count',

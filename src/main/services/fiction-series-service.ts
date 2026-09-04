@@ -2,7 +2,6 @@ import type { DatabaseManager } from '../db/database-manager';
 import { getDatabase } from '../db/connection';
 import type { FictionSeriesRow } from '../db/repositories/fiction-series-repository';
 import type { TermScope, TermStatus, TermType } from '@shared/constants/term';
-import { NotebookKnowledgeBuilder } from '../notebook/knowledge-builder';
 import { getNotebookSyncService } from '../notebook/notebook-sync-service-singleton';
 
 export interface FictionSeriesDto {
@@ -446,8 +445,13 @@ export class FictionSeriesService {
   }
 
   /**
-   * When shared series knowledge changes, rebuild Notebook world/rules for every volume.
-   * Each project keeps its own Notebook binding — only knowledge content is refreshed.
+   * When shared series knowledge changes, mark member projects dirty only.
+   *
+   * Safety invariants:
+   * - Never creates NotebookLM projects / bindings
+   * - Never uploads / remote-syncs immediately (lazy + existing sync policy)
+   * - Rebuild happens later when Translate / Notebook sync actually needs content
+   * - O(volumes) local dirty flags — not O(volumes) hash rebuilds or remote calls
    */
   private propagateSeriesKnowledgeDirty(
     seriesId: string,
@@ -456,10 +460,8 @@ export class FictionSeriesService {
     const db = this.getDb();
     const volumes = db.fictionSeries.listVolumes(seriesId);
     if (volumes.length === 0) return;
-    const builder = new NotebookKnowledgeBuilder(db);
     const sync = getNotebookSyncService(db);
     for (const volume of volumes) {
-      builder.rebuildAndTrack(volume.project_id);
       sync.markDirty(volume.project_id, event);
     }
   }

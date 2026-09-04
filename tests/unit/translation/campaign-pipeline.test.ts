@@ -11,6 +11,7 @@ import {
 } from '@main/services/translation-campaign-service';
 import { resetTranslationRecipeServiceForTests } from '@main/services/translation-recipe-service';
 import { resetJobServiceForTests } from '@main/services/job-service-singleton';
+import { resetNotebookBindingServiceForTests } from '@main/services/notebook-binding-service-singleton';
 import {
   CampaignPipelineOrchestrator,
   resetCampaignPipelineOrchestratorForTests,
@@ -74,9 +75,11 @@ describe('campaign durable pipeline', () => {
     resetTranslationCampaignServiceForTests();
     resetCampaignPipelineOrchestratorForTests();
     resetJobServiceForTests();
+    resetNotebookBindingServiceForTests();
   });
 
   afterEach(() => {
+    resetNotebookBindingServiceForTests();
     closeDatabase();
     resetTranslationRecipeServiceForTests();
     resetTranslationCampaignServiceForTests();

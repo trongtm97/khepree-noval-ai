@@ -128,12 +128,13 @@ export class NotebookSendReadinessService {
     );
 
     // HR12: story already has a remote NotebookLM binding → resume/reuse only.
-    const { getNotebookBindingService } = await import(
-      './notebook-binding-service-singleton'
+    // Use this.db (not global singleton) so unit tests with injected mocks work.
+    const { NotebookBindingService } = await import('./notebook-binding-service');
+    const storyBound = new NotebookBindingService(this.db).getNotebookForStory(
+      input.projectId,
     );
-    const storyBound = getNotebookBindingService().getNotebookForStory(input.projectId);
     const mustReuseOnly = Boolean(
-      storyBound?.notebookId || existing?.notebook_id,
+      storyBound?.notebookId ?? existing?.notebook_id,
     );
 
     try {
@@ -181,7 +182,7 @@ export class NotebookSendReadinessService {
           technicalDetail: provisionResult.technicalDetail ?? null,
           actions: provisionResult.actions,
           message: inaccessible
-            ? provisionResult.userMessage || provisionResult.message
+            ? (provisionResult.userMessage ?? provisionResult.message)
             : provisionResult.message || viMessageAssistedSetup(),
           notebookUrl: afterAssisted.notebookUrl,
           notebookRowId: afterAssisted.notebookRowId,

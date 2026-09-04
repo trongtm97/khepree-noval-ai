@@ -41,6 +41,11 @@ export function ProjectOverviewCards({
           />
           {project.seriesId ? (
             <>
+              <p className="overview-meta">
+                {t('bookMetadata.inheritsFromSeries', {
+                  name: project.seriesTitle ?? t('bookMetadata.openSeries'),
+                })}
+              </p>
               <ReadField
                 label={t('bookMetadata.series')}
                 value={
@@ -59,6 +64,7 @@ export function ProjectOverviewCards({
                 label={t('series.sharedKnowledgeTitle')}
                 value={t('bookMetadata.sharedKnowledgeApplying')}
               />
+              <p className="field-help muted">{t('bookMetadata.storyOverrideHint')}</p>
               {project.health?.notebook != null ? (
                 <ReadField
                   label={t('nav.aiMemory')}

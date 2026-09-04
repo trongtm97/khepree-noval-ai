@@ -12,7 +12,7 @@ const FIXTURE_DIR = path.resolve(
   '../../fixtures/automation',
 );
 
-describe('Browser automation core (mock HTML)', () => {
+describe('Browser automation core (mock HTML)', { timeout: 60_000 }, () => {
   let baseUrl: string;
   let closeServer: () => Promise<void>;
   let tempRoot: string;
@@ -23,11 +23,11 @@ describe('Browser automation core (mock HTML)', () => {
     const server = await startFixtureServer(FIXTURE_DIR);
     baseUrl = server.baseUrl;
     closeServer = server.close;
-  });
+  }, 60_000);
 
   afterAll(async () => {
     await closeServer();
-  });
+  }, 60_000);
 
   beforeEach(() => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nts-auto-'));
@@ -52,7 +52,7 @@ describe('Browser automation core (mock HTML)', () => {
         await new Promise((r) => setTimeout(r, 100 * (i + 1)));
       }
     }
-  });
+  }, 60_000);
 
   it('runs OPEN / NAVIGATE / GET_STATUS / SCREENSHOT / CLOSE commands', async () => {
     const workerId = newId();

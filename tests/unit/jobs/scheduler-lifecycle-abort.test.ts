@@ -120,4 +120,104 @@ describe('scheduler lifecycle abort on stop', () => {
       process.off('unhandledRejection', onUnhandled);
     }
   });
+
+  it('stop is idempotent when called twice', async () => {
+    scheduler = new AutomationScheduler(db, {
+      maxConcurrentWorkers: 1,
+      tickMs: 40,
+      sendInitial: async () => ({
+        rawResponse: '<TRANSLATION>\n[C000001:P000001] x\n</TRANSLATION>',
+        inputRef: 'idempotent',
+      }),
+    });
+    service.attachScheduler(scheduler);
+    scheduler.start();
+    await scheduler.stop({ waitMs: 200 });
+    await scheduler.stop({ waitMs: 200 });
+    expect(scheduler.getInFlightCount()).toBe(0);
+    scheduler = null;
+  });
+
+  it('multiple in-flight jobs are all accounted for on stop', async () => {
+    const gates: Array<() => void> = [];
+    const errors: string[] = [];
+    const onUnhandled = (reason: unknown) => {
+      errors.push(reason instanceof Error ? reason.message : String(reason));
+    };
+    process.on('unhandledRejection', onUnhandled);
+
+    try {
+      const account2 = db.googleAccounts.create({
+        label: 'w2',
+        email: 'w2@example.com',
+        profileDirName: 'abort-profile-2',
+        status: 'READY',
+      });
+      fs.mkdirSync(browserProfileManager.resolveProfilePath('abort-profile-2'), {
+        recursive: true,
+      });
+      const worker2 = db.workerStates.getByAccountId(account2.id);
+      if (!worker2) throw new Error('missing worker2');
+      db.workerStates.setHealth(worker2.id, 'READY');
+
+      const projectB = db.projects.create({ title: 'Abort Novel B' }).id;
+      scheduler = new AutomationScheduler(db, {
+        maxConcurrentWorkers: 2,
+        tickMs: 30,
+        capabilityMaxConcurrentNovels: 2,
+        sendInitial: async () => {
+          await new Promise<void>((resolve) => {
+            gates.push(resolve);
+          });
+          return {
+            rawResponse: '<TRANSLATION>\n[C000001:P000001] x\n</TRANSLATION>',
+            inputRef: 'multi',
+          };
+        },
+      });
+      service.attachScheduler(scheduler);
+
+      service.enqueueTranslate({
+        projectId,
+        chapterFrom: 1,
+        chapterTo: 1,
+        sourceParagraphIds: ['[C000001:P000001]'],
+        batchParagraphs: [{ paragraphId: '[C000001:P000001]', sourceText: '一' }],
+      });
+      service.enqueueTranslate({
+        projectId: projectB,
+        chapterFrom: 1,
+        chapterTo: 1,
+        sourceParagraphIds: ['[C000001:P000001]'],
+        batchParagraphs: [{ paragraphId: '[C000001:P000001]', sourceText: '二' }],
+      });
+
+      scheduler.start();
+      const active = scheduler;
+      await new Promise<void>((resolve, reject) => {
+        const start = Date.now();
+        const tick = () => {
+          if (active.getInFlightCount() >= 2) resolve();
+          else if (Date.now() - start > 8000) {
+            reject(new Error(`timeout inFlight=${active.getInFlightCount()}`));
+          } else setTimeout(tick, 25);
+        };
+        tick();
+      });
+
+      expect(active.getInFlightCount()).toBeGreaterThanOrEqual(2);
+      await active.stop({ waitMs: 150 });
+      expect(active.getInFlightCount()).toBe(0);
+      scheduler = null;
+      for (const release of gates) release();
+      await new Promise((r) => setTimeout(r, 150));
+      db.close();
+      closeDatabase();
+      await new Promise((r) => setTimeout(r, 100));
+
+      expect(errors.filter((m) => /not open|closed/i.test(m))).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
 });

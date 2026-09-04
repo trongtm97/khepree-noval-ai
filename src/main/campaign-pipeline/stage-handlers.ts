@@ -14,6 +14,8 @@ import { getNotebookBindingService } from '../services/notebook-binding-service-
 import { runDeliveryAutoExport } from '../portability/delivery-export-service';
 import { emitProductionCompletion } from '../production/completion-notify-bridge';
 
+/* StageHandler is Promise-typed; several stages are sync SQLite work only. */
+/* eslint-disable @typescript-eslint/require-await -- StageHandler contract is async */
 export interface StageHandlerContext {
   db: DatabaseManager;
   campaignId: string;
@@ -217,7 +219,7 @@ export const handleTranslation: StageHandler = async (ctx) => {
   // HARD REQUIREMENT 5+16 — single translation engine + story Notebook binding.
   // Production job → projectId → NotebookBindingService (read-only resolve).
   // Does NOT own NotebookLM create lifecycle.
-  const storyNotebook = getNotebookBindingService().resolveNotebookForProductionJob(
+  const storyNotebook = getNotebookBindingService(ctx.db).resolveNotebookForProductionJob(
     ctx.projectId,
   );
 
@@ -409,26 +411,16 @@ export const handleQaRepair: StageHandler = async (ctx) => {
 
 export const handleWholeBookAudit: StageHandler = async (ctx) => {
   if (!ctx.recipeConfig.wholeBookAudit || ctx.recipeMode === 'QUICK') {
+    // BALANCED (wholeBookAudit=false) uses local QA stage for consistency — skip deep audit.
     return {
       status: 'SKIPPED',
       checkpoint: {
         auditSkippedReason:
           ctx.recipeMode === 'QUICK'
             ? 'QUICK skips deep whole-book audit'
-            : 'Recipe wholeBookAudit=false',
-      },
-    };
-  }
-
-  // BALANCED: local consistency summary (no full publication audit).
-  if (ctx.recipeMode === 'BALANCED' && !ctx.recipeConfig.wholeBookAudit) {
-    return {
-      status: 'COMPLETED',
-      checkpoint: {
-        message: 'BALANCED consistency summary',
-        consistencySummary: 'standard end-of-book consistency',
-        auditCriticalCount: 0,
-        humanLockedCount: countHumanLocked(ctx.db, ctx.projectId),
+            : ctx.recipeMode === 'BALANCED'
+              ? 'BALANCED uses QA consistency summary; skips deep whole-book audit'
+              : 'Recipe wholeBookAudit=false',
       },
     };
   }

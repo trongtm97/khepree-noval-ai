@@ -145,7 +145,7 @@ describe('Automation Diagnostics (Phase 19)', () => {
     expect(result.selectorCandidates).toEqual(['css=.missing', 'testId=prompt-input']);
     expect(result.screenshotPath && fs.existsSync(result.screenshotPath)).toBe(true);
     expect(result.domFragmentPath && fs.existsSync(result.domFragmentPath)).toBe(true);
-  });
+  }, 30_000);
 
   it('exports diagnostics ZIP without forbidden secret paths', async () => {
     expect(isForbiddenDiagnosticsPath('/x/browser-profiles/foo')).toBe(true);

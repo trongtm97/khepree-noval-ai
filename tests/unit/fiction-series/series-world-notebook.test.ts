@@ -184,4 +184,125 @@ describe('Series/World → Notebook + Translation canonical knowledge', () => {
     expect(md).toContain('story-wins');
     expect(md).toContain('from-series');
   });
+
+  it('E: unbound story stays without Notebook after series dirty propagate', () => {
+    const db = getDatabase();
+    const series = service.createSeries({ title: 'No NB' });
+    const unbound = db.projects.create({ title: 'Unbound Vol' }).id;
+    service.assignProjectToSeries({ seriesId: series.id, projectId: unbound, force: true });
+
+    expect(db.notebooks.listByProject(unbound)).toHaveLength(0);
+
+    service.setWorldKnowledge(series.id, { fact: 'shared' });
+    service.upsertStyleRule({
+      seriesId: series.id,
+      kind: 'style',
+      content: 'Giữ xưng hô nhất quán',
+    });
+
+    expect(db.notebooks.listByProject(unbound)).toHaveLength(0);
+    expect(getNotebookBindingService().getNotebookForStory(unbound)).toBeNull();
+
+    expect(db.knowledgeFiles.anyDirty(unbound)).toBe(true);
+
+    const snapshot = buildStoryKnowledgeSnapshot(db, unbound);
+    expect(snapshot.worldKnowledge['series:fact']).toBe('shared');
+  });
+
+  it('F: rapid series edits coalesce to same binding + final world wins', () => {
+    const db = getDatabase();
+    const series = service.createSeries({ title: 'Rapid' });
+    const projectId = db.projects.create({ title: 'Vol' }).id;
+    service.assignProjectToSeries({ seriesId: series.id, projectId, force: true });
+
+    const account = db.googleAccounts.create({
+      label: 'acc',
+      email: 'rapid@example.com',
+      profileDirName: 'rapid-p',
+      status: 'READY',
+    });
+    db.notebooks.upsert({
+      project_id: projectId,
+      google_account_id: account.id,
+      notebook_name: 'Primary',
+      notebook_id: 'nb-rapid-1',
+      notebook_role: 'SINGLE',
+      status: 'ready',
+    });
+
+    for (let i = 1; i <= 10; i += 1) {
+      service.setWorldKnowledge(series.id, { revision: `v${i}` });
+    }
+
+    const notebooks = db.notebooks.listByProject(projectId);
+    expect(notebooks).toHaveLength(1);
+    expect(notebooks[0]?.notebook_id).toBe('nb-rapid-1');
+    expect(getNotebookBindingService().getNotebookForStory(projectId)?.notebookId).toBe(
+      'nb-rapid-1',
+    );
+
+    const snapshot = buildStoryKnowledgeSnapshot(db, projectId);
+    expect(snapshot.worldKnowledge['series:revision']).toBe('v10');
+    expect(db.knowledgeFiles.anyDirty(projectId)).toBe(true);
+  });
+
+  it('G: after restart dirty remains recoverable without new Notebook', () => {
+    const db = getDatabase();
+    const series = service.createSeries({ title: 'Crash' });
+    const withNb = db.projects.create({ title: 'Has NB' }).id;
+    const withoutNb = db.projects.create({ title: 'No NB' }).id;
+    service.assignProjectToSeries({ seriesId: series.id, projectId: withNb, force: true });
+    service.assignProjectToSeries({ seriesId: series.id, projectId: withoutNb, force: true });
+
+    const account = db.googleAccounts.create({
+      label: 'acc',
+      email: 'crash@example.com',
+      profileDirName: 'crash-p',
+      status: 'READY',
+    });
+    db.notebooks.upsert({
+      project_id: withNb,
+      google_account_id: account.id,
+      notebook_name: 'Keep',
+      notebook_id: 'nb-keep-1',
+      notebook_role: 'SINGLE',
+      status: 'ready',
+    });
+
+    service.setWorldKnowledge(series.id, { after_crash: 'recover-me' });
+
+    expect(db.knowledgeFiles.anyDirty(withNb)).toBe(true);
+    expect(db.knowledgeFiles.anyDirty(withoutNb)).toBe(true);
+
+    // Simulate app restart by re-reading durable rows (same SQLite connection / fresh service).
+    resetFictionSeriesServiceForTests();
+    resetNotebookBindingServiceForTests();
+    const restarted = new FictionSeriesService(() => getDatabase());
+    const world = restarted.getWorldKnowledge(series.id);
+    expect(world.worldKnowledge.after_crash).toBe('recover-me');
+
+    expect(db.notebooks.listByProject(withNb)).toHaveLength(1);
+    expect(db.notebooks.listByProject(withoutNb)).toHaveLength(0);
+    expect(db.knowledgeFiles.anyDirty(withNb)).toBe(true);
+    expect(db.knowledgeFiles.anyDirty(withoutNb)).toBe(true);
+    expect(getNotebookBindingService().getNotebookForStory(withNb)?.notebookId).toBe('nb-keep-1');
+  });
+
+  it('H: many volumes mark dirty locally without creating notebooks (no remote fan-out)', () => {
+    const db = getDatabase();
+    const series = service.createSeries({ title: 'Fanout' });
+    const projectIds: string[] = [];
+    for (let i = 0; i < 20; i += 1) {
+      const id = db.projects.create({ title: `Vol ${i}` }).id;
+      projectIds.push(id);
+      service.assignProjectToSeries({ seriesId: series.id, projectId: id, force: true });
+    }
+
+    service.setWorldKnowledge(series.id, { blast: 'one-edit' });
+
+    for (const id of projectIds) {
+      expect(db.notebooks.listByProject(id)).toHaveLength(0);
+      expect(db.knowledgeFiles.anyDirty(id)).toBe(true);
+    }
+  });
 });
