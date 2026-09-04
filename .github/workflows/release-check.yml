@@ -1,12 +1,10 @@
 name: Release check (legacy)
 
 # Kept for branch history. Prefer ci.yml (normal) + release.yml (signed package).
-# This workflow no longer fails the whole gate on historical full-lint debt
-# or missing production signing secrets.
+# Disabled on push — was duplicating CI and flaking when running ci:check as one step.
+# Manual only if needed for archaeology.
 on:
-  push:
-    branches: [main, master]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   release-check:
