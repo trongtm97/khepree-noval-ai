@@ -209,6 +209,8 @@ export class AutomationScheduler {
 
   tick(): void {
     if (this.shuttingDown || this.isPaused()) return;
+    // Tests/shutdown may close SQLite while an unref'd interval still fires.
+    if (!this.db.getConnection().open) return;
 
     this.db.jobs.recoverExpiredLeases();
     this.db.workerStates.clearExpiredLimits();

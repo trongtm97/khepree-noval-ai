@@ -381,7 +381,7 @@ export function resolveResultRouteMeta(
   db: DatabaseManager,
   entityType: LibrarySearchEntityType,
   entityId: string,
-  projectId: string | null,
+  _projectId: string | null,
 ): { chapterId?: string | null; stableParagraphId?: string | null } {
   if (entityType === 'translation') {
     const tr = db.translations.getById(entityId);

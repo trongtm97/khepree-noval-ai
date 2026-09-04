@@ -157,6 +157,7 @@ export class AnnouncementSyncService {
         return {
           publicId: item.publicId,
           kind: mapAnnouncementSeverityToKind(item.severity),
+          type: 'general' as const,
           title: item.title,
           description: item.body ?? '',
           publishedAt: item.publishedAt,

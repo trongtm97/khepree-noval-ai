@@ -106,7 +106,12 @@ function mockDb(opts: {
         active_edition_id: 'ed1',
         source_language: 'zh-Hans',
         target_language: 'vi',
+        genre: null,
       }),
+    },
+    fictionSeries: {
+      getVolumeByProject: () => null,
+      getSeriesById: () => null,
     },
     translationEditions: {
       getById: () => ({

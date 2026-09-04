@@ -114,6 +114,20 @@ function mockNovelDb(opts: {
     },
     jobs: {
       getById: (id: string) => byId.get(id) ?? null,
+      findActiveJobByChapterRange: (
+        projectId: string,
+        chapterFrom: number,
+        chapterTo: number,
+      ) =>
+        created.find(
+          (j) =>
+            j.project_id === projectId &&
+            j.chapter_from === chapterFrom &&
+            j.chapter_to === chapterTo &&
+            !['COMPLETED', 'FAILED', 'CANCELLED', 'SKIPPED', 'ACCEPTED_WITH_WARNINGS'].includes(
+              j.state,
+            ),
+        ) ?? null,
       create: (input: {
         project_id: string;
         type: string;

@@ -25,7 +25,7 @@ export function LibrarySearchSettingsPanel() {
     try {
       const next = await window.khepreeNovelAI.librarySearch.updateSettings(patch);
       setSettings(next);
-      showSaved();
+      showSaved(t('settings.saved'));
       if (patch.indexSourceText !== undefined || patch.indexTranslationText !== undefined) {
         void window.khepreeNovelAI.librarySearch.startReindex({ force: true });
       }

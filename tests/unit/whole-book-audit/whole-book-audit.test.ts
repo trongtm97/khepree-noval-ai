@@ -116,8 +116,8 @@ describe('Prompt 10 — whole-book audit', () => {
 
   it('accepts valid character aliases without false positive', () => {
     const projectId = seedLongNovel({ chapters: 4, useAlias: true });
-    const index = buildWholeBookAuditIndex(getDatabase(), projectId);
-    const findings = checkCharacterConsistency(index);
+    const _index = buildWholeBookAuditIndex(getDatabase(), projectId);
+    const findings = checkCharacterConsistency(_index);
     expect(findings.filter((f) => f.code === 'character_name_mismatch').length).toBe(
       0,
     );
@@ -125,7 +125,6 @@ describe('Prompt 10 — whole-book audit', () => {
 
   it('flags character name mismatch when wrong name used', () => {
     const projectId = seedLongNovel({ chapters: 4, characterMismatch: true });
-    const index = buildWholeBookAuditIndex(getDatabase(), projectId);
     // Add second character so wrong name is detectable as other preferred
     const db = getDatabase();
     const editionId = db.projects.getById(projectId)!.active_edition_id!;
@@ -151,7 +150,7 @@ describe('Prompt 10 — whole-book audit', () => {
     const db = getDatabase();
     const indexA = buildWholeBookAuditIndex(db, a);
     const indexB = buildWholeBookAuditIndex(db, b);
-    expect(indexA.characters.every((c) => true)).toBe(true);
+    expect(indexA.characters.length).toBeGreaterThan(0);
     expect(indexA.characters.map((c) => c.id).sort()).not.toEqual(
       indexB.characters.map((c) => c.id).sort(),
     );

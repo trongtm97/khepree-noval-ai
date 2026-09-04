@@ -17,6 +17,9 @@ export interface AttentionInboxPanelProps {
   onOpenCountChange?: (count: number) => void;
   onNavigateLogin?: (accountId: string | null) => void;
   onOpenProject?: (projectId: string) => void;
+  onChooseSource?: (projectId: string) => void;
+  onSwitchProvider?: (accountId: string | null) => void;
+  onOpenFolder?: (projectId: string) => void;
   onRefreshJobs?: () => void;
 }
 
@@ -53,6 +56,9 @@ export function AttentionInboxPanel({
   onOpenCountChange,
   onNavigateLogin,
   onOpenProject,
+  onChooseSource,
+  onSwitchProvider,
+  onOpenFolder,
   onRefreshJobs,
 }: AttentionInboxPanelProps) {
   const t = useT();
@@ -216,6 +222,18 @@ export function AttentionInboxPanel({
                         item.projectId
                       ) {
                         onOpenProject?.(item.projectId);
+                      } else if (
+                        item.primaryAction === 'CHOOSE_SOURCE' &&
+                        item.projectId
+                      ) {
+                        onChooseSource?.(item.projectId);
+                      } else if (item.primaryAction === 'SWITCH_PROVIDER') {
+                        onSwitchProvider?.(item.accountId);
+                      } else if (
+                        item.primaryAction === 'OPEN_FOLDER' &&
+                        item.projectId
+                      ) {
+                        onOpenFolder?.(item.projectId);
                       } else {
                         void runAct(item.id, item.primaryAction);
                       }

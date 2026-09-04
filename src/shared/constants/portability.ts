@@ -8,7 +8,7 @@ export const BACKUP_KINDS = ['full', 'project'] as const;
 export type BackupKind = (typeof BACKUP_KINDS)[number];
 
 /** Max schema version this app can restore. */
-export const PORTABILITY_MAX_SCHEMA_VERSION = 43;
+export const PORTABILITY_MAX_SCHEMA_VERSION = 55;
 
 export const AUTO_BACKUP_META_KEYS = {
   enabled: 'backup.auto.enabled',

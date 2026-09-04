@@ -13,6 +13,7 @@ export { Skeleton } from './Skeleton';
 export { Dialog } from './Dialog';
 export { Drawer } from './Drawer';
 export { PageHeader, SectionHeader } from './PageHeader';
+export { FieldHelp, FormField } from './FieldHelp';
 export { ErrorPanel } from './ErrorPanel';
 export { LogViewer } from './LogViewer';
 export type { LogLine } from './LogViewer';

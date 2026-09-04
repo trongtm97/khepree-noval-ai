@@ -76,7 +76,7 @@ function translationJobTerminal(db: DatabaseManager, jobIds: string[]): {
       needsAttention += 1;
       continue;
     }
-    if (JOB_TERMINAL_STATES.has(job.state)) {
+    if (JOB_TERMINAL_STATES.has(job.state as import('@shared/constants/job').JobState)) {
       if (job.state === 'COMPLETED' || job.state === 'CANCELLED') {
         completed += 1;
       } else {

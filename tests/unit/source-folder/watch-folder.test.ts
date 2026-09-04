@@ -43,8 +43,8 @@ describe('smart watch folder', () => {
     });
     const db = getDatabase();
     db.projects.updateSourceFolderSettings(created.project.id, {
-      autoImportNewChapters: true,
-      watchFolderEnabled: true,
+      auto_import_new_chapters: true,
+      watch_folder_enabled: true,
     });
     return { projectId: created.project.id, dir };
   }
@@ -166,7 +166,7 @@ describe('smart watch folder', () => {
     const { projectId, dir } = await seedFolderProject({ 1: '第1章\nDup' });
     const db = getDatabase();
     db.projects.updateSourceFolderSettings(projectId, {
-      autoQueueNewChapters: true,
+      auto_queue_new_chapters: true,
     });
 
     const j1 = db.jobs.create({

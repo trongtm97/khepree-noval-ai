@@ -50,6 +50,14 @@ export function resolveBreadcrumb(
     return [{ labelKey: 'nav.production' }];
   }
 
+  if (pathname === '/series' || pathname.startsWith('/series/')) {
+    return [{ labelKey: 'nav.series' }];
+  }
+
+  if (pathname === '/search') {
+    return [{ labelKey: 'nav.search' }];
+  }
+
   const ROUTE_KEYS: Record<string, string> = {
     '/accounts': 'nav.accounts',
     '/logs': 'nav.logs',

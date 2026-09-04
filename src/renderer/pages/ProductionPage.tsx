@@ -225,16 +225,35 @@ export function ProductionPage() {
       >
         {(
           [
-            ['campaigns', t('production.tabCampaigns')],
-            ['queue', t('production.tabQueue')],
-            ['attention', t('production.tabAttention')],
+            [
+              'campaigns',
+              t('production.tabCampaigns'),
+              t('production.tabCampaignsHelp'),
+              campaignList.campaigns.length,
+              false,
+            ],
+            [
+              'queue',
+              t('production.tabQueue'),
+              t('production.tabQueueHelp'),
+              overview.runningCount + overview.waitingCount,
+              false,
+            ],
+            [
+              'attention',
+              t('production.tabAttention'),
+              t('production.tabAttentionHelp'),
+              Math.max(overview.attentionJobs.length, inboxOpenCount),
+              true,
+            ],
           ] as const
-        ).map(([id, label]) => (
+        ).map(([id, label, help, count, alert]) => (
           <button
             key={id}
             type="button"
             role="tab"
             id={`production-tab-${id}`}
+            title={help}
             aria-selected={tab === id}
             aria-controls={`production-panel-${id}`}
             className={
@@ -244,12 +263,17 @@ export function ProductionPage() {
             }
             onClick={() => setTab(id)}
           >
-            {label}
-            {id === 'attention' && inboxOpenCount > 0 ? (
-              <span className="nav-link-badge" aria-hidden>
-                {inboxOpenCount > 99 ? '99+' : inboxOpenCount}
-              </span>
-            ) : null}
+            <span>{label}</span>
+            <span
+              className={
+                alert && count > 0
+                  ? 'production-tab-count production-tab-count--alert'
+                  : 'production-tab-count'
+              }
+              aria-label={String(count)}
+            >
+              {count > 99 ? '99+' : count}
+            </span>
           </button>
         ))}
       </div>
@@ -384,6 +408,21 @@ export function ProductionPage() {
               }}
               onOpenProject={(projectId) => {
                 navigate(`/projects/${projectId}`);
+              }}
+              onChooseSource={(projectId) => {
+                navigate(`/projects/${projectId}/chapters`);
+              }}
+              onSwitchProvider={(accountId) => {
+                navigate(
+                  accountId ? `/accounts?focus=${accountId}` : '/accounts',
+                );
+              }}
+              onOpenFolder={(projectId) => {
+                void window.khepreeNovelAI.sourceFolder
+                  .openFolder(projectId)
+                  .catch(() => {
+                    navigate(`/projects/${projectId}/chapters`);
+                  });
               }}
               onRefreshJobs={() => {
                 void overview.refresh();

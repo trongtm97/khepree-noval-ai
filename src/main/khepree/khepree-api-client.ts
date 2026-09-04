@@ -1312,16 +1312,17 @@ export class HttpKhepreeApiClient implements KhepreeApiClient {
     );
   }
 
-  deleteCampaignSync(input: {
+  async deleteCampaignSync(input: {
     accessToken: string;
     campaignPublicId: string;
   }): Promise<{ deleted: boolean }> {
-    return this.requestData(
+    const result = await this.requestData(
       `${KHEPREE_DESKTOP_API_PATHS.campaignSync}/${encodeURIComponent(input.campaignPublicId)}`,
       { method: 'DELETE', accessToken: input.accessToken },
-      z.object({ deleted: z.boolean().optional() }).transform((v) => ({ deleted: v.deleted ?? true })),
+      z.object({ deleted: z.boolean().optional() }),
       'desktop/campaign-sync/delete',
     );
+    return { deleted: result.deleted ?? true };
   }
 }
 

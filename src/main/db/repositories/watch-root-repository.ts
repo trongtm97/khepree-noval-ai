@@ -1,4 +1,3 @@
-import type Database from 'better-sqlite3';
 import path from 'node:path';
 import { BaseRepository } from './base-repository';
 import { newId } from '../utils/uuid';

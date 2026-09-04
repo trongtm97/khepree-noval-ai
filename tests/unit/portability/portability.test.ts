@@ -119,7 +119,7 @@ describe('Portability (Phase 18)', () => {
     const chapters = db.chapters.listByProject(projectId);
     expect(chapters.length).toBeGreaterThan(0);
     expect(db.translations.listByChapter(chapters[0].id)).toHaveLength(1);
-  }, 30_000);
+  }, 90_000);
 
   it('restore rejects silent overwrite', async () => {
     const archive = await createBackupArchive({

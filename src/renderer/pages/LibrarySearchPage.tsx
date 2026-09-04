@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type {
-  LibrarySearchEntityType,
   LibrarySearchIndexProgressDto,
   LibrarySearchResultItemDto,
   LibrarySearchSettingsDto,
 } from '@shared/schemas/library-search';
-import { LIBRARY_SEARCH_ENTITY_TYPES } from '@shared/constants/library-search';
+import {
+  LIBRARY_SEARCH_ENTITY_TYPES,
+  type LibrarySearchEntityType,
+} from '@shared/constants/library-search';
 import { useT } from '../i18n';
-import { Button, PageHeader, SearchInput, Select } from '../components/ui';
+import { Button, EmptyState, PageHeader, SearchInput, Select, Spinner } from '../components/ui';
 
 const PAGE_SIZE = 25;
 
@@ -93,8 +95,12 @@ export function LibrarySearchPage() {
   };
 
   return (
-    <div className="library-search-page">
-      <PageHeader title={t('librarySearch.title')} subtitle={t('librarySearch.subtitle')} />
+    <div className="library-search-page page-shell">
+      <PageHeader
+        title={t('librarySearch.title')}
+        description={t('librarySearch.subtitle')}
+      />
+      <p className="field-help library-search-howto">{t('librarySearch.howto')}</p>
 
       <div className="library-search-toolbar">
         <SearchInput
@@ -124,39 +130,64 @@ export function LibrarySearchPage() {
       </div>
 
       {reindex && reindex.status !== 'COMPLETED' && reindex.status !== 'CANCELLED' && (
-        <p className="library-search-reindex-status">
+        <p className="library-search-reindex-status" role="status">
           {t('librarySearch.reindexProgress', {
-            done: reindex.entitiesDone,
-            total: reindex.entitiesTotal,
+            done: String(reindex.entitiesDone),
+            total: String(reindex.entitiesTotal),
           })}
         </p>
       )}
 
       {settings && (
-        <div className="library-search-privacy">
-          <label>
-            <input
-              type="checkbox"
-              checked={settings.indexSourceText}
-              onChange={(e) => void toggleSourceIndex(e.target.checked)}
-            />
-            {t('librarySearch.indexSource')}
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={settings.indexTranslationText}
-              onChange={(e) => void toggleTranslationIndex(e.target.checked)}
-            />
-            {t('librarySearch.indexTranslation')}
-          </label>
+        <details className="library-search-advanced">
+          <summary>{t('librarySearch.advancedTitle')}</summary>
+          <p className="field-help">{t('librarySearch.localOnly')}</p>
+          <div className="library-search-privacy">
+            <label className="nt-check-row">
+              <input
+                type="checkbox"
+                checked={settings.indexSourceText}
+                onChange={(e) => void toggleSourceIndex(e.target.checked)}
+              />
+              <span>
+                <span className="nt-check-label">{t('librarySearch.indexSource')}</span>
+                <span className="field-help">{t('librarySearch.indexSourceHelp')}</span>
+              </span>
+            </label>
+            <label className="nt-check-row">
+              <input
+                type="checkbox"
+                checked={settings.indexTranslationText}
+                onChange={(e) => void toggleTranslationIndex(e.target.checked)}
+              />
+              <span>
+                <span className="nt-check-label">{t('librarySearch.indexTranslation')}</span>
+                <span className="field-help">{t('librarySearch.indexTranslationHelp')}</span>
+              </span>
+            </label>
+          </div>
+        </details>
+      )}
+
+      {loading && (
+        <div className="library-search-loading" role="status">
+          <Spinner />
+          <span>{t('librarySearch.loading')}</span>
         </div>
       )}
 
-      {loading && <p>{t('librarySearch.loading')}</p>}
+      {!loading && !debouncedQuery && (
+        <EmptyState
+          title={t('librarySearch.idleTitle')}
+          description={t('librarySearch.idleBody')}
+        />
+      )}
 
       {!loading && debouncedQuery && items.length === 0 && (
-        <p>{t('librarySearch.empty')}</p>
+        <EmptyState
+          title={t('librarySearch.emptyTitle')}
+          description={t('librarySearch.empty')}
+        />
       )}
 
       <ul className="library-search-results">

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Button } from '../components/ui';
+import { Button, EmptyState, ErrorPanel, PageHeader } from '../components/ui';
 import { useT } from '../i18n';
 
 type SeriesDto = Awaited<
@@ -141,39 +141,51 @@ export function SeriesPage() {
   };
 
   return (
-    <div className="page-stack">
-      <header>
-        <h1>{t('series.title')}</h1>
-        <p className="muted">{t('series.subtitle')}</p>
-      </header>
+    <div className="page-stack series-page">
+      <PageHeader title={t('series.title')} description={t('series.subtitle')} />
 
-      {error ? <p className="error-text">{error}</p> : null}
+      {error ? (
+        <ErrorPanel title={t('app.errorTitle')} description={error} />
+      ) : null}
 
-      <section className="card">
-        <h2>{t('series.create')}</h2>
+      <section className="series-create" aria-labelledby="series-create-heading">
+        <h2 id="series-create-heading">{t('series.create')}</h2>
+        <p className="field-help">{t('series.emptyBody')}</p>
         <div className="btn-row">
           <input
             type="text"
             value={newTitle}
             placeholder={t('series.namePlaceholder')}
+            aria-label={t('series.namePlaceholder')}
             onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void createSeries();
+            }}
           />
-          <Button disabled={busy} onClick={() => void createSeries()}>
-            {t('series.createButton')}
+          <Button disabled={busy || !newTitle.trim()} onClick={() => void createSeries()}>
+            {busy ? t('common.loading') : t('series.createButton')}
           </Button>
         </div>
       </section>
 
-      <section className="card">
-        <h2>{t('series.listTitle')}</h2>
+      <section aria-labelledby="series-list-heading">
+        <h2 id="series-list-heading">{t('series.listTitle')}</h2>
         {seriesList.length === 0 ? (
-          <p className="muted">{t('series.empty')}</p>
+          <EmptyState title={t('series.emptyTitle')} description={t('series.emptyBody')} />
         ) : (
-          <ul>
+          <ul className="series-list">
             {seriesList.map((s) => (
               <li key={s.id}>
-                <Link to={`/series/${s.id}`}>{s.title}</Link>
-                <span className="muted"> — {s.volumeCount} volume(s)</span>
+                <Link
+                  to={`/series/${s.id}`}
+                  className={seriesId === s.id ? 'series-list-link is-active' : 'series-list-link'}
+                >
+                  {s.title}
+                </Link>
+                <span className="muted">
+                  {' '}
+                  — {t('series.volumeCount', { n: String(s.volumeCount) })}
+                </span>
               </li>
             ))}
           </ul>
@@ -181,22 +193,26 @@ export function SeriesPage() {
       </section>
 
       {seriesId ? (
-        <section className="card">
-          <div className="btn-row" style={{ marginBottom: '0.75rem' }}>
-            <h2 style={{ flex: 1 }}>{t('series.volumesTitle')}</h2>
+        <section className="series-detail" aria-labelledby="series-volumes-heading">
+          <div className="btn-row series-detail-header">
+            <h2 id="series-volumes-heading" style={{ flex: 1, margin: 0 }}>
+              {t('series.volumesTitle')}
+            </h2>
             <Button variant="secondary" disabled={busy} onClick={() => void exportKnowledge()}>
               {t('series.exportKnowledge')}
             </Button>
           </div>
 
           {volumes.length === 0 ? (
-            <p className="muted">{t('series.noVolumes')}</p>
+            <EmptyState title={t('series.noVolumes')} description={t('series.assignHelp')} />
           ) : (
-            <ol>
+            <ol className="series-volume-list">
               {volumes.map((v) => (
                 <li key={v.id}>
-                  #{v.volumeOrder} {v.projectTitle}
-                  {v.volumeLabel ? ` (${v.volumeLabel})` : ''}
+                  <span>
+                    #{v.volumeOrder} {v.projectTitle}
+                    {v.volumeLabel ? ` (${v.volumeLabel})` : ''}
+                  </span>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -211,17 +227,25 @@ export function SeriesPage() {
           )}
 
           <h3>{t('series.assignProject')}</h3>
+          <p className="field-help">{t('series.assignHelp')}</p>
           <div className="btn-row">
             <select
               value={assignProjectId}
               onChange={(e) => setAssignProjectId(e.target.value)}
+              aria-label={t('series.pickProject')}
             >
               <option value="">{t('series.pickProject')}</option>
               {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.title}</option>
+                <option key={p.id} value={p.id}>
+                  {p.title}
+                </option>
               ))}
             </select>
-            <Button variant="secondary" disabled={busy || !assignProjectId} onClick={() => void previewAssign()}>
+            <Button
+              variant="secondary"
+              disabled={busy || !assignProjectId}
+              onClick={() => void previewAssign()}
+            >
               {t('series.previewConflicts')}
             </Button>
             <Button disabled={busy || !assignProjectId} onClick={() => void confirmAssign(false)}>
@@ -230,14 +254,14 @@ export function SeriesPage() {
           </div>
 
           {conflicts && conflicts.conflicts.length > 0 ? (
-            <div style={{ marginTop: '1rem' }}>
-              <p>{t('series.conflictCount', { count: conflicts.conflicts.length })}</p>
+            <div className="series-conflicts">
+              <p>{t('series.conflictCount', { count: String(conflicts.conflicts.length) })}</p>
               <ul>
                 {conflicts.conflicts.map((c) => (
                   <li key={`${c.projectTermId}-${c.seriesTermId}`}>
-                    <strong>{c.sourceText}</strong>: project={c.projectTranslation ?? '?'} vs
-                    series={c.seriesTranslation ?? '?'}
-                    {c.projectLocked || c.seriesLocked ? ' (locked)' : ''}
+                    <strong>{c.sourceText}</strong>: {c.projectTranslation ?? '?'} vs{' '}
+                    {c.seriesTranslation ?? '?'}
+                    {c.projectLocked || c.seriesLocked ? ` (${t('series.locked')})` : ''}
                   </li>
                 ))}
               </ul>

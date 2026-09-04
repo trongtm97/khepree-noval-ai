@@ -131,7 +131,7 @@ export function classifyWatchEvents(input: {
         previousPath: unlink.filePath,
         chapterId: oldChapter.id,
         chapterNumber: oldChapter.chapter_number ?? undefined,
-        detected: match.detected,
+        ...(match.detected ? { detected: match.detected } : {}),
       });
     }
   }

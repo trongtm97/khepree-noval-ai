@@ -11,7 +11,7 @@
  * - Service: offline/retry queuing
  * - Service: deleteRemote clears queue entry
  */
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   CampaignSyncPayloadSchema,
   CAMPAIGN_SYNC_STAGES,

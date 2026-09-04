@@ -17,6 +17,26 @@
   --text-muted: #717784;
   --text-inverse: #0d0f12;
 
+  /* Semantic surface / border / status aliases (Phase 6) */
+  --surface-page: var(--bg-app);
+  --surface-card: var(--bg-secondary);
+  --surface-subtle: var(--bg-tertiary);
+  --border-subtle: var(--border);
+  --border-default: var(--border-strong);
+  --status-success: var(--success);
+  --status-warning: var(--warning);
+  --status-danger: var(--error);
+  --status-info: var(--info);
+
+  /* Page rhythm */
+  --pad-page: var(--space-6);
+  --gap-page-section: var(--space-6);
+  --gap-card: var(--space-4);
+  --gap-field: var(--space-4);
+  --gap-label-control: 0.4rem;
+  --gap-control-help: 0.375rem;
+  --gap-btn-group: var(--space-2);
+
   --accent: #7c8cff;
   --accent-hover: #6b7cf0;
   --accent-muted: rgba(124, 140, 255, 0.15);

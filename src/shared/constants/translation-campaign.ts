@@ -24,6 +24,7 @@ export const TRANSLATION_CAMPAIGN_PROJECT_STATUSES = [
   'SKIPPED',
   'FAILED',
   'COMPLETED',
+  'CANCELLED',
 ] as const;
 
 export type TranslationCampaignProjectStatus =

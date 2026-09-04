@@ -1,4 +1,5 @@
 import { BaseRepository } from './base-repository';
+import { withTransaction } from '../transaction';
 import { newId } from '../utils/uuid';
 import { touchTimestamps, utcNow } from '../utils/timestamps';
 import type { TranslationVersionSource } from '@shared/constants/translation-editor';
@@ -230,17 +231,18 @@ export class TranslationRepository extends BaseRepository {
     const existing = this.getById(translationId);
     if (!existing) return null;
 
-    const versionRow = this.db
-      .prepare(
-        `SELECT COALESCE(MAX(version), 0) AS max_version FROM translation_versions WHERE translation_id = ?`,
-      )
-      .get(translationId) as { max_version: number };
-    const nextVersion = versionRow.max_version + 1;
-    const now = utcNow();
+    return withTransaction(this.db, () => {
+      const versionRow = this.db
+        .prepare(
+          `SELECT COALESCE(MAX(version), 0) AS max_version FROM translation_versions WHERE translation_id = ?`,
+        )
+        .get(translationId) as { max_version: number };
+      const nextVersion = versionRow.max_version + 1;
+      const now = utcNow();
 
-    this.db
-      .prepare(
-        `UPDATE translations SET
+      this.db
+        .prepare(
+          `UPDATE translations SET
           translated_text = ?,
           status = ?,
           version_source = ?,
@@ -250,33 +252,34 @@ export class TranslationRepository extends BaseRepository {
           metadata = COALESCE(?, metadata),
           updated_at = ?
         WHERE id = ?`,
-      )
-      .run(
-        patch.translated_text,
-        patch.status,
-        patch.version_source,
-        patch.human_locked ? 1 : 0,
-        patch.provider ?? null,
-        patch.model ?? null,
-        patch.metadata ?? null,
-        now,
-        translationId,
-      );
+        )
+        .run(
+          patch.translated_text,
+          patch.status,
+          patch.version_source,
+          patch.human_locked ? 1 : 0,
+          patch.provider ?? null,
+          patch.model ?? null,
+          patch.metadata ?? null,
+          now,
+          translationId,
+        );
 
-    this.insertVersion({
-      translation_id: translationId,
-      version: nextVersion,
-      translated_text: patch.translated_text,
-      status: patch.status,
-      provider: patch.provider ?? existing.provider,
-      model: patch.model ?? existing.model,
-      metadata: patch.metadata ?? existing.metadata,
-      version_source: patch.version_source,
-      editor_note: patch.editor_note ?? null,
-      created_at: now,
+      this.insertVersion({
+        translation_id: translationId,
+        version: nextVersion,
+        translated_text: patch.translated_text,
+        status: patch.status,
+        provider: patch.provider ?? existing.provider,
+        model: patch.model ?? existing.model,
+        metadata: patch.metadata ?? existing.metadata,
+        version_source: patch.version_source,
+        editor_note: patch.editor_note ?? null,
+        created_at: now,
+      });
+
+      return this.getById(translationId);
     });
-
-    return this.getById(translationId);
   }
 
   revertToVersion(translationId: string, version: number): TranslationRow | null {

@@ -383,6 +383,7 @@ export class TranslationCampaignService {
       let status = (link.status || pf?.status || 'PENDING') as TranslationCampaignProjectStatus;
       if (run) {
         if (run.status === 'COMPLETED') status = 'COMPLETED';
+        else if (run.status === 'CANCELLED') status = 'CANCELLED';
         else if (run.status === 'RUNNING' || run.status === 'PENDING') status = 'RUNNING';
         else if (run.status === 'PAUSED') status = 'QUEUED';
         else if (
@@ -855,6 +856,15 @@ export class TranslationCampaignService {
       ) {
         db.jobs.updateState(jobId, 'CANCELLED', 'campaign_cancel');
         db.jobs.releaseLease(jobId);
+      }
+    }
+    for (const link of db.translationCampaigns.listProjects(campaignId)) {
+      if (
+        !['COMPLETED', 'SKIPPED', 'CANCELLED', 'FAILED'].includes(link.status)
+      ) {
+        db.translationCampaigns.updateProject(campaignId, link.project_id, {
+          status: 'CANCELLED',
+        });
       }
     }
     db.translationCampaigns.updateCampaign(campaignId, {

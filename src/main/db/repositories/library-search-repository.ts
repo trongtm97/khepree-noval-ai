@@ -1,4 +1,3 @@
-import type Database from 'better-sqlite3';
 import { BaseRepository } from './base-repository';
 import { newId } from '../utils/uuid';
 import { touchTimestamps, utcNow } from '../utils/timestamps';
