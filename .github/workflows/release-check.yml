@@ -22,5 +22,8 @@ jobs:
       - name: Install dependencies (frozen lockfile)
         run: npm run ci:deps
 
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
       - name: Typecheck + critical lint + unit + integration
         run: npm run ci:check
